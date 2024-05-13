@@ -231,10 +231,17 @@ def main():
         'Run3_2022postEE': None
     }
     # set of all the preEE and postEE extra directories that don't contain parquet files
-    non_parquet_set = set([
+    non_parquet_set = {
             'json_files', 'resonant_incomplete', 'ReadMe.md~~', 'ReadMe.md~', 'ReadMe.md', 
             'ReadMe_m.swp', 'ReadMe_m.swn', 'ReadMe_m.swm', 'ReadMe_m.swo'
-        ])
+    }
+
+    run_set = {
+        'ttHToGG', 'GluGluToHH',
+        'GluGlutoBulkGravitontoHHto2B2G_M-300', 'GluGlutoRadiontoHHto2B2G_M-300',
+        'GluGlutoBulkGravitontoHHto2B2G_M-600', 'GluGlutoRadiontoHHto2B2G_M-600',
+        'GluGlutoBulkGravitontoHHto2B2G_M-1200', 'GluGlutoRadiontoHHto2B2G_M-1200',
+    }
     
     for data_era in dir_lists.keys():
         if os.path.exists(lpc_fileprefix+'/'+data_era+'/completed_samples.json'):
@@ -253,7 +260,8 @@ def main():
         output_set = set(output)
         output_set -= dont_merge_set
         
-        dir_lists[data_era] = list(output_set)
+        # dir_lists[data_era] = list(output_set)
+        dir_lists[data_era] = list(run_set)
         
 
     # MC Era: total era luminosity [fb^-1] #
