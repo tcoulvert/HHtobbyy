@@ -182,6 +182,9 @@ def add_ttH_vars(sample):
         term2_2 = ((top_mass - ak.where(sample['w1jet_4mom'].mass == 0, -999, sample['top2jet_4mom'].mass)) / (0.1 * top_mass))**2
     
         return ak.where(t_mask, term1_1+term1_2+term2_1+term2_2, -999)
+
+    def deltaR_bjet_lepton(sample, lepton_type='lead', bjet_type='lead'):
+        return sample[f'{lepton_type}_lepton_4mom'].deltaR(sample[f'{bjet_type}_bjet_4mom'])
     
     # Abs of cos #
     sample['abs_CosThetaStar_CS'] = ak.where(sample['CosThetaStar_CS'] >= 0, sample['CosThetaStar_CS'], -1*sample['CosThetaStar_CS'])
@@ -221,9 +224,28 @@ def add_ttH_vars(sample):
                 ], with_name='Momentum4D'
             )
 
-    sample['chi_t0^2'] = chi_t0(sample, 6, 0.4)
-    sample['chi_t1^2'] = chi_t1(sample, 6, 0.4)
+    sample['chi_t0'] = chi_t0(sample, 6, 0.4)
+    sample['chi_t1'] = chi_t1(sample, 6, 0.4)
+    
+    # lepton angulars #
+    for field in ['lead', 'sublead']:
+        sample[f'{field}_lepton_4mom'] = ak.zip(
+            {
+                'rho': sample[f'lepton{"1" if field == "lead" else "2"}_pt'], # rho is synonym for pt
+                'phi': sample[f'lepton{"1" if field == "lead" else "2"}_phi'],
+                'eta': sample[f'lepton{"1" if field == "lead" else "2"}_eta'],
+                'tau': sample[f'lepton{"1" if field == "lead" else "2"}_mass'], # tau is synonym for mass
+            }, with_name='Momentum4D'
+        )
+    
+    sample['leadBjet_leadLepton'] = deltaR_bjet_lepton(sample)
+    sample['leadBjet_subleadLepton'] = deltaR_bjet_lepton(sample, lepton_type='sublead')
+    sample['subleadBjet_leadLepton'] = deltaR_bjet_lepton(sample, bjet_type='sublead')
+    sample['subleadBjet_subleadLepton'] = deltaR_bjet_lepton(sample, lepton_type='sublead', bjet_type='sublead')
 
+    # MET vars (only for v1 parquets) #
+    if 'puppiMET_eta' not in set(sample.fields):
+        sample['puppiMET_eta'] = [-999 for _ in range(ak.num(sample['event'], axis=0))]
 
 def main():
     dir_lists = {
