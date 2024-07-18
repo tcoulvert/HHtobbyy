@@ -15,7 +15,7 @@ vec.register_awkward()
 # lpc_redirector = "root://cmseos.fnal.gov/"
 # lxplus_redirector = "root://eosuser.cern.ch/"
 # lxplus_fileprefix = "/eos/cms/store/group/phys_b2g/HHbbgg/HiggsDNA_parquet/v1"
-lpc_fileprefix = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v1"
+LPC_FILEPREFIX = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v1"
 
 def add_ttH_vars(sample):
     
@@ -259,15 +259,17 @@ def main():
     }
 
     run_set = {
-        'ttHToGG', 'GluGluToHH',
-        'GluGlutoBulkGravitontoHHto2B2G_M-300', 'GluGlutoRadiontoHHto2B2G_M-300',
-        'GluGlutoBulkGravitontoHHto2B2G_M-600', 'GluGlutoRadiontoHHto2B2G_M-600',
-        'GluGlutoBulkGravitontoHHto2B2G_M-1200', 'GluGlutoRadiontoHHto2B2G_M-1200',
+        # 'ttHToGG', 'GluGluToHH',
+        # 'GluGlutoBulkGravitontoHHto2B2G_M-300', 'GluGlutoRadiontoHHto2B2G_M-300',
+        # 'GluGlutoBulkGravitontoHHto2B2G_M-600', 'GluGlutoRadiontoHHto2B2G_M-600',
+        # 'GluGlutoBulkGravitontoHHto2B2G_M-1200', 'GluGlutoRadiontoHHto2B2G_M-1200',
+        'VBFHHto2B2G_CV_1_C2V_1_C3_1', 'ZHH_HHto2B2G_CV-1p0_C2V-1p0_C3-1p0_TuneCP5_13p6TeV',
+        'WHH_HHto2B2G_CV-1p0_C2V-1p0_C3-1p0_TuneCP5_13p6TeV'
     }
     
     for data_era in dir_lists.keys():
-        if os.path.exists(lpc_fileprefix+'/'+data_era+'/completed_samples.json'):
-            with open(lpc_fileprefix+'/'+data_era+'/completed_samples.json', 'r') as f:
+        if os.path.exists(LPC_FILEPREFIX+'/'+data_era+'/completed_samples.json'):
+            with open(LPC_FILEPREFIX+'/'+data_era+'/completed_samples.json', 'r') as f:
                 run_samples = json.load(f)
         else:
             run_samples = {
@@ -276,7 +278,7 @@ def main():
         dont_merge_set = non_parquet_set | set(run_samples['run_samples_list'])
         
         output = os.listdir(
-            lpc_fileprefix+'/'+data_era
+            LPC_FILEPREFIX+'/'+data_era
         )
         
         output_set = set(output)
@@ -317,18 +319,21 @@ def main():
 
     for data_era, dir_list in dir_lists.items():
         for dir_name in dir_list:
-            for sample_type in ['nominal']: # Eventually change to os.listdir(lpc_fileprefix+'/'+data_era+'/'+dir_name)
+            for sample_type in ['nominal']: # Eventually change to os.listdir(LPC_FILEPREFIX+'/'+data_era+'/'+dir_name)
                 # Load all the parquets of a single sample into an ak array
-                sample = ak.from_parquet(
-                    glob.glob(lpc_fileprefix+'/'+data_era+'/'+dir_name+'/'+sample_type+'/*')
+                sample = ak.concatenate(
+                    [ak.from_parquet(LPC_FILEPREFIX+'/'+data_era+'/'+dir_name+'/'+sample_type+'/'+file) for file in os.listdir(LPC_FILEPREFIX+'/'+data_era+'/'+dir_name+'/'+sample_type+'/')]
                 )
+                # sample = ak.from_parquet(
+                #     glob.glob(LPC_FILEPREFIX+'/'+data_era+'/'+dir_name+'/'+sample_type+'/*')
+                # )
                 add_ttH_vars(sample)
         
                 if re.match('Data', dir_name) is None:
                     # Compute the sum of genWeights for proper MC rescaling.
                     sample['sumGenWeights'] = sum(
                         float(pq.read_table(file).schema.metadata[b'sum_genw_presel']) for file in glob.glob(
-                            lpc_fileprefix+'/'+data_era+'/'+dir_name+'/'+sample_type+'/*'
+                            LPC_FILEPREFIX+'/'+data_era+'/'+dir_name+'/'+sample_type+'/*'
                         )
                     )
         
@@ -342,7 +347,7 @@ def main():
                     # Define eventWeight array for hist plotting.
                     sample['eventWeight'] = sample['genWeight'] * (sample['luminosity'] * sample['cross_section'] / sample['sumGenWeights'])
         
-                destdir = lpc_fileprefix+'/'+data_era+'_merged/'+dir_name+'/'+sample_type+'/'
+                destdir = LPC_FILEPREFIX+'/'+data_era+'_merged/'+dir_name+'/'+sample_type+'/'
                 if not os.path.exists(destdir):
                     os.makedirs(destdir)
                 merged_parquet = ak.to_parquet(sample, destdir+dir_name+'_'+sample_type+'.parquet')
@@ -350,7 +355,7 @@ def main():
                 del sample
                 print('======================== \n', dir_name)
                 run_samples['run_samples_list'].append(dir_name)
-                with open(lpc_fileprefix+'/'+data_era+'/completed_samples.json', 'w') as f:
+                with open(LPC_FILEPREFIX+'/'+data_era+'/completed_samples.json', 'w') as f:
                      json.dump(run_samples, f)
 
 
