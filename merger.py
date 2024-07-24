@@ -249,7 +249,7 @@ def add_ttH_vars(sample):
 
 def main():
     dir_lists = {
-        'Run3_2022preEE': None,
+        # 'Run3_2022preEE': None,
         'Run3_2022postEE': None
     }
     # set of all the preEE and postEE extra directories that don't contain parquet files
@@ -263,8 +263,9 @@ def main():
         # 'GluGlutoBulkGravitontoHHto2B2G_M-300', 'GluGlutoRadiontoHHto2B2G_M-300',
         # 'GluGlutoBulkGravitontoHHto2B2G_M-600', 'GluGlutoRadiontoHHto2B2G_M-600',
         # 'GluGlutoBulkGravitontoHHto2B2G_M-1200', 'GluGlutoRadiontoHHto2B2G_M-1200',
-        'VBFHHto2B2G_CV_1_C2V_1_C3_1', 'ZHH_HHto2B2G_CV-1p0_C2V-1p0_C3-1p0_TuneCP5_13p6TeV',
-        'WHH_HHto2B2G_CV-1p0_C2V-1p0_C3-1p0_TuneCP5_13p6TeV'
+        # 'VBFHHto2B2G_CV_1_C2V_1_C3_1', 'ZHH_HHto2B2G_CV-1p0_C2V-1p0_C3-1p0_TuneCP5_13p6TeV',
+        # 'WHH_HHto2B2G_CV-1p0_C2V-1p0_C3-1p0_TuneCP5_13p6TeV'
+        'Data_EraE', 'Data_EraF', 'Data_EraG'
     }
     
     for data_era in dir_lists.keys():
@@ -297,11 +298,11 @@ def main():
         # https://twiki.cern.ch/twiki/bin/view/LHCPhysics/LHCHWGHH?redirectedfrom=LHCPhysics.LHCHXSWGHH#Current_recommendations_for_HH_c
         'GluGluToHH': 34.43*0.0026,
         # https://xsdb-temp.app.cern.ch/xsdb/?columns=37748736&currentPage=0&pageSize=10&searchQuery=DAS%3DGG-Box-3Jets_MGG-80_13p6TeV_sherpa
-        'GGJets': 88.75, 
+        'GGJets': 88750, 
         # https://xsdb-temp.app.cern.ch/xsdb/?columns=37748736&currentPage=0&pageSize=10&searchQuery=DAS%3DGJet_PT-20to40_DoubleEMEnriched_MGG-80_TuneCP5_13p6TeV_pythia8
-        'GJetPt20To40': 242.5, 
+        'GJetPt20To40': 242500, 
         # https://xsdb-temp.app.cern.ch/xsdb/?columns=37748736&currentPage=0&pageSize=10&searchQuery=DAS%3DGJet_PT-40_DoubleEMEnriched_MGG-80_TuneCP5_13p6TeV_pythia8
-        'GJetPt40': 919.1, 
+        'GJetPt40': 919100, 
         # https://twiki.cern.ch/twiki/bin/view/LHCPhysics/CERNYellowReportPageAt13TeV#gluon_gluon_Fusion_Process
         'GluGluHToGG': 48520*0.00228,
         # https://twiki.cern.ch/twiki/bin/view/LHCPhysics/CERNYellowReportPageAt13TeV#ttH_Process
@@ -311,10 +312,12 @@ def main():
         # https://twiki.cern.ch/twiki/bin/view/LHCPhysics/CERNYellowReportPageAt13TeV#WH_Process + https://twiki.cern.ch/twiki/bin/view/LHCPhysics/CERNYellowReportPageAt13TeV#ZH_Process
         'VHToGG': (1369 + 882.4)*0.00228,
     }
-    for dir_name in dir_lists['Run3_2022preEE']:
-        if dir_name in cross_sections:
-            continue
-        cross_sections[dir_name] = 0.001 # set to 1 [pb] for now, need to find actual numbers for many of these samples
+    for data_era in dir_lists.keys():
+        for dir_name in dir_lists[data_era]:
+            if dir_name in cross_sections or re.match('Data', dir_name) is not None:
+                continue
+            cross_sections[dir_name] = 0.001 # set to 1e-3 [fb] for now, need to find actual numbers for many of these samples
+        break
 
 
     for data_era, dir_list in dir_lists.items():
