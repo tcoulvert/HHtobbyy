@@ -15,6 +15,14 @@ vec.register_awkward()
 LPC_FILEPREFIX = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v1"
 
 def ttH_enriched_cuts(sample):
+    # In Run2 they did comparison on events passing HHMVA > 0.29
+    #   -> replicate using Yibo's cutbased analysis and/or BDT with the cut
+    #   at the same signal efficiency as >0.29 in Run2
+    #
+    # OR just go to sideband region with enriched bjets, but no diHiggs
+    #   -> cut on btag score for both bjets, dijet mass NOT in Higgs mass
+    #   window (<70Gev or >150Gev, check values based on HHbbgg presentations),
+    #   don't cut on diphoton b/c thats in the ttH background as well, focus on making bjet enriched?
     pass
 
 def main():
