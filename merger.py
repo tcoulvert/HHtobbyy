@@ -249,8 +249,8 @@ def add_ttH_vars(sample):
 
 def main():
     dir_lists = {
-        # 'Run3_2022preEE': None,
-        'Run3_2022postEE': None
+        'Run3_2022preEE': None,
+        # 'Run3_2022postEE': None
     }
     # set of all the preEE and postEE extra directories that don't contain parquet files
     non_parquet_set = {
@@ -265,7 +265,7 @@ def main():
         # 'GluGlutoBulkGravitontoHHto2B2G_M-1200', 'GluGlutoRadiontoHHto2B2G_M-1200',
         # 'VBFHHto2B2G_CV_1_C2V_1_C3_1', 'ZHH_HHto2B2G_CV-1p0_C2V-1p0_C3-1p0_TuneCP5_13p6TeV',
         # 'WHH_HHto2B2G_CV-1p0_C2V-1p0_C3-1p0_TuneCP5_13p6TeV'
-        'Data_EraE', 'Data_EraF', 'Data_EraG'
+        'Data_EraC', 'Data_EraD'
     }
     
     for data_era in dir_lists.keys():
