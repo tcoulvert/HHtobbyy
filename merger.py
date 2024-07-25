@@ -290,7 +290,7 @@ def main():
         
 
     # MC Era: total era luminosity [fb^-1] #
-    luminosities = {'Run3_2022preEE': 7.874, 'Run3_2022postEE': 26.337}
+    luminosities = {'Run3_2022preEE': 7.9804, 'Run3_2022postEE': 26.6717}
     
     # Name: cross section [fb] @ sqrrt{s}=13.6 TeV & m_H=125.09 GeV #
     #   -> Do we not need to care about other HH processes? https://arxiv.org/pdf/1910.00012.pdf

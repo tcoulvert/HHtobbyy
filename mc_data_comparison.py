@@ -26,6 +26,7 @@ SINGLE_B_WPS = {
     'postEE': {'L': 0.0499, 'M': 0.2605, 'T': 0.6915, 'XT': 0.8033, 'XXT': 0.9664}
 }
 MC_DATA_MASK = 'MC_Data_mask'
+FILL_VALUE = -999
 
 def ttH_enriched_cuts(data_era, sample):
     # In Run2 they did comparison on events passing HHMVA > 0.29
@@ -38,9 +39,9 @@ def ttH_enriched_cuts(data_era, sample):
     #   don't cut on diphoton b/c thats in the ttH background as well, focus on making bjet enriched?
 
     # Require diphoton and dijet exist (should be required in preselection, and thus be all True)
-    event_mask = ak.where(sample['pt'] != -999, True, False) & ak.where(sample['dijet_pt'] != -999, True, False)
+    event_mask = ak.where(sample['pt'] != FILL_VALUE, True, False) & ak.where(sample['dijet_pt'] != FILL_VALUE, True, False)
 
-    # Require btag score above loose WP
+    # Require btag score above Loose WP
     EE_era_2022 = 'preEE' if re.search('preEE', data_era) is not None else 'postEE'
     event_mask = event_mask & ak.where(
         sample['lead_bjet_btagPNetB'] > SINGLE_B_WPS[EE_era_2022]['L'], True, False
@@ -49,7 +50,7 @@ def ttH_enriched_cuts(data_era, sample):
     )
 
     # Require at least 3 jets (to remove bbH background), extra jets coming from Ws
-    event_mask = event_mask & ak.where(sample['jet3_pt'] != -999, True, False)
+    event_mask = event_mask & ak.where(sample['jet3_pt'] != FILL_VALUE, True, False)
 
     # Mask out events with dijet mass within Higgs window
     event_mask = event_mask & (
@@ -119,7 +120,7 @@ def main(minimal=True):
         'subleadBjet_leadLepton': hist.axis.Regular(50, 0, 5, name='var', label=r'$\Delta R(bjet_{sublead}, l_{lead})$', growth=False, underflow=False, overflow=False), 
         'subleadBjet_subleadLepton': hist.axis.Regular(50, 0, 5, name='var', label=r'$\Delta R(bjet_{sublead}, l_{sublead})$', growth=False, underflow=False, overflow=False)
     }
-    # Set of extra MC variables necessary for MC/Data comparison
+    # Set of extra MC variables necessary for MC/Data comparison, defined in merger.py
     MC_extra_variables = {
         'luminosity', 'cross_section', 'eventWeight', MC_DATA_MASK
     }
@@ -157,11 +158,9 @@ def main(minimal=True):
         
                 
                 del sample
-                print('======================== \n', dir_name)
+                # print('======================== \n', dir_name)
 
-    #
     # Now do printing over variables for MC and Data
-    # 
     cm = plt.get_cmap('gist_rainbow')
     for variable, axis in variables.items():
         # Initiate figure
@@ -170,26 +169,33 @@ def main(minimal=True):
         # Generate MC hist stack
         mc_hists = {}
         mc_colors = []
+        mc_labels = []
         for i, (dir_name, sample) in enumerate(MC_pqs.items()):
+            print(f"{dir_name}: \n{sample['eventWeight']}")
             mc_hists[dir_name] = hist.Hist(axis, storage='weight').fill(
-                var=ak.where(sample['MC_Data_mask'], sample[variable], -999.0), 
+                var=ak.where(sample['MC_Data_mask'], sample[variable], FILL_VALUE),
                 weight=sample['eventWeight'],
             )
             mc_colors.append(cm(i/len(MC_pqs)))
+            mc_labels.append(
+                r"$t\bar{t}H\rightarrow\gamma\gamma$ MC 2022" + (
+                    r"" if re.search('preEE', dir_name) is not None else r"EE"
+                )
+            )
         mc_stack = hist.Stack.from_dict(mc_hists)
         mc_stack.plot(
-            stack=True, ax=ax, linewidth=3, histtype="fill", color=mc_colors
+            stack=True, ax=ax, linewidth=3, histtype="fill", color=mc_colors, label=mc_labels
         )
 
         # Generate data hist
-        data_hists = {}
+        data_ak = ak.zip({variable: FILL_VALUE})
         for dir_name, sample in Data_pqs.items():
-            data_hists[dir_name] = hist.Hist(axis).fill(
-                var=ak.where(sample['MC_Data_mask'], sample[variable], -999.0),
+            data_ak[variable] = ak.concatenate(
+                (data_ak[variable], ak.where(sample['MC_Data_mask'], sample[variable], FILL_VALUE))
             )
-        data_stack = hist.Stack.from_dict(data_hists)
-        data_stack.plot(
-            stack=True, ax=ax, linewidth=3, histtype="step", color="black"
+        data_stack = hist.Hist(axis).fill(var=data_ak[variable])
+        hep.histplot(
+            data_stack, ax=ax, linewidth=3, histtype="errorbar", color="black", label=f"CMS Run3 2022 Data"
         )
 
         # Plotting niceties
@@ -204,6 +210,7 @@ def main(minimal=True):
             os.mkdir(DESTDIR)
         plt.savefig(f'{DESTDIR}/1dhist_{variable}_MC_Data.pdf')
         plt.savefig(f'{DESTDIR}/1dhist_{variable}_MC_Data.png')
+        plt.close()
 
 
 if __name__ == '__main__':
