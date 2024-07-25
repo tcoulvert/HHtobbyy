@@ -122,7 +122,7 @@ def main(minimal=True):
     }
     # Set of extra MC variables necessary for MC/Data comparison, defined in merger.py
     MC_extra_variables = {
-        'luminosity', 'cross_section', 'eventWeight', MC_DATA_MASK
+        'luminosity', 'cross_section', 'eventWeight', MC_DATA_MASK, 'genWeight'
     }
     Data_extra_variables = {
         MC_DATA_MASK
@@ -168,13 +168,13 @@ def main(minimal=True):
 
         # Generate MC hist stack
         mc_hists = {}
-        mc_colors = []
-        mc_labels = []
+        mc_colors, mc_labels = [], []
         for i, (dir_name, sample) in enumerate(MC_pqs.items()):
-            print(f"{dir_name}: \n{sample['eventWeight']}")
+            # print(f"{dir_name}: \n{sample['genWeight']}")  # +/- 3.1
             mc_hists[dir_name] = hist.Hist(axis, storage='weight').fill(
                 var=ak.where(sample['MC_Data_mask'], sample[variable], FILL_VALUE),
                 weight=sample['eventWeight'],
+                # weight=ak.where(sample['genWeight'] < 0, -1, 1) * sample['luminosity'] * sample['cross_section']
             )
             mc_colors.append(cm(i/len(MC_pqs)))
             mc_labels.append(
