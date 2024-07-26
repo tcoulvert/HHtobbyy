@@ -27,8 +27,58 @@ SINGLE_B_WPS = {
 }
 MC_DATA_MASK = 'MC_Data_mask'
 FILL_VALUE = -999
+MC_NAMES_PRETTY = {
+    'ttHToGG': r"$t\bar{t}H\rightarrow\gamma\gamma$",
+    "GluGluToHH": r"ggF $HH\rightarrow bb\gamma\gamma$"
+}
 
-def ttH_enriched_cuts(data_era, sample):
+# Dictionary of variables to do MC/Data comparison
+VARIABLES = {
+    # key: hist.axis axes for plotting #
+    # MET variables
+    'puppiMET_sumEt': hist.axis.Regular(50, 20., 250, name='var', label=r'puppiMET $\Sigma E_T$ [GeV]', growth=False, underflow=False, overflow=False), 
+    'puppiMET_pt': hist.axis.Regular(50, 20., 250, name='var', label=r'puppiMET $p_T$ [GeV]', growth=False, underflow=False, overflow=False), 
+    'puppiMET_phi': hist.axis.Regular(25,-3.2, 3.2, name='var', label=r'puppiMET $\phi$', growth=False, underflow=False, overflow=False), 
+    # jet-MET variables
+    'DeltaPhi_j1MET': hist.axis.Regular(50,-3.2, 3.2, name='var', label=r'$\Delta\phi (j_1,E_T^{miss})$', growth=False, underflow=False, overflow=False), 
+    'DeltaPhi_j2MET': hist.axis.Regular(50, -3.2, 3.2, name='var', label=r'$\Delta\phi (j_2,E_T^{miss})$', growth=False, underflow=False, overflow=False), 
+    # jet-photon variables
+    'DeltaR_jg_min': hist.axis.Regular(50, 0, 5, name='var', label=r'min$(\Delta R(jet, \gamma))$', growth=False, underflow=False, overflow=False), 
+    # jet variables
+    'n_jets': hist.axis.Integer(0, 10, name='var', label=r'$n_{jets}$', growth=False, underflow=False, overflow=False), 
+    'chi_t0': hist.axis.Regular(70, 0., 150, name='var', label=r'$\chi_{t0}^2$', growth=False, underflow=False, overflow=False), 
+    'chi_t1': hist.axis.Regular(70, 0., 500, name='var', label=r'$\chi_{t1}^2$', growth=False, underflow=False, overflow=False), 
+    # lepton variables
+    'lepton1_pt': hist.axis.Regular(50, 0., 200, name='var', label=r'lead lepton $p_T$ [GeV]', growth=False, underflow=False, overflow=False), 
+    'lepton2_pt': hist.axis.Regular(50, 0., 200, name='var', label=r'sublead lepton $p_T$ [GeV]', growth=False, underflow=False, overflow=False), 
+    'lepton1_eta': hist.axis.Regular(30, -5., 5., name='var', label=r'lead lepton $\eta$', growth=False, underflow=False, overflow=False), 
+    'lepton2_eta': hist.axis.Regular(30, -5., 5., name='var', label=r'sublead lepton $\eta$', growth=False, underflow=False, overflow=False),
+    'lepton1_phi': hist.axis.Regular(30, -3.2, 3.2, name='var', label=r'lead lepton $\phi$', growth=False, underflow=False, overflow=False), 
+    'lepton2_phi': hist.axis.Regular(30, -3.2, 3.2, name='var', label=r'sublead lepton $\phi$', growth=False, underflow=False, overflow=False),
+    # diphoton variables
+    'pt': hist.axis.Regular(50, 20., 2000, name='var', label=r' $\gamma\gamma p_{T}$ [GeV]', growth=False, underflow=False, overflow=False),
+    'eta': hist.axis.Regular(20, -5., 5., name='var', label=r'$\gamma\gamma \eta$', growth=False, underflow=False, overflow=False), 
+    'phi': hist.axis.Regular(16, -3.2, 3.2, name='var', label=r'$\gamma \gamma \phi$', growth=False, underflow=False, overflow=False),
+    # angular (cos) variables
+    'abs_CosThetaStar_CS': hist.axis.Regular(25, 0, 1, name='var', label=r'|cos$(\theta_{CS})$|', growth=False, underflow=False, overflow=False), 
+    'abs_CosThetaStar_jj': hist.axis.Regular(25, 0, 1, name='var', label=r'|cos$(\theta_{jj})$|', growth=False, underflow=False, overflow=False), 
+    # dijet variables
+    # 'dijet_mass': hist.axis.Regular(50, 25., 180., name='var', label=r'$M_{jj}$ [GeV]', growth=False, underflow=False, overflow=False), # mass of b-dijet (resonance for H->bb)
+    # jet-lepton variables
+    'leadBjet_leadLepton': hist.axis.Regular(50, 0, 5, name='var', label=r'$\Delta R(bjet_{lead}, l_{lead})$', growth=False, underflow=False, overflow=False), 
+    'leadBjet_subleadLepton': hist.axis.Regular(50, 0, 5, name='var', label=r'$\Delta R(bjet_{lead}, l_{sublead})$', growth=False, underflow=False, overflow=False), 
+    'subleadBjet_leadLepton': hist.axis.Regular(50, 0, 5, name='var', label=r'$\Delta R(bjet_{sublead}, l_{lead})$', growth=False, underflow=False, overflow=False), 
+    'subleadBjet_subleadLepton': hist.axis.Regular(50, 0, 5, name='var', label=r'$\Delta R(bjet_{sublead}, l_{sublead})$', growth=False, underflow=False, overflow=False)
+}
+# Set of extra MC variables necessary for MC/Data comparison, defined in merger.py
+MC_EXTRA_VARS = {
+    'luminosity', 'cross_section', 'eventWeight', 'genWeight', MC_DATA_MASK
+}
+DATA_EXTRA_VARS = {
+    MC_DATA_MASK
+}
+
+def ttH_enriched_cuts(data_era: str, sample):
     # In Run2 they did comparison on events passing HHMVA > 0.29
     #   -> replicate using Yibo's cutbased analysis and/or BDT with the cut
     #   at the same signal efficiency as >0.29 in Run2
@@ -44,13 +94,18 @@ def ttH_enriched_cuts(data_era, sample):
     # Require btag score above Loose WP
     EE_era_2022 = 'preEE' if re.search('preEE', data_era) is not None else 'postEE'
     event_mask = event_mask & ak.where(
-        sample['lead_bjet_btagPNetB'] > SINGLE_B_WPS[EE_era_2022]['L'], True, False
+        sample['lead_bjet_btagPNetB'] > SINGLE_B_WPS[EE_era_2022]['T'], True, False
     ) & ak.where(
-        sample['sublead_bjet_btagPNetB'] > SINGLE_B_WPS[EE_era_2022]['L'], True, False
+        sample['sublead_bjet_btagPNetB'] > SINGLE_B_WPS[EE_era_2022]['T'], True, False
     )
 
     # Require at least 3 jets (to remove bbH background), extra jets coming from Ws
     event_mask = event_mask & ak.where(sample['jet3_pt'] != FILL_VALUE, True, False)
+
+    # Require events with diphoton mass within Higgs window
+    event_mask = event_mask & (
+        ak.where(sample['mass'] >= 115, True, False) & ak.where(sample['mass'] <= 135, True, False)
+    )
 
     # Mask out events with dijet mass within Higgs window
     event_mask = event_mask & (
@@ -58,14 +113,8 @@ def ttH_enriched_cuts(data_era, sample):
     )
 
     sample[MC_DATA_MASK] = event_mask
-    
-def main(minimal=True):
-    # Minimal data files for MC-Data comparison for ttH-Killer variables
-    dir_lists = {
-        'Run3_2022preEE_merged': ['Data_EraC', 'Data_EraD', 'ttHToGG'],
-        'Run3_2022postEE_merged': ['Data_EraE', 'Data_EraF', 'Data_EraG', 'ttHToGG']
-    }
 
+def get_dir_lists(dir_lists: dict, minimal: bool):
     for data_era in dir_lists.keys():
         if os.path.exists(LPC_FILEPREFIX+'/'+data_era[:-7]+'/completed_samples.json'):
             with open(LPC_FILEPREFIX+'/'+data_era[:-7]+'/completed_samples.json', 'r') as f:
@@ -82,54 +131,44 @@ def main(minimal=True):
         if not minimal:
             dir_lists[data_era] = run_samples['run_samples_list']
 
-    # Dictionary of variables to do MC/Data comparison
-    variables = {
-        # key: hist.axis axes for plotting #
-        # MET variables
-        'puppiMET_sumEt': hist.axis.Regular(50, 20., 250, name='var', label=r'puppiMET $\Sigma E_T$ [GeV]', growth=False, underflow=False, overflow=False), 
-        'puppiMET_pt': hist.axis.Regular(50, 20., 250, name='var', label=r'puppiMET $p_T$ [GeV]', growth=False, underflow=False, overflow=False), 
-        'puppiMET_phi': hist.axis.Regular(25,-3.2, 3.2, name='var', label=r'puppiMET $\phi$', growth=False, underflow=False, overflow=False), 
-        # jet-MET variables
-        'DeltaPhi_j1MET': hist.axis.Regular(50,-3.2, 3.2, name='var', label=r'$\Delta\phi (j_1,E_T^{miss})$', growth=False, underflow=False, overflow=False), 
-        'DeltaPhi_j2MET': hist.axis.Regular(50, -3.2, 3.2, name='var', label=r'$\Delta\phi (j_2,E_T^{miss})$', growth=False, underflow=False, overflow=False), 
-        # jet-photon variables
-        'DeltaR_jg_min': hist.axis.Regular(50, 0, 5, name='var', label=r'min$(\Delta R(jet, \gamma))$', growth=False, underflow=False, overflow=False), 
-        # jet variables
-        'n_jets': hist.axis.Integer(0, 10, name='var', label=r'$n_{jets}$', growth=False, underflow=False, overflow=False), 
-        'chi_t0': hist.axis.Regular(70, 0., 150, name='var', label=r'$\chi_{t0}^2$', growth=False, underflow=False, overflow=False), 
-        'chi_t1': hist.axis.Regular(70, 0., 500, name='var', label=r'$\chi_{t1}^2$', growth=False, underflow=False, overflow=False), 
-        # lepton variables
-        'lepton1_pt': hist.axis.Regular(50, 0., 200, name='var', label=r'lead lepton $p_T$ [GeV]', growth=False, underflow=False, overflow=False), 
-        'lepton2_pt': hist.axis.Regular(50, 0., 200, name='var', label=r'sublead lepton $p_T$ [GeV]', growth=False, underflow=False, overflow=False), 
-        'lepton1_eta': hist.axis.Regular(30, -5., 5., name='var', label=r'lead lepton $\eta$', growth=False, underflow=False, overflow=False), 
-        'lepton2_eta': hist.axis.Regular(30, -5., 5., name='var', label=r'sublead lepton $\eta$', growth=False, underflow=False, overflow=False),
-        'lepton1_phi': hist.axis.Regular(30, -3.2, 3.2, name='var', label=r'lead lepton $\phi$', growth=False, underflow=False, overflow=False), 
-        'lepton2_phi': hist.axis.Regular(30, -3.2, 3.2, name='var', label=r'sublead lepton $\phi$', growth=False, underflow=False, overflow=False),
-        # diphoton variables
-        'pt': hist.axis.Regular(50, 20., 2000, name='var', label=r' $\gamma\gamma p_{T}$ [GeV]', growth=False, underflow=False, overflow=False),
-        'eta': hist.axis.Regular(20, -5., 5., name='var', label=r'$\gamma\gamma \eta$', growth=False, underflow=False, overflow=False), 
-        'phi': hist.axis.Regular(16, -3.2, 3.2, name='var', label=r'$\gamma \gamma \phi$', growth=False, underflow=False, overflow=False),
-        # angular (cos) variables
-        'abs_CosThetaStar_CS': hist.axis.Regular(25, 0, 1, name='var', label=r'|cos$(\theta_{CS})$|', growth=False, underflow=False, overflow=False), 
-        'abs_CosThetaStar_jj': hist.axis.Regular(25, 0, 1, name='var', label=r'|cos$(\theta_{jj})$|', growth=False, underflow=False, overflow=False), 
-        # dijet variables
-        # 'dijet_mass': hist.axis.Regular(50, 25., 180., name='var', label=r'$M_{jj}$ [GeV]', growth=False, underflow=False, overflow=False), # mass of b-dijet (resonance for H->bb)
-        # jet-lepton variables
-        'leadBjet_leadLepton': hist.axis.Regular(50, 0, 5, name='var', label=r'$\Delta R(bjet_{lead}, l_{lead})$', growth=False, underflow=False, overflow=False), 
-        'leadBjet_subleadLepton': hist.axis.Regular(50, 0, 5, name='var', label=r'$\Delta R(bjet_{lead}, l_{sublead})$', growth=False, underflow=False, overflow=False), 
-        'subleadBjet_leadLepton': hist.axis.Regular(50, 0, 5, name='var', label=r'$\Delta R(bjet_{sublead}, l_{lead})$', growth=False, underflow=False, overflow=False), 
-        'subleadBjet_subleadLepton': hist.axis.Regular(50, 0, 5, name='var', label=r'$\Delta R(bjet_{sublead}, l_{sublead})$', growth=False, underflow=False, overflow=False)
-    }
-    # Set of extra MC variables necessary for MC/Data comparison, defined in merger.py
-    MC_extra_variables = {
-        'luminosity', 'cross_section', 'eventWeight', MC_DATA_MASK, 'genWeight'
-    }
-    Data_extra_variables = {
-        MC_DATA_MASK
-    }
+def slimmed_parquet(extra_variables: dict, sample=None):
+    if sample is None:
+        return ak.zip(
+            {field: FILL_VALUE for field in set(VARIABLES.keys()) | extra_variables}
+        )
+    else:
+        return ak.zip(
+            {field: sample[field] for field in set(VARIABLES.keys()) | extra_variables}
+        )
 
-    MC_pqs = {}
-    Data_pqs = {}
+def make_mc_dict(dir_lists: dict):
+    mc_dict = {}
+    for data_era, dir_list in dir_lists.items():
+        for dir_name in dir_list:
+            if re.search('Data', dir_name) is not None or dir_name in mc_dict:
+                continue
+            mc_dict[dir_name] = slimmed_parquet(MC_EXTRA_VARS)
+    return mc_dict
+
+def concatenate_records(base_sample, added_sample):
+    return ak.zip(
+        {
+            field: ak.concatenate((base_sample[field], added_sample[field])) for field in base_sample.fields
+        }
+    )
+    
+def main(minimal=True):
+    # Minimal data files for MC-Data comparison for ttH-Killer variables
+    dir_lists = {
+        'Run3_2022preEE_merged': ['Data_EraC', 'Data_EraD', 'ttHToGG'],
+        'Run3_2022postEE_merged': ['Data_EraE', 'Data_EraF', 'Data_EraG', 'ttHToGG']
+    }
+    get_dir_lists(dir_lists, minimal)
+
+    # Make parquet dicts, merged by samples and pre-slimmed (keeping only VARIABLES and EXTRA_VARIABLES)
+    MC_pqs = make_mc_dict(dir_lists)
+    Data_pqs = {"Data": slimmed_parquet(DATA_EXTRA_VARS)}
+
     for data_era, dir_list in dir_lists.items():
         for dir_name in dir_list:
             for sample_type in ['nominal']:  # Ignores the scale-ups and scale-downs. Not currently computed in merger.py.
@@ -140,51 +179,39 @@ def main(minimal=True):
                 # perform necessary cuts to enter ttH enriched region
                 ttH_enriched_cuts(data_era, sample)
 
-                # Checks if sample is MC (True) or Data (False)
+                # Checks if sample is Data (True) or MC (False)
                 #   -> slims parquet to only include desired variables (to save RAM, if not throttling RAM feel free to not do the slimming)
-                # variable_set = 
-                if re.match('Data', dir_name) is None:
-                    MC_pqs[data_era+'_'+dir_name] = ak.copy(ak.zip(
-                        {
-                            field: sample[field] for field in set(variables.keys()) | MC_extra_variables
-                        }
-                    ))
+                if re.match('Data', dir_name) is not None:
+                    Data_pqs["Data"] = concatenate_records(
+                        Data_pqs["Data"], slimmed_parquet(DATA_EXTRA_VARS, sample)
+                    )
                 else:
-                    Data_pqs[data_era+'_'+dir_name] = ak.copy(ak.zip(
-                        {
-                            field: sample[field] for field in set(variables.keys()) | Data_extra_variables
-                        }
-                    ))
-        
+                    MC_pqs[dir_name] = concatenate_records(
+                        MC_pqs[dir_name], slimmed_parquet(MC_EXTRA_VARS, sample)
+                    )
                 
                 del sample
                 # print('======================== \n', dir_name)
 
     # Now do printing over variables for MC and Data
-    cm = plt.get_cmap('gist_rainbow')
-    for variable, axis in variables.items():
+    # cm = plt.get_cmap('gist_rainbow')
+    for variable, axis in VARIABLES.items():
         # Initiate figure
         fig, ax = plt.subplots(figsize=(10, 8))
 
         # Generate MC hist stack
         mc_hists = {}
-        mc_colors, mc_labels = [], []
-        for i, (dir_name, sample) in enumerate(MC_pqs.items()):
+        for dir_name, sample in MC_pqs.items():
             # print(f"{dir_name}: \n{sample['genWeight']}")  # +/- 3.1
-            mc_hists[dir_name] = hist.Hist(axis, storage='weight').fill(
+            mc_hists[dir_name] = hist.Hist(axis, storage='weight', label=MC_NAMES_PRETTY[dir_name]).fill(
                 var=ak.where(sample['MC_Data_mask'], sample[variable], FILL_VALUE),
-                weight=sample['eventWeight'],
+                weight=sample['eventWeight']
                 # weight=ak.where(sample['genWeight'] < 0, -1, 1) * sample['luminosity'] * sample['cross_section']
-            )
-            mc_colors.append(cm(i/len(MC_pqs)))
-            mc_labels.append(
-                r"$t\bar{t}H\rightarrow\gamma\gamma$ MC 2022" + (
-                    r"" if re.search('preEE', dir_name) is not None else r"EE"
-                )
             )
         mc_stack = hist.Stack.from_dict(mc_hists)
         mc_stack.plot(
-            stack=True, ax=ax, linewidth=3, histtype="fill", color=mc_colors, label=mc_labels
+            # stack=True, ax=ax, linewidth=3, histtype="fill", color=mc_colors, label=mc_labels, color=[cm(i/len(MC_pqs)) for i in range(len(MC_pqs))]
+            stack=True, ax=ax, linewidth=3, histtype="fill"
         )
 
         # Generate data hist
@@ -195,7 +222,7 @@ def main(minimal=True):
             )
         data_stack = hist.Hist(axis).fill(var=data_ak[variable])
         hep.histplot(
-            data_stack, ax=ax, linewidth=3, histtype="errorbar", color="black", label=f"CMS Run3 2022 Data"
+            data_stack, ax=ax, linewidth=3, histtype="errorbar", color="black", label=f"CMS Data"
         )
 
         # Plotting niceties
