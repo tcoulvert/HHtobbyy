@@ -91,25 +91,30 @@ def ttH_enriched_cuts(data_era: str, sample):
     # Require diphoton and dijet exist (should be required in preselection, and thus be all True)
     event_mask = ak.where(sample['pt'] != FILL_VALUE, True, False) & ak.where(sample['dijet_pt'] != FILL_VALUE, True, False)
 
-    # Require btag score above Loose WP
-    EE_era_2022 = 'preEE' if re.search('preEE', data_era) is not None else 'postEE'
-    event_mask = event_mask & ak.where(
-        sample['lead_bjet_btagPNetB'] > SINGLE_B_WPS[EE_era_2022]['T'], True, False
-    ) & ak.where(
-        sample['sublead_bjet_btagPNetB'] > SINGLE_B_WPS[EE_era_2022]['T'], True, False
-    )
+    # # Require btag score above Loose WP
+    # EE_era_2022 = 'preEE' if re.search('preEE', data_era) is not None else 'postEE'
+    # event_mask = event_mask & ak.where(
+    #     sample['lead_bjet_btagPNetB'] > SINGLE_B_WPS[EE_era_2022]['L'], True, False
+    # ) & ak.where(
+    #     sample['sublead_bjet_btagPNetB'] > SINGLE_B_WPS[EE_era_2022]['L'], True, False
+    # )
 
     # Require at least 3 jets (to remove bbH background), extra jets coming from Ws
-    event_mask = event_mask & ak.where(sample['jet3_pt'] != FILL_VALUE, True, False)
+    # event_mask = event_mask & ak.where(sample['jet3_pt'] != FILL_VALUE, True, False)
 
-    # Require events with diphoton mass within Higgs window
-    event_mask = event_mask & (
-        ak.where(sample['mass'] >= 115, True, False) & ak.where(sample['mass'] <= 135, True, False)
-    )
+    # # Require events with diphoton mass within Higgs window
+    # event_mask = event_mask & (
+    #     ak.where(sample['mass'] >= 100, True, False) & ak.where(sample['mass'] <= 150, True, False)
+    # )
 
-    # Mask out events with dijet mass within Higgs window
+    # # Mask out events with dijet mass within Higgs window
+    # event_mask = event_mask & (
+    #     ak.where(sample['dijet_mass'] <= 70, True, False) | ak.where(sample['dijet_mass'] >= 150, True, False)
+    # )
+
+    # Mask out events with diphoton mass within Higgs window
     event_mask = event_mask & (
-        ak.where(sample['dijet_mass'] <= 70, True, False) | ak.where(sample['dijet_mass'] >= 150, True, False)
+        ak.where(sample['mass'] <= 100, True, False) & ak.where(sample['mass'] >= 150, True, False)
     )
 
     sample[MC_DATA_MASK] = event_mask
@@ -194,7 +199,6 @@ def main(minimal=True):
                 # print('======================== \n', dir_name)
 
     # Now do printing over variables for MC and Data
-    # cm = plt.get_cmap('gist_rainbow')
     for variable, axis in VARIABLES.items():
         # Initiate figure
         fig, ax = plt.subplots(figsize=(10, 8))
@@ -229,10 +233,11 @@ def main(minimal=True):
         hep.cms.lumitext(f"{2022} (13.6 TeV)", ax=ax)
         hep.cms.text("Work in Progress", ax=ax)
         ax.legend(ncol=1, loc = 'best')
-        if re.match('chi_t', variable) is None and re.match('DeltaPhi', variable) is None:
-            ax.set_yscale('log')
-        else:
-            ax.set_yscale('linear')
+        ax.set_yscale('log')
+        # if re.match('chi_t', variable) is None and re.match('DeltaPhi', variable) is None:
+        #     ax.set_yscale('log')
+        # else:
+        #     ax.set_yscale('linear')
         if not os.path.exists(DESTDIR):
             os.mkdir(DESTDIR)
         plt.savefig(f'{DESTDIR}/1dhist_{variable}_MC_Data.pdf')
@@ -241,4 +246,4 @@ def main(minimal=True):
 
 
 if __name__ == '__main__':
-    main()
+    main(False)
