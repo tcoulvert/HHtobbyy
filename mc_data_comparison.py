@@ -187,8 +187,9 @@ def main():
     """
     # Minimal data files for MC-Data comparison for ttH-Killer variables
     dir_lists = {
-        'Run3_2022preEE_merged': ['Data_EraC', 'Data_EraD', 'ttHToGG'],
-        'Run3_2022postEE_merged': ['Data_EraE', 'Data_EraF', 'Data_EraG', 'ttHToGG']
+        'Run3_2022preEE_merged': None,
+        'Run3_2022postEE_merged': None,
+        # Need to add other data eras eventually (2023, etc)
     }
     get_dir_lists(dir_lists)
 
