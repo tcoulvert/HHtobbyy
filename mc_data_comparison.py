@@ -86,7 +86,7 @@ DATA_EXTRA_VARS = {
     MC_DATA_MASK
 }
 
-def ttH_enriched_cuts(data_era: str, sample):
+def sideband_cuts(data_era: str, sample):
     # In Run2 they did comparison on events passing HHMVA > 0.29
     #   -> replicate using Yibo's cutbased analysis and/or BDT with the cut
     #   at the same signal efficiency as >0.29 in Run2
@@ -196,7 +196,7 @@ def main(minimal=0):
                 )
                 
                 # perform necessary cuts to enter ttH enriched region
-                ttH_enriched_cuts(data_era, sample)
+                sideband_cuts(data_era, sample)
 
                 # Checks if sample is Data (True) or MC (False)
                 #   -> slims parquet to only include desired variables (to save RAM, if not throttling RAM feel free to not do the slimming)
@@ -210,7 +210,7 @@ def main(minimal=0):
                     )
                 
                 del sample
-                print('======================== \n', dir_name)
+                # print('======================== \n', dir_name)
 
     # Now do printing over variables for MC and Data
     for variable, axis in VARIABLES.items():
@@ -221,6 +221,8 @@ def main(minimal=0):
         mc_hists = {}
         for dir_name, sample in MC_pqs.items():
             # print(f"{dir_name}: \n{sample['genWeight']}")  # +/- 3.1
+            # print(sample[variable])
+            # print('='*60)
             mc_hists[dir_name] = hist.Hist(axis, storage='weight', label=MC_NAMES_PRETTY[dir_name]).fill(
                 var=ak.where(sample['MC_Data_mask'], sample[variable], FILL_VALUE),
                 weight=sample['eventWeight']
@@ -247,7 +249,7 @@ def main(minimal=0):
         hep.cms.lumitext(f"{2022} (13.6 TeV)", ax=ax)
         hep.cms.text("Work in Progress", ax=ax)
         ax.legend(ncol=1, loc = 'best')
-        ax.set_yscale('log')
+        # ax.set_yscale('log')
         # if re.match('chi_t', variable) is None and re.match('DeltaPhi', variable) is None:
         #     ax.set_yscale('log')
         # else:
@@ -260,4 +262,4 @@ def main(minimal=0):
 
 
 if __name__ == '__main__':
-    main(1)
+    main(0)
