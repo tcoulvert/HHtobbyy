@@ -28,8 +28,6 @@ SINGLE_B_WPS = {
 MC_DATA_MASK = 'MC_Data_mask'
 FILL_VALUE = -999
 MC_NAMES_PRETTY = {
-    "GluGluToHH": r"ggF $HH\rightarrow bb\gamma\gamma$",
-    "VBFHHto2B2G_CV_1_C2V_1_C3_1": r"VBF $HH\rightarrow bb\gamma\gamma$",
     "ttHToGG": r"$t\bar{t}H\rightarrow\gamma\gamma$",
     "VBFHToGG": r"VBF $H\rightarrow \gamma\gamma$",
     "VHToGG": r"V$H\rightarrow\gamma\gamma$",
@@ -37,6 +35,8 @@ MC_NAMES_PRETTY = {
     "GGJets": r"$\gamma\gamma + 3j$",
     "GJetPt20To40": r"$\gamma + j$, 20GeV < $p_T$ < 40GeV",
     "GJetPt40": r"$\gamma + j$, 40GeV < $p_T$",
+    # "GluGluToHH": r"ggF $HH\rightarrow bb\gamma\gamma$",
+    # "VBFHHto2B2G_CV_1_C2V_1_C3_1": r"VBF $HH\rightarrow bb\gamma\gamma$",
     # Need to fill in pretty print for BSM samples #
 }
 
@@ -54,8 +54,8 @@ VARIABLES = {
     'DeltaR_jg_min': hist.axis.Regular(50, 0, 5, name='var', label=r'min$(\Delta R(jet, \gamma))$', growth=False, underflow=False, overflow=False), 
     # jet variables
     'n_jets': hist.axis.Integer(0, 10, name='var', label=r'$n_{jets}$', growth=False, underflow=False, overflow=False), 
-    'chi_t0': hist.axis.Regular(70, 0., 150, name='var', label=r'$\chi_{t0}^2$', growth=False, underflow=False, overflow=False), 
-    'chi_t1': hist.axis.Regular(70, 0., 500, name='var', label=r'$\chi_{t1}^2$', growth=False, underflow=False, overflow=False), 
+    'chi_t0': hist.axis.Regular(50, 0., 150, name='var', label=r'$\chi_{t0}^2$', growth=False, underflow=False, overflow=False), 
+    'chi_t1': hist.axis.Regular(50, 0., 500, name='var', label=r'$\chi_{t1}^2$', growth=False, underflow=False, overflow=False), 
     # lepton variables
     'lepton1_pt': hist.axis.Regular(50, 0., 200, name='var', label=r'lead lepton $p_T$ [GeV]', growth=False, underflow=False, overflow=False), 
     'lepton2_pt': hist.axis.Regular(50, 0., 200, name='var', label=r'sublead lepton $p_T$ [GeV]', growth=False, underflow=False, overflow=False), 
@@ -66,7 +66,7 @@ VARIABLES = {
     # diphoton variables
     'pt': hist.axis.Regular(50, 20., 2000, name='var', label=r' $\gamma\gamma p_{T}$ [GeV]', growth=False, underflow=False, overflow=False),
     'eta': hist.axis.Regular(20, -5., 5., name='var', label=r'$\gamma\gamma \eta$', growth=False, underflow=False, overflow=False), 
-    'phi': hist.axis.Regular(16, -3.2, 3.2, name='var', label=r'$\gamma \gamma \phi$', growth=False, underflow=False, overflow=False),
+    'phi': hist.axis.Regular(20, -3.2, 3.2, name='var', label=r'$\gamma \gamma \phi$', growth=False, underflow=False, overflow=False),
     # angular (cos) variables
     'abs_CosThetaStar_CS': hist.axis.Regular(25, 0, 1, name='var', label=r'|cos$(\theta_{CS})$|', growth=False, underflow=False, overflow=False), 
     'abs_CosThetaStar_jj': hist.axis.Regular(25, 0, 1, name='var', label=r'|cos$(\theta_{jj})$|', growth=False, underflow=False, overflow=False), 
@@ -87,14 +87,12 @@ DATA_EXTRA_VARS = {
 }
 
 def sideband_cuts(data_era: str, sample):
+    """
+    Builds the event_mask used to do data-mc comparison in a sideband.
+    """
     # In Run2 they did comparison on events passing HHMVA > 0.29
     #   -> replicate using Yibo's cutbased analysis and/or BDT with the cut
-    #   at the same signal efficiency as >0.29 in Run2
-    #
-    # OR just go to sideband region with enriched bjets, but no diHiggs
-    #   -> cut on btag score for both bjets, dijet mass NOT in Higgs mass
-    #   window (<70Gev or >150Gev, check values based on HHbbgg presentations),
-    #   don't cut on diphoton b/c thats in the ttH background as well, focus on making bjet enriched?
+    #   at the same signal efficiency as >0.29 in Run2?
 
     # Require diphoton and dijet exist (should be required in preselection, and thus be all True)
     event_mask = ak.where(sample['pt'] != FILL_VALUE, True, False) & ak.where(sample['dijet_pt'] != FILL_VALUE, True, False)
@@ -127,7 +125,11 @@ def sideband_cuts(data_era: str, sample):
 
     sample[MC_DATA_MASK] = event_mask
 
-def get_dir_lists(dir_lists: dict, minimal: int):
+def get_dir_lists(dir_lists: dict):
+    """
+    Builds the dictionary of lists of samples to use in comparison.
+      -> Automatically checks if the merger.py file has been run.
+    """
     for data_era in dir_lists.keys():
         if os.path.exists(LPC_FILEPREFIX+'/'+data_era[:-7]+'/completed_samples.json'):
             with open(LPC_FILEPREFIX+'/'+data_era[:-7]+'/completed_samples.json', 'r') as f:
@@ -137,18 +139,11 @@ def get_dir_lists(dir_lists: dict, minimal: int):
                 f"Failed to find processed parquets for {data_era[:-7]}. \nYou first need to run the merger.py script to add the necessary variables and merge the parquets."
             )
         
-        if not set(run_samples['run_samples_list']) >= set(dir_lists[data_era]):
+        if not set(run_samples['run_samples_list']) >= set(MC_NAMES_PRETTY.keys()):
             raise Exception(
                 f"Failed to find processed parquets for {data_era[:-7]}. \nYou may have run the merger.py script already, however not all of the minimal files were found."
             )
-        if minimal == 1:
-            dir_lists[data_era] = []
-            for sample in run_samples['run_samples_list']:
-                if re.search('_', sample) is not None and re.search('Data', sample) is None:
-                    continue
-                dir_lists[data_era].append(sample)
-        elif minimal == 2:
-            dir_lists[data_era] = run_samples['run_samples_list'] 
+        dir_lists[data_era] = [sample for sample in MC_NAMES_PRETTY.keys()]
 
 def slimmed_parquet(extra_variables: dict, sample=None):
     """
@@ -186,13 +181,16 @@ def concatenate_records(base_sample, added_sample):
         }
     )
     
-def main(minimal=0):
+def main():
+    """
+    Performs the Data-MC comparison.
+    """
     # Minimal data files for MC-Data comparison for ttH-Killer variables
     dir_lists = {
         'Run3_2022preEE_merged': ['Data_EraC', 'Data_EraD', 'ttHToGG'],
         'Run3_2022postEE_merged': ['Data_EraE', 'Data_EraF', 'Data_EraG', 'ttHToGG']
     }
-    get_dir_lists(dir_lists, minimal)
+    get_dir_lists(dir_lists)
 
     # Make parquet dicts, merged by samples and pre-slimmed (keeping only VARIABLES and EXTRA_VARIABLES)
     MC_pqs = make_mc_dict(dir_lists)
@@ -231,9 +229,6 @@ def main(minimal=0):
         mc_hists = {}
         for dir_name, sample in MC_pqs.items():
             # print(f"{dir_name}: \n{sample['genWeight']}")  # +/- 3.1
-            # print(sample[variable])
-            # print(sample['MC_Data_mask'])
-            # print('='*60)
             mc_hists[dir_name] = hist.Hist(axis, storage='weight', label=MC_NAMES_PRETTY[dir_name]).fill(
                 var=ak.where(sample['MC_Data_mask'], sample[variable], FILL_VALUE),
                 weight=sample['eventWeight']
@@ -258,7 +253,6 @@ def main(minimal=0):
         hep.cms.lumitext(f"{2022} (13.6 TeV)", ax=ax)
         hep.cms.text("Work in Progress", ax=ax)
         ax.legend(ncol=1, loc = 'best')
-        ax.set_yscale('log')
         if re.match('chi_t', variable) is None and re.match('DeltaPhi', variable) is None:
             ax.set_yscale('log')
         else:
@@ -271,4 +265,4 @@ def main(minimal=0):
 
 
 if __name__ == '__main__':
-    main(1)
+    main()
