@@ -249,7 +249,7 @@ def add_ttH_vars(sample):
 
 def main():
     dir_lists = {
-        'Run3_2022preEE': None,
+        # 'Run3_2022preEE': None,
         'Run3_2022postEE': None
     }
     # set of all the preEE and postEE extra directories that don't contain parquet files

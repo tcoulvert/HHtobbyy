@@ -28,8 +28,16 @@ SINGLE_B_WPS = {
 MC_DATA_MASK = 'MC_Data_mask'
 FILL_VALUE = -999
 MC_NAMES_PRETTY = {
-    'ttHToGG': r"$t\bar{t}H\rightarrow\gamma\gamma$",
-    "GluGluToHH": r"ggF $HH\rightarrow bb\gamma\gamma$"
+    "GluGluToHH": r"ggF $HH\rightarrow bb\gamma\gamma$",
+    "VBFHHto2B2G_CV_1_C2V_1_C3_1": r"VBF $HH\rightarrow bb\gamma\gamma$",
+    "ttHToGG": r"$t\bar{t}H\rightarrow\gamma\gamma$",
+    "VBFHToGG": r"VBF $H\rightarrow \gamma\gamma$",
+    "VHToGG": r"V$H\rightarrow\gamma\gamma$",
+    "GluGluHToGG": r"ggF $H\rightarrow \gamma\gamma$",
+    "GGJets": r"$\gamma\gamma + 3j$",
+    "GJetPt20To40": r"$\gamma + j$, 20GeV < $p_T$ < 40GeV",
+    "GJetPt40": r"$\gamma + j$, 40GeV < $p_T$",
+    # Need to fill in pretty print for BSM samples #
 }
 
 # Dictionary of variables to do MC/Data comparison
@@ -119,7 +127,7 @@ def ttH_enriched_cuts(data_era: str, sample):
 
     sample[MC_DATA_MASK] = event_mask
 
-def get_dir_lists(dir_lists: dict, minimal: bool):
+def get_dir_lists(dir_lists: dict, minimal: int):
     for data_era in dir_lists.keys():
         if os.path.exists(LPC_FILEPREFIX+'/'+data_era[:-7]+'/completed_samples.json'):
             with open(LPC_FILEPREFIX+'/'+data_era[:-7]+'/completed_samples.json', 'r') as f:
@@ -133,8 +141,14 @@ def get_dir_lists(dir_lists: dict, minimal: bool):
             raise Exception(
                 f"Failed to find processed parquets for {data_era[:-7]}. \nYou may have run the merger.py script already, however not all of the minimal files were found."
             )
-        if not minimal:
-            dir_lists[data_era] = run_samples['run_samples_list']
+        if minimal == 1:
+            dir_lists[data_era] = []
+            for sample in run_samples['run_samples_list']:
+                if re.search('_', sample) is not None and re.search('Data', sample) is None:
+                    continue
+                dir_lists[data_era].append(sample)
+        elif minimal == 2:
+            dir_lists[data_era] = run_samples['run_samples_list'] 
 
 def slimmed_parquet(extra_variables: dict, sample=None):
     if sample is None:
@@ -162,7 +176,7 @@ def concatenate_records(base_sample, added_sample):
         }
     )
     
-def main(minimal=True):
+def main(minimal=0):
     # Minimal data files for MC-Data comparison for ttH-Killer variables
     dir_lists = {
         'Run3_2022preEE_merged': ['Data_EraC', 'Data_EraD', 'ttHToGG'],
@@ -196,7 +210,7 @@ def main(minimal=True):
                     )
                 
                 del sample
-                # print('======================== \n', dir_name)
+                print('======================== \n', dir_name)
 
     # Now do printing over variables for MC and Data
     for variable, axis in VARIABLES.items():
@@ -246,4 +260,4 @@ def main(minimal=True):
 
 
 if __name__ == '__main__':
-    main(False)
+    main(1)
