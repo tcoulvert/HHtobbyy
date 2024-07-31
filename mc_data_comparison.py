@@ -99,31 +99,31 @@ def sideband_cuts(data_era: str, sample):
     # Require diphoton and dijet exist (should be required in preselection, and thus be all True)
     event_mask = ak.where(sample['pt'] != FILL_VALUE, True, False) & ak.where(sample['dijet_pt'] != FILL_VALUE, True, False)
 
-    # # Require btag score above Loose WP
-    # EE_era_2022 = 'preEE' if re.search('preEE', data_era) is not None else 'postEE'
-    # event_mask = event_mask & ak.where(
-    #     sample['lead_bjet_btagPNetB'] > SINGLE_B_WPS[EE_era_2022]['L'], True, False
-    # ) & ak.where(
-    #     sample['sublead_bjet_btagPNetB'] > SINGLE_B_WPS[EE_era_2022]['L'], True, False
-    # )
+    # Require btag score above Loose WP
+    EE_era_2022 = 'preEE' if re.search('preEE', data_era) is not None else 'postEE'
+    event_mask = event_mask & ak.where(
+        sample['lead_bjet_btagPNetB'] > SINGLE_B_WPS[EE_era_2022]['L'], True, False
+    ) & ak.where(
+        sample['sublead_bjet_btagPNetB'] > SINGLE_B_WPS[EE_era_2022]['L'], True, False
+    )
 
     # Require at least 3 jets (to remove bbH background), extra jets coming from Ws
-    # event_mask = event_mask & ak.where(sample['jet3_pt'] != FILL_VALUE, True, False)
+    event_mask = event_mask & ak.where(sample['jet3_pt'] != FILL_VALUE, True, False)
 
-    # # Require events with diphoton mass within Higgs window
-    # event_mask = event_mask & (
-    #     ak.where(sample['mass'] >= 100, True, False) & ak.where(sample['mass'] <= 150, True, False)
-    # )
-
-    # # Mask out events with dijet mass within Higgs window
-    # event_mask = event_mask & (
-    #     ak.where(sample['dijet_mass'] <= 70, True, False) | ak.where(sample['dijet_mass'] >= 150, True, False)
-    # )
-
-    # Mask out events with diphoton mass within Higgs window
+    # Require events with diphoton mass within Higgs window
     event_mask = event_mask & (
-        ak.where(sample['mass'] <= 100, True, False) & ak.where(sample['mass'] >= 150, True, False)
+        ak.where(sample['mass'] >= 100, True, False) & ak.where(sample['mass'] <= 150, True, False)
     )
+
+    # Mask out events with dijet mass within Higgs window
+    event_mask = event_mask & (
+        ak.where(sample['dijet_mass'] <= 70, True, False) | ak.where(sample['dijet_mass'] >= 150, True, False)
+    )
+
+    # # Mask out events with diphoton mass within Higgs window
+    # event_mask = event_mask & (
+    #     ak.where(sample['mass'] <= 100, True, False) | ak.where(sample['mass'] >= 150, True, False)
+    # )
 
     sample[MC_DATA_MASK] = event_mask
 
@@ -151,9 +151,12 @@ def get_dir_lists(dir_lists: dict, minimal: int):
             dir_lists[data_era] = run_samples['run_samples_list'] 
 
 def slimmed_parquet(extra_variables: dict, sample=None):
+    """
+    Either slims the parquet or creates a new slim parquet.
+    """
     if sample is None:
         return ak.zip(
-            {field: FILL_VALUE for field in set(VARIABLES.keys()) | extra_variables}
+            {field: FILL_VALUE if field != MC_DATA_MASK else False for field in set(VARIABLES.keys()) | extra_variables}
         )
     else:
         return ak.zip(
@@ -161,6 +164,10 @@ def slimmed_parquet(extra_variables: dict, sample=None):
         )
 
 def make_mc_dict(dir_lists: dict):
+    """
+    Creates the dictionary of mc samples, where each sample is a slimmed parquet containing
+      only the specified variables.
+    """
     mc_dict = {}
     for data_era, dir_list in dir_lists.items():
         for dir_name in dir_list:
@@ -170,6 +177,9 @@ def make_mc_dict(dir_lists: dict):
     return mc_dict
 
 def concatenate_records(base_sample, added_sample):
+    """
+    Extrapolates the ak.concatenate() functionality to copy across fields.
+    """
     return ak.zip(
         {
             field: ak.concatenate((base_sample[field], added_sample[field])) for field in base_sample.fields
@@ -210,7 +220,7 @@ def main(minimal=0):
                     )
                 
                 del sample
-                # print('======================== \n', dir_name)
+                print('======================== \n', dir_name)
 
     # Now do printing over variables for MC and Data
     for variable, axis in VARIABLES.items():
@@ -222,15 +232,14 @@ def main(minimal=0):
         for dir_name, sample in MC_pqs.items():
             # print(f"{dir_name}: \n{sample['genWeight']}")  # +/- 3.1
             # print(sample[variable])
+            # print(sample['MC_Data_mask'])
             # print('='*60)
             mc_hists[dir_name] = hist.Hist(axis, storage='weight', label=MC_NAMES_PRETTY[dir_name]).fill(
                 var=ak.where(sample['MC_Data_mask'], sample[variable], FILL_VALUE),
                 weight=sample['eventWeight']
-                # weight=ak.where(sample['genWeight'] < 0, -1, 1) * sample['luminosity'] * sample['cross_section']
             )
         mc_stack = hist.Stack.from_dict(mc_hists)
         mc_stack.plot(
-            # stack=True, ax=ax, linewidth=3, histtype="fill", color=mc_colors, label=mc_labels, color=[cm(i/len(MC_pqs)) for i in range(len(MC_pqs))]
             stack=True, ax=ax, linewidth=3, histtype="fill"
         )
 
@@ -249,11 +258,11 @@ def main(minimal=0):
         hep.cms.lumitext(f"{2022} (13.6 TeV)", ax=ax)
         hep.cms.text("Work in Progress", ax=ax)
         ax.legend(ncol=1, loc = 'best')
-        # ax.set_yscale('log')
-        # if re.match('chi_t', variable) is None and re.match('DeltaPhi', variable) is None:
-        #     ax.set_yscale('log')
-        # else:
-        #     ax.set_yscale('linear')
+        ax.set_yscale('log')
+        if re.match('chi_t', variable) is None and re.match('DeltaPhi', variable) is None:
+            ax.set_yscale('log')
+        else:
+            ax.set_yscale('linear')
         if not os.path.exists(DESTDIR):
             os.mkdir(DESTDIR)
         plt.savefig(f'{DESTDIR}/1dhist_{variable}_MC_Data.pdf')
@@ -262,4 +271,4 @@ def main(minimal=0):
 
 
 if __name__ == '__main__':
-    main(0)
+    main(1)
