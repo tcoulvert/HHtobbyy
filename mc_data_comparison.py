@@ -143,7 +143,11 @@ def get_dir_lists(dir_lists: dict):
             raise Exception(
                 f"Failed to find processed parquets for {data_era[:-7]}. \nYou may have run the merger.py script already, however not all of the minimal files were found."
             )
-        dir_lists[data_era] = [sample for sample in MC_NAMES_PRETTY.keys()]
+        dir_lists[data_era] = [sample_name for sample_name in MC_NAMES_PRETTY.keys()]
+        for sample_name in run_samples['run_samples_list']:
+            if re.search("Data", sample_name) is None:
+                continue
+            dir_lists[data_era].append(sample_name)
 
 def slimmed_parquet(extra_variables: dict, sample=None):
     """
@@ -228,6 +232,7 @@ def main():
 
         # Generate MC hist stack
         mc_hists = {}
+        mc_labels = []
         for dir_name, sample in MC_pqs.items():
             # print(f"{dir_name}: \n{sample['genWeight']}")  # +/- 3.1
             mc_hists[dir_name] = hist.Hist(axis, storage='weight', label=MC_NAMES_PRETTY[dir_name]).fill(
