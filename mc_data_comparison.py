@@ -37,17 +37,15 @@ MC_NAMES_PRETTY = {
     "ttHToGG": r"$t\bar{t}H\rightarrow\gamma\gamma$",
     # "GluGluToHH": r"ggF $HH\rightarrow bb\gamma\gamma$",
     # "VBFHHto2B2G_CV_1_C2V_1_C3_1": r"VBF $HH\rightarrow bb\gamma\gamma$",
-    # Need to fill in pretty print for BSM samples? #
+    # Need to fill in pretty print for BSM samples #
 }
 LUMINOSITIES = {
-    'Run3_2022preEE': 7.9804, 
-    'Run3_2022postEE': 26.6717
+    '2022preEE': 7.9804, 
+    '2022postEE': 26.6717,
+    # Need to fill in lumis for other eras #
 }
 
-# Change the plotting order (put GG+jets on the bottom or top)
 # Add the Data/MC agreement subplot (below histograms)
-# Add the condor script for merger file
-# Add the luminosity to plots?
 # Make condor script for the merger/processing file
 # Check if the EE corrections were applied already, and if not apply them (likely in processing)
 
@@ -79,8 +77,8 @@ VARIABLES = {
     'eta': hist.axis.Regular(20, -5., 5., name='var', label=r'$\gamma\gamma \eta$', growth=False, underflow=False, overflow=False), 
     'phi': hist.axis.Regular(20, -3.2, 3.2, name='var', label=r'$\gamma \gamma \phi$', growth=False, underflow=False, overflow=False),
     # angular (cos) variables
-    'abs_CosThetaStar_CS': hist.axis.Regular(25, 0, 1, name='var', label=r'|cos$(\theta_{CS})$|', growth=False, underflow=False, overflow=False), 
-    'abs_CosThetaStar_jj': hist.axis.Regular(25, 0, 1, name='var', label=r'|cos$(\theta_{jj})$|', growth=False, underflow=False, overflow=False), 
+    'abs_CosThetaStar_CS': hist.axis.Regular(20, 0, 1, name='var', label=r'|cos$(\theta_{CS})$|', growth=False, underflow=False, overflow=False), 
+    'abs_CosThetaStar_jj': hist.axis.Regular(20, 0, 1, name='var', label=r'|cos$(\theta_{jj})$|', growth=False, underflow=False, overflow=False), 
     # jet-lepton variables
     'leadBjet_leadLepton': hist.axis.Regular(30, 0, 5, name='var', label=r'$\Delta R(bjet_{lead}, l_{lead})$', growth=False, underflow=False, overflow=False), 
     'leadBjet_subleadLepton': hist.axis.Regular(30, 0, 5, name='var', label=r'$\Delta R(bjet_{lead}, l_{sublead})$', growth=False, underflow=False, overflow=False), 
@@ -94,7 +92,7 @@ MASKED_VARIABLES = {
         [70, 150]
     ),
     # diphoton variables
-    'diphoton_mass': (
+    'mass': (
         hist.axis.Regular(50, 25., 180., name='var', label=r'$M_{\gamma\gamma}$ [GeV]', growth=False, underflow=False, overflow=False),
         [115, 135]
     )
@@ -107,17 +105,21 @@ DATA_EXTRA_VARS = {
     MC_DATA_MASK
 }
 
+def total_lumi(dir_lists: dict):
+    total_lumi = 0
+    for data_era in dir_lists.keys():
+        for lumi_era in LUMINOSITIES:
+            if re.search(lumi_era, data_era) is None:
+                continue
+            total_lumi += LUMINOSITIES[lumi_era]
+    LUMINOSITIES['total_lumi'] = total_lumi
+
 def sideband_cuts(data_era: str, sample):
     """
     Builds the event_mask used to do data-mc comparison in a sideband.
     """
-    # In Run2 they did comparison on events passing HHMVA > 0.29
-    #   -> replicate using Yibo's cutbased analysis and/or BDT with the cut
-    #   at the same signal efficiency as >0.29 in Run2?
-
     # Require diphoton and dijet exist (should be required in preselection, and thus be all True)
     event_mask = ak.where(sample['pt'] != FILL_VALUE, True, False) & ak.where(sample['dijet_pt'] != FILL_VALUE, True, False)
-
     # Require btag score above Loose WP
     EE_era_2022 = 'preEE' if re.search('preEE', data_era) is not None else 'postEE'
     event_mask = event_mask & ak.where(
@@ -125,25 +127,16 @@ def sideband_cuts(data_era: str, sample):
     ) & ak.where(
         sample['sublead_bjet_btagPNetB'] > SINGLE_B_WPS[EE_era_2022]['L'], True, False
     )
-
     # Require at least 3 jets (to remove bbH background), extra jets coming from Ws
     event_mask = event_mask & ak.where(sample['jet3_pt'] != FILL_VALUE, True, False)
-
     # Require events with diphoton mass within Higgs window
     event_mask = event_mask & (
         ak.where(sample['mass'] >= 100, True, False) & ak.where(sample['mass'] <= 150, True, False)
     )
-
     # Mask out events with dijet mass within Higgs window
     event_mask = event_mask & (
         ak.where(sample['dijet_mass'] <= 70, True, False) | ak.where(sample['dijet_mass'] >= 150, True, False)
     )
-
-    # # Mask out events with diphoton mass within Higgs window
-    # event_mask = event_mask & (
-    #     ak.where(sample['mass'] <= 100, True, False) | ak.where(sample['mass'] >= 150, True, False)
-    # )
-
     sample[MC_DATA_MASK] = event_mask
 
 def get_dir_lists(dir_lists: dict):
@@ -176,11 +169,11 @@ def slimmed_parquet(extra_variables: dict, sample=None):
     """
     if sample is None:
         return ak.zip(
-            {field: FILL_VALUE if field != MC_DATA_MASK else False for field in set(VARIABLES.keys()) | extra_variables}
+            {field: FILL_VALUE if field != MC_DATA_MASK else False for field in set(VARIABLES.keys()) | extra_variables | set(MASKED_VARIABLES.keys())}
         )
     else:
         return ak.zip(
-            {field: sample[field] for field in set(VARIABLES.keys()) | extra_variables}
+            {field: sample[field] for field in set(VARIABLES.keys()) | extra_variables | set(MASKED_VARIABLES.keys())}
         )
 
 def make_mc_dict(dir_lists: dict):
@@ -205,6 +198,35 @@ def concatenate_records(base_sample, added_sample):
             field: ak.concatenate((base_sample[field], added_sample[field])) for field in base_sample.fields
         }
     )
+
+def plot(fig, ax, variable, mc_hist, data_hist):
+    """
+    Plots and saves out the data-MC comparison histogram
+    """
+    mc_hist.plot(
+        stack=True, ax=ax, linewidth=3, histtype="fill"
+    )
+    hep.histplot(
+        data_hist, ax=ax, linewidth=3, histtype="errorbar", color="black", label=f"CMS Data"
+    )
+    hep.cms.lumitext(f"{LUMINOSITIES['total_lumi']} (13.6 TeV)", ax=ax)
+    hep.cms.text("Work in Progress", ax=ax)
+    # Shrink current axis by 20%
+    box = ax.get_position()
+    ax.set_position([box.x0, box.y0, box.width * 0.75, box.height * 0.75])
+    # Put a legend to the right of the current axis
+    ax.legend(loc='center left', bbox_to_anchor=(1, 0.5), fancybox=True)
+    # Make angular and chi^2 plots linear, otherwise log
+    if re.match('chi_t', variable) is None and re.match('DeltaPhi', variable) is None:
+        ax.set_yscale('log')
+    else:
+        ax.set_yscale('linear')
+    # Save out the plot
+    if not os.path.exists(DESTDIR):
+        os.mkdir(DESTDIR)
+    plt.savefig(f'{DESTDIR}/1dhist_{variable}_MC_Data.pdf')
+    plt.savefig(f'{DESTDIR}/1dhist_{variable}_MC_Data.png')
+    plt.close()
     
 def main():
     """
@@ -217,6 +239,7 @@ def main():
         # Need to add other data eras eventually (2023, etc)
     }
     get_dir_lists(dir_lists)
+    total_lumi(dir_lists)
 
     # Make parquet dicts, merged by samples and pre-slimmed (keeping only VARIABLES and EXTRA_VARIABLES)
     MC_pqs = make_mc_dict(dir_lists)
@@ -242,9 +265,8 @@ def main():
                     )
                 
                 del sample
-                # print('======================== \n', dir_name)
 
-    # Now do printing over variables for MC and Data
+    # Ploting over variables for MC and Data
     for variable, axis in VARIABLES.items():
         # Initiate figure
         fig, ax = plt.subplots(figsize=(12.5, 10))
@@ -257,9 +279,6 @@ def main():
                 weight=sample['eventWeight']
             )
         mc_stack = hist.Stack.from_dict(mc_hists)
-        mc_stack.plot(
-            stack=True, ax=ax, linewidth=3, histtype="fill"
-        )
 
         # Generate data hist
         data_ak = ak.zip({variable: FILL_VALUE})
@@ -268,35 +287,41 @@ def main():
                 (data_ak[variable], ak.where(sample['MC_Data_mask'], sample[variable], FILL_VALUE))
             )
         data_hist = hist.Hist(axis).fill(var=data_ak[variable])
-        hep.histplot(
-            data_hist, ax=ax, linewidth=3, histtype="errorbar", color="black", label=f"CMS Data"
-        )
 
-        # Plotting niceties
-        total_lumi = 0
-        for lumi in LUMINOSITIES.values():
-            total_lumi += lumi
-        hep.cms.lumitext(f"{total_lumi} (13.6 TeV)", ax=ax)
-        hep.cms.text("Work in Progress", ax=ax)
+        # Plot the histogram
+        plot(fig, ax, variable, mc_stack, data_hist)
 
-        # Shrink current axis by 20%
-        box = ax.get_position()
-        ax.set_position([box.x0, box.y0, box.width * 0.75, box.height * 0.75])
-        # Put a legend to the right of the current axis
-        ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
-        # Make angular and chi^2 plots linear, otherwise log
-        if re.match('chi_t', variable) is None and re.match('DeltaPhi', variable) is None:
-            ax.set_yscale('log')
-        else:
-            ax.set_yscale('linear')
-        
-        # Save out the plot
-        if not os.path.exists(DESTDIR):
-            os.mkdir(DESTDIR)
-        plt.savefig(f'{DESTDIR}/1dhist_{variable}_MC_Data.pdf')
-        plt.savefig(f'{DESTDIR}/1dhist_{variable}_MC_Data.png')
-        plt.close()
+    # Ploting over masked variables for MC and Data
+    for variable, (axis, blind_edges) in MASKED_VARIABLES.items():
+        # Initiate figure
+        fig, ax = plt.subplots(figsize=(12.5, 10))
 
+        # Generate MC hist stack
+        mc_hists = {}
+        for dir_name, sample in MC_pqs.items():
+            blinding_mask = (sample[variable] < blind_edges[0]) | (sample[variable] > blind_edges[1])
+            mc_hists[MC_NAMES_PRETTY[dir_name]] = hist.Hist(axis, storage='weight').fill(
+                var=ak.where(
+                    sample['MC_Data_mask'] & blinding_mask, sample[variable], FILL_VALUE
+                ),
+                weight=sample['eventWeight']
+            )
+        mc_stack = hist.Stack.from_dict(mc_hists)
+
+        # Generate data hist
+        data_ak = ak.zip({variable: FILL_VALUE})
+        for dir_name, sample in Data_pqs.items():
+            blinding_mask = (sample[variable] < blind_edges[0]) | (sample[variable] > blind_edges[1])
+            data_ak[variable] = ak.concatenate(
+                (
+                    data_ak[variable], 
+                    ak.where(sample['MC_Data_mask'] & blinding_mask, sample[variable], FILL_VALUE)
+                )
+            )
+        data_hist = hist.Hist(axis).fill(var=data_ak[variable])
+
+        # Plot the histogram
+        plot(fig, ax, variable, mc_stack, data_hist)
 
 if __name__ == '__main__':
     main()
