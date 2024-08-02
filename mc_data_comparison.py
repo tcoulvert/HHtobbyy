@@ -28,17 +28,28 @@ SINGLE_B_WPS = {
 MC_DATA_MASK = 'MC_Data_mask'
 FILL_VALUE = -999
 MC_NAMES_PRETTY = {
-    "ttHToGG": r"$t\bar{t}H\rightarrow\gamma\gamma$",
-    "VBFHToGG": r"VBF $H\rightarrow \gamma\gamma$",
-    "VHToGG": r"V$H\rightarrow\gamma\gamma$",
-    "GluGluHToGG": r"ggF $H\rightarrow \gamma\gamma$",
     "GGJets": r"$\gamma\gamma+3j$",
     "GJetPt20To40": r"$\gamma+j$, 20<$p_T$<40GeV",
     "GJetPt40": r"$\gamma+j$, 40GeV<$p_T$",
+    "GluGluHToGG": r"ggF $H\rightarrow \gamma\gamma$",
+    "VBFHToGG": r"VBF $H\rightarrow \gamma\gamma$",
+    "VHToGG": r"V$H\rightarrow\gamma\gamma$",
+    "ttHToGG": r"$t\bar{t}H\rightarrow\gamma\gamma$",
     # "GluGluToHH": r"ggF $HH\rightarrow bb\gamma\gamma$",
     # "VBFHHto2B2G_CV_1_C2V_1_C3_1": r"VBF $HH\rightarrow bb\gamma\gamma$",
-    # Need to fill in pretty print for BSM samples #
+    # Need to fill in pretty print for BSM samples? #
 }
+LUMINOSITIES = {
+    'Run3_2022preEE': 7.9804, 
+    'Run3_2022postEE': 26.6717
+}
+
+# Change the plotting order (put GG+jets on the bottom or top)
+# Add the Data/MC agreement subplot (below histograms)
+# Add the condor script for merger file
+# Add the luminosity to plots?
+# Make condor script for the merger/processing file
+# Check if the EE corrections were applied already, and if not apply them (likely in processing)
 
 # Dictionary of variables to do MC/Data comparison
 VARIABLES = {
@@ -46,23 +57,23 @@ VARIABLES = {
     # MET variables
     'puppiMET_sumEt': hist.axis.Regular(40, 20., 250, name='var', label=r'puppiMET $\Sigma E_T$ [GeV]', growth=False, underflow=False, overflow=False), 
     'puppiMET_pt': hist.axis.Regular(40, 20., 250, name='var', label=r'puppiMET $p_T$ [GeV]', growth=False, underflow=False, overflow=False), 
-    'puppiMET_phi': hist.axis.Regular(25,-3.2, 3.2, name='var', label=r'puppiMET $\phi$', growth=False, underflow=False, overflow=False), 
+    'puppiMET_phi': hist.axis.Regular(20,-3.2, 3.2, name='var', label=r'puppiMET $\phi$', growth=False, underflow=False, overflow=False), 
     # jet-MET variables
-    'DeltaPhi_j1MET': hist.axis.Regular(30,-3.2, 3.2, name='var', label=r'$\Delta\phi (j_1,E_T^{miss})$', growth=False, underflow=False, overflow=False), 
-    'DeltaPhi_j2MET': hist.axis.Regular(30, -3.2, 3.2, name='var', label=r'$\Delta\phi (j_2,E_T^{miss})$', growth=False, underflow=False, overflow=False), 
+    'DeltaPhi_j1MET': hist.axis.Regular(20,-3.2, 3.2, name='var', label=r'$\Delta\phi (j_1,E_T^{miss})$', growth=False, underflow=False, overflow=False), 
+    'DeltaPhi_j2MET': hist.axis.Regular(20, -3.2, 3.2, name='var', label=r'$\Delta\phi (j_2,E_T^{miss})$', growth=False, underflow=False, overflow=False), 
     # jet-photon variables
     'DeltaR_jg_min': hist.axis.Regular(30, 0, 5, name='var', label=r'min$(\Delta R(jet, \gamma))$', growth=False, underflow=False, overflow=False), 
     # jet variables
     'n_jets': hist.axis.Integer(0, 10, name='var', label=r'$n_{jets}$', growth=False, underflow=False, overflow=False), 
     'chi_t0': hist.axis.Regular(40, 0., 150, name='var', label=r'$\chi_{t0}^2$', growth=False, underflow=False, overflow=False), 
-    'chi_t1': hist.axis.Regular(40, 0., 500, name='var', label=r'$\chi_{t1}^2$', growth=False, underflow=False, overflow=False), 
+    'chi_t1': hist.axis.Regular(30, 0., 500, name='var', label=r'$\chi_{t1}^2$', growth=False, underflow=False, overflow=False), 
     # lepton variables
     'lepton1_pt': hist.axis.Regular(40, 0., 200, name='var', label=r'lead lepton $p_T$ [GeV]', growth=False, underflow=False, overflow=False), 
     'lepton2_pt': hist.axis.Regular(40, 0., 200, name='var', label=r'sublead lepton $p_T$ [GeV]', growth=False, underflow=False, overflow=False), 
     'lepton1_eta': hist.axis.Regular(30, -5., 5., name='var', label=r'lead lepton $\eta$', growth=False, underflow=False, overflow=False), 
     'lepton2_eta': hist.axis.Regular(30, -5., 5., name='var', label=r'sublead lepton $\eta$', growth=False, underflow=False, overflow=False),
-    'lepton1_phi': hist.axis.Regular(30, -3.2, 3.2, name='var', label=r'lead lepton $\phi$', growth=False, underflow=False, overflow=False), 
-    'lepton2_phi': hist.axis.Regular(30, -3.2, 3.2, name='var', label=r'sublead lepton $\phi$', growth=False, underflow=False, overflow=False),
+    'lepton1_phi': hist.axis.Regular(20, -3.2, 3.2, name='var', label=r'lead lepton $\phi$', growth=False, underflow=False, overflow=False), 
+    'lepton2_phi': hist.axis.Regular(20, -3.2, 3.2, name='var', label=r'sublead lepton $\phi$', growth=False, underflow=False, overflow=False),
     # diphoton variables
     'pt': hist.axis.Regular(40, 20., 2000, name='var', label=r' $\gamma\gamma p_{T}$ [GeV]', growth=False, underflow=False, overflow=False),
     'eta': hist.axis.Regular(20, -5., 5., name='var', label=r'$\gamma\gamma \eta$', growth=False, underflow=False, overflow=False), 
@@ -70,13 +81,23 @@ VARIABLES = {
     # angular (cos) variables
     'abs_CosThetaStar_CS': hist.axis.Regular(25, 0, 1, name='var', label=r'|cos$(\theta_{CS})$|', growth=False, underflow=False, overflow=False), 
     'abs_CosThetaStar_jj': hist.axis.Regular(25, 0, 1, name='var', label=r'|cos$(\theta_{jj})$|', growth=False, underflow=False, overflow=False), 
-    # dijet variables
-    # 'dijet_mass': hist.axis.Regular(50, 25., 180., name='var', label=r'$M_{jj}$ [GeV]', growth=False, underflow=False, overflow=False), # mass of b-dijet (resonance for H->bb)
     # jet-lepton variables
-    'leadBjet_leadLepton': hist.axis.Regular(50, 0, 5, name='var', label=r'$\Delta R(bjet_{lead}, l_{lead})$', growth=False, underflow=False, overflow=False), 
-    'leadBjet_subleadLepton': hist.axis.Regular(50, 0, 5, name='var', label=r'$\Delta R(bjet_{lead}, l_{sublead})$', growth=False, underflow=False, overflow=False), 
-    'subleadBjet_leadLepton': hist.axis.Regular(50, 0, 5, name='var', label=r'$\Delta R(bjet_{sublead}, l_{lead})$', growth=False, underflow=False, overflow=False), 
-    'subleadBjet_subleadLepton': hist.axis.Regular(50, 0, 5, name='var', label=r'$\Delta R(bjet_{sublead}, l_{sublead})$', growth=False, underflow=False, overflow=False)
+    'leadBjet_leadLepton': hist.axis.Regular(30, 0, 5, name='var', label=r'$\Delta R(bjet_{lead}, l_{lead})$', growth=False, underflow=False, overflow=False), 
+    'leadBjet_subleadLepton': hist.axis.Regular(30, 0, 5, name='var', label=r'$\Delta R(bjet_{lead}, l_{sublead})$', growth=False, underflow=False, overflow=False), 
+    'subleadBjet_leadLepton': hist.axis.Regular(30, 0, 5, name='var', label=r'$\Delta R(bjet_{sublead}, l_{lead})$', growth=False, underflow=False, overflow=False), 
+    'subleadBjet_subleadLepton': hist.axis.Regular(30, 0, 5, name='var', label=r'$\Delta R(bjet_{sublead}, l_{sublead})$', growth=False, underflow=False, overflow=False)
+}
+MASKED_VARIABLES = {
+    # dijet variables
+    'dijet_mass': (
+        hist.axis.Regular(50, 25., 180., name='var', label=r'$M_{jj}$ [GeV]', growth=False, underflow=False, overflow=False),
+        [70, 150]
+    ),
+    # diphoton variables
+    'diphoton_mass': (
+        hist.axis.Regular(50, 25., 180., name='var', label=r'$M_{\gamma\gamma}$ [GeV]', growth=False, underflow=False, overflow=False),
+        [115, 135]
+    )
 }
 # Set of extra MC variables necessary for MC/Data comparison, defined in merger.py
 MC_EXTRA_VARS = {
@@ -231,7 +252,6 @@ def main():
         # Generate MC hist stack
         mc_hists = {}
         for dir_name, sample in MC_pqs.items():
-            # print(f"{dir_name}: \n{sample['genWeight']}")  # +/- 3.1
             mc_hists[MC_NAMES_PRETTY[dir_name]] = hist.Hist(axis, storage='weight').fill(
                 var=ak.where(sample['MC_Data_mask'], sample[variable], FILL_VALUE),
                 weight=sample['eventWeight']
@@ -253,7 +273,10 @@ def main():
         )
 
         # Plotting niceties
-        hep.cms.lumitext(f"{2022} (13.6 TeV)", ax=ax)
+        total_lumi = 0
+        for lumi in LUMINOSITIES.values():
+            total_lumi += lumi
+        hep.cms.lumitext(f"{total_lumi} (13.6 TeV)", ax=ax)
         hep.cms.text("Work in Progress", ax=ax)
 
         # Shrink current axis by 20%
