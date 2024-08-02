@@ -85,7 +85,7 @@ VARIABLES = {
     'subleadBjet_leadLepton': hist.axis.Regular(30, 0, 5, name='var', label=r'$\Delta R(bjet_{sublead}, l_{lead})$', growth=False, underflow=False, overflow=False), 
     'subleadBjet_subleadLepton': hist.axis.Regular(30, 0, 5, name='var', label=r'$\Delta R(bjet_{sublead}, l_{sublead})$', growth=False, underflow=False, overflow=False)
 }
-MASKED_VARIABLES = {
+BLINDED_VARIABLES = {
     # dijet variables
     'dijet_mass': (
         hist.axis.Regular(50, 25., 180., name='var', label=r'$M_{jj}$ [GeV]', growth=False, underflow=False, overflow=False),
@@ -169,11 +169,11 @@ def slimmed_parquet(extra_variables: dict, sample=None):
     """
     if sample is None:
         return ak.zip(
-            {field: FILL_VALUE if field != MC_DATA_MASK else False for field in set(VARIABLES.keys()) | extra_variables | set(MASKED_VARIABLES.keys())}
+            {field: FILL_VALUE if field != MC_DATA_MASK else False for field in set(VARIABLES.keys()) | extra_variables | set(BLINDED_VARIABLES.keys())}
         )
     else:
         return ak.zip(
-            {field: sample[field] for field in set(VARIABLES.keys()) | extra_variables | set(MASKED_VARIABLES.keys())}
+            {field: sample[field] for field in set(VARIABLES.keys()) | extra_variables | set(BLINDED_VARIABLES.keys())}
         )
 
 def make_mc_dict(dir_lists: dict):
@@ -199,17 +199,50 @@ def concatenate_records(base_sample, added_sample):
         }
     )
 
-def plot(fig, ax, variable, mc_hist, data_hist):
+def generate_hists(MC_pqs: dict, Data_pqs: dict, variable, axis, blind_edges=None):
+    # Generate MC hist stack
+    mc_hists = {}
+    mc_hists_size = []
+    for dir_name, sample in MC_pqs.items():
+        # Blinds a region of the plot if necessary
+        if blind_edges is not None:
+            sample['MC_Data_mask'] = sample['MC_Data_mask'] & (
+                (sample[variable] < blind_edges[0]) | (sample[variable] > blind_edges[1])
+            )
+        mc_hists[MC_NAMES_PRETTY[dir_name]] = hist.Hist(axis, storage='weight').fill(
+            var=ak.where(sample['MC_Data_mask'], sample[variable], FILL_VALUE),
+            weight=sample['eventWeight']
+        )
+        mc_hists_size.append(ak.sum(sample['MC_Data_mask'] * sample['eventWeight']))
+    mc_stack = hist.Stack.from_dict(mc_hists)
+
+    # Generate data hist
+    data_ak = ak.zip({variable: FILL_VALUE})
+    for dir_name, sample in Data_pqs.items():
+        if blind_edges is not None:
+            sample['MC_Data_mask'] = sample['MC_Data_mask'] & (
+                (sample[variable] < blind_edges[0]) | (sample[variable] > blind_edges[1])
+            )
+        data_ak[variable] = ak.concatenate(
+            (data_ak[variable], ak.where(sample['MC_Data_mask'], sample[variable], FILL_VALUE))
+        )
+    data_hist = hist.Hist(axis).fill(var=data_ak[variable])
+
+    return mc_stack, data_hist
+
+def plot(variable, mc_hist, data_hist):
     """
     Plots and saves out the data-MC comparison histogram
     """
+    # Initiate figure
+    fig, ax = plt.subplots(figsize=(12.5, 10))
     mc_hist.plot(
-        stack=True, ax=ax, linewidth=3, histtype="fill"
+        stack=True, ax=ax, linewidth=3, histtype="fill", sort='yield_r'
     )
     hep.histplot(
         data_hist, ax=ax, linewidth=3, histtype="errorbar", color="black", label=f"CMS Data"
     )
-    hep.cms.lumitext(f"{LUMINOSITIES['total_lumi']} (13.6 TeV)", ax=ax)
+    hep.cms.lumitext(f"{LUMINOSITIES['total_lumi']:.2f}fb$^{-1}$ (13.6 TeV)", ax=ax)
     hep.cms.text("Work in Progress", ax=ax)
     # Shrink current axis by 20%
     box = ax.get_position()
@@ -258,6 +291,7 @@ def main():
                 # Checks if sample is Data (True) or MC (False)
                 #   -> slims parquet to only include desired variables (to save RAM, if not throttling RAM feel free to not do the slimming)
                 if re.match('Data', dir_name) is not None:
+                    # Data_pqs[data_era+dir_name] = slimmed_parquet(DATA_EXTRA_VARS, sample)
                     Data_pqs[dir_name] = slimmed_parquet(DATA_EXTRA_VARS, sample)
                 else:
                     MC_pqs[dir_name] = concatenate_records(
@@ -268,60 +302,13 @@ def main():
 
     # Ploting over variables for MC and Data
     for variable, axis in VARIABLES.items():
-        # Initiate figure
-        fig, ax = plt.subplots(figsize=(12.5, 10))
+        mc_hist, data_hist = generate_hists(MC_pqs, Data_pqs, variable, axis)
+        plot(variable, mc_hist, data_hist)
 
-        # Generate MC hist stack
-        mc_hists = {}
-        for dir_name, sample in MC_pqs.items():
-            mc_hists[MC_NAMES_PRETTY[dir_name]] = hist.Hist(axis, storage='weight').fill(
-                var=ak.where(sample['MC_Data_mask'], sample[variable], FILL_VALUE),
-                weight=sample['eventWeight']
-            )
-        mc_stack = hist.Stack.from_dict(mc_hists)
-
-        # Generate data hist
-        data_ak = ak.zip({variable: FILL_VALUE})
-        for dir_name, sample in Data_pqs.items():
-            data_ak[variable] = ak.concatenate(
-                (data_ak[variable], ak.where(sample['MC_Data_mask'], sample[variable], FILL_VALUE))
-            )
-        data_hist = hist.Hist(axis).fill(var=data_ak[variable])
-
-        # Plot the histogram
-        plot(fig, ax, variable, mc_stack, data_hist)
-
-    # Ploting over masked variables for MC and Data
-    for variable, (axis, blind_edges) in MASKED_VARIABLES.items():
-        # Initiate figure
-        fig, ax = plt.subplots(figsize=(12.5, 10))
-
-        # Generate MC hist stack
-        mc_hists = {}
-        for dir_name, sample in MC_pqs.items():
-            blinding_mask = (sample[variable] < blind_edges[0]) | (sample[variable] > blind_edges[1])
-            mc_hists[MC_NAMES_PRETTY[dir_name]] = hist.Hist(axis, storage='weight').fill(
-                var=ak.where(
-                    sample['MC_Data_mask'] & blinding_mask, sample[variable], FILL_VALUE
-                ),
-                weight=sample['eventWeight']
-            )
-        mc_stack = hist.Stack.from_dict(mc_hists)
-
-        # Generate data hist
-        data_ak = ak.zip({variable: FILL_VALUE})
-        for dir_name, sample in Data_pqs.items():
-            blinding_mask = (sample[variable] < blind_edges[0]) | (sample[variable] > blind_edges[1])
-            data_ak[variable] = ak.concatenate(
-                (
-                    data_ak[variable], 
-                    ak.where(sample['MC_Data_mask'] & blinding_mask, sample[variable], FILL_VALUE)
-                )
-            )
-        data_hist = hist.Hist(axis).fill(var=data_ak[variable])
-
-        # Plot the histogram
-        plot(fig, ax, variable, mc_stack, data_hist)
+    # Ploting over variables for MC and Data
+    for variable, (axis, blind_edges) in BLINDED_VARIABLES.items():
+        mc_hist, data_hist = generate_hists(MC_pqs, Data_pqs, variable, axis, blind_edges=blind_edges)
+        plot(variable, mc_hist, data_hist)
 
 if __name__ == '__main__':
     main()
