@@ -200,6 +200,7 @@ def concatenate_records(base_sample, added_sample):
     )
 
 def generate_hists(MC_pqs: dict, Data_pqs: dict, variable, axis, blind_edges=None):
+    # https://indico.cern.ch/event/1433936/ #
     # Generate MC hist stack
     mc_hists = {}
     mc_hists_size = []
