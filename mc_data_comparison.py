@@ -229,6 +229,30 @@ def generate_hists(MC_pqs: dict, Data_pqs: dict, variable, axis, blind_edges=Non
         )
     data_hist = hist.Hist(axis).fill(var=data_ak[variable])
 
+    # h = hist.Hist(
+    #     hist.axis.StrCategory([], growth=True, name="cat"),
+    #     hist.axis.Regular(20, 0, 500, name="pt", label=r"$p_T^{\mu}[GeV]$"),
+    # )
+
+    # h.fill(cat="numer",pt=ak.flatten(muons.pt))
+    # h.fill(cat="denom",pt=ak.flatten(muons.pt)*1.2)
+
+    # fig,axs = plt.subplots(2,1,sharex = True, height_ratios=[4,1])
+
+    # axs = axs.flatten()
+
+    # h[hist.loc("numer"),:].plot_ratio(
+    #     h[hist.loc("denom"),:],
+    #     rp_num_label="numer",
+    #     rp_denom_label="denom",
+    #     ax_dict={"main_ax":axs[0],"ratio_ax":axs[1]}
+    # )
+    # axs[0].set_xlabel("")
+    # axs[0].set_yscale("log")
+    # axs[0].set_ylim(1e-1,None)
+    # plt.tight_layout()
+    # fig.subplots_adjust(hspace=0.05)
+
     return mc_stack, data_hist
 
 def plot(variable, mc_hist, data_hist):
