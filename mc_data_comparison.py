@@ -203,7 +203,6 @@ def generate_hists(MC_pqs: dict, Data_pqs: dict, variable, axis, blind_edges=Non
     # https://indico.cern.ch/event/1433936/ #
     # Generate MC hist stack
     mc_hists = {}
-    mc_hists_size = []
     for dir_name, sample in MC_pqs.items():
         # Blinds a region of the plot if necessary
         if blind_edges is not None:
@@ -214,7 +213,6 @@ def generate_hists(MC_pqs: dict, Data_pqs: dict, variable, axis, blind_edges=Non
             var=ak.where(sample['MC_Data_mask'], sample[variable], FILL_VALUE),
             weight=sample['eventWeight']
         )
-        mc_hists_size.append(ak.sum(sample['MC_Data_mask'] * sample['eventWeight']))
     mc_stack = hist.Stack.from_dict(mc_hists)
 
     # Generate data hist
@@ -230,14 +228,14 @@ def generate_hists(MC_pqs: dict, Data_pqs: dict, variable, axis, blind_edges=Non
     data_hist = hist.Hist(axis).fill(var=data_ak[variable])
 
     # h = hist.Hist(
-    #     hist.axis.StrCategory([], growth=True, name="cat"),
-    #     hist.axis.Regular(20, 0, 500, name="pt", label=r"$p_T^{\mu}[GeV]$"),
+    #     hist.axis.StrCategory([], growth=True, name="data_type"),
+    #     axis
     # )
 
     # h.fill(cat="numer",pt=ak.flatten(muons.pt))
     # h.fill(cat="denom",pt=ak.flatten(muons.pt)*1.2)
 
-    # fig,axs = plt.subplots(2,1,sharex = True, height_ratios=[4,1])
+    # fig,axs = plt.subplots(2, 1, sharex=True, height_ratios=[4,1])
 
     # axs = axs.flatten()
 
@@ -260,25 +258,32 @@ def plot(variable, mc_hist, data_hist):
     Plots and saves out the data-MC comparison histogram
     """
     # Initiate figure
-    fig, ax = plt.subplots(figsize=(12.5, 10))
+    fig, axs = plt.subplots(
+        2, 1, sharex=True, height_ratios=[4,1], figsize=(10, 8)
+    )
     mc_hist.plot(
-        stack=True, ax=ax, linewidth=3, histtype="fill", sort='yield_r'
+        stack=True, ax=axs[0], linewidth=3, histtype="fill", sort='yield_r'
     )
     hep.histplot(
-        data_hist, ax=ax, linewidth=3, histtype="errorbar", color="black", label=f"CMS Data"
+        data_hist, ax=axs[0], linewidth=3, histtype="errorbar", color="black", label=f"CMS Data"
     )
+    # Make ratio subplot
+    data_hist.plot_ratio(
+        mc_hist, ax_dict={"main_ax":axs[0],"ratio_ax":axs[1]}
+    )
+    
     hep.cms.lumitext(f"{LUMINOSITIES['total_lumi']:.2f}fb$^{-1}$ (13.6 TeV)", ax=ax)
-    hep.cms.text("Work in Progress", ax=ax)
+    hep.cms.text("Work in Progress", ax=axs[0])
     # Shrink current axis by 20%
-    box = ax.get_position()
-    ax.set_position([box.x0, box.y0, box.width * 0.75, box.height * 0.75])
+    box = axs[0].get_position()
+    axs[0].set_position([box.x0, box.y0, box.width * 0.75, box.height * 0.75])
     # Put a legend to the right of the current axis
-    ax.legend(loc='center left', bbox_to_anchor=(1, 0.5), fancybox=True)
+    axs[0].legend(loc='center left', bbox_to_anchor=(1, 0.5), fancybox=True)
     # Make angular and chi^2 plots linear, otherwise log
     if re.match('chi_t', variable) is None and re.match('DeltaPhi', variable) is None:
-        ax.set_yscale('log')
+        axs[0].set_yscale('log')
     else:
-        ax.set_yscale('linear')
+        axs[0].set_yscale('linear')
     # Save out the plot
     if not os.path.exists(DESTDIR):
         os.mkdir(DESTDIR)
