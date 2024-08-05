@@ -227,13 +227,28 @@ def generate_hists(MC_pqs: dict, Data_pqs: dict, variable, axis, blind_edges=Non
         )
     data_hist = hist.Hist(axis).fill(var=data_ak[variable])
 
-    # h = hist.Hist(
-    #     hist.axis.StrCategory([], growth=True, name="data_type"),
-    #     axis
-    # )
-
-    # h.fill(cat="numer",pt=ak.flatten(muons.pt))
-    # h.fill(cat="denom",pt=ak.flatten(muons.pt)*1.2)
+    # Generate ratio subplot hist
+    mc_ak = ak.zip({variable: FILL_VALUE})
+    
+    mc_weights_ak = ak.zip({variable: FILL_VALUE})
+    for dir_name, sample in MC_pqs.items():
+        if blind_edges is not None:
+            sample['MC_Data_mask'] = sample['MC_Data_mask'] & (
+                (sample[variable] < blind_edges[0]) | (sample[variable] > blind_edges[1])
+            )
+        mc_ak[variable] = ak.concatenate(
+            (mc_ak[variable], ak.where(sample['MC_Data_mask'], sample[variable], FILL_VALUE))
+        )
+        mc_weights_ak[variable] = ak.concatenate(
+            (mc_weights_ak[variable], sample['eventWeight'])
+        )
+    ratio_hist = hist.Hist(
+        hist.axis.StrCategory([], growth=True, name="cat"),
+        axis,
+        storage='weight'
+    )
+    ratio_hist.fill(cat="numer", var=data_ak[variable])
+    ratio_hist.fill(cat="denom", var=mc_ak[variable], weight=mc_weights_ak[variable])
 
     # fig,axs = plt.subplots(2, 1, sharex=True, height_ratios=[4,1])
 
@@ -251,9 +266,9 @@ def generate_hists(MC_pqs: dict, Data_pqs: dict, variable, axis, blind_edges=Non
     # plt.tight_layout()
     # fig.subplots_adjust(hspace=0.05)
 
-    return mc_stack, data_hist
+    return mc_stack, data_hist, ratio_hist
 
-def plot(variable, mc_hist, data_hist):
+def plot(variable, mc_hist, data_hist, ratio_hist):
     """
     Plots and saves out the data-MC comparison histogram
     """
@@ -268,15 +283,19 @@ def plot(variable, mc_hist, data_hist):
         data_hist, ax=axs[0], linewidth=3, histtype="errorbar", color="black", label=f"CMS Data"
     )
     # Make ratio subplot
-    data_hist.plot_ratio(
-        mc_hist, ax_dict={"main_ax":axs[0],"ratio_ax":axs[1]}
+    ratio_hist[hist.loc("numer"),:].plot_ratio(
+        ratio_hist[hist.loc("denom"),:], 
+        ax_dict={"main_ax":axs[0],"ratio_ax":axs[1]}
     )
+    # plt.tight_layout()
+    # fig.subplots_adjust(hspace=0.05)
     
-    hep.cms.lumitext(f"{LUMINOSITIES['total_lumi']:.2f}fb$^{-1}$ (13.6 TeV)", ax=ax)
+    hep.cms.lumitext(f"{LUMINOSITIES['total_lumi']:.2f}fb$^{-1}$ (13.6 TeV)", ax=axs[0])
     hep.cms.text("Work in Progress", ax=axs[0])
     # Shrink current axis by 20%
-    box = axs[0].get_position()
-    axs[0].set_position([box.x0, box.y0, box.width * 0.75, box.height * 0.75])
+    for ax in axs:
+        box = ax.get_position()
+        ax.set_position([box.x0, box.y0, box.width * 0.75, box.height * 0.75])
     # Put a legend to the right of the current axis
     axs[0].legend(loc='center left', bbox_to_anchor=(1, 0.5), fancybox=True)
     # Make angular and chi^2 plots linear, otherwise log
@@ -332,13 +351,13 @@ def main():
 
     # Ploting over variables for MC and Data
     for variable, axis in VARIABLES.items():
-        mc_hist, data_hist = generate_hists(MC_pqs, Data_pqs, variable, axis)
-        plot(variable, mc_hist, data_hist)
+        mc_hist, data_hist, ratio_hist = generate_hists(MC_pqs, Data_pqs, variable, axis)
+        plot(variable, mc_hist, data_hist, ratio_hist)
 
     # Ploting over variables for MC and Data
     for variable, (axis, blind_edges) in BLINDED_VARIABLES.items():
-        mc_hist, data_hist = generate_hists(MC_pqs, Data_pqs, variable, axis, blind_edges=blind_edges)
-        plot(variable, mc_hist, data_hist)
+        mc_hist, data_hist, ratio_hist = generate_hists(MC_pqs, Data_pqs, variable, axis, blind_edges=blind_edges)
+        plot(variable, mc_hist, data_hist, ratio_hist)
 
 if __name__ == '__main__':
     main()
