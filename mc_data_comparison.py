@@ -203,6 +203,8 @@ def generate_hists(MC_pqs: dict, Data_pqs: dict, variable, axis, blind_edges=Non
     # https://indico.cern.ch/event/1433936/ #
     # Generate MC hist stack
     mc_hists = {}
+    mc_ak = ak.zip({variable: FILL_VALUE})
+    mc_weights_ak = ak.zip({variable: FILL_VALUE})
     for dir_name, sample in MC_pqs.items():
         # Blinds a region of the plot if necessary
         if blind_edges is not None:
@@ -213,7 +215,14 @@ def generate_hists(MC_pqs: dict, Data_pqs: dict, variable, axis, blind_edges=Non
             var=ak.where(sample['MC_Data_mask'], sample[variable], FILL_VALUE),
             weight=sample['eventWeight']
         )
+        mc_ak[variable] = ak.concatenate(
+            (mc_ak[variable], ak.where(sample['MC_Data_mask'], sample[variable], FILL_VALUE))
+        )
+        mc_weights_ak[variable] = ak.concatenate(
+            (mc_weights_ak[variable], sample['eventWeight'])
+        )
     mc_stack = hist.Stack.from_dict(mc_hists)
+    # print(f"MC_stack fields = \n{mc_stack.__dir__}")
 
     # Generate data hist
     data_ak = ak.zip({variable: FILL_VALUE})
@@ -228,27 +237,22 @@ def generate_hists(MC_pqs: dict, Data_pqs: dict, variable, axis, blind_edges=Non
     data_hist = hist.Hist(axis).fill(var=data_ak[variable])
 
     # Generate ratio subplot hist
-    mc_ak = ak.zip({variable: FILL_VALUE})
-    
-    mc_weights_ak = ak.zip({variable: FILL_VALUE})
-    for dir_name, sample in MC_pqs.items():
-        if blind_edges is not None:
-            sample['MC_Data_mask'] = sample['MC_Data_mask'] & (
-                (sample[variable] < blind_edges[0]) | (sample[variable] > blind_edges[1])
-            )
-        mc_ak[variable] = ak.concatenate(
-            (mc_ak[variable], ak.where(sample['MC_Data_mask'], sample[variable], FILL_VALUE))
-        )
-        mc_weights_ak[variable] = ak.concatenate(
-            (mc_weights_ak[variable], sample['eventWeight'])
-        )
-    ratio_hist = hist.Hist(
-        hist.axis.StrCategory([], growth=True, name="cat"),
-        axis,
-        storage='weight'
-    )
-    ratio_hist.fill(cat="numer", var=data_ak[variable])
-    ratio_hist.fill(cat="denom", var=mc_ak[variable], weight=mc_weights_ak[variable])
+    # mc_ak = ak.zip({variable: FILL_VALUE})
+    # mc_weights_ak = ak.zip({variable: FILL_VALUE})
+    # for dir_name, sample in MC_pqs.items():
+    #     if blind_edges is not None:
+    #         sample['MC_Data_mask'] = sample['MC_Data_mask'] & (
+    #             (sample[variable] < blind_edges[0]) | (sample[variable] > blind_edges[1])
+    #         )
+    #     mc_ak[variable] = ak.concatenate(
+    #         (mc_ak[variable], ak.where(sample['MC_Data_mask'], sample[variable], FILL_VALUE))
+    #     )
+    #     mc_weights_ak[variable] = ak.concatenate(
+    #         (mc_weights_ak[variable], sample['eventWeight'])
+    #     )
+    ratio_hist = hist.Hist(hist.axis.StrCategory([], growth=True, name="cat"), axis, storage='weight')
+    ratio_hist.fill(cat="numer", var=mc_ak[variable], weight=mc_weights_ak[variable])
+    ratio_hist.fill(cat="denom", var=data_ak[variable])
 
     # fig,axs = plt.subplots(2, 1, sharex=True, height_ratios=[4,1])
 
@@ -279,14 +283,24 @@ def plot(variable, mc_hist, data_hist, ratio_hist):
     mc_hist.plot(
         stack=True, ax=axs[0], linewidth=3, histtype="fill", sort='yield_r'
     )
-    hep.histplot(
-        data_hist, ax=axs[0], linewidth=3, histtype="errorbar", color="black", label=f"CMS Data"
-    )
+    # hep.histplot(
+    #     data_hist, ax=axs[0], linewidth=3, histtype="errorbar", color="black", label=f"CMS Data"
+    # )
     # Make ratio subplot
     ratio_hist[hist.loc("numer"),:].plot_ratio(
-        ratio_hist[hist.loc("denom"),:], 
-        ax_dict={"main_ax":axs[0],"ratio_ax":axs[1]}
+        ratio_hist[hist.loc("denom"),:],
+        rp_num_label="MC",
+        rp_denom_label="Data",
+        ax_dict={"main_ax":axs[0],"ratio_ax":axs[1]},
+        colors=['green', 'black']
     )
+    # ratio_hist[hist.loc("numer"),:].plot_ratio(
+    #     ratio_hist[hist.loc("denom"),:],
+    #     histtype="errorbar"
+    # )
+    # hep.histplot(
+    #     ratio_hist, ax=axs[1]
+    # )
     # plt.tight_layout()
     # fig.subplots_adjust(hspace=0.05)
     
