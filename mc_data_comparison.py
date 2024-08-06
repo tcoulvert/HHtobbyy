@@ -120,19 +120,19 @@ def sideband_cuts(data_era: str, sample):
     """
     # Require diphoton and dijet exist (should be required in preselection, and thus be all True)
     event_mask = ak.where(sample['pt'] != FILL_VALUE, True, False) & ak.where(sample['dijet_pt'] != FILL_VALUE, True, False)
-    # Require btag score above Loose WP
-    EE_era_2022 = 'preEE' if re.search('preEE', data_era) is not None else 'postEE'
-    event_mask = event_mask & ak.where(
-        sample['lead_bjet_btagPNetB'] > SINGLE_B_WPS[EE_era_2022]['L'], True, False
-    ) & ak.where(
-        sample['sublead_bjet_btagPNetB'] > SINGLE_B_WPS[EE_era_2022]['L'], True, False
-    )
-    # Require at least 3 jets (to remove bbH background), extra jets coming from Ws
-    event_mask = event_mask & ak.where(sample['jet3_pt'] != FILL_VALUE, True, False)
-    # Require events with diphoton mass within Higgs window
-    event_mask = event_mask & (
-        ak.where(sample['mass'] >= 100, True, False) & ak.where(sample['mass'] <= 150, True, False)
-    )
+    # # Require btag score above Loose WP
+    # EE_era_2022 = 'preEE' if re.search('preEE', data_era) is not None else 'postEE'
+    # event_mask = event_mask & ak.where(
+    #     sample['lead_bjet_btagPNetB'] > SINGLE_B_WPS[EE_era_2022]['L'], True, False
+    # ) & ak.where(
+    #     sample['sublead_bjet_btagPNetB'] > SINGLE_B_WPS[EE_era_2022]['L'], True, False
+    # )
+    # # Require at least 3 jets (to remove bbH background), extra jets coming from Ws
+    # event_mask = event_mask & ak.where(sample['jet3_pt'] != FILL_VALUE, True, False)
+    # # Require events with diphoton mass within Higgs window
+    # event_mask = event_mask & (
+    #     ak.where(sample['mass'] >= 100, True, False) & ak.where(sample['mass'] <= 150, True, False)
+    # )
     # Mask out events with dijet mass within Higgs window
     event_mask = event_mask & (
         ak.where(sample['dijet_mass'] <= 70, True, False) | ak.where(sample['dijet_mass'] >= 150, True, False)
@@ -169,7 +169,7 @@ def slimmed_parquet(extra_variables: dict, sample=None):
     """
     if sample is None:
         return ak.zip(
-            {field: FILL_VALUE if field != MC_DATA_MASK else False for field in set(VARIABLES.keys()) | extra_variables | set(BLINDED_VARIABLES.keys())}
+            {field: FILL_VALUE if field != MC_DATA_MASK and field != 'eventWeight' else False for field in set(VARIABLES.keys()) | extra_variables | set(BLINDED_VARIABLES.keys())}
         )
     else:
         return ak.zip(
@@ -199,7 +199,7 @@ def concatenate_records(base_sample, added_sample):
         }
     )
 
-def generate_hists(MC_pqs: dict, Data_pqs: dict, variable, axis, blind_edges=None):
+def generate_hists(MC_pqs: dict, Data_pqs: dict, variable: str, axis, blind_edges=None):
     # https://indico.cern.ch/event/1433936/ #
     # Generate MC hist stack
     mc_hists = {}
@@ -226,48 +226,44 @@ def generate_hists(MC_pqs: dict, Data_pqs: dict, variable, axis, blind_edges=Non
         )
     data_hist = hist.Hist(axis).fill(var=data_ak[variable])
 
-    # Generate ratio subplot hist
-    # ratio_hist = hist.Hist(axis).fill(
-    #     mc_hists[MC_NAMES_PRETTY[dir_name]] / data_hist
-    # )
-    mc_ak = ak.zip({variable: FILL_VALUE})
-    mc_weights_ak = ak.zip({variable: FILL_VALUE})
-    for dir_name, sample in MC_pqs.items():
-        if blind_edges is not None:
-            sample['MC_Data_mask'] = sample['MC_Data_mask'] & (
-                (sample[variable] < blind_edges[0]) | (sample[variable] > blind_edges[1])
-            )
-        mc_ak[variable] = ak.concatenate(
-            (mc_ak[variable], ak.where(sample['MC_Data_mask'], sample[variable], FILL_VALUE))
+    # Generate ratio dict
+    ratio_dict = {
+        'mc_values': np.array([0.0 for _ in range(axis.size)]),
+        'w2': np.array([0.0 for _ in range(axis.size)])
+    }
+    for mc_hist in mc_hists.values():
+        ratio_dict['mc_values'] += mc_hist.values()
+        ratio_dict['w2'] += mc_hist.variances()
+    ratio_dict['data_values'] = data_hist.values()
+    ratio_dict['ratio'] = ratio_dict['data_values'] / ratio_dict['mc_values']
+
+    return mc_hists, data_hist, ratio_dict
+
+def plot_ratio(ratio, mpl_ax, hist_axis, numer_err=None, denom_err=None, central_value=1.0):
+    """
+    Does the ratio plot (code copied from Hist.plot_ratio_array b/c they don't
+      do what we need.)
+    """
+    # Set 0 and inf to nan to hide during plotting
+    ratio[ratio == 0] = np.nan
+    ratio[np.isinf(ratio)] = np.nan
+
+    mpl_ax.axhline(
+        central_value, color="black", linestyle="dashed", linewidth=1.0
+    )
+    mpl_ax.errorbar(
+        hist_axis.centers[0], ratio, yerr=numer_err,
+        color="black", marker="o", linestyle="none"
+    )
+
+    if denom_err is not None:
+        mpl_ax.set_ylim(central_value - 1.5*np.max(denom_err), central_value + 1.5*np.max(denom_err))
+        mpl_ax.bar(
+            hist_axis.centers[0], height=denom_err * 2, width=(hist_axis.centers[0][1] - hist_axis.centers[0][0]), 
+            bottom=(central_value - denom_err), color="green", alpha=0.5
         )
-        mc_weights_ak[variable] = ak.concatenate(
-            (mc_weights_ak[variable], sample['eventWeight'])
-        )
-    ratio_hist = hist.Hist(hist.axis.StrCategory([], growth=True, name="cat"), axis, storage='weight')
-    ratio_hist.fill(cat="numer", var=mc_ak[variable], weight=mc_weights_ak[variable])
-    ratio_hist.fill(cat="denom", var=data_ak[variable])
-    # ratio_hist = mc_stack[0] / data_hist
 
-    # fig,axs = plt.subplots(2, 1, sharex=True, height_ratios=[4,1])
-
-    # axs = axs.flatten()
-
-    # h[hist.loc("numer"),:].plot_ratio(
-    #     h[hist.loc("denom"),:],
-    #     rp_num_label="numer",
-    #     rp_denom_label="denom",
-    #     ax_dict={"main_ax":axs[0],"ratio_ax":axs[1]}
-    # )
-    # axs[0].set_xlabel("")
-    # axs[0].set_yscale("log")
-    # axs[0].set_ylim(1e-1,None)
-    # plt.tight_layout()
-    # fig.subplots_adjust(hspace=0.05)
-
-    return mc_hists, data_hist, ratio_hist
-    # return mc_hists, data_hist, None
-
-def plot(variable: str, mc_hist: dict, data_hist: hist.Hist, ratio_hist):
+def plot(variable: str, mc_hist: dict, data_hist: hist.Hist, ratio_dict: dict):
     """
     Plots and saves out the data-MC comparison histogram
     """
@@ -276,40 +272,17 @@ def plot(variable: str, mc_hist: dict, data_hist: hist.Hist, ratio_hist):
         2, 1, sharex=True, height_ratios=[4,1], figsize=(10, 8)
     )
     hep.histplot(
-        list(mc_hist.values()), label=list(mc_hist.keys()), stack=True, ax=axs[0], linewidth=3, histtype="fill", sort="yield_r"
+        list(mc_hist.values()), label=list(mc_hist.keys()), 
+        # w2=ratio_dict['w2'],
+        stack=True, ax=axs[0], linewidth=3, histtype="fill", sort="yield_r"
     )
     hep.histplot(
         data_hist, ax=axs[0], linewidth=3, histtype="errorbar", color="black", label=f"CMS Data"
     )
-    # hep.histplot(
-    #     mc_hist[0] / data_hist, ax=axs[0], linewidth=3, histtype="errorbar", color="black", label=f"CMS Data"
-    # )
-    # Make ratio subplot
-    ratio_hist[hist.loc("numer"),:].plot_ratio(
-        ratio_hist[hist.loc("denom"),:],
-        rp_num_label="MC",
-        rp_denom_label="Data",
-        ax_dict={"main_ax":axs[0],"ratio_ax":axs[1]},
-        eb_ecolor="red",
-        eb_mfc="green",
-        eb_mec="black",
-        eb_fmt="o",
-        eb_ms=5,
-        fp_color="lightseagreen",
-        pp_color="darkgreen",
-        pp_alpha=0.4,
-        pp_ec=None,
-        bar_color="darkgreen",
+    plot_ratio(
+        ratio_dict['ratio'], axs[1], numer_err=np.sqrt(ratio_dict['data_values']),
+        denom_err=np.sqrt(ratio_dict['w2']), hist_axis=data_hist.axes
     )
-    # ratio_hist[hist.loc("numer"),:].plot_ratio(
-    #     ratio_hist[hist.loc("denom"),:],
-    #     histtype="errorbar"
-    # )
-    # hep.histplot(
-    #     ratio_hist, ax=axs[1]
-    # )
-    # plt.tight_layout()
-    # fig.subplots_adjust(hspace=0.05)
     
     hep.cms.lumitext(f"{LUMINOSITIES['total_lumi']:.2f}fb$^{-1}$ (13.6 TeV)", ax=axs[0])
     hep.cms.text("Work in Progress", ax=axs[0])
