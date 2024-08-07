@@ -16,8 +16,11 @@ vec.register_awkward()
 
 import matplotlib.pyplot as plt
 import mplhep as hep
+from cycler import cycler
 plt.style.use(hep.style.CMS)
 plt.rcParams.update({'font.size': 20})
+cmap_petroff10 = ["#3f90da", "#ffa90e", "#bd1f01", "#94a4a2", "#832db6", "#a96b59", "#e76300", "#b9ac70", "#717581", "#92dadd"]
+plt.rcParams.update({"axes.prop_cycle": cycler("color", cmap_petroff10)})
 
 LPC_FILEPREFIX = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v1"
 DESTDIR = 'v1_comparison_plots'
@@ -274,7 +277,7 @@ def plot(variable: str, mc_hist: dict, data_hist: hist.Hist, ratio_dict: dict):
     hep.histplot(
         list(mc_hist.values()), label=list(mc_hist.keys()), 
         # w2=ratio_dict['w2'],
-        stack=True, ax=axs[0], linewidth=3, histtype="fill", sort="yield_r"
+        stack=True, ax=axs[0], linewidth=3, histtype="fill", sort="yield"
     )
     hep.histplot(
         data_hist, ax=axs[0], linewidth=3, histtype="errorbar", color="black", label=f"CMS Data"
