@@ -138,7 +138,7 @@ def sideband_cuts(data_era: str, sample):
     # )
     # Mask out events with dijet mass within Higgs window
     event_mask = event_mask & (
-        ak.where(sample['dijet_mass'] <= 70, True, False) | ak.where(sample['dijet_mass'] >= 150, True, False)
+        ak.where(sample['dijet_mass'] <= 100, True, False) | ak.where(sample['dijet_mass'] >= 150, True, False)
     )
     sample[MC_DATA_MASK] = event_mask
 
@@ -232,12 +232,13 @@ def generate_hists(MC_pqs: dict, Data_pqs: dict, variable: str, axis, blind_edge
     # Generate ratio dict
     ratio_dict = {
         'mc_values': np.array([0.0 for _ in range(axis.size)]),
+        # 'w2': np.array([[0.0 for _ in range(axis.size)] for __ in range(len(MC_pqs))])
         'w2': np.array([0.0 for _ in range(axis.size)])
     }
     for mc_hist in mc_hists.values():
-        ratio_dict['mc_values'] += mc_hist.values()
-        ratio_dict['w2'] += mc_hist.variances()
-    ratio_dict['data_values'] = data_hist.values()
+        ratio_dict['mc_values'] += mc_hist.values().flatten()
+        ratio_dict['w2'] += mc_hist.variances().flatten()
+    ratio_dict['data_values'] = data_hist.values().flatten()
     ratio_dict['ratio'] = ratio_dict['data_values'] / ratio_dict['mc_values']
 
     return mc_hists, data_hist, ratio_dict
@@ -248,9 +249,13 @@ def plot_ratio(ratio, mpl_ax, hist_axis, numer_err=None, denom_err=None, central
       do what we need.)
     """
     # Set 0 and inf to nan to hide during plotting
-    ratio[ratio == 0] = np.nan
-    ratio[np.isinf(ratio)] = np.nan
+    for arr in [ratio, numer_err, denom_err]:
+        if arr is None:
+            continue
+        arr[arr == 0] = np.nan
+        arr[np.isinf(arr)] = np.nan
 
+    mpl_ax.set_ylim(0, 2)
     mpl_ax.axhline(
         central_value, color="black", linestyle="dashed", linewidth=1.0
     )
@@ -260,7 +265,7 @@ def plot_ratio(ratio, mpl_ax, hist_axis, numer_err=None, denom_err=None, central
     )
 
     if denom_err is not None:
-        mpl_ax.set_ylim(central_value - 1.5*np.max(denom_err), central_value + 1.5*np.max(denom_err))
+        # mpl_ax.set_ylim(central_value - 1.5*np.max(denom_err), central_value + 1.5*np.max(denom_err))
         mpl_ax.bar(
             hist_axis.centers[0], height=denom_err * 2, width=(hist_axis.centers[0][1] - hist_axis.centers[0][0]), 
             bottom=(central_value - denom_err), color="green", alpha=0.5
@@ -276,15 +281,28 @@ def plot(variable: str, mc_hist: dict, data_hist: hist.Hist, ratio_dict: dict):
     )
     hep.histplot(
         list(mc_hist.values()), label=list(mc_hist.keys()), 
-        # w2=ratio_dict['w2'],
+        w2=np.vstack((np.tile(np.zeros_like(ratio_dict['w2']), (len(mc_hist)-1, 1)), ratio_dict['w2'])),
         stack=True, ax=axs[0], linewidth=3, histtype="fill", sort="yield"
     )
     hep.histplot(
         data_hist, ax=axs[0], linewidth=3, histtype="errorbar", color="black", label=f"CMS Data"
     )
+    # print('='*60)
+    # print('='*60)
+    # print(variable)
+    # print(f"data_values = \n{ratio_dict['data_values']}")
+    # print(f"sqrt data_values = \n{np.sqrt(ratio_dict['data_values'])}")
+    # print(f"data error = \n{1 / np.sqrt(ratio_dict['data_values'])}")
+    # print(f"mc_values = \n{ratio_dict['mc_values']}")
+    # print(f"mc sum(w2) = \n{np.sqrt(ratio_dict['w2'][-1])}")
+    # print(f"mc error = \n{ratio_dict['data_values'] / np.sqrt(ratio_dict['w2'])}")
     plot_ratio(
-        ratio_dict['ratio'], axs[1], numer_err=np.sqrt(ratio_dict['data_values']),
-        denom_err=np.sqrt(ratio_dict['w2']), hist_axis=data_hist.axes
+        ratio_dict['ratio'], axs[1], 
+        numer_err=(ratio_dict['data_values'] / np.sqrt(ratio_dict['data_values'])),
+        denom_err=(ratio_dict['mc_values'] / np.sqrt(ratio_dict['w2'][-1])), 
+        # numer_err=(1 / np.sqrt(ratio_dict['data_values'])),
+        # denom_err=(1 / np.sqrt(ratio_dict['w2'])), 
+        hist_axis=data_hist.axes
     )
     
     hep.cms.lumitext(f"{LUMINOSITIES['total_lumi']:.2f}fb$^{-1}$ (13.6 TeV)", ax=axs[0])
@@ -295,8 +313,11 @@ def plot(variable: str, mc_hist: dict, data_hist: hist.Hist, ratio_dict: dict):
         ax.set_position([box.x0, box.y0, box.width * 0.75, box.height * 0.75])
     # Put a legend to the right of the current axis
     axs[0].legend(loc='center left', bbox_to_anchor=(1, 0.5), fancybox=True)
+    # Push the stack and ratio plots closer together
+    # plt.tight_layout()
+    fig.subplots_adjust(hspace=0.05)
     # Make angular and chi^2 plots linear, otherwise log
-    if re.match('chi_t', variable) is None and re.match('DeltaPhi', variable) is None:
+    if re.match('chi_t', variable) is None and re.match('DeltaPhi', variable) is None and re.match('mass', variable) is None:
         axs[0].set_yscale('log')
     else:
         axs[0].set_yscale('linear')
