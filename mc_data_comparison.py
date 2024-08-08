@@ -18,6 +18,7 @@ vec.register_awkward()
 import matplotlib.pyplot as plt
 import mplhep as hep
 from cycler import cycler
+
 plt.style.use(hep.style.CMS)
 plt.rcParams.update({'font.size': 20})
 cmap_petroff10 = ["#3f90da", "#ffa90e", "#bd1f01", "#94a4a2", "#832db6", "#a96b59", "#e76300", "#b9ac70", "#717581", "#92dadd"]
