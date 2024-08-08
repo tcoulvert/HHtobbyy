@@ -5,6 +5,7 @@ import os
 import re
 import sys
 import subprocess
+import warnings
 
 import awkward as ak
 import duckdb
@@ -123,19 +124,19 @@ def sideband_cuts(data_era: str, sample):
     """
     # Require diphoton and dijet exist (should be required in preselection, and thus be all True)
     event_mask = ak.where(sample['pt'] != FILL_VALUE, True, False) & ak.where(sample['dijet_pt'] != FILL_VALUE, True, False)
-    # # Require btag score above Loose WP
-    # EE_era_2022 = 'preEE' if re.search('preEE', data_era) is not None else 'postEE'
-    # event_mask = event_mask & ak.where(
-    #     sample['lead_bjet_btagPNetB'] > SINGLE_B_WPS[EE_era_2022]['L'], True, False
-    # ) & ak.where(
-    #     sample['sublead_bjet_btagPNetB'] > SINGLE_B_WPS[EE_era_2022]['L'], True, False
-    # )
-    # # Require at least 3 jets (to remove bbH background), extra jets coming from Ws
-    # event_mask = event_mask & ak.where(sample['jet3_pt'] != FILL_VALUE, True, False)
-    # # Require events with diphoton mass within Higgs window
-    # event_mask = event_mask & (
-    #     ak.where(sample['mass'] >= 100, True, False) & ak.where(sample['mass'] <= 150, True, False)
-    # )
+    # Require btag score above Loose WP
+    EE_era_2022 = 'preEE' if re.search('preEE', data_era) is not None else 'postEE'
+    event_mask = event_mask & ak.where(
+        sample['lead_bjet_btagPNetB'] > SINGLE_B_WPS[EE_era_2022]['L'], True, False
+    ) & ak.where(
+        sample['sublead_bjet_btagPNetB'] > SINGLE_B_WPS[EE_era_2022]['L'], True, False
+    )
+    # Require at least 3 jets (to remove bbH background), extra jets coming from Ws
+    event_mask = event_mask & ak.where(sample['jet3_pt'] != FILL_VALUE, True, False)
+    # Require events with diphoton mass within Higgs window
+    event_mask = event_mask & (
+        ak.where(sample['mass'] >= 100, True, False) & ak.where(sample['mass'] <= 150, True, False)
+    )
     # Mask out events with dijet mass within Higgs window
     event_mask = event_mask & (
         ak.where(sample['dijet_mass'] <= 100, True, False) | ak.where(sample['dijet_mass'] >= 150, True, False)
@@ -219,7 +220,7 @@ def generate_hists(MC_pqs: dict, Data_pqs: dict, variable: str, axis, blind_edge
 
     # Generate data hist
     data_ak = ak.zip({variable: FILL_VALUE})
-    for dir_name, sample in Data_pqs.items():
+    for sample in Data_pqs.values():
         if blind_edges is not None:
             sample['MC_Data_mask'] = sample['MC_Data_mask'] & (
                 (sample[variable] < blind_edges[0]) | (sample[variable] > blind_edges[1])
@@ -232,14 +233,15 @@ def generate_hists(MC_pqs: dict, Data_pqs: dict, variable: str, axis, blind_edge
     # Generate ratio dict
     ratio_dict = {
         'mc_values': np.array([0.0 for _ in range(axis.size)]),
-        # 'w2': np.array([[0.0 for _ in range(axis.size)] for __ in range(len(MC_pqs))])
         'w2': np.array([0.0 for _ in range(axis.size)])
     }
     for mc_hist in mc_hists.values():
         ratio_dict['mc_values'] += mc_hist.values().flatten()
         ratio_dict['w2'] += mc_hist.variances().flatten()
     ratio_dict['data_values'] = data_hist.values().flatten()
-    ratio_dict['ratio'] = ratio_dict['data_values'] / ratio_dict['mc_values']
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        ratio_dict['ratio'] = ratio_dict['data_values'] / ratio_dict['mc_values']
 
     return mc_hists, data_hist, ratio_dict
 
@@ -265,7 +267,6 @@ def plot_ratio(ratio, mpl_ax, hist_axis, numer_err=None, denom_err=None, central
     )
 
     if denom_err is not None:
-        # mpl_ax.set_ylim(central_value - 1.5*np.max(denom_err), central_value + 1.5*np.max(denom_err))
         mpl_ax.bar(
             hist_axis.centers[0], height=denom_err * 2, width=(hist_axis.centers[0][1] - hist_axis.centers[0][0]), 
             bottom=(central_value - denom_err), color="green", alpha=0.5
@@ -287,35 +288,30 @@ def plot(variable: str, mc_hist: dict, data_hist: hist.Hist, ratio_dict: dict):
     hep.histplot(
         data_hist, ax=axs[0], linewidth=3, histtype="errorbar", color="black", label=f"CMS Data"
     )
-    # print('='*60)
-    # print('='*60)
-    # print(variable)
-    # print(f"data_values = \n{ratio_dict['data_values']}")
-    # print(f"sqrt data_values = \n{np.sqrt(ratio_dict['data_values'])}")
-    # print(f"data error = \n{1 / np.sqrt(ratio_dict['data_values'])}")
-    # print(f"mc_values = \n{ratio_dict['mc_values']}")
-    # print(f"mc sum(w2) = \n{np.sqrt(ratio_dict['w2'][-1])}")
-    # print(f"mc error = \n{ratio_dict['data_values'] / np.sqrt(ratio_dict['w2'])}")
+    # Calculates the numer(denom) ratio error as: numer(denom)_hist_error / numer(denom)_hist_value
+    #   -> suppresses warning coming from 0, inf, and NaN divides
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        numer_err = np.sqrt(ratio_dict['data_values']) / ratio_dict['data_values']
+        denom_err = np.sqrt(ratio_dict['w2']) / ratio_dict['mc_values']
     plot_ratio(
         ratio_dict['ratio'], axs[1], 
-        numer_err=(ratio_dict['data_values'] / np.sqrt(ratio_dict['data_values'])),
-        denom_err=(ratio_dict['mc_values'] / np.sqrt(ratio_dict['w2'][-1])), 
-        # numer_err=(1 / np.sqrt(ratio_dict['data_values'])),
-        # denom_err=(1 / np.sqrt(ratio_dict['w2'])), 
+        numer_err=numer_err,
+        denom_err=denom_err,
         hist_axis=data_hist.axes
     )
     
-    hep.cms.lumitext(f"{LUMINOSITIES['total_lumi']:.2f}fb$^{-1}$ (13.6 TeV)", ax=axs[0])
+    # Plotting niceties #
+    hep.cms.lumitext(f"{LUMINOSITIES['total_lumi']:.2f}" + r"fb$^{-1}$ (13.6 TeV)", ax=axs[0])
     hep.cms.text("Work in Progress", ax=axs[0])
-    # Shrink current axis by 20%
-    for ax in axs:
-        box = ax.get_position()
-        ax.set_position([box.x0, box.y0, box.width * 0.75, box.height * 0.75])
-    # Put a legend to the right of the current axis
-    axs[0].legend(loc='center left', bbox_to_anchor=(1, 0.5), fancybox=True)
+    # Plot legend properly
+    axs[0].legend(loc='center left', bbox_to_anchor=(1, 0.5), reverse=True)
+    plt.tight_layout(rect=(0, 0.01, 1, 1))
     # Push the stack and ratio plots closer together
-    # plt.tight_layout()
     fig.subplots_adjust(hspace=0.05)
+    # Plot x_axis label properly
+    axs[0].set_xlabel('')
+    axs[1].set_xlabel(data_hist.axes.label[0])
     # Make angular and chi^2 plots linear, otherwise log
     if re.match('chi_t', variable) is None and re.match('DeltaPhi', variable) is None and re.match('mass', variable) is None:
         axs[0].set_yscale('log')
@@ -347,7 +343,7 @@ def main():
 
     for data_era, dir_list in dir_lists.items():
         for dir_name in dir_list:
-            for sample_type in ['nominal']:  # Ignores the scale-ups and scale-downs. Not currently computed in merger.py.
+            for sample_type in ['nominal']:  # Ignores the scale-ups and scale-downs. Not computed in merger.py.
                 sample = ak.concatenate(
                     [ak.from_parquet(LPC_FILEPREFIX+'/'+data_era+'/'+dir_name+'/'+sample_type+'/'+file) for file in os.listdir(LPC_FILEPREFIX+'/'+data_era+'/'+dir_name+'/'+sample_type+'/')]
                 )
@@ -358,8 +354,7 @@ def main():
                 # Checks if sample is Data (True) or MC (False)
                 #   -> slims parquet to only include desired variables (to save RAM, if not throttling RAM feel free to not do the slimming)
                 if re.match('Data', dir_name) is not None:
-                    # Data_pqs[data_era+dir_name] = slimmed_parquet(DATA_EXTRA_VARS, sample)
-                    Data_pqs[dir_name] = slimmed_parquet(DATA_EXTRA_VARS, sample)
+                    Data_pqs[data_era+dir_name] = slimmed_parquet(DATA_EXTRA_VARS, sample)
                 else:
                     MC_pqs[dir_name] = concatenate_records(
                         MC_pqs[dir_name], slimmed_parquet(MC_EXTRA_VARS, sample)
