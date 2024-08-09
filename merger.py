@@ -345,7 +345,9 @@ def main():
                     sample['cross_section'] = cross_sections[dir_name]
         
                     # Define eventWeight array for hist plotting.
-                    sample['eventWeight'] = ak.where(sample['genWeight'] < 0, -1, 1) * (sample['luminosity'] * sample['cross_section'] / sample['sumGenWeights'])
+                    sum_of_gen_weight = ak.sum(ak.where(sample['genWeight'] < 0, -1, 1), axis=0)
+                    sample['eventWeight'] = ak.where(sample['genWeight'] < 0, -1, 1) * (sample['luminosity'] * sample['cross_section'] / sum_of_gen_weight)
+                    # sample['eventWeight'] = sample['genWeight'] * (sample['luminosity'] * sample['cross_section'] / sample['sumGenWeights'])
         
                 destdir = LPC_FILEPREFIX+'/'+data_era+'_merged/'+dir_name+'/'+sample_type+'/'
                 if not os.path.exists(destdir):
