@@ -16,6 +16,7 @@ vec.register_awkward()
 # lxplus_redirector = "root://eosuser.cern.ch/"
 # lxplus_fileprefix = "/eos/cms/store/group/phys_b2g/HHbbgg/HiggsDNA_parquet/v1"
 LPC_FILEPREFIX = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v1"
+FORCE_RERUN = True
 
 def add_ttH_vars(sample):
     
@@ -270,7 +271,7 @@ def main():
     # }
     
     for data_era in dir_lists.keys():
-        if os.path.exists(LPC_FILEPREFIX+'/'+data_era+'/completed_samples.json'):
+        if os.path.exists(LPC_FILEPREFIX+'/'+data_era+'/completed_samples.json') and not FORCE_RERUN:
             with open(LPC_FILEPREFIX+'/'+data_era+'/completed_samples.json', 'r') as f:
                 run_samples = json.load(f)
         else:
