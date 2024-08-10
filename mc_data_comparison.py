@@ -320,10 +320,11 @@ def plot(variable: str, mc_hist: dict, data_hist: hist.Hist, ratio_dict: dict):
     axs[0].set_xlabel('')
     axs[1].set_xlabel(data_hist.axes.label[0])
     # Make angular and chi^2 plots linear, otherwise log
-    if re.match('chi_t', variable) is None and re.match('DeltaPhi', variable) is None and re.match('mass', variable) is None:
-        axs[0].set_yscale('log')
-    else:
-        axs[0].set_yscale('linear')
+    # if re.match('chi_t', variable) is None and re.match('DeltaPhi', variable) is None and re.match('mass', variable) is None:
+    #     axs[0].set_yscale('log')
+    # else:
+    #     axs[0].set_yscale('linear')
+    axs[0].set_yscale('linear')
     # Save out the plot
     if not os.path.exists(DESTDIR):
         os.mkdir(DESTDIR)
