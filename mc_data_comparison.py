@@ -211,11 +211,13 @@ def generate_hists(MC_pqs: dict, Data_pqs: dict, variable: str, axis, blind_edge
     for dir_name, sample in MC_pqs.items():
         # Blinds a region of the plot if necessary
         if blind_edges is not None:
-            sample['MC_Data_mask'] = sample['MC_Data_mask'] & (
+            mask = (
                 (sample[variable] < blind_edges[0]) | (sample[variable] > blind_edges[1])
             )
+        else:
+            mask = sample['MC_Data_mask']
         mc_hists[MC_NAMES_PRETTY[dir_name]] = hist.Hist(axis, storage='weight').fill(
-            var=ak.where(sample['MC_Data_mask'], sample[variable], FILL_VALUE),
+            var=ak.where(mask, sample[variable], FILL_VALUE),
             weight=sample['eventWeight']
         )
 
@@ -223,11 +225,13 @@ def generate_hists(MC_pqs: dict, Data_pqs: dict, variable: str, axis, blind_edge
     data_ak = ak.zip({variable: FILL_VALUE})
     for sample in Data_pqs.values():
         if blind_edges is not None:
-            sample['MC_Data_mask'] = sample['MC_Data_mask'] & (
+            mask = (
                 (sample[variable] < blind_edges[0]) | (sample[variable] > blind_edges[1])
             )
+        else:
+            mask = sample['MC_Data_mask']
         data_ak[variable] = ak.concatenate(
-            (data_ak[variable], ak.where(sample['MC_Data_mask'], sample[variable], FILL_VALUE))
+            (data_ak[variable], ak.where(mask, sample[variable], FILL_VALUE))
         )
     data_hist = hist.Hist(axis).fill(var=data_ak[variable])
 
