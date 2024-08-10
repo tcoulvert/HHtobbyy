@@ -67,6 +67,8 @@ VARIABLES = {
     # jet-photon variables
     'DeltaR_jg_min': hist.axis.Regular(30, 0, 5, name='var', label=r'min$(\Delta R(jet, \gamma))$', growth=False, underflow=False, overflow=False), 
     # jet variables
+    'jet1_pt': hist.axis.Regular(40, 20., 250, name='var', label=r'lead jet $p_T$ [GeV]', growth=False, underflow=False, overflow=False),
+    'jet2_pt': hist.axis.Regular(40, 20., 250, name='var', label=r'sublead jet $p_T$ [GeV]', growth=False, underflow=False, overflow=False),
     'n_jets': hist.axis.Integer(0, 10, name='var', label=r'$n_{jets}$', growth=False, underflow=False, overflow=False), 
     'chi_t0': hist.axis.Regular(40, 0., 150, name='var', label=r'$\chi_{t0}^2$', growth=False, underflow=False, overflow=False), 
     'chi_t1': hist.axis.Regular(30, 0., 500, name='var', label=r'$\chi_{t1}^2$', growth=False, underflow=False, overflow=False), 
@@ -164,7 +166,7 @@ def get_dir_lists(dir_lists: dict):
             )
         dir_lists[data_era] = [sample_name for sample_name in MC_NAMES_PRETTY.keys()]
         for sample_name in run_samples['run_samples_list']:
-            if re.search("Data", sample_name) is None:
+            if re.search("Data", sample_name) is None or sample_name not in set(os.listdir(LPC_FILEPREFIX+'/'+data_era)):
                 continue
             dir_lists[data_era].append(sample_name)
 

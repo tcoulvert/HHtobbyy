@@ -17,6 +17,7 @@ vec.register_awkward()
 # lxplus_fileprefix = "/eos/cms/store/group/phys_b2g/HHbbgg/HiggsDNA_parquet/v1"
 LPC_FILEPREFIX = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v1"
 FORCE_RERUN = True
+NO_BSM = True
 
 def add_ttH_vars(sample):
     
@@ -259,25 +260,16 @@ def main():
             'ReadMe_m.swp', 'ReadMe_m.swn', 'ReadMe_m.swm', 'ReadMe_m.swo', '.ReadMe.md.swp', '.ReadMe.md.swx',
             'completed_samples.json'
     }
-
-    # run_set = {
-    #     # 'ttHToGG', 'GluGluToHH',
-    #     # 'GluGlutoBulkGravitontoHHto2B2G_M-300', 'GluGlutoRadiontoHHto2B2G_M-300',
-    #     # 'GluGlutoBulkGravitontoHHto2B2G_M-600', 'GluGlutoRadiontoHHto2B2G_M-600',
-    #     # 'GluGlutoBulkGravitontoHHto2B2G_M-1200', 'GluGlutoRadiontoHHto2B2G_M-1200',
-    #     # 'VBFHHto2B2G_CV_1_C2V_1_C3_1', 'ZHH_HHto2B2G_CV-1p0_C2V-1p0_C3-1p0_TuneCP5_13p6TeV',
-    #     # 'WHH_HHto2B2G_CV-1p0_C2V-1p0_C3-1p0_TuneCP5_13p6TeV'
-    #     'Data_EraC', 'Data_EraD'
-    # }
     
     for data_era in dir_lists.keys():
-        if os.path.exists(LPC_FILEPREFIX+'/'+data_era+'/completed_samples.json') and not FORCE_RERUN:
+        if not FORCE_RERUN and os.path.exists(LPC_FILEPREFIX+'/'+data_era+'/completed_samples.json'):
             with open(LPC_FILEPREFIX+'/'+data_era+'/completed_samples.json', 'r') as f:
                 run_samples = json.load(f)
         else:
             run_samples = {
                 'run_samples_list': []
             }
+
         dont_merge_set = non_parquet_set | set(run_samples['run_samples_list'])
         
         output = os.listdir(
@@ -286,9 +278,15 @@ def main():
         
         output_set = set(output)
         output_set -= dont_merge_set
+
+        if NO_BSM:
+            bsm_set = set()
+            for sample_name in os.listdir(LPC_FILEPREFIX+'/'+data_era):
+                if re.search('_', sample_name) is not None and re.search('Data', sample_name) is None:
+                    bsm_set.add(sample_name)
+            output_set -= bsm_set
         
         dir_lists[data_era] = list(output_set)
-        # dir_lists[data_era] = list(run_set)
         
 
     # MC Era: total era luminosity [fb^-1] #
@@ -346,9 +344,9 @@ def main():
                     sample['cross_section'] = cross_sections[dir_name]
         
                     # Define eventWeight array for hist plotting.
-                    sum_of_gen_weight = ak.sum(ak.where(sample['genWeight'] < 0, -1, 1), axis=0)
-                    sample['eventWeight'] = ak.where(sample['genWeight'] < 0, -1, 1) * (sample['luminosity'] * sample['cross_section'] / sum_of_gen_weight)
-                    # sample['eventWeight'] = sample['genWeight'] * (sample['luminosity'] * sample['cross_section'] / sample['sumGenWeights'])
+                    # sum_of_gen_weight = ak.sum(ak.where(sample['genWeight'] < 0, -1, 1), axis=0)
+                    # sample['eventWeight'] = ak.where(sample['genWeight'] < 0, -1, 1) * (sample['luminosity'] * sample['cross_section'] / sum_of_gen_weight)
+                    sample['eventWeight'] = sample['genWeight'] * (sample['luminosity'] * sample['cross_section'] / sample['sumGenWeights'])
         
                 destdir = LPC_FILEPREFIX+'/'+data_era+'_merged/'+dir_name+'/'+sample_type+'/'
                 if not os.path.exists(destdir):
