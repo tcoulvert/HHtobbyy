@@ -368,6 +368,7 @@ def main():
                     )
                 
                 del sample
+                print('======================== \n', dir_name)
 
     # Ploting over variables for MC and Data
     for variable, axis in VARIABLES.items():

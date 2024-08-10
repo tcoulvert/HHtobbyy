@@ -344,6 +344,11 @@ def main():
                     sample['cross_section'] = cross_sections[dir_name]
         
                     # Define eventWeight array for hist plotting.
+                    # print('========================')
+                    # abs_genWeight = ak.where(sample['genWeight'] < 0, -sample['genWeight'], sample['genWeight'])
+                    # print(f"genWeight max = {ak.max(abs_genWeight, axis=0)}, genWeight min = {ak.min(abs_genWeight, axis=0)}")
+                    # print(f"genWeight mean = {ak.mean(abs_genWeight, axis=0)}, genWeight std.dev. = {ak.std(abs_genWeight, axis=0)}")
+                    # print(f"genWeight = \n{sample['genWeight']}")
                     # sum_of_gen_weight = ak.sum(ak.where(sample['genWeight'] < 0, -1, 1), axis=0)
                     # sample['eventWeight'] = ak.where(sample['genWeight'] < 0, -1, 1) * (sample['luminosity'] * sample['cross_section'] / sum_of_gen_weight)
                     sample['eventWeight'] = sample['genWeight'] * (sample['luminosity'] * sample['cross_section'] / sample['sumGenWeights'])
