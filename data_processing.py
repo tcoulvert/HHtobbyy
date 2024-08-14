@@ -236,10 +236,10 @@ def process_data(signal_filepaths, bkg_filepaths, output_dirpath, seed=None):
     normed_bkg_test_hlf = normed_bkg_test_frame[input_hlf_vars].values
 
 
-    background_list = normed_bkg_list[:len(normed_bkg_list)] # downsampling
+    background_list = normed_bkg_list[:len(normed_sig_list)] # downsampling
     background_test_list = normed_bkg_test_list[:len(normed_sig_test_list)] # downsampling
 
-    background_hlf = normed_bkg_hlf[:len(normed_bkg_hlf)]
+    background_hlf = normed_bkg_hlf[:len(normed_sig_hlf)]
     background_test_hlf = normed_bkg_test_hlf[:len(normed_sig_test_hlf)]
 
     sig_label = np.ones(len(normed_sig_hlf))
