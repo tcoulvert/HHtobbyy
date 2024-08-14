@@ -100,7 +100,6 @@ def process_data(signal_filepaths, bkg_filepaths, output_dirpath, seed=None):
     masked_x_sample = np.ma.array(bkg_train_frame, mask=(bkg_train_frame == FILL_VALUE))
     x_mean = masked_x_sample.mean(axis=0)
     x_std = masked_x_sample.std(axis=0)
-    print("Mean and std calculated.")
 
     # Standardize background
     normed_bkg_train = (masked_x_sample - x_mean)/x_std
@@ -203,11 +202,9 @@ def process_data(signal_filepaths, bkg_filepaths, output_dirpath, seed=None):
     masked_x_sample = np.ma.array(x_flat, mask=zero_entries)
     x_list_mean = masked_x_sample.mean(axis=0)
     x_list_std = masked_x_sample.std(axis=0)
-    print("Mean and std calculated for particle list.")
     del x_sample, x_flat, zero_entries, masked_x_sample # release the memory
 
     def standardize_p_list(inputs):
-        print('registered change')
         to_norm = inputs[:,:,:3]
         zero_entries = (to_norm == 0)
         masked_to_norm = np.ma.array(to_norm, mask=zero_entries)
@@ -241,8 +238,6 @@ def process_data(signal_filepaths, bkg_filepaths, output_dirpath, seed=None):
 
     background_list = normed_bkg_list[:len(normed_bkg_list)] # downsampling
     background_test_list = normed_bkg_test_list[:len(normed_sig_test_list)] # downsampling
-    print(f'signal train number: {normed_sig_list.shape}')
-    print(f'background train number: {background_list.shape}')
 
     background_hlf = normed_bkg_hlf[:len(normed_bkg_hlf)]
     background_test_hlf = normed_bkg_test_hlf[:len(normed_sig_test_hlf)]
@@ -270,4 +265,4 @@ def process_data(signal_filepaths, bkg_filepaths, output_dirpath, seed=None):
     print("Data HLF test: {}".format(data_hlf_test.shape))
 
     ## NOT DOING PROPER HANDLING FOR AUX SAMPLES ##
-    return data_list, data_hlf, label, data_list_test, data_hlf_test, label_test, high_level_fields, input_hlf_vars, hlf_vars_columns
+    return sig_train_frame, sig_test_frame, bkg_train_frame, bkg_test_frame, data_list, data_hlf, label, data_list_test, data_hlf_test, label_test, high_level_fields, input_hlf_vars, hlf_vars_columns
