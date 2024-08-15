@@ -101,6 +101,7 @@ def evaluate(
     mean_area = auc(mean_fprs, base_tpr)
 
     if val_losses_arr is None and train_losses_arr is None:
+        # with open(OUTPUT_DIRPATH + f'{CURRENT_TIME}_IN_perf.json', 'r') as f:
         with open(OUTPUT_DIRPATH + f'{CURRENT_TIME}_IN_perf_{fold_idx}.json', 'r') as f:
             old_IN_perf = json.load(f)
         IN_perf = {
@@ -137,7 +138,7 @@ def evaluate(
             'all_labels': all_labels.tolist()
         }
     if save:
-        with open(OUTPUT_DIRPATH + f'{CURRENT_TIME}_IN_perf_{fold_idx}.json', 'w') as f:
+        with open(OUTPUT_DIRPATH + f'{CURRENT_TIME}_IN_perf.json', 'w') as f:
             json.dump(IN_perf, f)
         with h5py.File(OUTPUT_DIRPATH + f"{CURRENT_TIME}_ReallyInclusive_ROC.h5","w") as out:
             out['FPR'] = mean_fprs

@@ -10,6 +10,28 @@ import pandas as pd
 import awkward as ak
 
 
+def data_list_index_map(variable_name):
+    # Order of these ifs is important b/c 'lepton' contains 'pt', so if you don't check 'pt' last there will be a bug.
+    if re.search('phi', variable_name) is not None:
+        index3 = 2
+    elif re.search('eta', variable_name) is not None:
+        index3 = 1
+    else:
+        index3 = 0
+
+    # Order of these ifs is important b/c diphoton is only called 'pt' or 'eta', so it has to be checked last.
+    if re.search('lepton', variable_name) is not None:
+        if re.search('1', variable_name) is not None:
+            index2 = 0
+        else:
+            index2 = 1
+    elif re.search('MET', variable_name) is not None:
+        index2 = 3
+    else:
+        index2 = 2
+    
+    return index2, index3
+
 def process_data(signal_filepaths, bkg_filepaths, output_dirpath, seed=None):
     # Load parquet files #
     
