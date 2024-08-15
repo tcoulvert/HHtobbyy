@@ -86,8 +86,8 @@ def evaluate(
         fpr[0] = 0.0
         fprs.append(fpr)
         thresholds.append(threshold)
-        all_preds.append(copy.deepcopy(all_pred))
-        all_labels.append(copy.deepcopy(all_label))
+        all_preds.append(copy.deepcopy(all_pred.tolist()))
+        all_labels.append(copy.deepcopy(all_label.tolist()))
 
     thresholds = np.array(thresholds)
     mean_thresholds = thresholds.mean(axis=0)
@@ -102,7 +102,7 @@ def evaluate(
 
     if val_losses_arr is None and train_losses_arr is None:
         with open(OUTPUT_DIRPATH + f'{CURRENT_TIME}_IN_perf_{fold_idx}.json', 'r') as f:
-            old_IN_perf = json.load(IN_perf, f)
+            old_IN_perf = json.load(f)
         IN_perf = {
             'train_losses_arr': old_IN_perf['train_losses_arr'],
             'val_losses_arr': old_IN_perf['val_losses_arr'],
@@ -115,10 +115,10 @@ def evaluate(
             'mean_thresholds': mean_thresholds.tolist(),
             'base_tpr': base_tpr.tolist(),
             'mean_area': float(mean_area),
-            'all_preds': all_preds.tolist(),
-            'all_labels': all_labels.tolist(),
-            'mean_pred': all_preds.mean(axis=0),
-            'mean_label': all_labels.mean(axis=0),
+            'all_preds': all_preds,
+            'all_labels': all_labels,
+            'mean_pred': np.mean(all_preds, axis=0).tolist(),
+            'mean_label': np.mean(all_labels, axis=0).tolist(),
         }
     else:
         IN_perf = {
