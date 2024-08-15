@@ -25,7 +25,7 @@ def evaluate(
         p_list, hlf, label, 
         OUTPUT_DIRPATH, CURRENT_TIME, skf, best_conf,
         train_losses_arr=None, val_losses_arr=None, save=False, only_fold_idx=None,
-        store_event_num=False
+        # aux_df=None
     ):
     model = InclusiveNetwork(
         best_conf['hidden_layers'], best_conf['initial_nodes'], best_conf['dropout'], 
