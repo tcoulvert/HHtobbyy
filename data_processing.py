@@ -295,7 +295,7 @@ def process_data(signal_filepaths, bkg_filepaths, output_dirpath, seed=None):
     p = rng.permutation(len(data_list))
     data_list, data_hlf, label = data_list[p], data_hlf[p], label[p]
     # Build and shuffle aux df
-    data_aux = np.concatenate((sig_aux_train_frame, bkg_aux_train_frame))
+    data_aux = pd.concat([sig_aux_train_frame, bkg_aux_train_frame])
     data_aux = data_aux.reindex(p)
     print("Data list: {}".format(data_list.shape))
     print("Data HLF: {}".format(data_hlf.shape))
@@ -308,7 +308,7 @@ def process_data(signal_filepaths, bkg_filepaths, output_dirpath, seed=None):
     p_test = rng.permutation(len(data_list_test))
     data_list_test, data_hlf_test, label_test = data_list_test[p_test], data_hlf_test[p_test], label_test[p_test]
     # Build and shuffle aux df
-    data_test_aux = np.concatenate((sig_aux_test_frame, bkg_aux_test_frame))
+    data_test_aux = pd.concat([sig_aux_test_frame, bkg_aux_test_frame])
     data_test_aux = data_test_aux.reindex(p_test)
     print("Data list test: {}".format(data_list_test.shape))
     print("Data HLF test: {}".format(data_hlf_test.shape))
