@@ -93,26 +93,45 @@ def process_data(signal_filepaths, bkg_filepaths, output_dirpath, seed=None):
 
 
     # Randomly shuffle DFs and split into train and test samples #
-    sig_frame = sig_frame.sample(frac=1, random_state=seed).reset_index(drop=True)
-    bkg_frame = bkg_frame.sample(frac=1, random_state=seed).reset_index(drop=True)
+    rng = np.random.default_rng(seed=seed)
+    sig_idx = rng.permutation(sig_frame.index)
+    bkg_idx = rng.permutation(bkg_frame.index)
+    sig_frame = sig_frame.reindex(sig_idx)
+    sig_aux_frame = sig_aux_frame.reindex(sig_idx)
+    bkg_frame = bkg_frame.reindex(bkg_idx)
+    bkg_aux_frame = bkg_aux_frame.reindex(bkg_idx)
+    # sig_frame = sig_frame.sample(frac=1, random_state=seed).reset_index(drop=True)
+    # bkg_frame = bkg_frame.sample(frac=1, random_state=seed).reset_index(drop=True)
 
-    def train_test_split_df(sig_df, bkg_df, method='modulus'):
+    def train_test_split_df(sig_df, sig_aux_df, bkg_df, bkg_aux_df, method='modulus'):
         if method == 'modulus':
             # Train/Val events are those with odd event #s, test events have even event #s
-            sig_train_frame = sig_df.loc[(sig_df['event'] % 2).ne(0)].reset_index(drop=True)
-            sig_test_frame = sig_df.loc[(sig_df['event'] % 2).ne(1)].reset_index(drop=True)
-            bkg_train_frame = bkg_df.loc[(bkg_df['event'] % 2).ne(0)].reset_index(drop=True)
-            bkg_test_frame = bkg_df.loc[(bkg_df['event'] % 2).ne(1)].reset_index(drop=True)
-        elif method == 'sample':
-            sig_train_frame = sig_df.sample(frac=0.75, random_state=seed).reset_index(drop=True)
-            sig_test_frame = sig_df.drop(sig_train_frame.index).reset_index(drop=True)
-            bkg_train_frame = bkg_df.sample(frac=0.75, random_state=seed).reset_index(drop=True)
-            bkg_test_frame = bkg_df.drop(bkg_train_frame.index).reset_index(drop=True)
+            sig_train_frame = sig_df.loc[(sig_aux_df['event'] % 2).ne(0)].reset_index(drop=True)
+            sig_test_frame = sig_df.loc[(sig_aux_df['event'] % 2).ne(1)].reset_index(drop=True)
+
+            sig_aux_train_frame = sig_aux_df.loc[(sig_aux_df['event'] % 2).ne(0)].reset_index(drop=True)
+            sig_aux_test_frame = sig_aux_df.loc[(sig_aux_df['event'] % 2).ne(1)].reset_index(drop=True)
+
+            bkg_train_frame = bkg_df.loc[(bkg_aux_df['event'] % 2).ne(0)].reset_index(drop=True)
+            bkg_test_frame = bkg_df.loc[(bkg_aux_df['event'] % 2).ne(1)].reset_index(drop=True)
+
+            bkg_aux_train_frame = bkg_aux_df.loc[(bkg_aux_df['event'] % 2).ne(0)].reset_index(drop=True)
+            bkg_aux_test_frame = bkg_aux_df.loc[(bkg_aux_df['event'] % 2).ne(1)].reset_index(drop=True)
+        # elif method == 'sample':
+        #     sig_train_frame = sig_df.sample(frac=0.75, random_state=seed).reset_index(drop=True)
+        #     sig_test_frame = sig_df.drop(sig_train_frame.index).reset_index(drop=True)
+        #     bkg_train_frame = bkg_df.sample(frac=0.75, random_state=seed).reset_index(drop=True)
+        #     bkg_test_frame = bkg_df.drop(bkg_train_frame.index).reset_index(drop=True)
         else:
             raise Exception(f"Only 2 accepted methods: 'sample' and 'modulus'. You input {method}")
-        return sig_train_frame, sig_test_frame, bkg_train_frame, bkg_test_frame
+        return sig_train_frame, sig_test_frame, sig_aux_train_frame, sig_aux_test_frame, bkg_train_frame, bkg_test_frame, bkg_aux_train_frame, bkg_aux_test_frame
 
-    sig_train_frame, sig_test_frame, bkg_train_frame, bkg_test_frame = train_test_split_df(sig_frame, bkg_frame)
+    (
+        sig_train_frame, sig_test_frame, 
+        sig_aux_train_frame, sig_aux_test_frame, 
+        bkg_train_frame, bkg_test_frame,
+        bkg_aux_train_frame, bkg_aux_test_frame
+    ) = train_test_split_df(sig_frame, sig_aux_frame, bkg_frame, bkg_aux_frame)
 
 
     # Perform the standardization #
@@ -268,22 +287,37 @@ def process_data(signal_filepaths, bkg_filepaths, output_dirpath, seed=None):
     sig_test_label = np.ones(len(normed_sig_test_hlf))
     bkg_test_label = np.zeros(len(background_test_hlf))
 
+    # Build train data arrays
     data_list = np.concatenate((normed_sig_list, background_list))
     data_hlf = np.concatenate((normed_sig_hlf, background_hlf))
     label = np.concatenate((sig_label, bkg_label))
-    rng = np.random.default_rng(seed=seed)
+    # Shuffle train arrays
     p = rng.permutation(len(data_list))
     data_list, data_hlf, label = data_list[p], data_hlf[p], label[p]
+    # Build and shuffle aux df
+    data_aux = np.concatenate((sig_aux_train_frame, bkg_aux_train_frame))
+    data_aux = data_aux.reindex(p)
     print("Data list: {}".format(data_list.shape))
     print("Data HLF: {}".format(data_hlf.shape))
 
+    # Build test data arrays
     data_list_test = np.concatenate((normed_sig_test_list, background_test_list))
     data_hlf_test = np.concatenate((normed_sig_test_hlf, background_test_hlf))
     label_test = np.concatenate((sig_test_label, bkg_test_label))
+    # Shuffle test arrays
     p_test = rng.permutation(len(data_list_test))
     data_list_test, data_hlf_test, label_test = data_list_test[p_test], data_hlf_test[p_test], label_test[p_test]
+    # Build and shuffle aux df
+    data_test_aux = np.concatenate((sig_aux_test_frame, bkg_aux_test_frame))
+    data_test_aux = data_test_aux.reindex(p_test)
     print("Data list test: {}".format(data_list_test.shape))
     print("Data HLF test: {}".format(data_hlf_test.shape))
 
-    ## NOT DOING PROPER HANDLING FOR AUX SAMPLES ##
-    return sig_train_frame, sig_test_frame, bkg_train_frame, bkg_test_frame, data_list, data_hlf, label, data_list_test, data_hlf_test, label_test, high_level_fields, input_hlf_vars, hlf_vars_columns
+    return (
+        sig_train_frame, sig_test_frame, 
+        bkg_train_frame, bkg_test_frame, 
+        data_list, data_hlf, label, 
+        data_list_test, data_hlf_test, label_test, 
+        high_level_fields, input_hlf_vars, hlf_vars_columns,
+        data_aux, data_test_aux
+    )
