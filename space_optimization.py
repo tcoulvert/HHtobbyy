@@ -18,7 +18,7 @@ from InclusiveNetwork import InclusiveNetwork
 from ParticleHLF import ParticleHLF
 from train import train
 
-def optimize_hyperparams(skf, data_list, data_hlf, label, config_filename, len_input_hlf_vars, epochs=100):
+def optimize_hyperparams(skf, data_list, data_hlf, label, config_filename, len_input_hlf_vars, epochs=100, criterion=nn.NLLLoss()):
     space  = [
         Integer(1, 3, name='hidden_layers'),
         Integer(10, 500, name='initial_nodes'),
@@ -64,7 +64,6 @@ def optimize_hyperparams(skf, data_list, data_hlf, label, config_filename, len_i
             # model = InclusiveNetwork(X['hidden_layers'], X['initial_nodes'], X['dropout'], X['gru_layers'], X['gru_size'], X['dropout_g'])
 
             optimizer = AMSGrad(model.parameters(), lr=X['learning_rate'], weight_decay=X['L2_reg'])
-            criterion= nn.NLLLoss()
             scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer,mode ='min',factor=0.5,patience=4)
             best_acc, train_losses, val_losses = train(
                 epochs, model, criterion, optimizer, scheduler,
