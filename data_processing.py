@@ -275,12 +275,13 @@ def process_data(signal_filepaths, bkg_filepaths, output_dirpath, seed=None):
     normed_bkg_hlf = normed_bkg_train_frame[input_hlf_vars].values
     normed_bkg_test_hlf = normed_bkg_test_frame[input_hlf_vars].values
 
-
-    background_list = normed_bkg_list[:len(normed_sig_list)] # downsampling
-    background_test_list = normed_bkg_test_list[:len(normed_sig_test_list)] # downsampling
-
+    # downsampling
+    background_list = normed_bkg_list[:len(normed_sig_list)] 
+    background_test_list = normed_bkg_test_list[:len(normed_sig_test_list)]
     background_hlf = normed_bkg_hlf[:len(normed_sig_hlf)]
     background_test_hlf = normed_bkg_test_hlf[:len(normed_sig_test_hlf)]
+    background_train_aux = bkg_aux_train_frame.loc[:len(sig_aux_train_frame)]
+    background_test_aux = bkg_aux_test_frame.loc[:len(sig_aux_test_frame)]
 
     sig_label = np.ones(len(normed_sig_hlf))
     bkg_label = np.zeros(len(background_hlf))
@@ -295,7 +296,7 @@ def process_data(signal_filepaths, bkg_filepaths, output_dirpath, seed=None):
     p = rng.permutation(len(data_list))
     data_list, data_hlf, label = data_list[p], data_hlf[p], label[p]
     # Build and shuffle aux df
-    data_aux = pd.concat([sig_aux_train_frame, bkg_aux_train_frame])
+    data_aux = pd.concat([sig_aux_train_frame, background_train_aux], ignore_index=True)
     data_aux = data_aux.reindex(p)
     print("Data list: {}".format(data_list.shape))
     print("Data HLF: {}".format(data_hlf.shape))
@@ -308,7 +309,7 @@ def process_data(signal_filepaths, bkg_filepaths, output_dirpath, seed=None):
     p_test = rng.permutation(len(data_list_test))
     data_list_test, data_hlf_test, label_test = data_list_test[p_test], data_hlf_test[p_test], label_test[p_test]
     # Build and shuffle aux df
-    data_test_aux = pd.concat([sig_aux_test_frame, bkg_aux_test_frame])
+    data_test_aux = pd.concat([sig_aux_test_frame, background_test_aux], ignore_index=True)
     data_test_aux = data_test_aux.reindex(p_test)
     print("Data list test: {}".format(data_list_test.shape))
     print("Data HLF test: {}".format(data_hlf_test.shape))
