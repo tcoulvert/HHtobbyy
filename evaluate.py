@@ -136,7 +136,9 @@ def evaluate(
             'base_tpr': base_tpr.tolist(),
             'mean_area': float(mean_area),
             'all_preds': all_preds.tolist(),
-            'all_labels': all_labels.tolist()
+            'all_labels': all_labels.tolist(),
+            'mean_pred': np.mean(all_preds, axis=0).tolist(),
+            'mean_label': np.mean(all_labels, axis=0).tolist(),
         }
     if save:
         with open(OUTPUT_DIRPATH + f'{CURRENT_TIME}_IN_perf.json', 'w') as f:
