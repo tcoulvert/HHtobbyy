@@ -45,11 +45,10 @@ def evaluate(
     all_preds, all_labels = [], []
     all_pred = np.zeros(shape=(len(hlf),2))
     all_label = np.zeros(shape=(len(hlf)))
-    # criterion= nn.NLLLoss()
 
     # CURRENT_TIME = '2024-08-08_17-12-14'
     for fold_idx in range(skf.get_n_splits()):
-        if only_fold_idx is not None and fold_idx == only_fold_idx:
+        if only_fold_idx is not None and fold_idx != only_fold_idx:
             continue
         model.load_state_dict(torch.load(OUTPUT_DIRPATH + f'{CURRENT_TIME}_ReallyTopclassStyle_{fold_idx}.torch'))
         model.eval()
@@ -135,8 +134,8 @@ def evaluate(
             'mean_thresholds': mean_thresholds.tolist(),
             'base_tpr': base_tpr.tolist(),
             'mean_area': float(mean_area),
-            'all_preds': all_preds.tolist(),
-            'all_labels': all_labels.tolist(),
+            'all_preds': all_preds,
+            'all_labels': all_labels,
             'mean_pred': np.mean(all_preds, axis=0).tolist(),
             'mean_label': np.mean(all_labels, axis=0).tolist(),
         }

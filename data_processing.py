@@ -32,7 +32,7 @@ def data_list_index_map(variable_name):
     
     return index2, index3
 
-def process_data(signal_filepaths, bkg_filepaths, output_dirpath, seed=None):
+def process_data(signal_filepaths, bkg_filepaths, output_dirpath, seed=None, return_pre_std=False):
     # Load parquet files #
     
     sig_samples_list = [ak.from_parquet(glob.glob(dir_path)) for dir_path in signal_filepaths]
@@ -257,12 +257,18 @@ def process_data(signal_filepaths, bkg_filepaths, output_dirpath, seed=None):
     normed_bkg_test_list = standardize_p_list(bkg_test_list)
 
     if re.search('base_vars', output_dirpath) is not None:
-        input_hlf_vars = ['puppiMET_sumEt','DeltaPhi_j1MET','DeltaPhi_j2MET','DeltaR_jg_min','n_jets','chi_t0',
-                                    'chi_t1','abs_CosThetaStar_CS','abs_CosThetaStar_jj']
+        input_hlf_vars = [
+            'puppiMET_sumEt','DeltaPhi_j1MET','DeltaPhi_j2MET','DeltaR_jg_min','n_jets','chi_t0', 'chi_t1',
+            # 'abs_CosThetaStar_CS','abs_CosThetaStar_jj'
+            'CosThetaStar_CS','CosThetaStar_jj',
+        ]
     elif re.search('extra_vars', output_dirpath) is not None:
-        input_hlf_vars = ['puppiMET_sumEt','DeltaPhi_j1MET','DeltaPhi_j2MET','DeltaR_jg_min','n_jets','chi_t0',
-                        'chi_t1','abs_CosThetaStar_CS','abs_CosThetaStar_jj','dijet_mass', 'leadBjet_leadLepton', 
-                        'leadBjet_subleadLepton', 'subleadBjet_leadLepton', 'subleadBjet_subleadLepton']
+        input_hlf_vars = [
+            'puppiMET_sumEt','DeltaPhi_j1MET','DeltaPhi_j2MET','DeltaR_jg_min','n_jets','chi_t0', 'chi_t1',
+            # 'abs_CosThetaStar_CS','abs_CosThetaStar_jj',
+            'CosThetaStar_CS','CosThetaStar_jj',
+            'dijet_mass', 'leadBjet_leadLepton', 'leadBjet_subleadLepton', 'subleadBjet_leadLepton', 'subleadBjet_subleadLepton'
+        ]
     else:
         raise Exception("Currently must use either base_vars of extra_vars.")
 
@@ -314,11 +320,19 @@ def process_data(signal_filepaths, bkg_filepaths, output_dirpath, seed=None):
     print("Data list test: {}".format(data_list_test.shape))
     print("Data HLF test: {}".format(data_hlf_test.shape))
 
-    return (
-        sig_train_frame, sig_test_frame, 
-        bkg_train_frame, bkg_test_frame, 
-        data_list, data_hlf, label, 
-        data_list_test, data_hlf_test, label_test, 
-        high_level_fields, input_hlf_vars, hlf_vars_columns,
-        data_aux, data_test_aux
-    )
+    if return_pre_std:
+        return (
+            sig_train_frame, sig_test_frame, 
+            bkg_train_frame, bkg_test_frame, 
+            data_list, data_hlf, label, 
+            data_list_test, data_hlf_test, label_test, 
+            high_level_fields, input_hlf_vars, hlf_vars_columns,
+            data_aux, data_test_aux
+        )
+    else:
+        return (
+            data_list, data_hlf, label, 
+            data_list_test, data_hlf_test, label_test, 
+            high_level_fields, input_hlf_vars, hlf_vars_columns,
+            data_aux, data_test_aux
+        )
