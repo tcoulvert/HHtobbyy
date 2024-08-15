@@ -48,7 +48,6 @@ def process_data(signal_filepaths, bkg_filepaths, output_dirpath, seed=None):
     pandas_samples = {}
     if re.search('base_vars', output_dirpath) is not None:
         high_level_fields = {
-            'event', # event number
             'puppiMET_sumEt', 'puppiMET_pt', 'puppiMET_eta', 'puppiMET_phi', # MET variables
             'DeltaPhi_j1MET', 'DeltaPhi_j2MET', # jet-MET variables
             'DeltaR_jg_min', 'n_jets', 'chi_t0', 'chi_t1', # jet variables
@@ -59,7 +58,6 @@ def process_data(signal_filepaths, bkg_filepaths, output_dirpath, seed=None):
         }
     elif re.search('extra_vars', output_dirpath) is not None:
         high_level_fields = {
-            'event', # event number
             'puppiMET_sumEt', 'puppiMET_pt', 'puppiMET_eta', 'puppiMET_phi', # MET variables
             'DeltaPhi_j1MET', 'DeltaPhi_j2MET', # jet-MET variables
             'DeltaR_jg_min', 'n_jets', 'chi_t0', 'chi_t1', # jet variables
@@ -76,6 +74,7 @@ def process_data(signal_filepaths, bkg_filepaths, output_dirpath, seed=None):
 
     pandas_aux_samples = {}
     high_level_aux_fields = {
+        'event', # event number
         'mass', 'dijet_mass' # diphoton and bb-dijet mass
     } # https://stackoverflow.com/questions/67003141/how-to-remove-a-field-from-a-collection-of-records-created-by-awkward-zip
 

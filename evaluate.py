@@ -24,7 +24,8 @@ def fill_array(array_to_fill, value, index, batch_size):
 def evaluate(
         p_list, hlf, label, 
         OUTPUT_DIRPATH, CURRENT_TIME, skf, best_conf,
-        train_losses_arr=None, val_losses_arr=None, save=False, only_fold_idx=None
+        train_losses_arr=None, val_losses_arr=None, save=False, only_fold_idx=None,
+        store_event_num=False
     ):
     model = InclusiveNetwork(
         best_conf['hidden_layers'], best_conf['initial_nodes'], best_conf['dropout'], 
@@ -44,7 +45,7 @@ def evaluate(
     all_preds, all_labels = [], []
     all_pred = np.zeros(shape=(len(hlf),2))
     all_label = np.zeros(shape=(len(hlf)))
-    criterion= nn.NLLLoss()
+    # criterion= nn.NLLLoss()
 
     # CURRENT_TIME = '2024-08-08_17-12-14'
     for fold_idx in range(skf.get_n_splits()):
