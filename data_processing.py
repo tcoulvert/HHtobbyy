@@ -238,33 +238,33 @@ def process_data(signal_filepaths, bkg_filepaths, output_dirpath, seed=None, ret
     bkg_train_list = to_p_list(bkg_train_frame)
     bkg_test_list = to_p_list(bkg_test_frame)
 
-#    # Standardize the particle list
-#    x_sample = bkg_train_list[:,:,:3] # don't standardize boolean flags
-#    # Flatten out
-#    x_flat = x_sample.reshape((x_sample.shape[0]*x_sample.shape[1], x_sample.shape[2]))
-#    # Masked out zero
-#    zero_entries = (x_flat == 0)
-#    masked_x_sample = np.ma.array(x_flat, mask=zero_entries)
-#    x_list_mean = masked_x_sample.mean(axis=0)
-#    x_list_std = masked_x_sample.std(axis=0)
-#    del x_sample, x_flat, zero_entries, masked_x_sample # release the memory
-#
-#    def standardize_p_list(inputs):
-#        to_norm = inputs[:,:,:3]
-#        zero_entries = (to_norm == 0)
-#        masked_to_norm = np.ma.array(to_norm, mask=zero_entries)
-#        normed_x = (masked_to_norm - x_list_mean)/x_list_std
-#        return np.concatenate((normed_x.filled(0), inputs[:,:,3:]), axis=2)
-#        
-#    normed_sig_list = standardize_p_list(sig_train_list)
-#    normed_sig_test_list = standardize_p_list(sig_test_list)
-#    normed_bkg_list = standardize_p_list(bkg_train_list)
-#    normed_bkg_test_list = standardize_p_list(bkg_test_list)
+    # Standardize the particle list
+    x_sample = bkg_train_list[:,:,:3] # don't standardize boolean flags
+    # Flatten out
+    x_flat = x_sample.reshape((x_sample.shape[0]*x_sample.shape[1], x_sample.shape[2]))
+    # Masked out zero
+    zero_entries = (x_flat == 0)
+    masked_x_sample = np.ma.array(x_flat, mask=zero_entries)
+    x_list_mean = masked_x_sample.mean(axis=0)
+    x_list_std = masked_x_sample.std(axis=0)
+    del x_sample, x_flat, zero_entries, masked_x_sample # release the memory
+
+    def standardize_p_list(inputs):
+        to_norm = inputs[:,:,:3]
+        zero_entries = (to_norm == 0)
+        masked_to_norm = np.ma.array(to_norm, mask=zero_entries)
+        normed_x = (masked_to_norm - x_list_mean)/x_list_std
+        return np.concatenate((normed_x.filled(0), inputs[:,:,3:]), axis=2)
         
-    normed_sig_list = sig_train_list
-    normed_sig_test_list = sig_test_list
-    normed_bkg_list = bkg_train_list
-    normed_bkg_test_list = bkg_test_list
+    normed_sig_list = standardize_p_list(sig_train_list)
+    normed_sig_test_list = standardize_p_list(sig_test_list)
+    normed_bkg_list = standardize_p_list(bkg_train_list)
+    normed_bkg_test_list = standardize_p_list(bkg_test_list)
+        
+    # normed_sig_list = sig_train_list
+    # normed_sig_test_list = sig_test_list
+    # normed_bkg_list = bkg_train_list
+    # normed_bkg_test_list = bkg_test_list
 
     if re.search('base_vars', output_dirpath) is not None:
         input_hlf_vars = [
@@ -291,24 +291,24 @@ def process_data(signal_filepaths, bkg_filepaths, output_dirpath, seed=None, ret
     normed_bkg_hlf = normed_bkg_train_frame[input_hlf_vars].values
     normed_bkg_test_hlf = normed_bkg_test_frame[input_hlf_vars].values
 
-#    # downsampling
-    # background_list = normed_bkg_list[:len(normed_sig_list)] 
-    # background_test_list = normed_bkg_test_list[:len(normed_sig_test_list)]
-    # background_hlf = normed_bkg_hlf[:len(normed_sig_hlf)]
-    # background_test_hlf = normed_bkg_test_hlf[:len(normed_sig_test_hlf)]
-    # background_train_aux = bkg_aux_train_frame.loc[:len(sig_aux_train_frame)]
-    # background_test_aux = bkg_aux_test_frame.loc[:len(sig_aux_test_frame)]
-    # background_train_df = bkg_train_frame.loc[:len(sig_train_frame)]
-    # background_test_df = bkg_test_frame.loc[:len(sig_test_frame)]
+   # downsampling
+    background_list = normed_bkg_list[:len(normed_sig_list)] 
+    background_test_list = normed_bkg_test_list[:len(normed_sig_test_list)]
+    background_hlf = normed_bkg_hlf[:len(normed_sig_hlf)]
+    background_test_hlf = normed_bkg_test_hlf[:len(normed_sig_test_hlf)]
+    background_train_aux = bkg_aux_train_frame.loc[:len(sig_aux_train_frame)]
+    background_test_aux = bkg_aux_test_frame.loc[:len(sig_aux_test_frame)]
+    background_train_df = bkg_train_frame.loc[:len(sig_train_frame)]
+    background_test_df = bkg_test_frame.loc[:len(sig_test_frame)]
 
-    background_list = normed_bkg_list
-    background_test_list = normed_bkg_test_list
-    background_hlf = normed_bkg_hlf
-    background_test_hlf = normed_bkg_test_hlf
-    background_train_aux = bkg_aux_train_frame
-    background_test_aux = bkg_aux_test_frame
-    background_train_df = bkg_train_frame
-    background_test_df = bkg_test_frame
+    # background_list = normed_bkg_list
+    # background_test_list = normed_bkg_test_list
+    # background_hlf = normed_bkg_hlf
+    # background_test_hlf = normed_bkg_test_hlf
+    # background_train_aux = bkg_aux_train_frame
+    # background_test_aux = bkg_aux_test_frame
+    # background_train_df = bkg_train_frame
+    # background_test_df = bkg_test_frame
 
     sig_label = np.ones(len(normed_sig_hlf))
     bkg_label = np.zeros(len(background_hlf))
