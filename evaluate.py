@@ -101,8 +101,7 @@ def evaluate(
     mean_area = auc(mean_fprs, base_tpr)
 
     if val_losses_arr is None and train_losses_arr is None:
-        # with open(OUTPUT_DIRPATH + f'{CURRENT_TIME}_IN_perf.json', 'r') as f:
-        with open(OUTPUT_DIRPATH + f'{CURRENT_TIME}_IN_perf_{fold_idx}.json', 'r') as f:
+        with open(OUTPUT_DIRPATH + f'{CURRENT_TIME}_IN_perf.json', 'r') as f:
             old_IN_perf = json.load(f)
         IN_perf = {
             'train_losses_arr': old_IN_perf['train_losses_arr'],
