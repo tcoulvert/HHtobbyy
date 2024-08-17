@@ -48,8 +48,8 @@ def process_data(signal_filepaths, bkg_filepaths, output_dirpath, seed=None, ret
     pandas_samples = {}
     if re.search('base_vars', output_dirpath) is not None:
         high_level_fields = {
-            'event', # event number
-            'eventWeight',  # computed eventWeight using (genWeight * lumi * xs / sum_of_genWeights)
+            # 'event', # event number
+            # 'eventWeight',  # computed eventWeight using (genWeight * lumi * xs / sum_of_genWeights)
             'puppiMET_sumEt', 'puppiMET_pt', 'puppiMET_eta', 'puppiMET_phi', # MET variables
             'DeltaPhi_j1MET', 'DeltaPhi_j2MET', # jet-MET variables
             'DeltaR_jg_min', 'n_jets', 'chi_t0', 'chi_t1', # jet variables
@@ -61,7 +61,7 @@ def process_data(signal_filepaths, bkg_filepaths, output_dirpath, seed=None, ret
         }
     elif re.search('extra_vars', output_dirpath) is not None:
         high_level_fields = {
-            'event', # event number
+            # 'event', # event number
             # 'eventWeight',  # computed eventWeight using (genWeight * lumi * xs / sum_of_genWeights)
             'puppiMET_sumEt', 'puppiMET_pt', 'puppiMET_eta', 'puppiMET_phi', # MET variables
             'DeltaPhi_j1MET', 'DeltaPhi_j2MET', # jet-MET variables
@@ -81,6 +81,7 @@ def process_data(signal_filepaths, bkg_filepaths, output_dirpath, seed=None, ret
     pandas_aux_samples = {}
     high_level_aux_fields = {
         'event', # event number
+        'eventWeight',  # computed eventWeight using (genWeight * lumi * xs / sum_of_genWeights)
         'mass', 'dijet_mass' # diphoton and bb-dijet mass
     } # https://stackoverflow.com/questions/67003141/how-to-remove-a-field-from-a-collection-of-records-created-by-awkward-zip
 
@@ -320,7 +321,7 @@ def process_data(signal_filepaths, bkg_filepaths, output_dirpath, seed=None, ret
     p = rng.permutation(len(data_list))
     data_list, data_hlf, label = data_list[p], data_hlf[p], label[p]
     # Build and shuffle train DFs
-    data_df = pd.concat([sig_frame, bkg_frame], ignore_index=True)
+    data_df = pd.concat([sig_train_frame, bkg_train_frame], ignore_index=True)
     data_df = data_df.reindex(p)
     data_aux = pd.concat([sig_aux_train_frame, background_train_aux], ignore_index=True)
     data_aux = data_aux.reindex(p)
