@@ -107,8 +107,6 @@ def process_data(signal_filepaths, bkg_filepaths, output_dirpath, seed=None, ret
     sig_aux_frame = sig_aux_frame.reindex(sig_idx)
     bkg_frame = bkg_frame.reindex(bkg_idx)
     bkg_aux_frame = bkg_aux_frame.reindex(bkg_idx)
-    # sig_frame = sig_frame.sample(frac=1, random_state=seed).reset_index(drop=True)
-    # bkg_frame = bkg_frame.sample(frac=1, random_state=seed).reset_index(drop=True)
 
     def train_test_split_df(sig_df, sig_aux_df, bkg_df, bkg_aux_df, method='modulus'):
         if method == 'modulus':
@@ -294,12 +292,14 @@ def process_data(signal_filepaths, bkg_filepaths, output_dirpath, seed=None, ret
     normed_bkg_test_hlf = normed_bkg_test_frame[input_hlf_vars].values
 
 #    # downsampling
-#    background_list = normed_bkg_list[:len(normed_sig_list)] 
-#    background_test_list = normed_bkg_test_list[:len(normed_sig_test_list)]
-#    background_hlf = normed_bkg_hlf[:len(normed_sig_hlf)]
-#    background_test_hlf = normed_bkg_test_hlf[:len(normed_sig_test_hlf)]
-#    background_train_aux = bkg_aux_train_frame.loc[:len(sig_aux_train_frame)]
-#    background_test_aux = bkg_aux_test_frame.loc[:len(sig_aux_test_frame)]
+    # background_list = normed_bkg_list[:len(normed_sig_list)] 
+    # background_test_list = normed_bkg_test_list[:len(normed_sig_test_list)]
+    # background_hlf = normed_bkg_hlf[:len(normed_sig_hlf)]
+    # background_test_hlf = normed_bkg_test_hlf[:len(normed_sig_test_hlf)]
+    # background_train_aux = bkg_aux_train_frame.loc[:len(sig_aux_train_frame)]
+    # background_test_aux = bkg_aux_test_frame.loc[:len(sig_aux_test_frame)]
+    # background_train_df = bkg_train_frame.loc[:len(sig_train_frame)]
+    # background_test_df = bkg_test_frame.loc[:len(sig_test_frame)]
 
     background_list = normed_bkg_list
     background_test_list = normed_bkg_test_list
@@ -307,6 +307,8 @@ def process_data(signal_filepaths, bkg_filepaths, output_dirpath, seed=None, ret
     background_test_hlf = normed_bkg_test_hlf
     background_train_aux = bkg_aux_train_frame
     background_test_aux = bkg_aux_test_frame
+    background_train_df = bkg_train_frame
+    background_test_df = bkg_test_frame
 
     sig_label = np.ones(len(normed_sig_hlf))
     bkg_label = np.zeros(len(background_hlf))
@@ -321,7 +323,7 @@ def process_data(signal_filepaths, bkg_filepaths, output_dirpath, seed=None, ret
     p = rng.permutation(len(data_list))
     data_list, data_hlf, label = data_list[p], data_hlf[p], label[p]
     # Build and shuffle train DFs
-    data_df = pd.concat([sig_train_frame, bkg_train_frame], ignore_index=True)
+    data_df = pd.concat([sig_train_frame, background_train_df], ignore_index=True)
     data_df = data_df.reindex(p)
     data_aux = pd.concat([sig_aux_train_frame, background_train_aux], ignore_index=True)
     data_aux = data_aux.reindex(p)
@@ -336,7 +338,7 @@ def process_data(signal_filepaths, bkg_filepaths, output_dirpath, seed=None, ret
     p_test = rng.permutation(len(data_list_test))
     data_list_test, data_hlf_test, label_test = data_list_test[p_test], data_hlf_test[p_test], label_test[p_test]
     # Build and shuffle test DFs
-    data_test_df = pd.concat([sig_test_frame, bkg_test_frame], ignore_index=True)
+    data_test_df = pd.concat([sig_test_frame, background_test_df], ignore_index=True)
     data_test_df = data_test_df.reindex(p_test)
     data_test_aux = pd.concat([sig_aux_test_frame, background_test_aux], ignore_index=True)
     data_test_aux = data_test_aux.reindex(p_test)
