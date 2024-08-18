@@ -15,7 +15,7 @@ def train(
     best_model = model.state_dict()
     best_acc = 0.0
     train_losses ,val_losses = [],[]
-    callback = EarlyStopping(patience=10)
+    callback = EarlyStopping(patience=7)
     callback.on_train_begin()
     breakdown = False
     for epoch in range(num_epochs):
@@ -61,13 +61,15 @@ def train(
                 # forward pass
                 outputs = model(particles_data, hlf_data)
                 _, preds = torch.max(outputs.data, 1)
+                print(outputs.dtype)
+                print(y_data.dtype)
                 # loss = criterion(outputs, y_data)
                 print(f"y_data shape = {y_data.shape}")
                 print(f"unsqueezed y_data shape = {torch.unsqueeze(y_data, 1).shape}")
                 print(f"output shape = {outputs.shape}")
                 print(f"squeezed output shape = {torch.squeeze(outputs).shape}")
-                # loss = criterion(outputs, torch.unsqueeze(y_data, 1))
-                loss = criterion(torch.squeeze(outputs), y_data)
+                loss = criterion(outputs, torch.unsqueeze(y_data, 1))
+                # loss = criterion(torch.squeeze(outputs), y_data)
                 
                 # backward + optimize only if in training phase
                 if phase == 'training':

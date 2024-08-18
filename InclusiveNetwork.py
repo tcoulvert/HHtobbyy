@@ -29,4 +29,4 @@ class InclusiveNetwork(nn.Module):
             x = F.dropout(x, training=self.training, p=self.dropout)
         x = self.out(x)
         # return F.log_softmax(x, dim=1)
-        return torch.squeeze(x)
+        return F.sigmoid(x)
