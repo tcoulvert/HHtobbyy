@@ -61,7 +61,13 @@ def train(
                 # forward pass
                 outputs = model(particles_data, hlf_data)
                 _, preds = torch.max(outputs.data, 1)
-                loss = criterion(outputs, y_data)
+                # loss = criterion(outputs, y_data)
+                print(f"y_data shape = {y_data.shape}")
+                print(f"unsqueezed y_data shape = {torch.unsqueeze(y_data, 1).shape}")
+                print(f"output shape = {outputs.shape}")
+                print(f"squeezed output shape = {torch.squeeze(outputs).shape}")
+                # loss = criterion(outputs, torch.unsqueeze(y_data, 1))
+                loss = criterion(torch.squeeze(outputs), y_data)
                 
                 # backward + optimize only if in training phase
                 if phase == 'training':

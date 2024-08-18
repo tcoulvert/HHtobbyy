@@ -16,7 +16,8 @@ class InclusiveNetwork(nn.Module):
         # self.gru = nn.GRU(input_size=7, hidden_size=gru_size, num_layers=gru_layers, batch_first=True, dropout=self.dropout_g)
         self.gru = nn.GRU(input_size=rnn_input, hidden_size=gru_size, num_layers=gru_layers, batch_first=True, dropout=self.dropout_g)
         self.merge = nn.Linear(dnn_input+gru_size,initial_node)
-        self.out = nn.Linear(nodes[-1],2)
+        # self.out = nn.Linear(nodes[-1],2)
+        self.out = nn.Linear(nodes[-1],1)
 
     def forward(self, particles, hlf):
         _, hgru = self.gru(particles)
@@ -27,4 +28,5 @@ class InclusiveNetwork(nn.Module):
             x = F.relu(self.hiddens[i](x))
             x = F.dropout(x, training=self.training, p=self.dropout)
         x = self.out(x)
-        return F.log_softmax(x, dim=1)
+        # return F.log_softmax(x, dim=1)
+        return torch.squeeze(x)

@@ -56,8 +56,8 @@ def process_data(signal_filepaths, bkg_filepaths, output_dirpath, seed=None, ret
             'lepton1_pt' ,'lepton2_pt', 'pt', # lepton and diphoton pt
             'lepton1_eta', 'lepton2_eta', 'eta', # lepton and diphoton eta
             'lepton1_phi', 'lepton2_phi', 'phi', # lepton and diphoton phi
-            'abs_CosThetaStar_CS', 'abs_CosThetaStar_jj', # angular variables
-            # 'CosThetaStar_CS','CosThetaStar_jj',
+            # 'abs_CosThetaStar_CS', 'abs_CosThetaStar_jj', # angular variables
+            'CosThetaStar_CS','CosThetaStar_jj',
         }
     elif re.search('extra_vars', output_dirpath) is not None:
         high_level_fields = {
@@ -69,8 +69,8 @@ def process_data(signal_filepaths, bkg_filepaths, output_dirpath, seed=None, ret
             'lepton1_pt' ,'lepton2_pt', 'pt', # lepton and diphoton pt
             'lepton1_eta', 'lepton2_eta', 'eta', # lepton and diphoton eta
             'lepton1_phi', 'lepton2_phi', 'phi', # lepton and diphoton phi
-            'abs_CosThetaStar_CS', 'abs_CosThetaStar_jj', # angular variables
-            # 'CosThetaStar_CS','CosThetaStar_jj',
+            # 'abs_CosThetaStar_CS', 'abs_CosThetaStar_jj', # angular variables
+            'CosThetaStar_CS','CosThetaStar_jj',
             'dijet_mass', # mass of b-dijet (resonance for H->bb)
             'leadBjet_leadLepton', 'leadBjet_subleadLepton', # deltaR btwn bjets and leptons (b/c b often decays to muons)
             'subleadBjet_leadLepton', 'subleadBjet_subleadLepton'
@@ -269,14 +269,14 @@ def process_data(signal_filepaths, bkg_filepaths, output_dirpath, seed=None, ret
     if re.search('base_vars', output_dirpath) is not None:
         input_hlf_vars = [
             'puppiMET_sumEt','DeltaPhi_j1MET','DeltaPhi_j2MET','DeltaR_jg_min','n_jets','chi_t0', 'chi_t1',
-            'abs_CosThetaStar_CS','abs_CosThetaStar_jj'
-            # 'CosThetaStar_CS','CosThetaStar_jj',
+            # 'abs_CosThetaStar_CS','abs_CosThetaStar_jj'
+            'CosThetaStar_CS','CosThetaStar_jj',
         ]
     elif re.search('extra_vars', output_dirpath) is not None:
         input_hlf_vars = [
             'puppiMET_sumEt','DeltaPhi_j1MET','DeltaPhi_j2MET','DeltaR_jg_min','n_jets','chi_t0', 'chi_t1',
-            'abs_CosThetaStar_CS','abs_CosThetaStar_jj',
-            # 'CosThetaStar_CS','CosThetaStar_jj',
+            # 'abs_CosThetaStar_CS','abs_CosThetaStar_jj',
+            'CosThetaStar_CS','CosThetaStar_jj',
             'dijet_mass', 'leadBjet_leadLepton', 'leadBjet_subleadLepton', 'subleadBjet_leadLepton', 'subleadBjet_subleadLepton'
         ]
     else:
