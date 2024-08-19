@@ -186,7 +186,11 @@ def add_ttH_vars(sample):
         return ak.where(t_mask, term1_1+term1_2+term2_1+term2_2, -999)
 
     def deltaR_bjet_lepton(sample, lepton_type='lead', bjet_type='lead'):
-        return sample[f'{lepton_type}_lepton_4mom'].deltaR(sample[f'{bjet_type}_bjet_4mom'])
+        return ak.where(
+            ak.where(sample[f'{lepton_type}_lepton_pt'] != -999, True, False) & ak.where(sample[f'{bjet_type}_bjet_pt'] != -999, True, False),
+            sample[f'{lepton_type}_lepton_4mom'].deltaR(sample[f'{bjet_type}_bjet_4mom']),
+            -999
+        )
     
     # Abs of cos #
     sample['abs_CosThetaStar_CS'] = ak.where(sample['CosThetaStar_CS'] >= 0, sample['CosThetaStar_CS'], -1*sample['CosThetaStar_CS'])

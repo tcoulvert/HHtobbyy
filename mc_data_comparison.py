@@ -71,6 +71,9 @@ VARIABLES = {
     'lepton2_eta': hist.axis.Regular(30, -5., 5., name='var', label=r'sublead lepton $\eta$', growth=False, underflow=False, overflow=False),
     'lepton1_phi': hist.axis.Regular(20, -3.2, 3.2, name='var', label=r'lead lepton $\phi$', growth=False, underflow=False, overflow=False), 
     'lepton2_phi': hist.axis.Regular(20, -3.2, 3.2, name='var', label=r'sublead lepton $\phi$', growth=False, underflow=False, overflow=False),
+    # single photon variables
+    'lead_pt': hist.axis.Regular(40, 20., 200, name='var', label=r' lead $\gamma p_{T}$ [GeV]', growth=False, underflow=False, overflow=False), 
+    'sublead_pt': hist.axis.Regular(40, 20., 200, name='var', label=r' sublead $\gamma p_{T}$ [GeV]', growth=False, underflow=False, overflow=False),
     # diphoton variables
     'pt': hist.axis.Regular(40, 20., 2000, name='var', label=r' $\gamma\gamma p_{T}$ [GeV]', growth=False, underflow=False, overflow=False),
     'eta': hist.axis.Regular(20, -5., 5., name='var', label=r'$\gamma\gamma \eta$', growth=False, underflow=False, overflow=False), 
@@ -311,12 +314,11 @@ def plot(variable: str, mc_hist: dict, data_hist: hist.Hist, ratio_dict: dict):
     # Plot x_axis label properly
     axs[0].set_xlabel('')
     axs[1].set_xlabel(data_hist.axes.label[0])
-    # # Make angular and chi^2 plots linear, otherwise log
-    # if re.match('chi_t', variable) is None and re.match('DeltaPhi', variable) is None and re.match('mass', variable) is None:
-    #     axs[0].set_yscale('log')
-    # else:
-    #     axs[0].set_yscale('linear')
-    axs[0].set_yscale('linear')
+    # Make angular and chi^2 plots linear, otherwise log
+    if re.match('chi_t', variable) is None and re.match('DeltaPhi', variable) is None and re.match('mass', variable) is None:
+        axs[0].set_yscale('log')
+    else:
+        axs[0].set_yscale('linear')
     # Save out the plot
     if not os.path.exists(DESTDIR):
         os.mkdir(DESTDIR)

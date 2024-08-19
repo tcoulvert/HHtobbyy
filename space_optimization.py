@@ -18,7 +18,7 @@ from InclusiveNetwork import InclusiveNetwork
 from ParticleHLF import ParticleHLF
 from train import train
 
-def optimize_hyperparams(skf, data_list, data_hlf, label, config_filename, len_input_hlf_vars, epochs=100, criterion=nn.NLLLoss()):
+def optimize_hyperparams(skf, data_list, data_hlf, label, config_filename, epochs=100, criterion=nn.NLLLoss()):
     space  = [
         Integer(1, 3, name='hidden_layers'),
         Integer(10, 500, name='initial_nodes'),
@@ -59,7 +59,8 @@ def optimize_hyperparams(skf, data_list, data_hlf, label, config_filename, len_i
                 int(X['gru_layers']), 
                 int(X['gru_size']), 
                 float(X['dropout_g']),
-                dnn_input=len_input_hlf_vars
+                dnn_input=np.shape(data_hlf)[-1],
+                rnn_input=np.shape(data_list)[-1]
             ).cuda()
             # model = InclusiveNetwork(X['hidden_layers'], X['initial_nodes'], X['dropout'], X['gru_layers'], X['gru_size'], X['dropout_g'])
 
