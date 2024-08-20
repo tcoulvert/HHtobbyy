@@ -139,6 +139,13 @@ def process_data(n_particles, n_particle_fields, signal_filepaths, bkg_filepaths
 
 
     # Perform the standardization #
+    no_standardize = {
+        'puppiMET_eta', 'puppiMET_phi', # MET variables
+        'DeltaPhi_j1MET', 'DeltaPhi_j2MET', # jet-MET variables
+        'lepton1_eta', 'lepton2_eta', 'eta', # lepton and diphoton eta
+        'lepton1_phi', 'lepton2_phi', 'phi', # lepton and diphoton phi
+        'CosThetaStar_CS','CosThetaStar_jj',
+    }
     def apply_log(df):
         log_fields = {
             'puppiMET_sumEt', 'puppiMET_pt', # MET variables
@@ -157,6 +164,10 @@ def process_data(n_particles, n_particle_fields, signal_filepaths, bkg_filepaths
     masked_x_sample = np.ma.array(df_train, mask=(df_train == FILL_VALUE))
     x_mean = masked_x_sample.mean(axis=0)
     x_std = masked_x_sample.std(axis=0)
+    for i, col in enumerate(df_train.columns):
+        if col in no_standardize:
+            x_mean[i] = 0
+            x_std[i] = 1
 
     # Standardize background
     normed_bkg_train_frame = apply_log(copy.deepcopy(bkg_train_frame))
