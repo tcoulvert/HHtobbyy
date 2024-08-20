@@ -187,7 +187,7 @@ def add_ttH_vars(sample):
 
     def deltaR_bjet_lepton(sample, lepton_type='lead', bjet_type='lead'):
         return ak.where(
-            ak.where(sample[f'{lepton_type}_lepton_pt'] != -999, True, False) & ak.where(sample[f'{bjet_type}_bjet_pt'] != -999, True, False),
+            ak.where(sample[f'lepton{1 if lepton_type == "lead" else 2}_pt'] != -999, True, False) & ak.where(sample[f'{bjet_type}_bjet_pt'] != -999, True, False),
             sample[f'{lepton_type}_lepton_4mom'].deltaR(sample[f'{bjet_type}_bjet_4mom']),
             -999
         )
@@ -272,14 +272,14 @@ def add_ttH_vars(sample):
 
     # MET vars (only for v1 parquets) #
     if 'puppiMET_eta' not in set(sample.fields):
-        sample['puppiMET_eta'] = [-999 for _ in range(ak.num(sample['event'], axis=0))]
+        sample['puppiMET_eta'] = [0 for _ in range(ak.num(sample['event'], axis=0))]
 
     # Electrons and Muons #
     for var in ['pt', 'eta', 'phi']:
         sample[f'lead_electron_{var}'] = lead_lepton_var(sample, 4, 1, var)
-        sample[f'sublead_electron_{var}'] = lead_lepton_var(sample, 4, 1, sample['lead_electron_{var}'], var)
+        sample[f'sublead_electron_{var}'] = sublead_lepton_var(sample, 4, 1, sample[f'lead_electron_{var}'], var)
         sample[f'lead_muon_{var}'] = lead_lepton_var(sample, 4, 2, var)
-        sample[f'sublead_muon_{var}'] = lead_lepton_var(sample, 4, 2, sample['lead_muon_{var}'], var)
+        sample[f'sublead_muon_{var}'] = sublead_lepton_var(sample, 4, 2, sample[f'lead_muon_{var}'], var)
 
 def main():
     dir_lists = {
@@ -353,6 +353,8 @@ def main():
 
     for data_era, dir_list in dir_lists.items():
         for dir_name in dir_list:
+            if dir_name not in {'GluGluToHH', 'ttHToGG'}:
+                continue
             for sample_type in ['nominal']: # Eventually change to os.listdir(LPC_FILEPREFIX+'/'+data_era+'/'+dir_name)
                 # Load all the parquets of a single sample into an ak array
                 sample = ak.concatenate(
@@ -378,23 +380,20 @@ def main():
                     # Define eventWeight array for hist plotting.
                     # print('========================')
                     # abs_genWeight = ak.where(sample['genWeight'] < 0, -sample['genWeight'], sample['genWeight'])
-                    # print(f"genWeight max = {ak.max(abs_genWeight, axis=0)}, genWeight min = {ak.min(abs_genWeight, axis=0)}")
-                    # print(f"genWeight mean = {ak.mean(abs_genWeight, axis=0)}, genWeight std.dev. = {ak.std(abs_genWeight, axis=0)}")
-                    # print(f"genWeight = \n{sample['genWeight']}")
-                    # sum_of_gen_weight = ak.sum(ak.where(sample['genWeight'] < 0, -1, 1), axis=0)
-                    # sample['eventWeight'] = ak.where(sample['genWeight'] < 0, -1, 1) * (sample['luminosity'] * sample['cross_section'] / sum_of_gen_weight)
+                    # sum_of_abs_genWeight = ak.sum(ak.where(sample['genWeight'] < 0, -1, 1), axis=0)
+                    # sample['eventWeight'] = ak.where(sample['genWeight'] < 0, -1, 1) * (sample['luminosity'] * sample['cross_section'] / sum_of_abs_genWeight)
                     sample['eventWeight'] = sample['genWeight'] * (sample['luminosity'] * sample['cross_section'] / sample['sumGenWeights'])
         
-                destdir = LPC_FILEPREFIX+'/'+data_era+'_merged/'+dir_name+'/'+sample_type+'/'
-                if not os.path.exists(destdir):
-                    os.makedirs(destdir)
-                merged_parquet = ak.to_parquet(sample, destdir+dir_name+'_'+sample_type+'.parquet')
+                # destdir = LPC_FILEPREFIX+'/'+data_era+'_merged_v2/'+dir_name+'/'+sample_type+'/'
+                # if not os.path.exists(destdir):
+                #     os.makedirs(destdir)
+                # merged_parquet = ak.to_parquet(sample, destdir+dir_name+'_'+sample_type+'.parquet')
                 
                 del sample
                 print('======================== \n', dir_name)
-                run_samples['run_samples_list'].append(dir_name)
-                with open(LPC_FILEPREFIX+'/'+data_era+'/completed_samples.json', 'w') as f:
-                     json.dump(run_samples, f)
+                # run_samples['run_samples_list'].append(dir_name)
+                # with open(LPC_FILEPREFIX+'/'+data_era+'/completed_samples.json', 'w') as f:
+                #      json.dump(run_samples, f)
 
 
 if __name__ == '__main__':

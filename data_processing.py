@@ -10,7 +10,7 @@ import pandas as pd
 # HEP packages
 import awkward as ak
 
-# import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 
 def data_list_index_map(variable_name):
     # Order of these ifs is important b/c 'lepton' contains 'pt', so if you don't check 'pt' last there will be a bug.
@@ -56,8 +56,7 @@ def process_data(n_particles, n_particle_fields, signal_filepaths, bkg_filepaths
             'lepton1_pt' ,'lepton2_pt', 'pt', # lepton and diphoton pt
             'lepton1_eta', 'lepton2_eta', 'eta', # lepton and diphoton eta
             'lepton1_phi', 'lepton2_phi', 'phi', # lepton and diphoton phi
-            # 'abs_CosThetaStar_CS', 'abs_CosThetaStar_jj', # angular variables
-            'CosThetaStar_CS','CosThetaStar_jj',
+            'CosThetaStar_CS','CosThetaStar_jj',  # angular variables
         }
     elif re.search('extra_vars', output_dirpath) is not None:
         high_level_fields = {
@@ -67,8 +66,7 @@ def process_data(n_particles, n_particle_fields, signal_filepaths, bkg_filepaths
             'lepton1_pt' ,'lepton2_pt', 'pt', # lepton and diphoton pt
             'lepton1_eta', 'lepton2_eta', 'eta', # lepton and diphoton eta
             'lepton1_phi', 'lepton2_phi', 'phi', # lepton and diphoton phi
-            # 'abs_CosThetaStar_CS', 'abs_CosThetaStar_jj', # angular variables
-            'CosThetaStar_CS','CosThetaStar_jj',
+            'CosThetaStar_CS','CosThetaStar_jj',  # angular variables
             'dijet_mass', # mass of b-dijet (resonance for H->bb)
             'leadBjet_leadLepton', 'leadBjet_subleadLepton', # deltaR btwn bjets and leptons (b/c b often decays to muons)
             'subleadBjet_leadLepton', 'subleadBjet_subleadLepton',
@@ -97,6 +95,7 @@ def process_data(n_particles, n_particle_fields, signal_filepaths, bkg_filepaths
         }
         for field in improper_fill_values:
             pandas_samples[sample_name][field] = np.where(pandas_samples[sample_name][field] < 10, pandas_samples[sample_name][field], -999)
+        pandas_samples[sample_name]['puppiMET_eta'] = np.zeros_like(pandas_samples[sample_name]['puppiMET_pt'])
 
     sig_frame = pd.DataFrame(pandas_samples['sig'])
     sig_aux_frame = pd.DataFrame(pandas_aux_samples['sig'])
@@ -174,16 +173,31 @@ def process_data(n_particles, n_particle_fields, signal_filepaths, bkg_filepaths
     normed_bkg_train = (np.ma.array(normed_bkg_train_frame, mask=(normed_bkg_train_frame == FILL_VALUE)) - x_mean)/x_std
     normed_bkg_test_frame = apply_log(copy.deepcopy(bkg_test_frame))
     normed_bkg_test = (np.ma.array(normed_bkg_test_frame, mask=(normed_bkg_test_frame == FILL_VALUE)) - x_mean)/x_std
-    normed_bkg_train_frame = pd.DataFrame(normed_bkg_train.filled(0), columns=list(bkg_train_frame))
-    normed_bkg_test_frame = pd.DataFrame(normed_bkg_test.filled(0), columns=list(bkg_test_frame))
+    bkg_train_min = np.min(normed_bkg_train, axis=0)
+    normed_bkg_train_frame = pd.DataFrame(normed_bkg_train.filled(FILL_VALUE), columns=list(bkg_train_frame))
+    normed_bkg_test_frame = pd.DataFrame(normed_bkg_test.filled(FILL_VALUE), columns=list(bkg_test_frame))
 
     # Standardize signal
     normed_sig_train_frame = apply_log(copy.deepcopy(sig_train_frame))
-    normed_sig_train = (np.ma.array(normed_sig_train_frame, mask=(normed_sig_train_frame == 0)) - x_mean)/x_std
+    normed_sig_train = (np.ma.array(normed_sig_train_frame, mask=(normed_sig_train_frame == FILL_VALUE)) - x_mean)/x_std
     normed_sig_test_frame = apply_log(copy.deepcopy(sig_test_frame))
-    normed_sig_test = (np.ma.array(normed_sig_test_frame, mask=(normed_sig_test_frame == 0)) - x_mean)/x_std
-    normed_sig_train_frame = pd.DataFrame(normed_sig_train.filled(0), columns=list(sig_train_frame))
-    normed_sig_test_frame = pd.DataFrame(normed_sig_test.filled(0), columns=list(sig_test_frame))
+    normed_sig_test = (np.ma.array(normed_sig_test_frame, mask=(normed_sig_test_frame == FILL_VALUE)) - x_mean)/x_std
+    sig_train_min = np.min(normed_sig_train, axis=0)
+    normed_sig_train_frame = pd.DataFrame(normed_sig_train.filled(FILL_VALUE), columns=list(sig_train_frame))
+    normed_sig_test_frame = pd.DataFrame(normed_sig_test.filled(FILL_VALUE), columns=list(sig_test_frame))
+
+    train_min = np.min(np.vstack((sig_train_min, bkg_train_min)), axis=0)
+    for df in [
+        normed_sig_train_frame, normed_sig_test_frame, normed_bkg_train_frame, normed_bkg_test_frame
+    ]:
+        for i, col in enumerate(df_train.columns):
+            if np.all(df[col] != FILL_VALUE):
+                continue
+            df[col] = np.where(
+                df[col] != FILL_VALUE, 
+                df[col], 
+                np.mean([train_min[i], -10])
+            )
 
     def to_p_list(data_frame):
         # Inputs: Pandas data frame
@@ -196,9 +210,9 @@ def process_data(n_particles, n_particle_fields, signal_filepaths, bkg_filepaths
         for var_idx, var_name in enumerate(['lepton1', 'lepton2', '', 'puppiMET']):
             if var_name != '':
                 var_name = var_name + '_'
-            particle_list_sig[:, var_idx, 0] = data_frame[var_name+'pt']
-            particle_list_sig[:, var_idx, 1] = np.where(data_frame[var_name+'pt'].to_numpy() != 0, data_frame[var_name+'eta'], 0)
-            particle_list_sig[:, var_idx, 2] = np.where(data_frame[var_name+'pt'].to_numpy() != 0, data_frame[var_name+'phi'], 0)
+            particle_list_sig[:, var_idx, 0] = data_frame[var_name+'pt'].to_numpy()
+            particle_list_sig[:, var_idx, 1] = data_frame[var_name+'eta'].to_numpy()
+            particle_list_sig[:, var_idx, 2] = data_frame[var_name+'phi'].to_numpy()
             particle_list_sig[:, var_idx, 3] = np.where(data_frame[var_name+'pt'].to_numpy() != 0, 1, 0) if re.search('lepton', var_name) is not None else np.zeros_like(data_frame[var_name+'pt'].to_numpy())
             particle_list_sig[:, var_idx, 4] = np.where(data_frame[var_name+'pt'].to_numpy() != 0, 1, 0) if re.search('lepton', var_name) is None and re.search('puppiMET', var_name) is None else np.zeros_like(data_frame[var_name+'pt'].to_numpy())
             particle_list_sig[:, var_idx, 5] = np.where(data_frame[var_name+'pt'].to_numpy() != 0, 1, 0) if re.search('puppiMET', var_name) is not None else np.zeros_like(data_frame[var_name+'pt'].to_numpy())
@@ -223,14 +237,12 @@ def process_data(n_particles, n_particle_fields, signal_filepaths, bkg_filepaths
 
     if re.search('base_vars', output_dirpath) is not None:
         input_hlf_vars = [
-            'puppiMET_sumEt','DeltaPhi_j1MET','DeltaPhi_j2MET','DeltaR_jg_min','n_jets','chi_t0', 'chi_t1',
-            # 'abs_CosThetaStar_CS','abs_CosThetaStar_jj'
+            'puppiMET_sumEt','DeltaPhi_j1MET','DeltaPhi_j2MET','DeltaR_jg_min','n_jets','chi_t0', 'chi_t1',\
             'CosThetaStar_CS','CosThetaStar_jj',
         ]
     elif re.search('extra_vars', output_dirpath) is not None:
         input_hlf_vars = [
             'puppiMET_sumEt','DeltaPhi_j1MET','DeltaPhi_j2MET','DeltaR_jg_min','n_jets','chi_t0', 'chi_t1',
-            # 'abs_CosThetaStar_CS','abs_CosThetaStar_jj',
             'CosThetaStar_CS','CosThetaStar_jj',
             'dijet_mass', 'leadBjet_leadLepton', 'leadBjet_subleadLepton', 'subleadBjet_leadLepton', 'subleadBjet_subleadLepton'
         ]
