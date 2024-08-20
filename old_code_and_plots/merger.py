@@ -192,6 +192,27 @@ def add_ttH_vars(sample):
             -999
         )
     
+    def lead_lepton_var(sample, pass_num, lepton_gen, var):
+        if pass_num > 1:
+            prev_lepton_pass = lead_lepton_var(sample, pass_num-1, lepton_gen, var)
+        else:
+            prev_lepton_pass = ak.Array([-999 for _ in range(ak.num(sample['event'], axis=0))])
+        return ak.where(
+            ak.where(sample[f'lepton{pass_num}_generation'] == lepton_gen, True, False) & ak.where(prev_lepton_pass == -999, True, False), 
+            sample[f'lepton{pass_num}_{var}'], 
+            prev_lepton_pass
+        )
+    def sublead_lepton_var(sample, pass_num, lepton_gen, lead_lepton, var):
+        if pass_num > 2:
+            prev_lepton_pass = sublead_lepton_var(sample, pass_num-1, lepton_gen, lead_lepton, var)
+        else:
+            prev_lepton_pass = ak.Array([-999 for _ in range(ak.num(sample['event'], axis=0))])
+        return ak.where(
+            ak.where(sample[f'lepton{pass_num}_generation'] == lepton_gen, True, False) & ak.where(prev_lepton_pass == -999, True, False) & ak.where(lead_lepton != sample[f'lepton{pass_num}_{var}'], True, False), 
+            sample[f'lepton{pass_num}_{var}'], 
+            prev_lepton_pass
+        )
+    
     # Abs of cos #
     sample['abs_CosThetaStar_CS'] = ak.where(sample['CosThetaStar_CS'] >= 0, sample['CosThetaStar_CS'], -1*sample['CosThetaStar_CS'])
     sample['abs_CosThetaStar_jj'] = ak.where(sample['CosThetaStar_jj'] >= 0, sample['CosThetaStar_jj'], -1*sample['CosThetaStar_jj'])
@@ -252,6 +273,13 @@ def add_ttH_vars(sample):
     # MET vars (only for v1 parquets) #
     if 'puppiMET_eta' not in set(sample.fields):
         sample['puppiMET_eta'] = [-999 for _ in range(ak.num(sample['event'], axis=0))]
+
+    # Electrons and Muons #
+    for var in ['pt', 'eta', 'phi']:
+        sample[f'lead_electron_{var}'] = lead_lepton_var(sample, 4, 1, var)
+        sample[f'sublead_electron_{var}'] = lead_lepton_var(sample, 4, 1, sample['lead_electron_{var}'], var)
+        sample[f'lead_muon_{var}'] = lead_lepton_var(sample, 4, 2, var)
+        sample[f'sublead_muon_{var}'] = lead_lepton_var(sample, 4, 2, sample['lead_muon_{var}'], var)
 
 def main():
     dir_lists = {
