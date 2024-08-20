@@ -50,8 +50,6 @@ def process_data(n_particles, n_particle_fields, signal_filepaths, bkg_filepaths
     pandas_samples = {}
     if re.search('base_vars', output_dirpath) is not None:
         high_level_fields = {
-            # 'event', # event number
-            # 'eventWeight',  # computed eventWeight using (genWeight * lumi * xs / sum_of_genWeights)
             'puppiMET_sumEt', 'puppiMET_pt', 'puppiMET_eta', 'puppiMET_phi', # MET variables
             'DeltaPhi_j1MET', 'DeltaPhi_j2MET', # jet-MET variables
             'DeltaR_jg_min', 'n_jets', 'chi_t0', 'chi_t1', # jet variables
@@ -63,8 +61,6 @@ def process_data(n_particles, n_particle_fields, signal_filepaths, bkg_filepaths
         }
     elif re.search('extra_vars', output_dirpath) is not None:
         high_level_fields = {
-            # 'event', # event number
-            # 'eventWeight',  # computed eventWeight using (genWeight * lumi * xs / sum_of_genWeights)
             'puppiMET_sumEt', 'puppiMET_pt', 'puppiMET_eta', 'puppiMET_phi', # MET variables
             'DeltaPhi_j1MET', 'DeltaPhi_j2MET', # jet-MET variables
             'DeltaR_jg_min', 'n_jets', 'chi_t0', 'chi_t1', # jet variables
@@ -146,78 +142,6 @@ def process_data(n_particles, n_particle_fields, signal_filepaths, bkg_filepaths
         bkg_aux_train_frame, bkg_aux_test_frame
     ) = train_test_split_df(sig_frame, sig_aux_frame, bkg_frame, bkg_aux_frame)
 
-    # for i, var in enumerate(high_level_fields):
-    #     if var not in {'leadBjet_leadLepton', 'leadBjet_subleadLepton', # deltaR btwn bjets and leptons (b/c b often decays to muons)
-    #         'subleadBjet_leadLepton', 'subleadBjet_subleadLepton'}:
-    #         continue
-    #     df1 = sig_train_frame.loc[:, var]
-    #     df2 = sig_test_frame.loc[:, var]
-    #     df3 = bkg_train_frame.loc[:, var]
-    #     df4 = bkg_test_frame.loc[:, var]
-    #     plt.figure(i)
-    #     plt.hist(
-    #         [df1, df2, df3, df4],
-    #         # label=["sig, train", "sig, test", "bkg, train", "bkg, test"], linestyle=['solid', 'dashed', 'solid', 'dashed'],
-    #         alpha=0.5, bins=40, 
-    #     )
-    #     plt.title(var)
-    #     plt.xlabel('after train/test split')
-    #     plt.yscale('log')
-    #     plt.savefig(f'test_plot_1.png')
-    #     plt.show()
-
-    #     plt.figure(len(high_level_fields)+i)
-    #     plt.hist(
-    #         [df1.loc[df1 < 5], df2.loc[df2 < 5], df3.loc[df3 < 5], df4.loc[df4 < 5]],
-    #         # label=["sig, train", "sig, test", "bkg, train", "bkg, test"], linestyle=['solid', 'dashed', 'solid', 'dashed'],
-    #         alpha=0.5, bins=40, 
-    #     )
-    #     plt.title(var)
-    #     plt.xlabel('after train/test split with cuts')
-    #     plt.yscale('log')
-    #     plt.xlim(0, 5)
-    #     plt.savefig(f'test_plot_1pt2.png')
-    #     plt.show()
-
-    #     plt.figure(2*len(high_level_fields)+i)
-    #     plt.hist(
-    #         [df1.loc[df1 < 20], df2.loc[df2 < 20], df3.loc[df3 < 20], df4.loc[df4 < 20]],
-    #         # label=["sig, train", "sig, test", "bkg, train", "bkg, test"], linestyle=['solid', 'dashed', 'solid', 'dashed'],
-    #         alpha=0.5, bins=40, 
-    #     )
-    #     plt.title(var)
-    #     plt.xlabel('after train/test split with cuts')
-    #     plt.yscale('log')
-    #     plt.xlim(0, 20)
-    #     plt.savefig(f'test_plot_1p32.png')
-    #     plt.show()
-    
-    #     plt.figure(3*len(high_level_fields)+i)
-    #     plt.hist(
-    #         [df1.loc[df1 < 40], df2.loc[df2 < 40], df3.loc[df3 < 40], df4.loc[df4 < 40]],
-    #         # label=["sig, train", "sig, test", "bkg, train", "bkg, test"], linestyle=['solid', 'dashed', 'solid', 'dashed'],
-    #         alpha=0.5, bins=40, 
-    #     )
-    #     plt.title(var)
-    #     plt.xlabel('after train/test split with cuts')
-    #     plt.yscale('log')
-    #     plt.xlim(0, 40)
-    #     plt.savefig(f'test_plot_1pt4.png')
-    #     plt.show()
-
-    #     plt.figure(4*len(high_level_fields)+i)
-    #     plt.hist(
-    #         [df1.loc[df1 < 80], df2.loc[df2 < 80], df3.loc[df3 < 80], df4.loc[df4 < 80]],
-    #         # label=["sig, train", "sig, test", "bkg, train", "bkg, test"], linestyle=['solid', 'dashed', 'solid', 'dashed'],
-    #         alpha=0.5, bins=40, 
-    #     )
-    #     plt.title(var)
-    #     plt.xlabel('after train/test split with cuts')
-    #     plt.yscale('log')
-    #     plt.xlim(0, 80)
-    #     plt.savefig(f'test_plot_1pt5.png')
-    #     plt.show()
-
 
     # Perform the standardization #
     def apply_log(df):
@@ -244,16 +168,16 @@ def process_data(n_particles, n_particle_fields, signal_filepaths, bkg_filepaths
     normed_bkg_train = (np.ma.array(normed_bkg_train_frame, mask=(normed_bkg_train_frame == FILL_VALUE)) - x_mean)/x_std
     normed_bkg_test_frame = apply_log(copy.deepcopy(bkg_test_frame))
     normed_bkg_test = (np.ma.array(normed_bkg_test_frame, mask=(normed_bkg_test_frame == FILL_VALUE)) - x_mean)/x_std
-    normed_bkg_train_frame = pd.DataFrame(normed_bkg_train.filled(0), columns=list(bkg_train_frame))
-    normed_bkg_test_frame = pd.DataFrame(normed_bkg_test.filled(0), columns=list(bkg_test_frame))
+    normed_bkg_train_frame = pd.DataFrame(normed_bkg_train.filled(FILL_VALUE), columns=list(bkg_train_frame))
+    normed_bkg_test_frame = pd.DataFrame(normed_bkg_test.filled(FILL_VALUE), columns=list(bkg_test_frame))
 
     # Standardize signal
     normed_sig_train_frame = apply_log(copy.deepcopy(sig_train_frame))
     normed_sig_train = (np.ma.array(normed_sig_train_frame, mask=(normed_sig_train_frame == FILL_VALUE)) - x_mean)/x_std
     normed_sig_test_frame = apply_log(copy.deepcopy(sig_test_frame))
     normed_sig_test = (np.ma.array(normed_sig_test_frame, mask=(normed_sig_test_frame == FILL_VALUE)) - x_mean)/x_std
-    normed_sig_train_frame = pd.DataFrame(normed_sig_train.filled(0), columns=list(sig_train_frame))
-    normed_sig_test_frame = pd.DataFrame(normed_sig_test.filled(0), columns=list(sig_test_frame))
+    normed_sig_train_frame = pd.DataFrame(normed_sig_train.filled(FILL_VALUE), columns=list(sig_train_frame))
+    normed_sig_test_frame = pd.DataFrame(normed_sig_test.filled(FILL_VALUE), columns=list(sig_test_frame))
 
     def to_p_list(data_frame):
         # Inputs: Pandas data frame
@@ -264,18 +188,18 @@ def process_data(n_particles, n_particle_fields, signal_filepaths, bkg_filepaths
         # 4: max particles: l1, l2, dipho, MET
         # 6: pt, eta, phi, isLep, isDipho, isMET
 
-        for var_idx, var_name in enumerate({'lepton1', 'lepton2', '', 'puppiMET'}):
+        for var_idx, var_name in enumerate(['lepton1', 'lepton2', '', 'puppiMET']):
             if var_name != '':
                 var_name = var_name + '_'
             # particle_list_sig[:, var_idx, 0] = np.where(data_frame[var_name+'pt'].to_numpy() != FILL_VALUE, data_frame[var_name+'pt'], 0)
             # particle_list_sig[:, var_idx, 1] = np.where(data_frame[var_name+'pt'].to_numpy() != FILL_VALUE, data_frame[var_name+'eta'], 0)
             # particle_list_sig[:, var_idx, 2] = np.where(data_frame[var_name+'pt'].to_numpy() != FILL_VALUE, data_frame[var_name+'phi'], 0)
-            particle_list_sig[:, var_idx, 0] = data_frame[var_name+'pt']
-            particle_list_sig[:, var_idx, 1] = data_frame[var_name+'eta']
-            particle_list_sig[:, var_idx, 2] = data_frame[var_name+'phi']
-            # particle_list_sig[:, var_idx, 0] = np.where(data_frame[var_name+'pt'].to_numpy() != 0, data_frame[var_name+'pt'], 0)
-            # particle_list_sig[:, var_idx, 1] = np.where(data_frame[var_name+'pt'].to_numpy() != 0, data_frame[var_name+'eta'], 0)
-            # particle_list_sig[:, var_idx, 2] = np.where(data_frame[var_name+'pt'].to_numpy() != 0, data_frame[var_name+'phi'], 0)
+            # particle_list_sig[:, var_idx, 0] = data_frame[var_name+'pt']
+            # particle_list_sig[:, var_idx, 1] = data_frame[var_name+'eta']
+            # particle_list_sig[:, var_idx, 2] = data_frame[var_name+'phi']
+            particle_list_sig[:, var_idx, 0] = np.where(data_frame[var_name+'pt'].to_numpy() != 0, data_frame[var_name+'pt'], FILL_VALUE)
+            particle_list_sig[:, var_idx, 1] = np.where(data_frame[var_name+'pt'].to_numpy() != 0, data_frame[var_name+'eta'], FILL_VALUE)
+            particle_list_sig[:, var_idx, 2] = np.where(data_frame[var_name+'pt'].to_numpy() != 0, data_frame[var_name+'phi'], FILL_VALUE)
             particle_list_sig[:, var_idx, 3] = np.where(data_frame[var_name+'pt'].to_numpy() != 0, 1, 0) if re.search('lepton', var_name) is not None else np.zeros_like(data_frame[var_name+'pt'].to_numpy())
             particle_list_sig[:, var_idx, 4] = np.where(data_frame[var_name+'pt'].to_numpy() != 0, 1, 0) if re.search('lepton', var_name) is None and re.search('puppiMET', var_name) is None else np.zeros_like(data_frame[var_name+'pt'].to_numpy())
             particle_list_sig[:, var_idx, 5] = np.where(data_frame[var_name+'pt'].to_numpy() != 0, 1, 0) if re.search('puppiMET', var_name) is not None else np.zeros_like(data_frame[var_name+'pt'].to_numpy())
@@ -289,23 +213,18 @@ def process_data(n_particles, n_particle_fields, signal_filepaths, bkg_filepaths
         #     sorted_particle_list[i, np.sum(nonzero_indices[i]):, :] = np.zeros((n_particles-np.sum(nonzero_indices[i]), n_particle_fields))
             
         # return sorted_particle_list
+
         return particle_list_sig
+    
+    normed_sig_list = to_p_list(normed_sig_train_frame)
+    normed_sig_test_list = to_p_list(normed_sig_test_frame)
+    normed_bkg_list = to_p_list(normed_bkg_train_frame)
+    normed_bkg_test_list = to_p_list(normed_bkg_test_frame)
 
-    sig_train_list = to_p_list(normed_sig_train_frame)
-    sig_test_list = to_p_list(normed_sig_test_frame)
-    bkg_train_list = to_p_list(normed_bkg_train_frame)
-    bkg_test_list = to_p_list(normed_bkg_test_frame)
-
-    # plt.hist(
-    #     [
-    #         normed_sig_train_frame.loc[:, 'subleadBjet_leadLepton'], normed_sig_test_frame.loc[:, 'subleadBjet_leadLepton'],
-    #         normed_bkg_train_frame.loc[:, 'subleadBjet_leadLepton'], normed_bkg_test_frame.loc[:, 'subleadBjet_leadLepton']
-    #     ],
-    #     # label=["sig, train", "sig, test", "bkg, train", "bkg, test"], linestyle=['solid', 'dashed', 'solid', 'dashed'],
-    #     alpha=0.5, bins=40, 
-    # )
-    # plt.savefig(f'test_plot_2.png')
-    # plt.show()
+    # sig_train_list = to_p_list(normed_sig_train_frame)
+    # sig_test_list = to_p_list(normed_sig_test_frame)
+    # bkg_train_list = to_p_list(normed_bkg_train_frame)
+    # bkg_test_list = to_p_list(normed_bkg_test_frame)
 
     # Standardize the particle list
     # x_sample = bkg_train_list[:,:,:3] # don't standardize boolean flags
@@ -330,10 +249,10 @@ def process_data(n_particles, n_particle_fields, signal_filepaths, bkg_filepaths
     # normed_bkg_list = standardize_p_list(bkg_train_list)
     # normed_bkg_test_list = standardize_p_list(bkg_test_list)
         
-    normed_sig_list = sig_train_list
-    normed_sig_test_list = sig_test_list
-    normed_bkg_list = bkg_train_list
-    normed_bkg_test_list = bkg_test_list
+    # normed_sig_list = sig_train_list
+    # normed_sig_test_list = sig_test_list
+    # normed_bkg_list = bkg_train_list
+    # normed_bkg_test_list = bkg_test_list
 
     # plt.hist(
     #     [
