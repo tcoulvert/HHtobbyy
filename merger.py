@@ -1,13 +1,11 @@
+import copy
 import glob
 import json
 import math
 import os
 import re
-import sys
-import subprocess
 
 import awkward as ak
-import duckdb
 import pyarrow.parquet as pq
 import vector as vec
 vec.register_awkward()
@@ -281,6 +279,11 @@ def add_ttH_vars(sample):
         sample[f'lead_muon_{var}'] = lead_lepton_var(sample, 4, 2, var)
         sample[f'sublead_muon_{var}'] = sublead_lepton_var(sample, 4, 2, sample[f'lead_muon_{var}'], var)
 
+    # bjets with energy corrections #
+    # for bjet_type in ['lead', 'sublead']:
+    #     sample[f'{bjet_type}_bjet_4mom_corr'] = copy.deepcopy(sample[f'{bjet_type}_bjet_4mom'])
+    #     sample[f'{bjet_type}_bjet_4mom_corr']['rho'] = sample[f'{bjet_type}_bjet_4mom_corr']['rho'](1 - sample[f'{bjet_type}_bjet_)
+
 def main():
     dir_lists = {
         'Run3_2022preEE': None,
@@ -350,7 +353,6 @@ def main():
                 continue
             cross_sections[dir_name] = 0.001 # set to 1e-3 [fb] for now, need to find actual numbers for many of these samples
 
-
     for data_era, dir_list in dir_lists.items():
         for dir_name in dir_list:
             if dir_name not in {'GluGluToHH', 'ttHToGG'}:
@@ -384,16 +386,16 @@ def main():
                     # sample['eventWeight'] = ak.where(sample['genWeight'] < 0, -1, 1) * (sample['luminosity'] * sample['cross_section'] / sum_of_abs_genWeight)
                     sample['eventWeight'] = sample['genWeight'] * (sample['luminosity'] * sample['cross_section'] / sample['sumGenWeights'])
         
-                # destdir = LPC_FILEPREFIX+'/'+data_era+'_merged_v2/'+dir_name+'/'+sample_type+'/'
-                # if not os.path.exists(destdir):
-                #     os.makedirs(destdir)
-                # merged_parquet = ak.to_parquet(sample, destdir+dir_name+'_'+sample_type+'.parquet')
+                destdir = LPC_FILEPREFIX+'/'+data_era+'_merged_v2/'+dir_name+'/'+sample_type+'/'
+                if not os.path.exists(destdir):
+                    os.makedirs(destdir)
+                merged_parquet = ak.to_parquet(sample, destdir+dir_name+'_'+sample_type+'.parquet')
                 
                 del sample
                 print('======================== \n', dir_name)
-                # run_samples['run_samples_list'].append(dir_name)
-                # with open(LPC_FILEPREFIX+'/'+data_era+'/completed_samples.json', 'w') as f:
-                #      json.dump(run_samples, f)
+                run_samples['run_samples_list'].append(dir_name)
+                with open(LPC_FILEPREFIX+'/'+data_era+'/completed_samples.json', 'w') as f:
+                     json.dump(run_samples, f)
 
 
 if __name__ == '__main__':
