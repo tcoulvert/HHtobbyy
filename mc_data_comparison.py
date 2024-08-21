@@ -51,49 +51,48 @@ VARIABLES = {
     # key: hist.axis axes for plotting #
     # MET variables
     'puppiMET_sumEt': hist.axis.Regular(40, 20., 250, name='var', label=r'puppiMET $\Sigma E_T$ [GeV]', growth=False, underflow=False, overflow=False), 
-    # 'puppiMET_pt': hist.axis.Regular(40, 20., 250, name='var', label=r'puppiMET $p_T$ [GeV]', growth=False, underflow=False, overflow=False), 
-    # 'puppiMET_phi': hist.axis.Regular(20,-3.2, 3.2, name='var', label=r'puppiMET $\phi$', growth=False, underflow=False, overflow=False), 
-    # # jet-MET variables
-    # 'DeltaPhi_j1MET': hist.axis.Regular(20,-3.2, 3.2, name='var', label=r'$\Delta\phi (j_1,E_T^{miss})$', growth=False, underflow=False, overflow=False), 
-    # 'DeltaPhi_j2MET': hist.axis.Regular(20, -3.2, 3.2, name='var', label=r'$\Delta\phi (j_2,E_T^{miss})$', growth=False, underflow=False, overflow=False), 
-    # # jet-photon variables
-    # 'DeltaR_jg_min': hist.axis.Regular(30, 0, 5, name='var', label=r'min$(\Delta R(jet, \gamma))$', growth=False, underflow=False, overflow=False), 
-    # # jet variables
-    # 'jet1_pt': hist.axis.Regular(40, 20., 250, name='var', label=r'lead jet $p_T$ [GeV]', growth=False, underflow=False, overflow=False),
-    # 'jet2_pt': hist.axis.Regular(40, 20., 250, name='var', label=r'sublead jet $p_T$ [GeV]', growth=False, underflow=False, overflow=False),
-    # 'n_jets': hist.axis.Integer(0, 10, name='var', label=r'$n_{jets}$', growth=False, underflow=False, overflow=False), 
-    # 'chi_t0': hist.axis.Regular(40, 0., 150, name='var', label=r'$\chi_{t0}^2$', growth=False, underflow=False, overflow=False), 
-    # 'chi_t1': hist.axis.Regular(30, 0., 500, name='var', label=r'$\chi_{t1}^2$', growth=False, underflow=False, overflow=False), 
-    # # lepton variables
-    # 'lepton1_pt': hist.axis.Regular(40, 0., 200, name='var', label=r'lead lepton $p_T$ [GeV]', growth=False, underflow=False, overflow=False), 
-    # 'lepton2_pt': hist.axis.Regular(40, 0., 200, name='var', label=r'sublead lepton $p_T$ [GeV]', growth=False, underflow=False, overflow=False), 
-    # 'lepton1_eta': hist.axis.Regular(30, -5., 5., name='var', label=r'lead lepton $\eta$', growth=False, underflow=False, overflow=False), 
-    # 'lepton2_eta': hist.axis.Regular(30, -5., 5., name='var', label=r'sublead lepton $\eta$', growth=False, underflow=False, overflow=False),
-    # 'lepton1_phi': hist.axis.Regular(20, -3.2, 3.2, name='var', label=r'lead lepton $\phi$', growth=False, underflow=False, overflow=False), 
-    # 'lepton2_phi': hist.axis.Regular(20, -3.2, 3.2, name='var', label=r'sublead lepton $\phi$', growth=False, underflow=False, overflow=False),
-    # # single photon variables
-    # 'lead_pt': hist.axis.Regular(40, 20., 200, name='var', label=r' lead $\gamma p_{T}$ [GeV]', growth=False, underflow=False, overflow=False), 
-    # 'sublead_pt': hist.axis.Regular(40, 20., 200, name='var', label=r' sublead $\gamma p_{T}$ [GeV]', growth=False, underflow=False, overflow=False),
-    # # diphoton variables
-    # 'pt': hist.axis.Regular(40, 20., 2000, name='var', label=r' $\gamma\gamma p_{T}$ [GeV]', growth=False, underflow=False, overflow=False),
-    # 'eta': hist.axis.Regular(20, -5., 5., name='var', label=r'$\gamma\gamma \eta$', growth=False, underflow=False, overflow=False), 
-    # 'phi': hist.axis.Regular(20, -3.2, 3.2, name='var', label=r'$\gamma \gamma \phi$', growth=False, underflow=False, overflow=False),
-    # # angular (cos) variables
-    # 'abs_CosThetaStar_CS': hist.axis.Regular(20, 0, 1, name='var', label=r'|cos$(\theta_{CS})$|', growth=False, underflow=False, overflow=False), 
-    # 'abs_CosThetaStar_jj': hist.axis.Regular(20, 0, 1, name='var', label=r'|cos$(\theta_{jj})$|', growth=False, underflow=False, overflow=False), 
-    # # jet-lepton variables
-    # 'leadBjet_leadLepton': hist.axis.Regular(30, 0, 5, name='var', label=r'$\Delta R(bjet_{lead}, l_{lead})$', growth=False, underflow=False, overflow=False), 
-    # 'leadBjet_subleadLepton': hist.axis.Regular(30, 0, 5, name='var', label=r'$\Delta R(bjet_{lead}, l_{sublead})$', growth=False, underflow=False, overflow=False), 
-    # 'subleadBjet_leadLepton': hist.axis.Regular(30, 0, 5, name='var', label=r'$\Delta R(bjet_{sublead}, l_{lead})$', growth=False, underflow=False, overflow=False), 
-    # 'subleadBjet_subleadLepton': hist.axis.Regular(30, 0, 5, name='var', label=r'$\Delta R(bjet_{sublead}, l_{sublead})$', growth=False, underflow=False, overflow=False)
-    # 'dijet_mass': hist.axis.Regular(24, 70., 190., name='var', label=r'$M_{jj}$ [GeV]', growth=False, underflow=False, overflow=False)
+    'puppiMET_pt': hist.axis.Regular(40, 20., 250, name='var', label=r'puppiMET $p_T$ [GeV]', growth=False, underflow=False, overflow=False), 
+    'puppiMET_phi': hist.axis.Regular(20,-3.2, 3.2, name='var', label=r'puppiMET $\phi$', growth=False, underflow=False, overflow=False), 
+    # jet-MET variables
+    'DeltaPhi_j1MET': hist.axis.Regular(20,-3.2, 3.2, name='var', label=r'$\Delta\phi (j_1,E_T^{miss})$', growth=False, underflow=False, overflow=False), 
+    'DeltaPhi_j2MET': hist.axis.Regular(20, -3.2, 3.2, name='var', label=r'$\Delta\phi (j_2,E_T^{miss})$', growth=False, underflow=False, overflow=False), 
+    # jet-photon variables
+    'DeltaR_jg_min': hist.axis.Regular(30, 0, 5, name='var', label=r'min$(\Delta R(jet, \gamma))$', growth=False, underflow=False, overflow=False), 
+    # jet variables
+    'jet1_pt': hist.axis.Regular(40, 20., 250, name='var', label=r'lead jet $p_T$ [GeV]', growth=False, underflow=False, overflow=False),
+    'jet2_pt': hist.axis.Regular(40, 20., 250, name='var', label=r'sublead jet $p_T$ [GeV]', growth=False, underflow=False, overflow=False),
+    'n_jets': hist.axis.Integer(0, 10, name='var', label=r'$n_{jets}$', growth=False, underflow=False, overflow=False), 
+    'chi_t0': hist.axis.Regular(40, 0., 150, name='var', label=r'$\chi_{t0}^2$', growth=False, underflow=False, overflow=False), 
+    'chi_t1': hist.axis.Regular(30, 0., 500, name='var', label=r'$\chi_{t1}^2$', growth=False, underflow=False, overflow=False), 
+    # lepton variables
+    'lepton1_pt': hist.axis.Regular(40, 0., 200, name='var', label=r'lead lepton $p_T$ [GeV]', growth=False, underflow=False, overflow=False), 
+    'lepton2_pt': hist.axis.Regular(40, 0., 200, name='var', label=r'sublead lepton $p_T$ [GeV]', growth=False, underflow=False, overflow=False), 
+    'lepton1_eta': hist.axis.Regular(30, -5., 5., name='var', label=r'lead lepton $\eta$', growth=False, underflow=False, overflow=False), 
+    'lepton2_eta': hist.axis.Regular(30, -5., 5., name='var', label=r'sublead lepton $\eta$', growth=False, underflow=False, overflow=False),
+    'lepton1_phi': hist.axis.Regular(20, -3.2, 3.2, name='var', label=r'lead lepton $\phi$', growth=False, underflow=False, overflow=False), 
+    'lepton2_phi': hist.axis.Regular(20, -3.2, 3.2, name='var', label=r'sublead lepton $\phi$', growth=False, underflow=False, overflow=False),
+    # single photon variables
+    'lead_pt': hist.axis.Regular(40, 20., 200, name='var', label=r' lead $\gamma p_{T}$ [GeV]', growth=False, underflow=False, overflow=False), 
+    'sublead_pt': hist.axis.Regular(40, 20., 200, name='var', label=r' sublead $\gamma p_{T}$ [GeV]', growth=False, underflow=False, overflow=False),
+    # diphoton variables
+    'pt': hist.axis.Regular(40, 20., 2000, name='var', label=r' $\gamma\gamma p_{T}$ [GeV]', growth=False, underflow=False, overflow=False),
+    'eta': hist.axis.Regular(20, -5., 5., name='var', label=r'$\gamma\gamma \eta$', growth=False, underflow=False, overflow=False), 
+    'phi': hist.axis.Regular(20, -3.2, 3.2, name='var', label=r'$\gamma \gamma \phi$', growth=False, underflow=False, overflow=False),
+    # angular (cos) variables
+    'abs_CosThetaStar_CS': hist.axis.Regular(20, 0, 1, name='var', label=r'|cos$(\theta_{CS})$|', growth=False, underflow=False, overflow=False), 
+    'abs_CosThetaStar_jj': hist.axis.Regular(20, 0, 1, name='var', label=r'|cos$(\theta_{jj})$|', growth=False, underflow=False, overflow=False), 
+    # jet-lepton variables
+    'leadBjet_leadLepton': hist.axis.Regular(30, 0, 5, name='var', label=r'$\Delta R(bjet_{lead}, l_{lead})$', growth=False, underflow=False, overflow=False), 
+    'leadBjet_subleadLepton': hist.axis.Regular(30, 0, 5, name='var', label=r'$\Delta R(bjet_{lead}, l_{sublead})$', growth=False, underflow=False, overflow=False), 
+    'subleadBjet_leadLepton': hist.axis.Regular(30, 0, 5, name='var', label=r'$\Delta R(bjet_{sublead}, l_{lead})$', growth=False, underflow=False, overflow=False), 
+    'subleadBjet_subleadLepton': hist.axis.Regular(30, 0, 5, name='var', label=r'$\Delta R(bjet_{sublead}, l_{sublead})$', growth=False, underflow=False, overflow=False)
 }
 BLINDED_VARIABLES = {
     # dijet variables
-    # 'dijet_mass': (
-    #     hist.axis.Regular(24, 70., 190., name='var', label=r'$M_{jj}$ [GeV]', growth=False, underflow=False, overflow=False),
-    #     [100, 150]
-    # ),
+    'dijet_mass': (
+        hist.axis.Regular(24, 70., 190., name='var', label=r'$M_{jj}$ [GeV]', growth=False, underflow=False, overflow=False),
+        [100, 150]
+    ),
     # diphoton variables
     'mass': (
         hist.axis.Regular(50, 25., 180., name='var', label=r'$M_{\gamma\gamma}$ [GeV]', growth=False, underflow=False, overflow=False),
@@ -121,8 +120,8 @@ def sideband_cuts(data_era: str, sample):
     """
     Builds the event_mask used to do data-mc comparison in a sideband.
     """
-    # Require diphoton and dijet exist (should be required in preselection, and thus be all True)
-    # event_mask = ak.where(sample['pt'] != FILL_VALUE, True, False) & ak.where(sample['dijet_pt'] != FILL_VALUE, True, False)
+    # Require diphoton and dijet exist (required in preselection, and thus is all True)
+    event_mask = ak.where(sample['pt'] != FILL_VALUE, True, False) & ak.where(sample['dijet_pt'] != FILL_VALUE, True, False)
     # # Require btag score above Loose WP
     # EE_era_2022 = 'preEE' if re.search('preEE', data_era) is not None else 'postEE'
     # event_mask = event_mask & ak.where(
@@ -140,8 +139,7 @@ def sideband_cuts(data_era: str, sample):
     # event_mask = event_mask & (
     #     ak.where(sample['dijet_mass'] <= 100, True, False) | ak.where(sample['dijet_mass'] >= 150, True, False)
     # )
-    # sample[MC_DATA_MASK] = event_mask
-    sample[MC_DATA_MASK] = ak.ones_like(sample['dijet_mass'], dtype=np.bool_)
+    sample[MC_DATA_MASK] = event_mask
 
 def get_dir_lists(dir_lists: dict):
     """
@@ -273,8 +271,15 @@ def plot_ratio(ratio, mpl_ax, hist_axis, numer_err=None, denom_err=None, central
     if denom_err is not None:
         mpl_ax.bar(
             hist_axis.centers[0], height=denom_err * 2, width=(hist_axis.centers[0][1] - hist_axis.centers[0][0]), 
-            bottom=(central_value - denom_err), color="green", alpha=0.5
+            bottom=(central_value - denom_err), color="green", alpha=0.5, hatch='//'
         )
+
+def ratio_error(numer_values, denom_values, numer_err, denom_err):
+    return denom_values**(-1) * np.sqrt(
+        numer_err**2 + (
+            (numer_values / denom_values)**2 * denom_err**2
+        )
+    )
 
 def plot(variable: str, mc_hist: dict, data_hist: hist.Hist, ratio_dict: dict):
     """
@@ -299,10 +304,11 @@ def plot(variable: str, mc_hist: dict, data_hist: hist.Hist, ratio_dict: dict):
         warnings.simplefilter("ignore")
         numer_err = np.sqrt(ratio_dict['data_values']) / ratio_dict['data_values']
         denom_err = np.sqrt(ratio_dict['w2']) / ratio_dict['mc_values']
+        ratio_err = ratio_error(ratio_dict['data_values'], ratio_dict['mc_values'], numer_err, denom_err)
     plot_ratio(
         ratio_dict['ratio'], axs[1], 
-        numer_err=numer_err,
-        denom_err=denom_err,
+        numer_err=ratio_err,
+        denom_err=None,
         hist_axis=data_hist.axes
     )
     
@@ -322,7 +328,6 @@ def plot(variable: str, mc_hist: dict, data_hist: hist.Hist, ratio_dict: dict):
         axs[0].set_yscale('log')
     else:
         axs[0].set_yscale('linear')
-    axs[0].set_yscale('linear')
     # Save out the plot
     if not os.path.exists(DESTDIR):
         os.mkdir(DESTDIR)
@@ -347,15 +352,12 @@ def main():
     MC_pqs = make_mc_dict(dir_lists)
     Data_pqs = {}
 
-    total_num_bjet2_greater_pt = 0
     for data_era, dir_list in dir_lists.items():
         for dir_name in dir_list:
             for sample_type in ['nominal']:  # Ignores the scale-ups and scale-downs. Not computed in merger.py.
                 sample = ak.concatenate(
                     [ak.from_parquet(LPC_FILEPREFIX+'/'+data_era+'/'+dir_name+'/'+sample_type+'/'+file) for file in os.listdir(LPC_FILEPREFIX+'/'+data_era+'/'+dir_name+'/'+sample_type+'/')]
                 )
-                if re.search('Data', dir_name) is None:
-                    total_num_bjet2_greater_pt += ak.sum((sample['sublead_bjet_pt'] > sample['lead_bjet_pt']), axis=0)
                 
                 # perform necessary cuts to enter ttH enriched region
                 sideband_cuts(data_era, sample)
@@ -371,7 +373,6 @@ def main():
                 
                 del sample
                 print('======================== \n', dir_name)
-    print(f"total number sublead bjet greater pt: {total_num_bjet2_greater_pt}")
 
     # Ploting over variables for MC and Data
     for variable, axis in VARIABLES.items():

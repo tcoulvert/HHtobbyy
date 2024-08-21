@@ -1,6 +1,7 @@
 # Stdlib packages
 import copy
 import glob
+import json
 import re
 
 # Common Py packages
@@ -58,6 +59,7 @@ def process_data(n_particles, n_particle_fields, signal_filepaths, bkg_filepaths
             'lepton1_phi', 'lepton2_phi', 'phi', # lepton and diphoton phi
             'CosThetaStar_CS','CosThetaStar_jj',  # angular variables
         }
+        improper_fill_values = {}
     elif re.search('extra_vars', output_dirpath) is not None:
         high_level_fields = {
             'puppiMET_sumEt', 'puppiMET_pt', 'puppiMET_eta', 'puppiMET_phi', # MET variables
@@ -71,13 +73,14 @@ def process_data(n_particles, n_particle_fields, signal_filepaths, bkg_filepaths
             'leadBjet_leadLepton', 'leadBjet_subleadLepton', # deltaR btwn bjets and leptons (b/c b often decays to muons)
             'subleadBjet_leadLepton', 'subleadBjet_subleadLepton',
         }
+        if re.search('no_dijet_mass', output_dirpath) is not None:
+            high_level_fields.remove('dijet_mass')
+        improper_fill_values = {
+            'leadBjet_leadLepton', 'leadBjet_subleadLepton', # deltaR btwn bjets and leptons (b/c b often decays to muons)
+            'subleadBjet_leadLepton', 'subleadBjet_subleadLepton'
+        }
     else:
         raise Exception("Currently must use either base_vars of extra_vars.")
-    
-    improper_fill_values = {
-        'leadBjet_leadLepton', 'leadBjet_subleadLepton', # deltaR btwn bjets and leptons (b/c b often decays to muons)
-        'subleadBjet_leadLepton', 'subleadBjet_subleadLepton'
-    }
 
     pandas_aux_samples = {}
     high_level_aux_fields = {
@@ -152,7 +155,7 @@ def process_data(n_particles, n_particle_fields, signal_filepaths, bkg_filepaths
             'lepton1_pt' ,'lepton2_pt', 'pt', # lepton and diphoton pt
             'dijet_mass', # mass of b-dijet (resonance for H->bb)
         }
-        for field in log_fields:
+        for field in log_fields & high_level_fields:
             df[field] = np.where(df[field] > 0, np.log(df[field]), df[field])
         return df
     FILL_VALUE = -999
@@ -187,6 +190,7 @@ def process_data(n_particles, n_particle_fields, signal_filepaths, bkg_filepaths
     normed_sig_test_frame = pd.DataFrame(normed_sig_test.filled(FILL_VALUE), columns=list(sig_test_frame))
 
     train_min = np.min(np.vstack((sig_train_min, bkg_train_min)), axis=0)
+    train_min_mean = np.mean(np.vstack((train_min, -10*np.ones_like(train_min))), axis=0)
     for df in [
         normed_sig_train_frame, normed_sig_test_frame, normed_bkg_train_frame, normed_bkg_test_frame
     ]:
@@ -196,8 +200,16 @@ def process_data(n_particles, n_particle_fields, signal_filepaths, bkg_filepaths
             df[col] = np.where(
                 df[col] != FILL_VALUE, 
                 df[col], 
-                np.mean([train_min[i], -10])
+                train_min_mean[i]
             )
+    standardized_to_json = {
+        'standardized_variables': [col for col in df_train.columns],
+        'standardized_mean': [mean for mean in x_mean],
+        'standardized_stddev': [std for std in x_std],
+        'standardized_unphysical_values': [min_mean for min_mean in train_min_mean]
+    }
+    with open(output_dirpath + 'standardization.json', 'w') as f:
+        json.dump(standardized_to_json, f)
 
     def to_p_list(data_frame):
         # Inputs: Pandas data frame
@@ -246,6 +258,12 @@ def process_data(n_particles, n_particle_fields, signal_filepaths, bkg_filepaths
             'CosThetaStar_CS','CosThetaStar_jj',
             'dijet_mass', 'leadBjet_leadLepton', 'leadBjet_subleadLepton', 'subleadBjet_leadLepton', 'subleadBjet_subleadLepton'
         ]
+        if re.search('no_dijet_mass', output_dirpath) is not None:
+            input_hlf_vars = [
+                'puppiMET_sumEt','DeltaPhi_j1MET','DeltaPhi_j2MET','DeltaR_jg_min','n_jets','chi_t0', 'chi_t1',
+                'CosThetaStar_CS','CosThetaStar_jj',
+                'leadBjet_leadLepton', 'leadBjet_subleadLepton', 'subleadBjet_leadLepton', 'subleadBjet_subleadLepton'
+            ]
     else:
         raise Exception("Currently must use either base_vars of extra_vars.")
 
