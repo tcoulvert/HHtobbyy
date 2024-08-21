@@ -275,11 +275,14 @@ def plot_ratio(ratio, mpl_ax, hist_axis, numer_err=None, denom_err=None, central
         )
 
 def ratio_error(numer_values, denom_values, numer_err, denom_err):
-    return denom_values**(-1) * np.sqrt(
-        numer_err**2 + (
-            (numer_values / denom_values)**2 * denom_err**2
+    ratio_err =  np.sqrt(
+        np.power(denom_values, -2) * (
+            np.power(numer_err, 2) + (
+                np.power(numer_values / denom_values, 2) * np.power(denom_err, 2)
+            )
         )
     )
+    return ratio_err
 
 def plot(variable: str, mc_hist: dict, data_hist: hist.Hist, ratio_dict: dict):
     """
@@ -292,7 +295,8 @@ def plot(variable: str, mc_hist: dict, data_hist: hist.Hist, ratio_dict: dict):
     )
     hep.histplot(
         list(mc_hist.values()), label=list(mc_hist.keys()), 
-        w2=np.vstack((np.tile(np.zeros_like(ratio_dict['w2']), (len(mc_hist)-1, 1)), ratio_dict['w2'])),
+        # w2=np.vstack((np.tile(np.zeros_like(ratio_dict['w2']), (len(mc_hist)-1, 1)), ratio_dict['w2'])),
+        yerr=ratio_dict['w2'],
         stack=True, ax=axs[0], linewidth=3, histtype="fill", sort="yield"
     )
     hep.histplot(
@@ -302,9 +306,9 @@ def plot(variable: str, mc_hist: dict, data_hist: hist.Hist, ratio_dict: dict):
     #   -> suppresses warning coming from 0, inf, and NaN divides
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        numer_err = np.sqrt(ratio_dict['data_values']) / ratio_dict['data_values']
-        denom_err = np.sqrt(ratio_dict['w2']) / ratio_dict['mc_values']
-        ratio_err = ratio_error(ratio_dict['data_values'], ratio_dict['mc_values'], numer_err, denom_err)
+        # numer_err = np.sqrt(ratio_dict['data_values']) * ratio_dict['ratio'] / ratio_dict['data_values']
+        # denom_err = np.sqrt(ratio_dict['w2']) / ratio_dict['mc_values']
+        ratio_err = ratio_error(ratio_dict['data_values'], ratio_dict['mc_values'], np.sqrt(ratio_dict['data_values']), np.sqrt(ratio_dict['w2']))
     plot_ratio(
         ratio_dict['ratio'], axs[1], 
         numer_err=ratio_err,
