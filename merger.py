@@ -13,7 +13,8 @@ vec.register_awkward()
 # lpc_redirector = "root://cmseos.fnal.gov/"
 # lxplus_redirector = "root://eosuser.cern.ch/"
 # lxplus_fileprefix = "/eos/cms/store/group/phys_b2g/HHbbgg/HiggsDNA_parquet/v1"
-LPC_FILEPREFIX = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v1"
+# LPC_FILEPREFIX = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v1"
+LPC_FILEPREFIX = "/uscms/home/tsievert/nobackup/XHYbbgg/HiggsDNA_official/output_test_HH"
 FORCE_RERUN = True
 NO_BSM = True
 
@@ -287,7 +288,7 @@ def add_ttH_vars(sample):
 def main():
     dir_lists = {
         'Run3_2022preEE': None,
-        'Run3_2022postEE': None
+        # 'Run3_2022postEE': None
     }
     # set of all the preEE and postEE extra directories that don't contain parquet files
     non_parquet_set = {

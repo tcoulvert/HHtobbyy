@@ -96,9 +96,9 @@ def process_data(n_particles, n_particle_fields, signal_filepaths, bkg_filepaths
         pandas_aux_samples[sample_name] = {
             field: ak.to_numpy(sample[field], allow_missing=False) for field in high_level_aux_fields
         }
-        for field in improper_fill_values:
-            pandas_samples[sample_name][field] = np.where(pandas_samples[sample_name][field] < 10, pandas_samples[sample_name][field], -999)
-        pandas_samples[sample_name]['puppiMET_eta'] = np.zeros_like(pandas_samples[sample_name]['puppiMET_pt'])
+        # for field in improper_fill_values:
+        #     pandas_samples[sample_name][field] = np.where(pandas_samples[sample_name][field] < 10, pandas_samples[sample_name][field], -999)
+        # pandas_samples[sample_name]['puppiMET_eta'] = np.zeros_like(pandas_samples[sample_name]['puppiMET_pt'])
 
     sig_frame = pd.DataFrame(pandas_samples['sig'])
     sig_aux_frame = pd.DataFrame(pandas_aux_samples['sig'])
