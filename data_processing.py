@@ -289,9 +289,9 @@ def process_data(n_particles, n_particle_fields, signal_filepaths, bkg_filepaths
     data_list, data_hlf, label = data_list[p], data_hlf[p], label[p]
     # Build and shuffle train DFs
     data_df = pd.concat([sig_train_frame, bkg_train_frame], ignore_index=True)
-    data_df = data_df.reindex(p)
+    data_df = (data_df.reindex(p)).reset_index(drop=True)
     data_aux = pd.concat([sig_aux_train_frame, bkg_aux_train_frame], ignore_index=True)
-    data_aux = data_aux.reindex(p)
+    data_aux = (data_aux.reindex(p)).reset_index(drop=True)
     print("Data list: {}".format(data_list.shape))
     print("Data HLF: {}".format(data_hlf.shape))
 
@@ -304,9 +304,9 @@ def process_data(n_particles, n_particle_fields, signal_filepaths, bkg_filepaths
     data_list_test, data_hlf_test, label_test = data_list_test[p_test], data_hlf_test[p_test], label_test[p_test]
     # Build and shuffle test DFs
     data_test_df = pd.concat([sig_test_frame, bkg_test_frame], ignore_index=True)
-    data_test_df = data_test_df.reindex(p_test)
+    data_test_df = (data_test_df.reindex(p_test)).reset_index(drop=True)
     data_test_aux = pd.concat([sig_aux_test_frame, bkg_aux_test_frame], ignore_index=True)
-    data_test_aux = data_test_aux.reindex(p_test)
+    data_test_aux = (data_test_aux.reindex(p_test)).reset_index(drop=True)
     print("Data list test: {}".format(data_list_test.shape))
     print("Data HLF test: {}".format(data_hlf_test.shape))
 
