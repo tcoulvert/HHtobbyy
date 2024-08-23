@@ -225,9 +225,9 @@ def process_data(n_particles, n_particle_fields, signal_filepaths, bkg_filepaths
             particle_list_sig[:, var_idx, 0] = data_frame[var_name+'pt'].to_numpy()
             particle_list_sig[:, var_idx, 1] = data_frame[var_name+'eta'].to_numpy()
             particle_list_sig[:, var_idx, 2] = data_frame[var_name+'phi'].to_numpy()
-            particle_list_sig[:, var_idx, 3] = np.where(data_frame[var_name+'pt'].to_numpy() != 0, 1, 0) if re.search('lepton', var_name) is not None else np.zeros_like(data_frame[var_name+'pt'].to_numpy())
-            particle_list_sig[:, var_idx, 4] = np.where(data_frame[var_name+'pt'].to_numpy() != 0, 1, 0) if re.search('lepton', var_name) is None and re.search('puppiMET', var_name) is None else np.zeros_like(data_frame[var_name+'pt'].to_numpy())
-            particle_list_sig[:, var_idx, 5] = np.where(data_frame[var_name+'pt'].to_numpy() != 0, 1, 0) if re.search('puppiMET', var_name) is not None else np.zeros_like(data_frame[var_name+'pt'].to_numpy())
+            particle_list_sig[:, var_idx, 3] = np.ones_like(data_frame[var_name+'pt'].to_numpy()) if re.search('lepton', var_name) is not None else np.zeros_like(data_frame[var_name+'pt'].to_numpy())
+            particle_list_sig[:, var_idx, 4] = np.ones_like(data_frame[var_name+'pt'].to_numpy()) if re.search('lepton', var_name) is None and re.search('puppiMET', var_name) is None else np.zeros_like(data_frame[var_name+'pt'].to_numpy())
+            particle_list_sig[:, var_idx, 5] = np.ones_like(data_frame[var_name+'pt'].to_numpy()) if re.search('puppiMET', var_name) is not None else np.zeros_like(data_frame[var_name+'pt'].to_numpy())
         # figure out how to do this without loop # -> should we even do this??
         # sorted_particle_list = np.zeros(shape=(len(data_frame), n_particles, n_particle_fields))
         # sorted_indices = np.fliplr(np.argsort(particle_list_sig[:,:,0], axis=1))
@@ -239,7 +239,6 @@ def process_data(n_particles, n_particle_fields, signal_filepaths, bkg_filepaths
         #     sorted_particle_list[i, np.sum(nonzero_indices[i]):, :] = np.zeros((n_particles-np.sum(nonzero_indices[i]), n_particle_fields))
             
         # return sorted_particle_list
-
         return particle_list_sig
     
     normed_sig_list = to_p_list(normed_sig_train_frame)
