@@ -191,10 +191,11 @@ def process_data(n_particles, n_particle_fields, signal_filepaths, bkg_filepaths
 
     train_min = np.min(np.vstack((sig_train_min, bkg_train_min)), axis=0)
     train_min_mean = np.mean(np.vstack((train_min, -10*np.ones_like(train_min))), axis=0)
+    col_idx_dict = {col: i for i, col in enumerate(df_train.columns)}
     for df in [
         normed_sig_train_frame, normed_sig_test_frame, normed_bkg_train_frame, normed_bkg_test_frame
     ]:
-        for i, col in enumerate(df_train.columns):
+        for col, i in col_idx_dict.items():
             if np.all(df[col] != FILL_VALUE):
                 continue
             df[col] = np.where(
@@ -222,24 +223,26 @@ def process_data(n_particles, n_particle_fields, signal_filepaths, bkg_filepaths
         for var_idx, var_name in enumerate(['lepton1', 'lepton2', '', 'puppiMET']):
             if var_name != '':
                 var_name = var_name + '_'
-            particle_list_sig[:, var_idx, 0] = data_frame[var_name+'pt'].to_numpy()
-            particle_list_sig[:, var_idx, 1] = data_frame[var_name+'eta'].to_numpy()
-            particle_list_sig[:, var_idx, 2] = data_frame[var_name+'phi'].to_numpy()
+            particle_list_sig[:, var_idx, 0] = np.where(data_frame[var_name+'pt'].to_numpy() != train_min_mean[col_idx_dict[var_name]], data_frame[var_name+'pt'].to_numpy(), 0)
+            particle_list_sig[:, var_idx, 1] = np.where(data_frame[var_name+'eta'].to_numpy() != train_min_mean[col_idx_dict[var_name]], data_frame[var_name+'eta'].to_numpy(), 0)
+            particle_list_sig[:, var_idx, 2] = np.where(data_frame[var_name+'phi'].to_numpy() != train_min_mean[col_idx_dict[var_name]], data_frame[var_name+'phi'].to_numpy(), 0)
             particle_list_sig[:, var_idx, 3] = np.ones_like(data_frame[var_name+'pt'].to_numpy()) if re.search('lepton', var_name) is not None else np.zeros_like(data_frame[var_name+'pt'].to_numpy())
             particle_list_sig[:, var_idx, 4] = np.ones_like(data_frame[var_name+'pt'].to_numpy()) if re.search('lepton', var_name) is None and re.search('puppiMET', var_name) is None else np.zeros_like(data_frame[var_name+'pt'].to_numpy())
             particle_list_sig[:, var_idx, 5] = np.ones_like(data_frame[var_name+'pt'].to_numpy()) if re.search('puppiMET', var_name) is not None else np.zeros_like(data_frame[var_name+'pt'].to_numpy())
-        # figure out how to do this without loop # -> should we even do this??
-        # sorted_particle_list = np.zeros(shape=(len(data_frame), n_particles, n_particle_fields))
-        # sorted_indices = np.fliplr(np.argsort(particle_list_sig[:,:,0], axis=1))
-        # for i in range(len(data_frame)):
-        #     sorted_particle_list[i,:,:] = particle_list_sig[i, sorted_indices[i], :]
-        # nonzero_indices = np.array(np.where(sorted_particle_list[:, :, 0] != 0, True, False))
-        # for i in range(len(data_frame)):
-        #     sorted_particle_list[i, :np.sum(nonzero_indices[i]), :] = sorted_particle_list[i, nonzero_indices[i], :]
-        #     sorted_particle_list[i, np.sum(nonzero_indices[i]):, :] = np.zeros((n_particles-np.sum(nonzero_indices[i]), n_particle_fields))
+        
+        # Sort the particles in each event in the particle_list
+        #   -> this sorting is used later on to tell the RNN which particles to drop in each event
+        sorted_particle_list = np.zeros(shape=(len(data_frame), n_particles, n_particle_fields))
+        sorted_indices = np.fliplr(np.argsort(particle_list_sig[:,:,0], axis=1))
+        for i in range(len(data_frame)):
+            sorted_particle_list[i,:,:] = particle_list_sig[i, sorted_indices[i], :]
+        nonzero_indices = np.array(np.where(sorted_particle_list[:, :, 0] != 0, True, False))
+        for i in range(len(data_frame)):
+            sorted_particle_list[i, :np.sum(nonzero_indices[i]), :] = sorted_particle_list[i, nonzero_indices[i], :]
+            sorted_particle_list[i, np.sum(nonzero_indices[i]):, :] = np.zeros((n_particles-np.sum(nonzero_indices[i]), n_particle_fields))
             
-        # return sorted_particle_list
-        return particle_list_sig
+        return sorted_particle_list
+        # return particle_list_sig
     
     normed_sig_list = to_p_list(normed_sig_train_frame)
     normed_sig_test_list = to_p_list(normed_sig_test_frame)

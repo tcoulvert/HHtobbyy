@@ -13,10 +13,11 @@ vec.register_awkward()
 # lpc_redirector = "root://cmseos.fnal.gov/"
 # lxplus_redirector = "root://eosuser.cern.ch/"
 # lxplus_fileprefix = "/eos/cms/store/group/phys_b2g/HHbbgg/HiggsDNA_parquet/v1"
-# LPC_FILEPREFIX = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v1"
-LPC_FILEPREFIX = "/uscms/home/tsievert/nobackup/XHYbbgg/HiggsDNA_official/output_test_HH"
+LPC_FILEPREFIX = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v1"
+# LPC_FILEPREFIX = "/uscms/home/tsievert/nobackup/XHYbbgg/HiggsDNA_official/output_test_HH"
 FORCE_RERUN = True
 NO_BSM = True
+FILL_VALUE = -999
 
 def add_ttH_vars(sample):
     
@@ -28,9 +29,9 @@ def add_ttH_vars(sample):
             return ak.where(ak_array < 0, 1, -1)
             
     def ak_abs(ak_array):
-        valid_entry_mask = ak.where(ak_array != -999, True, False)
+        valid_entry_mask = ak.where(ak_array != FILL_VALUE, True, False)
         abs_ak_array = ak.where(ak_array > 0, ak_array, -ak_array)
-        return ak.where(valid_entry_mask, abs_ak_array, -999)
+        return ak.where(valid_entry_mask, abs_ak_array, FILL_VALUE)
         
     def deltaPhi(phi1, phi2):
         # angle1 and angle2 are (-pi, pi]
@@ -45,7 +46,7 @@ def add_ttH_vars(sample):
                 sample[f'jet{i}_4mom'].deltaR(sample[f'lead_bjet_4mom']) > jet_size, True, False
             ) & ak.where(
                 sample[f'jet{i}_4mom'].deltaR(sample[f'sublead_bjet_4mom']) > jet_size, True, False
-            ) & ak.where(sample[f'jet{i}_pt'] != -999, True, False)
+            ) & ak.where(sample[f'jet{i}_pt'] != FILL_VALUE, True, False)
         if i_mask is not None:
             jet_i_mask = jet_i_mask & i_mask
         
@@ -53,7 +54,7 @@ def add_ttH_vars(sample):
                 sample[f'jet{j}_4mom'].deltaR(sample[f'lead_bjet_4mom']) > jet_size, True, False
             ) & ak.where(
                 sample[f'jet{j}_4mom'].deltaR(sample[f'sublead_bjet_4mom']) > jet_size, True, False
-            ) & ak.where(sample[f'jet{j}_pt'] != -999, True, False)
+            ) & ak.where(sample[f'jet{j}_pt'] != FILL_VALUE, True, False)
         if j_mask is not None:
             jet_j_mask = jet_j_mask & j_mask
     
@@ -68,7 +69,7 @@ def add_ttH_vars(sample):
     
         chosen_w1jets = ak.Array(
             [
-                {'i': -999, 'j': -999} for _ in range(ak.num(sample['event'], axis=0))
+                {'i': FILL_VALUE, 'j': FILL_VALUE} for _ in range(ak.num(sample['event'], axis=0))
             ]
         )
         chosen_w1jets_deltaR = ak.Array(
@@ -77,7 +78,7 @@ def add_ttH_vars(sample):
     
         
         for i, j in jet_combos:
-            # Masks for non bjets and jet exists (jet_pt != -999)
+            # Masks for non bjets and jet exists (jet_pt != FILL_VALUE)
             jet_i_mask, jet_j_mask = jets_mask(sample, jet_size, i, j, t_mask)
     
             # Select w-jets by minimizing deltaR between two not b-jets
@@ -125,7 +126,7 @@ def add_ttH_vars(sample):
         if chi_form == 't1':
             # Select other wjet by dijet of reminaing two jets 
             for k, l in jet_combos:
-                # Masks for non-bjets, not choosing same jets as w1, and jet exists (jet_pt != -999)
+                # Masks for non-bjets, not choosing same jets as w1, and jet exists (jet_pt != FILL_VALUE)
                 jet_k_mask, jet_l_mask = jets_mask(
                     sample, jet_size, k, l, t_mask, 
                     i_mask=ak.where(chosen_w1jets['i'] != k, True, False),
@@ -150,54 +151,54 @@ def add_ttH_vars(sample):
     
         # To not include events with 4 extra jets, as its covered by chi_t1
         t_mask = ak.where(
-            sample['jet4_pt'] != -999, True, False
+            sample['jet4_pt'] != FILL_VALUE, True, False
         ) & ak.where(
-            sample['jet6_pt'] == -999, True, False
+            sample['jet6_pt'] == FILL_VALUE, True, False
         )
         
         find_wjet_topjet(
             sample, num_jets, jet_size, w_mass, top_mass, t_mask, chi_form='t0'
         )
         
-        term1 = ((w_mass - ak.where(sample['w1jet_4mom'].mass == 0, -999, sample['w1jet_4mom'].mass)) / (0.1 * w_mass))**2
-        term2 = ((top_mass - ak.where(sample['w1jet_4mom'].mass == 0, -999, sample['top1jet_4mom'].mass)) / (0.1 * top_mass))**2
+        term1 = ((w_mass - ak.where(sample['w1jet_4mom'].mass == 0, FILL_VALUE, sample['w1jet_4mom'].mass)) / (0.1 * w_mass))**2
+        term2 = ((top_mass - ak.where(sample['w1jet_4mom'].mass == 0, FILL_VALUE, sample['top1jet_4mom'].mass)) / (0.1 * top_mass))**2
     
-        return ak.where(t_mask, term1+term2, -999)
+        return ak.where(t_mask, term1+term2, FILL_VALUE)
         
     def chi_t1(sample, num_jets, jet_size):
         w_mass = 80.377
         top_mass = 172.76
     
         t_mask = ak.where(
-            sample['jet6_pt'] != -999, True, False
+            sample['jet6_pt'] != FILL_VALUE, True, False
         )
         
         find_wjet_topjet(
             sample, num_jets, jet_size, w_mass, top_mass, t_mask, chi_form='t1'
         )
     
-        term1_1 = ((w_mass - ak.where(sample['w1jet_4mom'].mass == 0, -999, sample['w1jet_4mom'].mass)) / (0.1 * w_mass))**2
-        term1_2 = ((top_mass - ak.where(sample['w1jet_4mom'].mass == 0, -999, sample['top1jet_4mom'].mass)) / (0.1 * top_mass))**2
+        term1_1 = ((w_mass - ak.where(sample['w1jet_4mom'].mass == 0, FILL_VALUE, sample['w1jet_4mom'].mass)) / (0.1 * w_mass))**2
+        term1_2 = ((top_mass - ak.where(sample['w1jet_4mom'].mass == 0, FILL_VALUE, sample['top1jet_4mom'].mass)) / (0.1 * top_mass))**2
     
-        term2_1 = ((w_mass - ak.where(sample['w1jet_4mom'].mass == 0, -999, sample['w2jet_4mom'].mass)) / (0.1 * w_mass))**2
-        term2_2 = ((top_mass - ak.where(sample['w1jet_4mom'].mass == 0, -999, sample['top2jet_4mom'].mass)) / (0.1 * top_mass))**2
+        term2_1 = ((w_mass - ak.where(sample['w1jet_4mom'].mass == 0, FILL_VALUE, sample['w2jet_4mom'].mass)) / (0.1 * w_mass))**2
+        term2_2 = ((top_mass - ak.where(sample['w1jet_4mom'].mass == 0, FILL_VALUE, sample['top2jet_4mom'].mass)) / (0.1 * top_mass))**2
     
-        return ak.where(t_mask, term1_1+term1_2+term2_1+term2_2, -999)
+        return ak.where(t_mask, term1_1+term1_2+term2_1+term2_2, FILL_VALUE)
 
     def deltaR_bjet_lepton(sample, lepton_type='lead', bjet_type='lead'):
         return ak.where(
-            ak.where(sample[f'lepton{1 if lepton_type == "lead" else 2}_pt'] != -999, True, False) & ak.where(sample[f'{bjet_type}_bjet_pt'] != -999, True, False),
+            ak.where(sample[f'lepton{1 if lepton_type == "lead" else 2}_pt'] != FILL_VALUE, True, False) & ak.where(sample[f'{bjet_type}_bjet_pt'] != FILL_VALUE, True, False),
             sample[f'{lepton_type}_lepton_4mom'].deltaR(sample[f'{bjet_type}_bjet_4mom']),
-            -999
+            FILL_VALUE
         )
     
     def lead_lepton_var(sample, pass_num, lepton_gen, var):
         if pass_num > 1:
             prev_lepton_pass = lead_lepton_var(sample, pass_num-1, lepton_gen, var)
         else:
-            prev_lepton_pass = ak.Array([-999 for _ in range(ak.num(sample['event'], axis=0))])
+            prev_lepton_pass = ak.Array([FILL_VALUE for _ in range(ak.num(sample['event'], axis=0))])
         return ak.where(
-            ak.where(sample[f'lepton{pass_num}_generation'] == lepton_gen, True, False) & ak.where(prev_lepton_pass == -999, True, False), 
+            ak.where(sample[f'lepton{pass_num}_generation'] == lepton_gen, True, False) & ak.where(prev_lepton_pass == FILL_VALUE, True, False), 
             sample[f'lepton{pass_num}_{var}'], 
             prev_lepton_pass
         )
@@ -205,9 +206,9 @@ def add_ttH_vars(sample):
         if pass_num > 2:
             prev_lepton_pass = sublead_lepton_var(sample, pass_num-1, lepton_gen, lead_lepton, var)
         else:
-            prev_lepton_pass = ak.Array([-999 for _ in range(ak.num(sample['event'], axis=0))])
+            prev_lepton_pass = ak.Array([FILL_VALUE for _ in range(ak.num(sample['event'], axis=0))])
         return ak.where(
-            ak.where(sample[f'lepton{pass_num}_generation'] == lepton_gen, True, False) & ak.where(prev_lepton_pass == -999, True, False) & ak.where(lead_lepton != sample[f'lepton{pass_num}_{var}'], True, False), 
+            ak.where(sample[f'lepton{pass_num}_generation'] == lepton_gen, True, False) & ak.where(prev_lepton_pass == FILL_VALUE, True, False) & ak.where(lead_lepton != sample[f'lepton{pass_num}_{var}'], True, False), 
             sample[f'lepton{pass_num}_{var}'], 
             prev_lepton_pass
         )
@@ -279,6 +280,18 @@ def add_ttH_vars(sample):
         sample[f'sublead_electron_{var}'] = sublead_lepton_var(sample, 4, 1, sample[f'lead_electron_{var}'], var)
         sample[f'lead_muon_{var}'] = lead_lepton_var(sample, 4, 2, var)
         sample[f'sublead_muon_{var}'] = sublead_lepton_var(sample, 4, 2, sample[f'lead_muon_{var}'], var)
+
+    # different tt final state variables #
+    sample['fully_leptonic'] = sample['lepton2_pt'] != FILL_VALUE
+    sample['fully_hadronic'] = ~sample['fully_leptonic'] & (sample['jet6_pt'] != FILL_VALUE)
+    sample['semi_leptonic'] = ~sample['fully_leptonic'] & ~sample['fully_hadronic']
+    print(f"num fully-lep = {ak.sum(sample['fully_leptonic'])}")
+    print(f"num full-had = {ak.sum(sample['fully_hadronic'])}")
+    print(f"num semi-lep = {ak.sum(sample['semi_leptonic'])}")
+    print(f"num semi-lep w/ 1 lepton = {ak.sum(sample['semi_leptonic'][sample['lepton1_pt'] != FILL_VALUE])}")
+    print(f"num semi-lep w/ 4+ jets = {ak.sum(sample['semi_leptonic'][sample['jet4_pt'] != FILL_VALUE])}")
+    print(f"num semi-lep w/ 1 lepton & 4+ jets = {ak.sum(sample['semi_leptonic'][(sample['jet4_pt'] != FILL_VALUE) & (sample['lepton1_pt'] != FILL_VALUE)])}")
+    print(f"num semi-lep w/o 1 lepton & 4+ jets = {ak.sum(sample['semi_leptonic'][(sample['jet4_pt'] == FILL_VALUE) & (sample['lepton1_pt'] == FILL_VALUE)])}")
 
     # bjets with energy corrections #
     # for bjet_type in ['lead', 'sublead']:
