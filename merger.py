@@ -282,16 +282,16 @@ def add_ttH_vars(sample):
         sample[f'sublead_muon_{var}'] = sublead_lepton_var(sample, 4, 2, sample[f'lead_muon_{var}'], var)
 
     # different tt final state variables #
-    sample['fully_leptonic'] = sample['lepton2_pt'] != FILL_VALUE
-    sample['fully_hadronic'] = ~sample['fully_leptonic'] & (sample['jet6_pt'] != FILL_VALUE)
-    sample['semi_leptonic'] = ~sample['fully_leptonic'] & ~sample['fully_hadronic']
-    print(f"num fully-lep = {ak.sum(sample['fully_leptonic'])}")
-    print(f"num full-had = {ak.sum(sample['fully_hadronic'])}")
-    print(f"num semi-lep = {ak.sum(sample['semi_leptonic'])}")
-    print(f"num semi-lep w/ 1 lepton = {ak.sum(sample['semi_leptonic'][sample['lepton1_pt'] != FILL_VALUE])}")
-    print(f"num semi-lep w/ 4+ jets = {ak.sum(sample['semi_leptonic'][sample['jet4_pt'] != FILL_VALUE])}")
-    print(f"num semi-lep w/ 1 lepton & 4+ jets = {ak.sum(sample['semi_leptonic'][(sample['jet4_pt'] != FILL_VALUE) & (sample['lepton1_pt'] != FILL_VALUE)])}")
-    print(f"num semi-lep w/o 1 lepton & 4+ jets = {ak.sum(sample['semi_leptonic'][(sample['jet4_pt'] == FILL_VALUE) & (sample['lepton1_pt'] == FILL_VALUE)])}")
+    # sample['fully_leptonic'] = sample['lepton2_pt'] != FILL_VALUE
+    # sample['fully_hadronic'] = ~sample['fully_leptonic'] & (sample['jet6_pt'] != FILL_VALUE)
+    # sample['semi_leptonic'] = ~sample['fully_leptonic'] & ~sample['fully_hadronic']
+    # print(f"num fully-lep = {ak.sum(sample['fully_leptonic'])}")
+    # print(f"num full-had = {ak.sum(sample['fully_hadronic'])}")
+    # print(f"num semi-lep = {ak.sum(sample['semi_leptonic'])}")
+    # print(f"num semi-lep w/ 1 lepton = {ak.sum(sample['semi_leptonic'][sample['lepton1_pt'] != FILL_VALUE])}")
+    # print(f"num semi-lep w/ 4+ jets = {ak.sum(sample['semi_leptonic'][sample['jet4_pt'] != FILL_VALUE])}")
+    # print(f"num semi-lep w/ 1 lepton & 4+ jets = {ak.sum(sample['semi_leptonic'][(sample['jet4_pt'] != FILL_VALUE) & (sample['lepton1_pt'] != FILL_VALUE)])}")
+    # print(f"num semi-lep w/o 1 lepton & 4+ jets = {ak.sum(sample['semi_leptonic'][(sample['jet4_pt'] == FILL_VALUE) & (sample['lepton1_pt'] == FILL_VALUE)])}")
 
     # bjets with energy corrections #
     # for bjet_type in ['lead', 'sublead']:
