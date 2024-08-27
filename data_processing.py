@@ -13,7 +13,7 @@ import awkward as ak
 
 import matplotlib.pyplot as plt
 
-def data_list_index_map(variable_name):
+def data_list_index_map(variable_name, data_list, event_mask):
     # Order of these ifs is important b/c 'lepton' contains 'pt', so if you don't check 'pt' last there will be a bug.
     if re.search('phi', variable_name) is not None:
         index3 = 2
@@ -22,18 +22,34 @@ def data_list_index_map(variable_name):
     else:
         index3 = 0
 
-    # Order of these ifs is important b/c diphoton is only called 'pt' or 'eta', so it has to be checked last.
+    mask_arr = np.zeros_like(data_list, dtype=bool)
     if re.search('lepton', variable_name) is not None:
         if re.search('1', variable_name) is not None:
-            index2 = 0
+            for i in range(len(data_list)):
+                if not event_mask[i]:
+                    continue
+                lepton1_idx = np.nonzero(np.where(data_list[i, :, 3] == 1, True, False))[0]
+                mask_arr[i, lepton1_idx, index3] = True
         else:
-            index2 = 1
+            for i in range(len(data_list)):
+                if not event_mask[i]:
+                    continue
+                lepton2_idx = np.nonzero(np.where(data_list[i, :, 3] == 1, True, False))[1]
+                mask_arr[i, lepton2_idx, index3] = True
     elif re.search('MET', variable_name) is not None:
-        index2 = 3
+        for i in range(len(data_list)):
+            if not event_mask[i]:
+                continue
+            MET_idx = np.nonzero(np.where(data_list[i, :, 4] == 1, True, False))[0]
+            mask_arr[i, MET_idx, index3] = True
     else:
-        index2 = 2
+        for i in range(len(data_list)):
+            if not event_mask[i]:
+                continue
+            diphoton_idx = np.nonzero(np.where(data_list[i, :, 5] == 1, True, False))[0]
+            mask_arr[i, diphoton_idx, index3] = True
     
-    return index2, index3
+    return mask_arr
 
 def process_data(n_particles, n_particle_fields, signal_filepaths, bkg_filepaths, output_dirpath, seed=None, return_pre_std=False):
     # Load parquet files #
