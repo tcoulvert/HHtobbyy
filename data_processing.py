@@ -62,7 +62,7 @@ def process_data(n_particles, n_particle_fields, signal_filepaths, bkg_filepaths
         'sig': sig_samples_pq,
         'bkg': bkg_samples_pq,
     }
-
+    
     # Convert parquet files to pandas DFs #
     pandas_samples = {}
     if re.search('base_vars', output_dirpath) is not None:
@@ -293,25 +293,18 @@ def process_data(n_particles, n_particle_fields, signal_filepaths, bkg_filepaths
     normed_bkg_list = to_p_list(normed_bkg_train_frame)
     normed_bkg_test_list = to_p_list(normed_bkg_test_frame)
 
-    if re.search('base_vars', output_dirpath) is not None:
-        input_hlf_vars = [
-            'puppiMET_sumEt','DeltaPhi_j1MET','DeltaPhi_j2MET','DeltaR_jg_min','n_jets','chi_t0', 'chi_t1',\
-            'CosThetaStar_CS','CosThetaStar_jj',
-        ]
-    elif re.search('extra_vars', output_dirpath) is not None:
-        input_hlf_vars = [
-            'puppiMET_sumEt','DeltaPhi_j1MET','DeltaPhi_j2MET','DeltaR_jg_min','n_jets','chi_t0', 'chi_t1',
-            'CosThetaStar_CS','CosThetaStar_jj',
-            'dijet_mass', 'leadBjet_leadLepton', 'leadBjet_subleadLepton', 'subleadBjet_leadLepton', 'subleadBjet_subleadLepton'
-        ]
-        if re.search('no_dijet_mass', output_dirpath) is not None:
-            input_hlf_vars = [
-                'puppiMET_sumEt','DeltaPhi_j1MET','DeltaPhi_j2MET','DeltaR_jg_min','n_jets','chi_t0', 'chi_t1',
-                'CosThetaStar_CS','CosThetaStar_jj',
-                'leadBjet_leadLepton', 'leadBjet_subleadLepton', 'subleadBjet_leadLepton', 'subleadBjet_subleadLepton'
-            ]
-    else:
-        raise Exception("Currently must use either base_vars of extra_vars.")
+    input_hlf_vars_max = [
+        'puppiMET_sumEt','DeltaR_jg_min','n_jets','chi_t0', 'chi_t1',
+        'CosThetaStar_CS','CosThetaStar_jj', 'DeltaPhi_j1MET','DeltaPhi_j2MET',
+        'leadBjet_leadLepton', 'leadBjet_subleadLepton', 'subleadBjet_leadLepton', 'subleadBjet_subleadLepton', 
+        'dijet_mass',
+        'chi_t0_bool', 'chi_t1_bool',
+        'leadBjet_leadLepton_bool', 'leadBjet_subleadLepton_bool', 'subleadBjet_leadLepton_bool', 'subleadBjet_subleadLepton_bool'
+    ]
+    input_hlf_vars = []
+    for var in input_hlf_vars_max:
+        if var in high_level_fields:
+            input_hlf_vars.append(var)
 
     normed_sig_hlf = normed_sig_train_frame[input_hlf_vars].values
     normed_sig_test_hlf = normed_sig_test_frame[input_hlf_vars].values
