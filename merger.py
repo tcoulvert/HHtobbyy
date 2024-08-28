@@ -213,6 +213,17 @@ def add_ttH_vars(sample):
             prev_lepton_pass
         )
     
+    def n_leptons(sample, pass_num):
+        if pass_num < 4:
+            prev_lepton_pass = n_leptons(sample, pass_num+1)
+        else:
+            prev_lepton_pass = ak.Array([FILL_VALUE for _ in range(ak.num(sample['event'], axis=0))])
+        return ak.where(
+            ak.where(prev_lepton_pass == FILL_VALUE, True, False) & ak.where(sample[f'lepton{pass_num}_pt'] != FILL_VALUE, True, False),
+            pass_num, 
+            prev_lepton_pass
+        )
+    
     # Abs of cos #
     sample['abs_CosThetaStar_CS'] = ak.where(sample['CosThetaStar_CS'] >= 0, sample['CosThetaStar_CS'], -1*sample['CosThetaStar_CS'])
     sample['abs_CosThetaStar_jj'] = ak.where(sample['CosThetaStar_jj'] >= 0, sample['CosThetaStar_jj'], -1*sample['CosThetaStar_jj'])
@@ -281,6 +292,15 @@ def add_ttH_vars(sample):
         sample[f'lead_muon_{var}'] = lead_lepton_var(sample, 4, 2, var)
         sample[f'sublead_muon_{var}'] = sublead_lepton_var(sample, 4, 2, sample[f'lead_muon_{var}'], var)
 
+    # n_leptons #
+    sample[f'n_leptons'] = n_leptons(sample, 1)
+
+    # bool values #
+    for var in ['chi_t0', 'chi_t1','leadBjet_leadLepton', 
+        'leadBjet_subleadLepton', 'subleadBjet_leadLepton', 'subleadBjet_subleadLepton'
+    ]:
+        sample[f'{var}_bool'] = ak.where(sample[var] != FILL_VALUE, 1, 0)
+
     # different tt final state variables #
     # sample['fully_leptonic'] = sample['lepton2_pt'] != FILL_VALUE
     # sample['fully_hadronic'] = ~sample['fully_leptonic'] & (sample['jet6_pt'] != FILL_VALUE)
@@ -301,7 +321,7 @@ def add_ttH_vars(sample):
 def main():
     dir_lists = {
         'Run3_2022preEE': None,
-        # 'Run3_2022postEE': None
+        'Run3_2022postEE': None
     }
     # set of all the preEE and postEE extra directories that don't contain parquet files
     non_parquet_set = {
@@ -369,8 +389,6 @@ def main():
 
     for data_era, dir_list in dir_lists.items():
         for dir_name in dir_list:
-            if dir_name not in {'GluGluToHH', 'ttHToGG'}:
-                continue
             for sample_type in ['nominal']: # Eventually change to os.listdir(LPC_FILEPREFIX+'/'+data_era+'/'+dir_name)
                 # Load all the parquets of a single sample into an ak array
                 sample = ak.concatenate(

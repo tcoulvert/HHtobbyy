@@ -75,7 +75,6 @@ def process_data(n_particles, n_particle_fields, signal_filepaths, bkg_filepaths
             'lepton1_phi', 'lepton2_phi', 'phi', # lepton and diphoton phi
             'CosThetaStar_CS','CosThetaStar_jj',  # angular variables
         }
-        improper_fill_values = {}
     elif re.search('extra_vars', output_dirpath) is not None:
         high_level_fields = {
             'puppiMET_sumEt', 'puppiMET_pt', 'puppiMET_eta', 'puppiMET_phi', # MET variables
@@ -91,10 +90,39 @@ def process_data(n_particles, n_particle_fields, signal_filepaths, bkg_filepaths
         }
         if re.search('no_dijet_mass', output_dirpath) is not None:
             high_level_fields.remove('dijet_mass')
-        improper_fill_values = {
-            'leadBjet_leadLepton', 'leadBjet_subleadLepton', # deltaR btwn bjets and leptons (b/c b often decays to muons)
-            'subleadBjet_leadLepton', 'subleadBjet_subleadLepton'
+        if re.search('and_bools', output_dirpath) is not None:
+            high_level_fields = high_level_fields | {
+                'chi_t0_bool', 'chi_t1_bool',
+                'leadBjet_leadLepton_bool', 'leadBjet_subleadLepton_bool', # deltaR btwn bjets and leptons (b/c b often decays to muons)
+                'subleadBjet_leadLepton_bool', 'subleadBjet_subleadLepton_bool'
+            }
+    elif re.search('no_bad_vars', output_dirpath) is not None:
+        high_level_fields = {
+            'puppiMET_sumEt', 'puppiMET_pt', 'puppiMET_eta', 'puppiMET_phi', # MET variables
+            'DeltaPhi_j1MET', 'DeltaPhi_j2MET', # jet-MET variables
+            'DeltaR_jg_min', 'n_jets', # jet variables
+            'lepton1_pt' ,'lepton2_pt', 'pt', # lepton and diphoton pt
+            'lepton1_eta', 'lepton2_eta', 'eta', # lepton and diphoton eta
+            'lepton1_phi', 'lepton2_phi', 'phi', # lepton and diphoton phi
+            'CosThetaStar_CS','CosThetaStar_jj',  # angular variables
+            'dijet_mass', # mass of b-dijet (resonance for H->bb)
         }
+        if re.search('no_dijet_mass', output_dirpath) is not None:
+            high_level_fields.remove('dijet_mass')
+    elif re.search('simplified_bad_vars', output_dirpath) is not None:
+        high_level_fields = {
+            'puppiMET_sumEt', 'puppiMET_pt', 'puppiMET_eta', 'puppiMET_phi', # MET variables
+            'DeltaPhi_j1MET', 'DeltaPhi_j2MET', # jet-MET variables
+            'DeltaR_jg_min', 'n_jets', # jet variables
+            'lepton1_pt' ,'lepton2_pt', 'pt', # lepton and diphoton pt
+            'lepton1_eta', 'lepton2_eta', 'eta', # lepton and diphoton eta
+            'lepton1_phi', 'lepton2_phi', 'phi', # lepton and diphoton phi
+            'CosThetaStar_CS','CosThetaStar_jj',  # angular variables
+            'dijet_mass', # mass of b-dijet (resonance for H->bb),
+            'n_leptons'
+        }
+        if re.search('no_dijet_mass', output_dirpath) is not None:
+            high_level_fields.remove('dijet_mass')
     else:
         raise Exception("Currently must use either base_vars of extra_vars.")
 
