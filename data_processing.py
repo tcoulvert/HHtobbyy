@@ -267,9 +267,9 @@ def process_data(n_particles, n_particle_fields, signal_filepaths, bkg_filepaths
         for var_idx, var_name in enumerate(['lepton1', 'lepton2', '', 'puppiMET']):
             if var_name != '':
                 var_name = var_name + '_'
-            particle_list_sig[:, var_idx, 0] = np.where(data_frame[var_name+'pt'].to_numpy() != train_min_mean[col_idx_dict[var_name]], data_frame[var_name+'pt'].to_numpy(), 0)
-            particle_list_sig[:, var_idx, 1] = np.where(data_frame[var_name+'eta'].to_numpy() != train_min_mean[col_idx_dict[var_name]], data_frame[var_name+'eta'].to_numpy(), 0)
-            particle_list_sig[:, var_idx, 2] = np.where(data_frame[var_name+'phi'].to_numpy() != train_min_mean[col_idx_dict[var_name]], data_frame[var_name+'phi'].to_numpy(), 0)
+            particle_list_sig[:, var_idx, 0] = np.where(data_frame[var_name+'pt'].to_numpy() != train_min_mean[col_idx_dict[var_name+'pt']], data_frame[var_name+'pt'].to_numpy(), 0)
+            particle_list_sig[:, var_idx, 1] = np.where(data_frame[var_name+'eta'].to_numpy() != train_min_mean[col_idx_dict[var_name+'eta']], data_frame[var_name+'eta'].to_numpy(), 0)
+            particle_list_sig[:, var_idx, 2] = np.where(data_frame[var_name+'phi'].to_numpy() != train_min_mean[col_idx_dict[var_name+'phi']], data_frame[var_name+'phi'].to_numpy(), 0)
             particle_list_sig[:, var_idx, 3] = np.ones_like(data_frame[var_name+'pt'].to_numpy()) if re.search('lepton', var_name) is not None else np.zeros_like(data_frame[var_name+'pt'].to_numpy())
             particle_list_sig[:, var_idx, 4] = np.ones_like(data_frame[var_name+'pt'].to_numpy()) if re.search('lepton', var_name) is None and re.search('puppiMET', var_name) is None else np.zeros_like(data_frame[var_name+'pt'].to_numpy())
             particle_list_sig[:, var_idx, 5] = np.ones_like(data_frame[var_name+'pt'].to_numpy()) if re.search('puppiMET', var_name) is not None else np.zeros_like(data_frame[var_name+'pt'].to_numpy())
