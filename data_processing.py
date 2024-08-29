@@ -28,25 +28,25 @@ def data_list_index_map(variable_name, data_list, event_mask):
             for i in range(len(data_list)):
                 if not event_mask[i]:
                     continue
-                lepton1_idx = np.nonzero(np.where(data_list[i, :, 3] == 1, True, False))[0]
+                lepton1_idx = np.nonzero(np.where(data_list[i, :, 3] == 1, True, False))[0][0]
                 mask_arr[i, lepton1_idx, index3] = True
         else:
             for i in range(len(data_list)):
                 if not event_mask[i]:
                     continue
-                lepton2_idx = np.nonzero(np.where(data_list[i, :, 3] == 1, True, False))[1]
+                lepton2_idx = np.nonzero(np.where(data_list[i, :, 3] == 1, True, False))[0][1]
                 mask_arr[i, lepton2_idx, index3] = True
     elif re.search('MET', variable_name) is not None:
         for i in range(len(data_list)):
             if not event_mask[i]:
                 continue
-            MET_idx = np.nonzero(np.where(data_list[i, :, 4] == 1, True, False))[0]
+            MET_idx = np.nonzero(np.where(data_list[i, :, 5] == 1, True, False))[0][0]
             mask_arr[i, MET_idx, index3] = True
     else:
         for i in range(len(data_list)):
             if not event_mask[i]:
                 continue
-            diphoton_idx = np.nonzero(np.where(data_list[i, :, 5] == 1, True, False))[0]
+            diphoton_idx = np.nonzero(np.where(data_list[i, :, 4] == 1, True, False))[0][0]
             mask_arr[i, diphoton_idx, index3] = True
     
     return mask_arr
@@ -93,7 +93,7 @@ def process_data(n_particles, n_particle_fields, signal_filepaths, bkg_filepaths
         if re.search('and_bools', output_dirpath) is not None:
             high_level_fields = high_level_fields | {
                 'chi_t0_bool', 'chi_t1_bool',
-                'leadBjet_leadLepton_bool', 'leadBjet_subleadLepton_bool', # deltaR btwn bjets and leptons (b/c b often decays to muons)
+                'leadBjet_leadLepton_bool', 'leadBjet_subleadLepton_bool',
                 'subleadBjet_leadLepton_bool', 'subleadBjet_subleadLepton_bool'
             }
     elif re.search('no_bad_vars', output_dirpath) is not None:
@@ -191,6 +191,9 @@ def process_data(n_particles, n_particle_fields, signal_filepaths, bkg_filepaths
         'lepton1_eta', 'lepton2_eta', 'eta', # lepton and diphoton eta
         'lepton1_phi', 'lepton2_phi', 'phi', # lepton and diphoton phi
         'CosThetaStar_CS','CosThetaStar_jj',
+        'chi_t0_bool', 'chi_t1_bool',
+        'leadBjet_leadLepton_bool', 'leadBjet_subleadLepton_bool',
+        'subleadBjet_leadLepton_bool', 'subleadBjet_subleadLepton_bool'
     }
     def apply_log(df):
         log_fields = {
@@ -271,7 +274,7 @@ def process_data(n_particles, n_particle_fields, signal_filepaths, bkg_filepaths
             particle_list_sig[:, var_idx, 1] = np.where(data_frame[var_name+'eta'].to_numpy() != train_min_mean[col_idx_dict[var_name+'eta']], data_frame[var_name+'eta'].to_numpy(), 0)
             particle_list_sig[:, var_idx, 2] = np.where(data_frame[var_name+'phi'].to_numpy() != train_min_mean[col_idx_dict[var_name+'phi']], data_frame[var_name+'phi'].to_numpy(), 0)
             particle_list_sig[:, var_idx, 3] = np.ones_like(data_frame[var_name+'pt'].to_numpy()) if re.search('lepton', var_name) is not None else np.zeros_like(data_frame[var_name+'pt'].to_numpy())
-            particle_list_sig[:, var_idx, 4] = np.ones_like(data_frame[var_name+'pt'].to_numpy()) if re.search('lepton', var_name) is None and re.search('puppiMET', var_name) is None else np.zeros_like(data_frame[var_name+'pt'].to_numpy())
+            particle_list_sig[:, var_idx, 4] = np.ones_like(data_frame[var_name+'pt'].to_numpy()) if len(var_name) == 0 else np.zeros_like(data_frame[var_name+'pt'].to_numpy())
             particle_list_sig[:, var_idx, 5] = np.ones_like(data_frame[var_name+'pt'].to_numpy()) if re.search('puppiMET', var_name) is not None else np.zeros_like(data_frame[var_name+'pt'].to_numpy())
         
         # Sort the particles in each event in the particle_list
@@ -285,10 +288,9 @@ def process_data(n_particles, n_particle_fields, signal_filepaths, bkg_filepaths
         for i in range(len(data_frame)):
             copy_arr = copy.deepcopy(sorted_particle_list[i, zero_indices[i], :])
             sorted_particle_list[i, :np.sum(nonzero_indices[i]), :] = sorted_particle_list[i, nonzero_indices[i], :]
-            sorted_particle_list[i, np.sum(nonzero_indices[i]):, :] = copy_arr
+            sorted_particle_list[i, np.sum(nonzero_indices[i]):, :] = copy.deepcopy(copy_arr)
             
         return sorted_particle_list
-        # return particle_list_sig
     
     normed_sig_list = to_p_list(normed_sig_train_frame)
     normed_sig_test_list = to_p_list(normed_sig_test_frame)
@@ -301,7 +303,8 @@ def process_data(n_particles, n_particle_fields, signal_filepaths, bkg_filepaths
         'leadBjet_leadLepton', 'leadBjet_subleadLepton', 'subleadBjet_leadLepton', 'subleadBjet_subleadLepton', 
         'dijet_mass',
         'chi_t0_bool', 'chi_t1_bool',
-        'leadBjet_leadLepton_bool', 'leadBjet_subleadLepton_bool', 'subleadBjet_leadLepton_bool', 'subleadBjet_subleadLepton_bool'
+        'leadBjet_leadLepton_bool', 'leadBjet_subleadLepton_bool', 'subleadBjet_leadLepton_bool', 'subleadBjet_subleadLepton_bool',
+        'n_leptons'
     ]
     input_hlf_vars = []
     for var in input_hlf_vars_max:
