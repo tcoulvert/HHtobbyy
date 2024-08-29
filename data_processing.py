@@ -280,10 +280,12 @@ def process_data(n_particles, n_particle_fields, signal_filepaths, bkg_filepaths
         sorted_indices = np.fliplr(np.argsort(particle_list_sig[:,:,0], axis=1))
         for i in range(len(data_frame)):
             sorted_particle_list[i,:,:] = particle_list_sig[i, sorted_indices[i], :]
-        nonzero_indices = np.array(np.where(sorted_particle_list[:, :, 0] != 0, True, False))
+        nonzero_indices = np.array(np.where(sorted_particle_list[:,:,0] != 0, True, False))
+        zero_indices = np.logical_not(nonzero_indices)
         for i in range(len(data_frame)):
+            copy_arr = copy.deepcopy(sorted_particle_list[i, zero_indices[i], :])
             sorted_particle_list[i, :np.sum(nonzero_indices[i]), :] = sorted_particle_list[i, nonzero_indices[i], :]
-            sorted_particle_list[i, np.sum(nonzero_indices[i]):, :] = np.zeros((n_particles-np.sum(nonzero_indices[i]), n_particle_fields))
+            sorted_particle_list[i, np.sum(nonzero_indices[i]):, :] = copy_arr
             
         return sorted_particle_list
         # return particle_list_sig
