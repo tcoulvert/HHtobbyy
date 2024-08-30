@@ -30,7 +30,7 @@ def evaluate(
     model = InclusiveNetwork(
         best_conf['hidden_layers'], best_conf['initial_nodes'], best_conf['dropout'], 
         best_conf['gru_layers'], best_conf['gru_size'], best_conf['dropout_g'], 
-        dnn_input=len(hlf[0])
+        dnn_input=len(hlf[0]), rnn_input=len(p_list[0, 0, :])
     ).cuda()
 
     fprs = []
