@@ -98,7 +98,6 @@ def process_data(n_particles, n_particle_fields, signal_filepaths, bkg_filepaths
                 'subleadBjet_leadLepton_bool', 'subleadBjet_subleadLepton_bool'
             }
         elif re.search('in_RNN', output_dirpath) is not None:
-            print('gotten into RNN if statement')
             extra_RNN_vars = [
                 'chi_t0', 'chi_t1', 'leadBjet_leadLepton', 'leadBjet_subleadLepton',
                 'subleadBjet_leadLepton', 'subleadBjet_subleadLepton',
@@ -292,7 +291,7 @@ def process_data(n_particles, n_particle_fields, signal_filepaths, bkg_filepaths
 
         # Sort the particles in each event in the particle_list
         #   -> this sorting is used later on to tell the RNN which particles to drop in each event
-        sorted_particle_list = np.zeros(shape=(len(data_frame), n_particles, n_particle_fields))
+        sorted_particle_list = np.zeros_like(particle_list_sig)
         sorted_indices = np.fliplr(np.argsort(particle_list_sig[:,:,0], axis=1))
         for i in range(len(data_frame)):
             sorted_particle_list[i,:,:] = particle_list_sig[i, sorted_indices[i], :]
