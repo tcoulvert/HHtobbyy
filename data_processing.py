@@ -98,6 +98,7 @@ def process_data(n_particles, n_particle_fields, signal_filepaths, bkg_filepaths
                 'subleadBjet_leadLepton_bool', 'subleadBjet_subleadLepton_bool'
             }
         elif re.search('in_RNN', output_dirpath) is not None:
+            print('gotten into RNN if statement')
             extra_RNN_vars = [
                 'chi_t0', 'chi_t1', 'leadBjet_leadLepton', 'leadBjet_subleadLepton',
                 'subleadBjet_leadLepton', 'subleadBjet_subleadLepton',
@@ -269,7 +270,7 @@ def process_data(n_particles, n_particle_fields, signal_filepaths, bkg_filepaths
         # Inputs: Pandas data frame
         # Outputs: Numpy array of dimension (Event, Particle, Attributes)
         
-        particle_list_sig = np.zeros(shape=(len(data_frame), n_particles+len(extra_RNN_vars), n_particle_fields))  # +(1 if len(extra_RNN_vars) > 0 else 0)
+        particle_list_sig = np.zeros(shape=(len(data_frame), n_particles+len(extra_RNN_vars), n_particle_fields+len(extra_RNN_vars)))  # +(1 if len(extra_RNN_vars) > 0 else 0)
         # 4: max particles: l1, l2, dipho, MET
         # 6: pt, eta, phi, isLep, isDipho, isMET
 
@@ -282,9 +283,12 @@ def process_data(n_particles, n_particle_fields, signal_filepaths, bkg_filepaths
             particle_list_sig[:, var_idx, 3] = np.ones_like(data_frame[var_name+'pt'].to_numpy()) if re.search('lepton', var_name) is not None else np.zeros_like(data_frame[var_name+'pt'].to_numpy())
             particle_list_sig[:, var_idx, 4] = np.ones_like(data_frame[var_name+'pt'].to_numpy()) if len(var_name) == 0 else np.zeros_like(data_frame[var_name+'pt'].to_numpy())
             particle_list_sig[:, var_idx, 5] = np.ones_like(data_frame[var_name+'pt'].to_numpy()) if re.search('puppiMET', var_name) is not None else np.zeros_like(data_frame[var_name+'pt'].to_numpy())
+            for i in range(len(extra_RNN_vars)):
+                particle_list_sig[:, var_idx, 6+i] = np.zeros_like(data_frame[var_name+'pt'].to_numpy())
         for var_idx, var_name in enumerate(extra_RNN_vars, start=4):
             particle_list_sig[:, var_idx, 0] = np.where(data_frame[var_name].to_numpy() != train_min_mean[col_idx_dict[var_name]], data_frame[var_name].to_numpy(), 0)
             particle_list_sig[:, var_idx, 1:] = np.zeros_like(particle_list_sig[:, 0, 1:])
+            particle_list_sig[:, var_idx, 2+var_idx] = np.ones_like(particle_list_sig[:, var_idx, 0])
 
         # Sort the particles in each event in the particle_list
         #   -> this sorting is used later on to tell the RNN which particles to drop in each event
