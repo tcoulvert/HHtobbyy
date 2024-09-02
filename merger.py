@@ -389,6 +389,8 @@ def main():
 
     for data_era, dir_list in dir_lists.items():
         for dir_name in dir_list:
+            if dir_name not in {'ttHToGG', 'GluGluToHH'}:
+                continue
             for sample_type in ['nominal']: # Eventually change to os.listdir(LPC_FILEPREFIX+'/'+data_era+'/'+dir_name)
                 # Load all the parquets of a single sample into an ak array
                 sample = ak.concatenate(

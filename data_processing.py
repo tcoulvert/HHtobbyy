@@ -51,7 +51,11 @@ def data_list_index_map(variable_name, data_list, event_mask):
     
     return mask_arr
 
-def process_data(n_particles, n_particle_fields, signal_filepaths, bkg_filepaths, output_dirpath, seed=None, return_pre_std=False):
+def process_data(
+    n_particles, n_particle_fields, 
+    signal_filepaths, bkg_filepaths, output_dirpath, 
+    seed=None, return_pre_std=False, mod_vals=(2, 2)
+):
     # Load parquet files #
     
     sig_samples_list = [ak.from_parquet(glob.glob(dir_path)) for dir_path in signal_filepaths]
@@ -167,17 +171,17 @@ def process_data(n_particles, n_particle_fields, signal_filepaths, bkg_filepaths
     def train_test_split_df(sig_df, sig_aux_df, bkg_df, bkg_aux_df, method='modulus'):
         if method == 'modulus':
             # Train/Val events are those with odd event #s, test events have even event #s
-            sig_train_frame = sig_df.loc[(sig_aux_df['event'] % 2).ne(0)].reset_index(drop=True)
-            sig_test_frame = sig_df.loc[(sig_aux_df['event'] % 2).ne(1)].reset_index(drop=True)
+            sig_train_frame = sig_df.loc[(sig_aux_df['event'] % mod_vals[0]).eq(1)].reset_index(drop=True)
+            sig_test_frame = sig_df.loc[(sig_aux_df['event'] % mod_vals[1]).ne(1)].reset_index(drop=True)
 
-            sig_aux_train_frame = sig_aux_df.loc[(sig_aux_df['event'] % 2).ne(0)].reset_index(drop=True)
-            sig_aux_test_frame = sig_aux_df.loc[(sig_aux_df['event'] % 2).ne(1)].reset_index(drop=True)
+            sig_aux_train_frame = sig_aux_df.loc[(sig_aux_df['event'] % mod_vals[0]).eq(1)].reset_index(drop=True)
+            sig_aux_test_frame = sig_aux_df.loc[(sig_aux_df['event'] % mod_vals[1]).ne(1)].reset_index(drop=True)
 
-            bkg_train_frame = bkg_df.loc[(bkg_aux_df['event'] % 2).ne(0)].reset_index(drop=True)
-            bkg_test_frame = bkg_df.loc[(bkg_aux_df['event'] % 2).ne(1)].reset_index(drop=True)
+            bkg_train_frame = bkg_df.loc[(bkg_aux_df['event'] % mod_vals[0]).eq(1)].reset_index(drop=True)
+            bkg_test_frame = bkg_df.loc[(bkg_aux_df['event'] % mod_vals[1]).ne(1)].reset_index(drop=True)
 
-            bkg_aux_train_frame = bkg_aux_df.loc[(bkg_aux_df['event'] % 2).ne(0)].reset_index(drop=True)
-            bkg_aux_test_frame = bkg_aux_df.loc[(bkg_aux_df['event'] % 2).ne(1)].reset_index(drop=True)
+            bkg_aux_train_frame = bkg_aux_df.loc[(bkg_aux_df['event'] % mod_vals[0]).eq(1)].reset_index(drop=True)
+            bkg_aux_test_frame = bkg_aux_df.loc[(bkg_aux_df['event'] % mod_vals[1]).ne(1)].reset_index(drop=True)
         else:
             raise Exception(f"Only 2 accepted methods: 'sample' and 'modulus'. You input {method}")
         return sig_train_frame, sig_test_frame, sig_aux_train_frame, sig_aux_test_frame, bkg_train_frame, bkg_test_frame, bkg_aux_train_frame, bkg_aux_test_frame
@@ -351,6 +355,7 @@ def process_data(n_particles, n_particle_fields, signal_filepaths, bkg_filepaths
     data_aux = (data_aux.reindex(p)).reset_index(drop=True)
     print("Data list: {}".format(data_list.shape))
     print("Data HLF: {}".format(data_hlf.shape))
+    print(f"n signal = {len(label[label == 1])}, n bkg = {len(label[label == 0])}")
 
     # Build test data arrays
     data_list_test = np.concatenate((normed_sig_test_list, normed_bkg_test_list))
@@ -366,6 +371,7 @@ def process_data(n_particles, n_particle_fields, signal_filepaths, bkg_filepaths
     data_test_aux = (data_test_aux.reindex(p_test)).reset_index(drop=True)
     print("Data list test: {}".format(data_list_test.shape))
     print("Data HLF test: {}".format(data_hlf_test.shape))
+    print(f"n signal = {len(label_test[label_test == 1])}, n bkg = {len(label_test[label_test == 0])}")
 
     if return_pre_std:
         return (
