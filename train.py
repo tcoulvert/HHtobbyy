@@ -22,7 +22,7 @@ def train(
         if breakdown:
             print("Early stopped.")
             break
-        print('Epoch {}/{}'.format(epoch, num_epochs - 1))
+        # print('Epoch {}/{}'.format(epoch, num_epochs - 1))
         
         # Each epoch has a training and validation phase
         for phase in ['training', 'validation']:
@@ -81,12 +81,12 @@ def train(
             else:
                 scheduler.step(epoch_loss)
                 val_losses.append(epoch_loss)
-            print('{} Loss: {:.4f} Acc: {:.4f}'.format(
-                phase, epoch_loss, epoch_acc))
+            # print('{} Loss: {:.4f} Acc: {:.4f}'.format(
+            #     phase, epoch_loss, epoch_acc))
 
             # deep copy the model
             if phase == 'validation' and epoch_acc > best_acc:
-                print('Saving..')
+                # print('Saving..')
                 state = {
                     'net': model, #.module if use_cuda else net,
                     'epoch': epoch,
