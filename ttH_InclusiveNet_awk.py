@@ -821,14 +821,15 @@ def optimize_cut_boundaries(IN_perf, weights, bins=50):
     return cut_boundaries_fold, cut_s_over_root_bs_fold, sig_weights_fold, bkg_weights_fold, cut_boundaries, cut_s_over_root_bs, sig_weights, bkg_weights
 
 ### Script code ###
-arr_to_run = ['no_bad_vars', 'simplified_bad_vars', 'extra_vars_and_bools', 'extra_vars_in_RNN']
-for var in arr_to_run:
-    VARS = var
-# arr_to_run = [i for i in range(10, 20)]+[29]
-# for train_data_fraction in arr_to_run: # /60
-#     print(f"train_data frac = {train_data_fraction}")
-#     train_divide_factor = train_data_fraction / 60
-#     VARS = f'extra_vars_mod{1 / train_divide_factor:.2f}-{1 / (1 - train_divide_factor):.2f}'
+# arr_to_run = ['no_bad_vars', 'simplified_bad_vars', 'extra_vars_and_bools', 'extra_vars_in_RNN']
+# for var in arr_to_run:
+#     VARS = var
+#     print(f"{'=' *60}\n{VARS}\n{'=' *60}")
+arr_to_run = [i for i in range(10, 20)]+[29]
+for train_data_fraction in arr_to_run: # /60
+    print(f"train_data frac = {train_data_fraction}")
+    train_divide_factor = train_data_fraction / 60
+    VARS = f'extra_vars_mod{1 / train_divide_factor:.2f}-{1 / (1 - train_divide_factor):.2f}'
     
     OUTPUT_DIRPATH = CURRENT_DIRPATH + f"/model_outputs/{VERSION}/{VARS}/"
 
@@ -836,7 +837,7 @@ for var in arr_to_run:
         os.makedirs(OUTPUT_DIRPATH)
 
     SEED = 21
-    OPTIMIZE_SPACE = True
+    OPTIMIZE_SPACE = False
     NUM_EPOCHS = 150
 
     (
@@ -850,19 +851,19 @@ for var in arr_to_run:
     )
     skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=SEED)
 
-    # num_train = len(label) * (train_data_fraction * 2)
+    num_train = len(label) * (train_data_fraction * 2)
 
-    # data_list_test = np.concatenate((data_list_test, data_list[num_train:, ...]))
-    # data_hlf_test = np.concatenate((data_hlf_test, data_hlf[num_train:, ...]))
-    # label_test = np.concatenate((label_test, label[num_train:, ...]))
-    # data_test_df = pd.concat([data_test_df, data_df.iloc[num_train:]], ignore_index=True)
-    # data_test_aux = pd.concat([data_test_aux, data_aux.iloc[num_train:]], ignore_index=True)
+    data_list_test = np.concatenate((data_list_test, data_list[num_train:, ...]))
+    data_hlf_test = np.concatenate((data_hlf_test, data_hlf[num_train:, ...]))
+    label_test = np.concatenate((label_test, label[num_train:, ...]))
+    data_test_df = pd.concat([data_test_df, data_df.iloc[num_train:]], ignore_index=True)
+    data_test_aux = pd.concat([data_test_aux, data_aux.iloc[num_train:]], ignore_index=True)
 
-    # data_list = data_list[:num_train, ...]
-    # data_hlf = data_hlf[:num_train, ...]
-    # label = label[:num_train, ...]
-    # data_df = data_df.iloc[:num_train]
-    # data_aux = data_aux.iloc[:num_train]
+    data_list = data_list[:num_train, ...]
+    data_hlf = data_hlf[:num_train, ...]
+    label = label[:num_train, ...]
+    data_df = data_df.iloc[:num_train]
+    data_aux = data_aux.iloc[:num_train]
 
     ## Run optimization ##
     CURRENT_TIME = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
