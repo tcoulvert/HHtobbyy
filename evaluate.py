@@ -146,6 +146,5 @@ def evaluate(
             out['dFPR'] = std_fprs
             out['TPR'] = base_tpr
             out['Thresholds'] = mean_thresholds
-            print("Saved ROC.")
 
     return IN_perf

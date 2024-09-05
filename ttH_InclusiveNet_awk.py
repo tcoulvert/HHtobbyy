@@ -821,15 +821,15 @@ def optimize_cut_boundaries(IN_perf, weights, bins=50):
     return cut_boundaries_fold, cut_s_over_root_bs_fold, sig_weights_fold, bkg_weights_fold, cut_boundaries, cut_s_over_root_bs, sig_weights, bkg_weights
 
 ### Script code ###
-# arr_to_run = ['no_bad_vars', 'simplified_bad_vars', 'extra_vars_and_bools', 'extra_vars_in_RNN']
-# for var in arr_to_run:
-#     VARS = var
-#     print(f"{'=' *60}\n{VARS}\n{'=' *60}")
-arr_to_run = [i for i in range(12, 20, 2)]+[29]
-for train_data_fraction in arr_to_run: # /60
-    print(f"train_data frac = {train_data_fraction}")
-    train_divide_factor = train_data_fraction / 60
-    VARS = f'extra_vars_mod{1 / train_divide_factor:.2f}-{1 / (1 - train_divide_factor):.2f}'
+arr_to_run = ['extra_vars_no_dijet_mass']
+for var in arr_to_run:
+    VARS = var
+    print(f"{'=' *60}\n{VARS}\n{'=' *60}")
+# arr_to_run = [i for i in range(12, 20, 2)]+[29]
+# for train_data_fraction in arr_to_run: # /60
+#     print(f"train_data frac = {train_data_fraction}")
+#     train_divide_factor = train_data_fraction / 60
+#     VARS = f'extra_vars_mod{1 / train_divide_factor:.2f}-{1 / (1 - train_divide_factor):.2f}'
     
     OUTPUT_DIRPATH = CURRENT_DIRPATH + f"/model_outputs/{VERSION}/{VARS}/"
 
@@ -851,19 +851,19 @@ for train_data_fraction in arr_to_run: # /60
     )
     skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=SEED)
 
-    num_train = len(label) * (train_data_fraction * 2)
+    # num_train = len(label) * (train_data_fraction * 2)
 
-    data_list_test = np.concatenate((data_list_test, data_list[num_train:, ...]))
-    data_hlf_test = np.concatenate((data_hlf_test, data_hlf[num_train:, ...]))
-    label_test = np.concatenate((label_test, label[num_train:, ...]))
-    data_test_df = pd.concat([data_test_df, data_df.iloc[num_train:]], ignore_index=True)
-    data_test_aux = pd.concat([data_test_aux, data_aux.iloc[num_train:]], ignore_index=True)
+    # data_list_test = np.concatenate((data_list_test, data_list[num_train:, ...]))
+    # data_hlf_test = np.concatenate((data_hlf_test, data_hlf[num_train:, ...]))
+    # label_test = np.concatenate((label_test, label[num_train:, ...]))
+    # data_test_df = pd.concat([data_test_df, data_df.iloc[num_train:]], ignore_index=True)
+    # data_test_aux = pd.concat([data_test_aux, data_aux.iloc[num_train:]], ignore_index=True)
 
-    data_list = data_list[:num_train, ...]
-    data_hlf = data_hlf[:num_train, ...]
-    label = label[:num_train, ...]
-    data_df = data_df.iloc[:num_train]
-    data_aux = data_aux.iloc[:num_train]
+    # data_list = data_list[:num_train, ...]
+    # data_hlf = data_hlf[:num_train, ...]
+    # label = label[:num_train, ...]
+    # data_df = data_df.iloc[:num_train]
+    # data_aux = data_aux.iloc[:num_train]
 
     ## Run optimization ##
     CURRENT_TIME = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
@@ -1116,3 +1116,57 @@ for train_data_fraction in arr_to_run: # /60
         IN_perf_dict['val'], plot_destdir+'/'+CURRENT_TIME, plot_postfix=f'_val_comparison', 
         method='IN_arr', labels=labels_arr, weights=val_weights_arr
     )
+
+    # Mass sculpting #
+    # with open('model_outputs/v0/BestConfigReallyTopclass.json', 'r') as f:
+    # with open(OUTPUT_DIRPATH + CURRENT_TIME + '_BestConfigReallyTopclass.json') as f:
+    with open('/uscms/home/tsievert/nobackup/XHYbbgg/HHtobbyy/model_outputs/v4/extra_vars/2024-08-20_23-02-48_BestConfigReallyTopclass.json') as f:
+        best_conf = json.load(f)
+    IN_full_eval_dict = {}
+    for data_type, p_list, hlf, y in [('train', data_list, data_hlf, label), ('test', data_list_test, data_hlf_test, label_test)]:
+        IN_full_eval_dict[data_type] = evaluate(
+            p_list, hlf, y, 
+            OUTPUT_DIRPATH, CURRENT_TIME, skf, best_conf,
+        )
+
+    with open(OUTPUT_DIRPATH + f'{CURRENT_TIME}_IN_perf_full_eval.json', 'w') as f:
+        json.dump(IN_full_eval_dict, f)
+
+    plot_destdir = OUTPUT_DIRPATH + 'plots/' + CURRENT_TIME
+    if not os.path.exists(plot_destdir):
+        os.makedirs(plot_destdir)
+    with open(OUTPUT_DIRPATH + f'{CURRENT_TIME}_IN_perf_full_eval.json', 'r') as f:
+        IN_full_eval_dict = json.load(f)
+
+    score_cuts = [0, 0.2, 0.4, 0.6, 0.8, 0.9, 0.95, 0.99]
+    label_arr = [
+        MC_NAMES_PRETTY["GluGluToHH"]+" train, score cut = ", MC_NAMES_PRETTY["GluGluToHH"]+" test, score cut = ",
+        MC_NAMES_PRETTY["ttHToGG"]+" train, score cut = ", MC_NAMES_PRETTY["ttHToGG"]+" test, score cut = "
+    ] * len(score_cuts)
+    label_arr = [label_arr[label_idx]+str(score_cuts[score_idx // (len(label_arr)//len(score_cuts))]) for score_idx, label_idx in enumerate(range(len(label_arr)))]
+    hist_dict = {'mass': [], 'dijet_mass': []}
+    for var_name in hist_dict.keys():
+        for i, score_cut in enumerate(score_cuts):
+            sig_train_np, sig_test_np, bkg_train_np, bkg_test_np = aux_np_arrays(var_name, score_cut, IN_full_eval_dict)
+            sig_train_hist = hist.Hist(VARIABLES[var_name]).fill(var=sig_train_np)
+            sig_test_hist = hist.Hist(VARIABLES[var_name]).fill(var=sig_test_np)
+            bkg_train_hist = hist.Hist(VARIABLES[var_name]).fill(var=bkg_train_np)
+            bkg_test_hist = hist.Hist(VARIABLES[var_name]).fill(var=bkg_test_np)
+            hist_dict[var_name].extend(
+                [
+                    copy.deepcopy(sig_train_hist), copy.deepcopy(sig_test_hist), 
+                    copy.deepcopy(bkg_train_hist), copy.deepcopy(bkg_test_hist)
+                ]
+            )
+        for mod_factor, label_mod in enumerate(['sig_train', 'sig_test', 'bkg_train', 'bkg_test']):
+            plot_list = []
+            label_list = []
+            for i in range(len(hist_dict[var_name])):
+                if (i - mod_factor) % 4 == 0:
+                    plot_list.append(hist_dict[var_name][i])
+                    label_list.append(label_arr[i])
+            make_input_plot(
+                plot_destdir, var_name, plot_list, labels=label_list, density=True, 
+                plot_prefix=CURRENT_TIME+'_', plot_postfix='_'+label_mod, alpha=0.5,
+                linestyle=False
+            )

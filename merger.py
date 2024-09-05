@@ -335,6 +335,7 @@ def main():
             with open(LPC_FILEPREFIX+'/'+data_era+'/completed_samples.json', 'r') as f:
                 run_samples = json.load(f)
         else:
+            # 'GluGluToHH', 'GGJets', 'GJetPt20To40', 'GJetPt40', 'GluGluHToGG', 'ttHToGG', 'VBFHToGG', 'VHToGG'
             run_samples = {
                 'run_samples_list': []
             }
@@ -351,7 +352,7 @@ def main():
         if NO_BSM:
             bsm_set = set()
             for sample_name in os.listdir(LPC_FILEPREFIX+'/'+data_era):
-                if re.search('_', sample_name) is not None and re.search('Data', sample_name) is None:
+                if re.search('_', sample_name) is not None and re.search('Data', sample_name) is None:  # and sample_name != 'VBFHHto2B2G_CV_1_C2V_1_C3_1':
                     bsm_set.add(sample_name)
             output_set -= bsm_set
         
