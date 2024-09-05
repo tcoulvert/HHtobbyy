@@ -825,7 +825,7 @@ def optimize_cut_boundaries(IN_perf, weights, bins=50):
 # for var in arr_to_run:
 #     VARS = var
 #     print(f"{'=' *60}\n{VARS}\n{'=' *60}")
-arr_to_run = [i for i in range(10, 20)]+[29]
+arr_to_run = [i for i in range(12, 20, 2)]+[29]
 for train_data_fraction in arr_to_run: # /60
     print(f"train_data frac = {train_data_fraction}")
     train_divide_factor = train_data_fraction / 60

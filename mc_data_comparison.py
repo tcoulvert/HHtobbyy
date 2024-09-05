@@ -1,3 +1,4 @@
+import glob
 import json
 import os
 import re
@@ -147,20 +148,23 @@ def get_dir_lists(dir_lists: dict):
       -> Automatically checks if the merger.py file has been run.
     """
     for data_era in dir_lists.keys():
-        if os.path.exists(LPC_FILEPREFIX+'/'+data_era[:-7]+'/completed_samples.json'):
-            with open(LPC_FILEPREFIX+'/'+data_era[:-7]+'/completed_samples.json', 'r') as f:
-                run_samples = json.load(f)
-        else:
-            raise Exception(
-                f"Failed to find processed parquets for {data_era[:-7]}. \nYou first need to run the merger.py script to add the necessary variables and merge the parquets."
-            )
+        # if os.path.exists(LPC_FILEPREFIX+'/'+data_era[:-10]+'/completed_samples.json'): # -7 -> -10
+        #     with open(LPC_FILEPREFIX+'/'+data_era[:-10]+'/completed_samples.json', 'r') as f:
+        #         processed_samples = json.load(f)
+        # else:
+        #     raise Exception(
+        #         f"Failed to find processed parquets for {data_era[:-7]}. \nYou first need to run the merger.py script to add the necessary variables and merge the parquets."
+        #     )
+        processed_samples = [
+            sample[sample.rfind('/')+1:] for sample in glob.glob(LPC_FILEPREFIX+'/'+data_era+'/*')
+        ]
         
-        if not set(run_samples['run_samples_list']) >= set(MC_NAMES_PRETTY.keys()):
+        if not set(processed_samples) >= set(MC_NAMES_PRETTY.keys()):
             raise Exception(
-                f"Failed to find processed parquets for {data_era[:-7]}. \nYou may have run the merger.py script already, however not all of the minimal files were found."
+                f"Failed to find processed parquets for {data_era}. \nYou may have run the merger.py script already, however not all of the minimal files were found."
             )
         dir_lists[data_era] = [sample_name for sample_name in MC_NAMES_PRETTY.keys()]
-        for sample_name in run_samples['run_samples_list']:
+        for sample_name in processed_samples:
             if re.search("Data", sample_name) is None or sample_name not in set(os.listdir(LPC_FILEPREFIX+'/'+data_era)):
                 continue
             dir_lists[data_era].append(sample_name)
@@ -345,8 +349,8 @@ def main():
     """
     # Minimal data files for MC-Data comparison for ttH-Killer variables
     dir_lists = {
-        'Run3_2022preEE_merged': None,
-        'Run3_2022postEE_merged': None,
+        'Run3_2022preEE_merged_v2': None,
+        'Run3_2022postEE_merged_v2': None,
         # Need to add other data eras eventually (2023, etc)
     }
     get_dir_lists(dir_lists)
