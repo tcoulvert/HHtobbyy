@@ -951,8 +951,8 @@ for train_data_fraction in arr_to_run: # /60
     ## Make plot variables ##
     # Test data perf #
     # with open('model_outputs/v0/BestConfigReallyTopclass.json', 'r') as f:
-    with open(OUTPUT_DIRPATH + CURRENT_TIME + '_BestConfigReallyTopclass.json') as f:
-    # with open('/uscms/home/tsievert/nobackup/XHYbbgg/HHtobbyy/model_outputs/v4/extra_vars/2024-08-20_23-02-48_BestConfigReallyTopclass.json') as f:
+    # with open(OUTPUT_DIRPATH + CURRENT_TIME + '_BestConfigReallyTopclass.json') as f:
+    with open('/uscms/home/tsievert/nobackup/XHYbbgg/HHtobbyy/model_outputs/v4/extra_vars/2024-08-20_23-02-48_BestConfigReallyTopclass.json') as f:
         best_conf = json.load(f)
     try:
         IN_perf = evaluate(
@@ -1055,8 +1055,8 @@ for train_data_fraction in arr_to_run: # /60
     # Train/val comparison #
     IN_perf_dict = {'train': [], 'val': []}
     # with open('model_outputs/v0/BestConfigReallyTopclass.json', 'r') as f:
-    with open(OUTPUT_DIRPATH + CURRENT_TIME + '_BestConfigReallyTopclass.json') as f:
-    # with open('/uscms/home/tsievert/nobackup/XHYbbgg/HHtobbyy/model_outputs/v4/extra_vars/2024-08-20_23-02-48_BestConfigReallyTopclass.json') as f:
+    # with open(OUTPUT_DIRPATH + CURRENT_TIME + '_BestConfigReallyTopclass.json') as f:
+    with open('/uscms/home/tsievert/nobackup/XHYbbgg/HHtobbyy/model_outputs/v4/extra_vars/2024-08-20_23-02-48_BestConfigReallyTopclass.json') as f:
         best_conf = json.load(f)
     for fold_idx, (train_index, val_index) in enumerate(skf.split(data_hlf, label)):
         IN_perf_dict['train'].append(
