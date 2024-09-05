@@ -821,17 +821,22 @@ def optimize_cut_boundaries(IN_perf, weights, bins=50):
     return cut_boundaries_fold, cut_s_over_root_bs_fold, sig_weights_fold, bkg_weights_fold, cut_boundaries, cut_s_over_root_bs, sig_weights, bkg_weights
 
 ### Script code ###
-for train_data_fraction in range(20, 30): # /60
-    print(f"train_data frac = {train_data_fraction}")
-    train_divide_factor = train_data_fraction / 60
-    VARS = f'extra_vars_mod{1 / train_divide_factor:.2f}-{1 / (1 - train_divide_factor):.2f}'
+arr_to_run = ['no_bad_vars', 'simplified_bad_vars', 'extra_vars_and_bools', 'extra_vars_in_RNN']
+for var in arr_to_run:
+    VARS = var
+# arr_to_run = [i for i in range(10, 20)]+[29]
+# for train_data_fraction in arr_to_run: # /60
+#     print(f"train_data frac = {train_data_fraction}")
+#     train_divide_factor = train_data_fraction / 60
+#     VARS = f'extra_vars_mod{1 / train_divide_factor:.2f}-{1 / (1 - train_divide_factor):.2f}'
+    
     OUTPUT_DIRPATH = CURRENT_DIRPATH + f"/model_outputs/{VERSION}/{VARS}/"
 
     if not os.path.exists(OUTPUT_DIRPATH):
         os.makedirs(OUTPUT_DIRPATH)
 
     SEED = 21
-    OPTIMIZE_SPACE = False
+    OPTIMIZE_SPACE = True
     NUM_EPOCHS = 150
 
     (
@@ -845,22 +850,21 @@ for train_data_fraction in range(20, 30): # /60
     )
     skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=SEED)
 
-    num_train = len(label) * (train_data_fraction * 2)
+    # num_train = len(label) * (train_data_fraction * 2)
 
-    data_list_test = np.concatenate((data_list_test, data_list[num_train:, ...]))
-    data_hlf_test = np.concatenate((data_hlf_test, data_hlf[num_train:, ...]))
-    label_test = np.concatenate((label_test, label[num_train:, ...]))
-    data_test_df = pd.concat([data_test_df, data_df.iloc[num_train:]], ignore_index=True)
-    data_test_aux = pd.concat([data_test_aux, data_aux.iloc[num_train:]], ignore_index=True)
+    # data_list_test = np.concatenate((data_list_test, data_list[num_train:, ...]))
+    # data_hlf_test = np.concatenate((data_hlf_test, data_hlf[num_train:, ...]))
+    # label_test = np.concatenate((label_test, label[num_train:, ...]))
+    # data_test_df = pd.concat([data_test_df, data_df.iloc[num_train:]], ignore_index=True)
+    # data_test_aux = pd.concat([data_test_aux, data_aux.iloc[num_train:]], ignore_index=True)
 
-    data_list = data_list[:num_train, ...]
-    data_hlf = data_hlf[:num_train, ...]
-    label = label[:num_train, ...]
-    data_df = data_df.iloc[:num_train]
-    data_aux = data_aux.iloc[:num_train]
+    # data_list = data_list[:num_train, ...]
+    # data_hlf = data_hlf[:num_train, ...]
+    # label = label[:num_train, ...]
+    # data_df = data_df.iloc[:num_train]
+    # data_aux = data_aux.iloc[:num_train]
 
-    # Run optimization #
-
+    ## Run optimization ##
     CURRENT_TIME = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
 
     if CRITERION == "NLLLoss":
@@ -944,11 +948,10 @@ for train_data_fraction in range(20, 30): # /60
 
 
     ## Make plot variables ##
-
     # Test data perf #
     # with open('model_outputs/v0/BestConfigReallyTopclass.json', 'r') as f:
-    # with open(OUTPUT_DIRPATH + CURRENT_TIME + '_BestConfigReallyTopclass.json') as f:
-    with open('/uscms/home/tsievert/nobackup/XHYbbgg/HHtobbyy/model_outputs/v4/extra_vars/2024-08-20_23-02-48_BestConfigReallyTopclass.json') as f:
+    with open(OUTPUT_DIRPATH + CURRENT_TIME + '_BestConfigReallyTopclass.json') as f:
+    # with open('/uscms/home/tsievert/nobackup/XHYbbgg/HHtobbyy/model_outputs/v4/extra_vars/2024-08-20_23-02-48_BestConfigReallyTopclass.json') as f:
         best_conf = json.load(f)
     try:
         IN_perf = evaluate(
@@ -980,7 +983,7 @@ for train_data_fraction in range(20, 30): # /60
         )
     print(NNtable)
 
-    plot_destdir = OUTPUT_DIRPATH + 'plots'
+    plot_destdir = OUTPUT_DIRPATH + 'plots/' + CURRENT_TIME
     if not os.path.exists(plot_destdir):
         os.makedirs(plot_destdir)
 
@@ -1051,8 +1054,8 @@ for train_data_fraction in range(20, 30): # /60
     # Train/val comparison #
     IN_perf_dict = {'train': [], 'val': []}
     # with open('model_outputs/v0/BestConfigReallyTopclass.json', 'r') as f:
-    # with open(OUTPUT_DIRPATH + CURRENT_TIME + '_BestConfigReallyTopclass.json') as f:
-    with open('/uscms/home/tsievert/nobackup/XHYbbgg/HHtobbyy/model_outputs/v4/extra_vars/2024-08-20_23-02-48_BestConfigReallyTopclass.json') as f:
+    with open(OUTPUT_DIRPATH + CURRENT_TIME + '_BestConfigReallyTopclass.json') as f:
+    # with open('/uscms/home/tsievert/nobackup/XHYbbgg/HHtobbyy/model_outputs/v4/extra_vars/2024-08-20_23-02-48_BestConfigReallyTopclass.json') as f:
         best_conf = json.load(f)
     for fold_idx, (train_index, val_index) in enumerate(skf.split(data_hlf, label)):
         IN_perf_dict['train'].append(
@@ -1071,7 +1074,7 @@ for train_data_fraction in range(20, 30): # /60
     with open(OUTPUT_DIRPATH + f'{CURRENT_TIME}_IN_perf_train_val.json', 'w') as f:
         json.dump(IN_perf_dict, f)
 
-    plot_destdir = OUTPUT_DIRPATH + 'plots'
+    plot_destdir = OUTPUT_DIRPATH + 'plots/' + CURRENT_TIME
     if not os.path.exists(plot_destdir):
         os.makedirs(plot_destdir)
     with open(OUTPUT_DIRPATH + f'{CURRENT_TIME}_IN_perf_train_val.json', 'r') as f:
