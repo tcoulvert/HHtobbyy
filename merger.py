@@ -286,7 +286,7 @@ def add_ttH_vars(sample):
         sample['puppiMET_eta'] = [0 for _ in range(ak.num(sample['event'], axis=0))]
 
     # Electrons and Muons #
-    for var in ['pt', 'eta', 'phi']:
+    for var in ['pt', 'eta', 'phi', 'MVA']:
         sample[f'lead_electron_{var}'] = lead_lepton_var(sample, 4, 1, var)
         sample[f'sublead_electron_{var}'] = sublead_lepton_var(sample, 4, 1, sample[f'lead_electron_{var}'], var)
         sample[f'lead_muon_{var}'] = lead_lepton_var(sample, 4, 2, var)
