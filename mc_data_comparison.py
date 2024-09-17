@@ -17,8 +17,11 @@ plt.rcParams.update({'font.size': 20})
 cmap_petroff10 = ["#3f90da", "#ffa90e", "#bd1f01", "#94a4a2", "#832db6", "#a96b59", "#e76300", "#b9ac70", "#717581", "#92dadd"]
 plt.rcParams.update({"axes.prop_cycle": cycler("color", cmap_petroff10)})
 
-LPC_FILEPREFIX = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v1"
-DESTDIR = 'v1_comparison_plots'
+# LPC_FILEPREFIX = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v1"
+# LPC_FILEPREFIX = "/uscms/home/tsievert/nobackup/XHYbbgg/HiggsDNA_official/output_test_HH"
+LPC_FILEPREFIX = "/uscms/home/tsievert/nobackup/XHYbbgg/HiggsDNA_official/output_test_ttH_2"
+DESTDIR = 'v1_comparison_plots_test_ttH_unweighted'
+APPLY_WEIGHTS = False
 SINGLE_B_WPS = {
     'preEE': {'L': 0.047, 'M': 0.245, 'T': 0.6734, 'XT': 0.7862, 'XXT': 0.961},
     'postEE': {'L': 0.0499, 'M': 0.2605, 'T': 0.6915, 'XT': 0.8033, 'XXT': 0.9664}
@@ -26,12 +29,12 @@ SINGLE_B_WPS = {
 MC_DATA_MASK = 'MC_Data_mask'
 FILL_VALUE = -999
 MC_NAMES_PRETTY = {
-    "GGJets": r"$\gamma\gamma+3j$",
-    "GJetPt20To40": r"$\gamma+j$, 20<$p_T$<40GeV",
-    "GJetPt40": r"$\gamma+j$, 40GeV<$p_T$",
-    "GluGluHToGG": r"ggF $H\rightarrow \gamma\gamma$",
-    "VBFHToGG": r"VBF $H\rightarrow \gamma\gamma$",
-    "VHToGG": r"V$H\rightarrow\gamma\gamma$",
+    # "GGJets": r"$\gamma\gamma+3j$",
+    # "GJetPt20To40": r"$\gamma+j$, 20<$p_T$<40GeV",
+    # "GJetPt40": r"$\gamma+j$, 40GeV<$p_T$",
+    # "GluGluHToGG": r"ggF $H\rightarrow \gamma\gamma$",
+    # "VBFHToGG": r"VBF $H\rightarrow \gamma\gamma$",
+    # "VHToGG": r"V$H\rightarrow\gamma\gamma$",
     "ttHToGG": r"$t\bar{t}H\rightarrow\gamma\gamma$",
     # "GluGluToHH": r"ggF $HH\rightarrow bb\gamma\gamma$",
     # "VBFHHto2B2G_CV_1_C2V_1_C3_1": r"VBF $HH\rightarrow bb\gamma\gamma$",
@@ -88,19 +91,23 @@ VARIABLES = {
     'subleadBjet_leadLepton': hist.axis.Regular(30, 0, 5, name='var', label=r'$\Delta R(bjet_{sublead}, l_{lead})$', growth=False, underflow=False, overflow=False), 
     'subleadBjet_subleadLepton': hist.axis.Regular(30, 0, 5, name='var', label=r'$\Delta R(bjet_{sublead}, l_{sublead})$', growth=False, underflow=False, overflow=False),
     # Electron variables
-    'lead_electron_pt': hist.axis.Regular(40, 0., 200, name='var', label=r'lead lepton $p_T$ [GeV]', growth=False, underflow=False, overflow=False), 
-    'lead_electron_eta': hist.axis.Regular(30, -5., 5., name='var', label=r'lead lepton $\eta$', growth=False, underflow=False, overflow=False), 
-    'lead_electron_phi': hist.axis.Regular(20, -3.2, 3.2, name='var', label=r'lead lepton $\phi$', growth=False, underflow=False, overflow=False), 
-    'sublead_electron_pt': hist.axis.Regular(40, 0., 200, name='var', label=r'sublead lepton $p_T$ [GeV]', growth=False, underflow=False, overflow=False), 
-    'sublead_electron_eta': hist.axis.Regular(30, -5., 5., name='var', label=r'sublead lepton $\eta$', growth=False, underflow=False, overflow=False),
-    'sublead_electron_phi': hist.axis.Regular(20, -3.2, 3.2, name='var', label=r'sublead lepton $\phi$', growth=False, underflow=False, overflow=False),
+    'lead_electron_pt': hist.axis.Regular(40, 0., 200, name='var', label=r'lead electron $p_T$ [GeV]', growth=False, underflow=False, overflow=False), 
+    'lead_electron_eta': hist.axis.Regular(30, -5., 5., name='var', label=r'lead electron $\eta$', growth=False, underflow=False, overflow=False), 
+    'lead_electron_phi': hist.axis.Regular(20, -3.2, 3.2, name='var', label=r'lead electron $\phi$', growth=False, underflow=False, overflow=False), 
+    'sublead_electron_pt': hist.axis.Regular(40, 0., 200, name='var', label=r'sublead electron $p_T$ [GeV]', growth=False, underflow=False, overflow=False), 
+    'sublead_electron_eta': hist.axis.Regular(30, -5., 5., name='var', label=r'sublead electron $\eta$', growth=False, underflow=False, overflow=False),
+    'sublead_electron_phi': hist.axis.Regular(20, -3.2, 3.2, name='var', label=r'sublead electron $\phi$', growth=False, underflow=False, overflow=False),
+    'lead_electron_MVA': hist.axis.Regular(30, 0.8, 1., name='var', label=r'lead electron mvaIso', growth=False, underflow=False, overflow=False), 
+    'sublead_electron_MVA': hist.axis.Regular(30, 0.8, 1., name='var', label=r'sublead electron mvaIso', growth=False, underflow=False, overflow=False),
     # Muon variables
-    'lead_muon_pt': hist.axis.Regular(40, 0., 200, name='var', label=r'lead lepton $p_T$ [GeV]', growth=False, underflow=False, overflow=False), 
-    'lead_muon_eta': hist.axis.Regular(30, -5., 5., name='var', label=r'lead lepton $\eta$', growth=False, underflow=False, overflow=False), 
-    'lead_muon_phi': hist.axis.Regular(20, -3.2, 3.2, name='var', label=r'lead lepton $\phi$', growth=False, underflow=False, overflow=False), 
-    'sublead_muon_pt': hist.axis.Regular(40, 0., 200, name='var', label=r'sublead lepton $p_T$ [GeV]', growth=False, underflow=False, overflow=False), 
-    'sublead_muon_eta': hist.axis.Regular(30, -5., 5., name='var', label=r'sublead lepton $\eta$', growth=False, underflow=False, overflow=False),
-    'sublead_muon_phi': hist.axis.Regular(20, -3.2, 3.2, name='var', label=r'sublead lepton $\phi$', growth=False, underflow=False, overflow=False),
+    'lead_muon_pt': hist.axis.Regular(40, 0., 200, name='var', label=r'lead muon $p_T$ [GeV]', growth=False, underflow=False, overflow=False), 
+    'lead_muon_eta': hist.axis.Regular(30, -5., 5., name='var', label=r'lead muon $\eta$', growth=False, underflow=False, overflow=False), 
+    'lead_muon_phi': hist.axis.Regular(20, -3.2, 3.2, name='var', label=r'lead muon $\phi$', growth=False, underflow=False, overflow=False), 
+    'sublead_muon_pt': hist.axis.Regular(40, 0., 200, name='var', label=r'sublead muon $p_T$ [GeV]', growth=False, underflow=False, overflow=False), 
+    'sublead_muon_eta': hist.axis.Regular(30, -5., 5., name='var', label=r'sublead muon $\eta$', growth=False, underflow=False, overflow=False),
+    'sublead_muon_phi': hist.axis.Regular(20, -3.2, 3.2, name='var', label=r'sublead muon $\phi$', growth=False, underflow=False, overflow=False),
+    'lead_muon_MVA': hist.axis.Regular(30, 0., 1., name='var', label=r'lead muon mvaMuID', growth=False, underflow=False, overflow=False), 
+    'sublead_muon_MVA': hist.axis.Regular(30, 0., 1., name='var', label=r'sublead muon mvaMuID', growth=False, underflow=False, overflow=False),
 }
 BLINDED_VARIABLES = {
     # dijet variables
@@ -231,10 +238,15 @@ def generate_hists(MC_pqs: dict, Data_pqs: dict, variable: str, axis, blind_edge
             )
         else:
             mask = sample['MC_Data_mask']
-        mc_hists[MC_NAMES_PRETTY[dir_name]] = hist.Hist(axis, storage='weight').fill(
-            var=ak.where(mask, sample[variable], FILL_VALUE),
-            weight=sample['eventWeight']
-        )
+        if APPLY_WEIGHTS:
+            mc_hists[MC_NAMES_PRETTY[dir_name]] = hist.Hist(axis, storage='weight').fill(
+                var=ak.where(mask, sample[variable], FILL_VALUE),
+                weight=sample['eventWeight']
+            )
+        else:
+            mc_hists[MC_NAMES_PRETTY[dir_name]] = hist.Hist(axis).fill(
+                var=ak.where(mask, sample[variable], FILL_VALUE)
+            )
 
     # Generate data hist
     data_ak = ak.zip({variable: FILL_VALUE})
@@ -314,12 +326,12 @@ def plot(variable: str, mc_hist: dict, data_hist: hist.Hist, ratio_dict: dict):
     hep.histplot(
         list(mc_hist.values()), label=list(mc_hist.keys()), 
         # w2=np.vstack((np.tile(np.zeros_like(ratio_dict['w2']), (len(mc_hist)-1, 1)), ratio_dict['w2'])),
-        yerr=ratio_dict['w2'],
+        # yerr=ratio_dict['w2'],
         stack=True, ax=axs[0], linewidth=3, histtype="fill", sort="yield"
     )
-    hep.histplot(
-        data_hist, ax=axs[0], linewidth=3, histtype="errorbar", color="black", label=f"CMS Data"
-    )
+    # hep.histplot(
+    #     data_hist, ax=axs[0], linewidth=3, histtype="errorbar", color="black", label=f"CMS Data"
+    # )
     # Calculates the numer(denom) ratio error as: numer(denom)_hist_error / numer(denom)_hist_value
     #   -> suppresses warning coming from 0, inf, and NaN divides
     with warnings.catch_warnings():
@@ -327,12 +339,12 @@ def plot(variable: str, mc_hist: dict, data_hist: hist.Hist, ratio_dict: dict):
         # numer_err = np.sqrt(ratio_dict['data_values']) * ratio_dict['ratio'] / ratio_dict['data_values']
         # denom_err = np.sqrt(ratio_dict['w2']) / ratio_dict['mc_values']
         ratio_err = ratio_error(ratio_dict['data_values'], ratio_dict['mc_values'], np.sqrt(ratio_dict['data_values']), np.sqrt(ratio_dict['w2']))
-    plot_ratio(
-        ratio_dict['ratio'], axs[1], 
-        numer_err=ratio_err,
-        denom_err=None,
-        hist_axis=data_hist.axes
-    )
+    # plot_ratio(
+    #     ratio_dict['ratio'], axs[1], 
+    #     numer_err=ratio_err,
+    #     denom_err=None,
+    #     hist_axis=data_hist.axes
+    # )
     
     # Plotting niceties #
     hep.cms.lumitext(f"{LUMINOSITIES['total_lumi']:.2f}" + r"fb$^{-1}$ (13.6 TeV)", ax=axs[0])
@@ -363,7 +375,7 @@ def main():
     """
     # Minimal data files for MC-Data comparison for ttH-Killer variables
     dir_lists = {
-        'Run3_2022preEE_merged_v2': None,
+        # 'Run3_2022preEE_merged_v2': None,
         'Run3_2022postEE_merged_v2': None,
         # Need to add other data eras eventually (2023, etc)
     }
@@ -380,6 +392,7 @@ def main():
                 sample = ak.concatenate(
                     [ak.from_parquet(LPC_FILEPREFIX+'/'+data_era+'/'+dir_name+'/'+sample_type+'/'+file) for file in os.listdir(LPC_FILEPREFIX+'/'+data_era+'/'+dir_name+'/'+sample_type+'/')]
                 )
+                print(f"num events: {ak.num(sample['jet1_pt'], axis=0)}")
                 
                 # perform necessary cuts to enter ttH enriched region
                 sideband_cuts(data_era, sample)

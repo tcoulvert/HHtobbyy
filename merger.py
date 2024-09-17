@@ -13,8 +13,9 @@ vec.register_awkward()
 # lpc_redirector = "root://cmseos.fnal.gov/"
 # lxplus_redirector = "root://eosuser.cern.ch/"
 # lxplus_fileprefix = "/eos/cms/store/group/phys_b2g/HHbbgg/HiggsDNA_parquet/v1"
-LPC_FILEPREFIX = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v1"
+# LPC_FILEPREFIX = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v1"
 # LPC_FILEPREFIX = "/uscms/home/tsievert/nobackup/XHYbbgg/HiggsDNA_official/output_test_HH"
+LPC_FILEPREFIX = "/uscms/home/tsievert/nobackup/XHYbbgg/HiggsDNA_official/output_test_ttH_2"
 FORCE_RERUN = True
 NO_BSM = True
 FILL_VALUE = -999
@@ -320,7 +321,7 @@ def add_ttH_vars(sample):
 
 def main():
     dir_lists = {
-        'Run3_2022preEE': None,
+        # 'Run3_2022preEE': None,
         'Run3_2022postEE': None
     }
     # set of all the preEE and postEE extra directories that don't contain parquet files
@@ -360,7 +361,10 @@ def main():
         
 
     # MC Era: total era luminosity [fb^-1] #
-    luminosities = {'Run3_2022preEE': 7.9804, 'Run3_2022postEE': 26.6717}
+    luminosities = {
+        # 'Run3_2022preEE': 7.9804, 
+        'Run3_2022postEE': 26.6717
+    }
     
     # Name: cross section [fb] @ sqrrt{s}=13.6 TeV & m_H=125.09 GeV #
     #   -> Do we not need to care about other HH processes? https://arxiv.org/pdf/1910.00012.pdf
