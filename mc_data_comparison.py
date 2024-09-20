@@ -19,7 +19,7 @@ plt.rcParams.update({"axes.prop_cycle": cycler("color", cmap_petroff10)})
 
 # LPC_FILEPREFIX = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v1"
 # LPC_FILEPREFIX = "/uscms/home/tsievert/nobackup/XHYbbgg/HiggsDNA_official/output_test_HH"
-LPC_FILEPREFIX = "/uscms/home/tsievert/nobackup/XHYbbgg/HiggsDNA_official/output_test_ttH_2"
+LPC_FILEPREFIX = "/uscms/home/tsievert/nobackup/XHYbbgg/HiggsDNA_official/output_test_ttH_10"
 DESTDIR = 'v1_comparison_plots_test_ttH_unweighted'
 APPLY_WEIGHTS = False
 SINGLE_B_WPS = {
@@ -393,7 +393,13 @@ def main():
                     [ak.from_parquet(LPC_FILEPREFIX+'/'+data_era+'/'+dir_name+'/'+sample_type+'/'+file) for file in os.listdir(LPC_FILEPREFIX+'/'+data_era+'/'+dir_name+'/'+sample_type+'/')]
                 )
                 print(f"num events: {ak.num(sample['jet1_pt'], axis=0)}")
-                
+                abs_lead_eta, abs_sublead_eta = np.abs(sample['lead_eta']), np.abs(sample['sublead_eta'])
+                print(f"num bad lead photons = {ak.sum(((abs_lead_eta > 1.4442) & (abs_lead_eta < 1.566)) | (abs_lead_eta > 2.5), axis=0)}")
+                print(f"num bad sublead photons = {ak.sum(((abs_sublead_eta > 1.4442) & (abs_sublead_eta < 1.566)) | (abs_sublead_eta > 2.5), axis=0)}")
+                print(f"num bad lead | sublead photons = {ak.sum((((abs_lead_eta > 1.4442) & (abs_lead_eta < 1.566)) | (abs_lead_eta > 2.5)) | (((abs_sublead_eta > 1.4442) & (abs_sublead_eta < 1.566)) | (abs_sublead_eta > 2.5)), axis=0)}")
+                print(f"num bad lead & sublead photons = {ak.sum((((abs_lead_eta > 1.4442) & (abs_lead_eta < 1.566)) | (abs_lead_eta > 2.5)) & (((abs_sublead_eta > 1.4442) & (abs_sublead_eta < 1.566)) | (abs_sublead_eta > 2.5)), axis=0)}")
+                print(f"num events with dijet in mass window = {ak.sum((sample['dijet_mass'] > 70) & (sample['dijet_mass'] < 190), axis=0)}")
+
                 # perform necessary cuts to enter ttH enriched region
                 sideband_cuts(data_era, sample)
 
