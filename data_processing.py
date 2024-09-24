@@ -70,6 +70,7 @@ def process_data(
     # Convert parquet files to pandas DFs #
     pandas_samples = {}
     extra_RNN_vars = []
+    dont_include_vars = []
     if re.search('base_vars', output_dirpath) is not None:
         high_level_fields = {
             'puppiMET_sumEt', 'puppiMET_pt', 'puppiMET_eta', 'puppiMET_phi', # MET variables
@@ -95,6 +96,11 @@ def process_data(
         }
         if re.search('no_dijet_mass', output_dirpath) is not None:
             high_level_fields.remove('dijet_mass')
+        if re.search('lead_lep_only', output_dirpath) is not None:
+            dont_include_vars = [
+                'lepton2_pt', 'lepton2_eta', 'lepton2_phi', 
+                'leadBjet_subleadLepton', 'subleadBjet_subleadLepton'
+            ]
         if re.search('and_bools', output_dirpath) is not None:
             high_level_fields = high_level_fields | {
                 'chi_t0_bool', 'chi_t1_bool',
@@ -150,9 +156,6 @@ def process_data(
         pandas_aux_samples[sample_name] = {
             field: ak.to_numpy(sample[field], allow_missing=False) for field in high_level_aux_fields
         }
-        # for field in improper_fill_values:
-        #     pandas_samples[sample_name][field] = np.where(pandas_samples[sample_name][field] < 10, pandas_samples[sample_name][field], -999)
-        # pandas_samples[sample_name]['puppiMET_eta'] = np.zeros_like(pandas_samples[sample_name]['puppiMET_pt'])
 
     sig_frame = pd.DataFrame(pandas_samples['sig'])
     sig_aux_frame = pd.DataFrame(pandas_aux_samples['sig'])
@@ -192,6 +195,41 @@ def process_data(
         bkg_train_frame, bkg_test_frame,
         bkg_aux_train_frame, bkg_aux_test_frame
     ) = train_test_split_df(sig_frame, sig_aux_frame, bkg_frame, bkg_aux_frame)
+
+    ## Further selection for lepton-veto check ##
+    if len(dont_include_vars) > 0:
+        keep_cols = list(high_level_fields - set(dont_include_vars))
+        print(keep_cols)
+
+        sig_train_frame = sig_train_frame.loc[
+            (sig_train_frame['lepton1_pt'] != -999) & (sig_train_frame['lepton2_pt'] == -999), keep_cols
+        ]
+        bkg_train_frame = bkg_train_frame.loc[
+            (bkg_train_frame['lepton1_pt'] != -999) & (bkg_train_frame['lepton2_pt'] == -999), keep_cols
+        ]
+        sig_aux_train_frame = sig_aux_train_frame.loc[
+            (sig_aux_train_frame['lepton1_pt'] != -999) & (sig_aux_train_frame['lepton2_pt'] == -999), keep_cols
+        ]
+        bkg_aux_train_frame = bkg_aux_train_frame.loc[
+            (bkg_aux_train_frame['lepton1_pt'] != -999) & (bkg_aux_train_frame['lepton2_pt'] == -999), keep_cols
+        ]
+
+        sig_test_frame = sig_test_frame.loc[
+            (sig_test_frame['lepton1_pt'] != -999) & (sig_test_frame['lepton2_pt'] != -999), keep_cols
+        ]
+        bkg_test_frame = bkg_test_frame.loc[
+            (bkg_test_frame['lepton1_pt'] != -999) & (bkg_test_frame['lepton2_pt'] != -999), keep_cols
+        ]
+        sig_aux_test_frame = sig_aux_test_frame.loc[
+            (sig_aux_test_frame['lepton1_pt'] != -999) & (sig_aux_test_frame['lepton2_pt'] != -999), keep_cols
+        ]
+        bkg_aux_test_frame = bkg_aux_test_frame.loc[
+            (bkg_aux_test_frame['lepton1_pt'] != -999) & (bkg_aux_test_frame['lepton2_pt'] != -999), keep_cols
+        ]
+
+        for lepton2_var in dont_include_vars:
+            high_level_fields.remove(lepton2_var)
+    ## End further selection for lepton-veto check ##
 
 
     # Perform the standardization #
@@ -276,8 +314,14 @@ def process_data(
         particle_list_sig = np.zeros(shape=(len(data_frame), n_particles+len(extra_RNN_vars), n_particle_fields+len(extra_RNN_vars)))  # +(1 if len(extra_RNN_vars) > 0 else 0)
         # 4: max particles: l1, l2, dipho, MET
         # 6: pt, eta, phi, isLep, isDipho, isMET
+        if n_particles == 4:
+            var_names = ['lepton1', 'lepton2', '', 'puppiMET']
+        elif n_particles == 3:
+            var_names = ['lepton1', '', 'puppiMET']
+        else:
+            raise Exception(f"Currently the only supported n_particles are 3 and 4. You passed in {n_particles}.")
 
-        for var_idx, var_name in enumerate(['lepton1', 'lepton2', '', 'puppiMET']):
+        for var_idx, var_name in enumerate(var_names):
             if var_name != '':
                 var_name = var_name + '_'
             particle_list_sig[:, var_idx, 0] = np.where(data_frame[var_name+'pt'].to_numpy() != train_min_mean[col_idx_dict[var_name+'pt']], data_frame[var_name+'pt'].to_numpy(), 0)
