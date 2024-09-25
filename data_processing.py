@@ -203,17 +203,17 @@ def process_data(
 
         sig_train_slice = (sig_train_frame['lepton1_pt'] != -999) & (sig_train_frame['lepton2_pt'] == -999)
         bkg_train_slice = (bkg_train_frame['lepton1_pt'] != -999) & (bkg_train_frame['lepton2_pt'] == -999)
-        sig_train_frame = sig_train_frame.loc[sig_train_slice, keep_cols]
-        bkg_train_frame = bkg_train_frame.loc[bkg_train_slice, keep_cols]
-        sig_aux_train_frame = sig_aux_train_frame.loc[sig_train_slice, keep_cols]
-        bkg_aux_train_frame = bkg_aux_train_frame.loc[bkg_train_slice, keep_cols]
+        sig_train_frame = sig_train_frame.loc[sig_train_slice, keep_cols].reset_index(drop=True)
+        bkg_train_frame = bkg_train_frame.loc[bkg_train_slice, keep_cols].reset_index(drop=True)
+        sig_aux_train_frame = sig_aux_train_frame.loc[sig_train_slice].reset_index(drop=True)
+        bkg_aux_train_frame = bkg_aux_train_frame.loc[bkg_train_slice].reset_index(drop=True)
 
         sig_test_slice = (sig_test_frame['lepton1_pt'] != -999) & (sig_test_frame['lepton2_pt'] != -999)
         bkg_test_slice = (bkg_test_frame['lepton1_pt'] != -999) & (bkg_test_frame['lepton2_pt'] != -999)
-        sig_test_frame = sig_test_frame.loc[ sig_test_slice, keep_cols]
-        bkg_test_frame = bkg_test_frame.loc[bkg_test_slice, keep_cols]
-        sig_aux_test_frame = sig_aux_test_frame.loc[sig_test_slice, keep_cols]
-        bkg_aux_test_frame = bkg_aux_test_frame.loc[bkg_test_slice, keep_cols]
+        sig_test_frame = sig_test_frame.loc[ sig_test_slice, keep_cols].reset_index(drop=True)
+        bkg_test_frame = bkg_test_frame.loc[bkg_test_slice, keep_cols].reset_index(drop=True)
+        sig_aux_test_frame = sig_aux_test_frame.loc[sig_test_slice].reset_index(drop=True)
+        bkg_aux_test_frame = bkg_aux_test_frame.loc[bkg_test_slice].reset_index(drop=True)
 
         for lepton2_var in dont_include_vars:
             high_level_fields.remove(lepton2_var)
