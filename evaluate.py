@@ -59,14 +59,14 @@ def evaluate(
                 arr = np.sum(particles_data!=0, axis=1)[:,0] # the number of particles in the whole batch
                 arr = [1 if x==0 else x for x in arr]
                 arr = np.array(arr)
-                sorted_indices_la= np.argsort(-arr)
+                sorted_indices_la = np.argsort(-arr)
                 particles_data = torch.from_numpy(particles_data[sorted_indices_la]).float()
                 hlf_data = hlf_data[sorted_indices_la]
                 particles_data = Variable(particles_data).cuda()
                 hlf_data = Variable(hlf_data).cuda()
                 # particles_data = Variable(particles_data)
                 # hlf_data = Variable(hlf_data)
-                t_seq_length= [arr[i] for i in sorted_indices_la]
+                t_seq_length = [arr[i] for i in sorted_indices_la]
                 particles_data = torch.nn.utils.rnn.pack_padded_sequence(particles_data, t_seq_length, batch_first=True)
 
                 outputs = model(particles_data, hlf_data)
@@ -79,7 +79,11 @@ def evaluate(
                 fill_array(all_pred, unsorted_pred, batch_idx, best_batch_size)
                 fill_array(all_label, y_data.numpy(), batch_idx, best_batch_size)
 
+        print('-'*60)
+        print(all_label)
+        print(np.exp(all_pred)[:,1])
         fpr, tpr, threshold = roc_curve(all_label, np.exp(all_pred)[:,1])
+        # print(threshold)
 
         fpr = np.interp(base_tpr, tpr, fpr)
         threshold = np.interp(base_tpr, tpr, threshold)
@@ -90,6 +94,7 @@ def evaluate(
         all_labels.append(copy.deepcopy(all_label.tolist()))
 
     thresholds = np.array(thresholds)
+    print(thresholds)
     mean_thresholds = thresholds.mean(axis=0)
 
     fprs = np.array(fprs)
