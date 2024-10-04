@@ -79,9 +79,6 @@ def evaluate(
                 fill_array(all_pred, unsorted_pred, batch_idx, best_batch_size)
                 fill_array(all_label, y_data.numpy(), batch_idx, best_batch_size)
 
-        print('-'*60)
-        print(all_label)
-        print(np.exp(all_pred)[:,1])
         fpr, tpr, threshold = roc_curve(all_label, np.exp(all_pred)[:,1])
         # print(threshold)
 
@@ -94,7 +91,6 @@ def evaluate(
         all_labels.append(copy.deepcopy(all_label.tolist()))
 
     thresholds = np.array(thresholds)
-    print(thresholds)
     mean_thresholds = thresholds.mean(axis=0)
 
     fprs = np.array(fprs)

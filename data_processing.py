@@ -101,6 +101,13 @@ def process_data(
                 'lepton2_pt', 'lepton2_eta', 'lepton2_phi', 
                 'leadBjet_subleadLepton', 'subleadBjet_subleadLepton'
             ]
+        elif re.search('no_lep', output_dirpath) is not None:
+            dont_include_vars = [
+                'lepton1_pt', 'lepton1_eta', 'lepton1_phi',
+                'leadBjet_leadLepton', 'subleadBjet_leadLepton',
+                'lepton2_pt', 'lepton2_eta', 'lepton2_phi', 
+                'leadBjet_subleadLepton', 'subleadBjet_subleadLepton'
+            ]
         if re.search('and_bools', output_dirpath) is not None:
             high_level_fields = high_level_fields | {
                 'chi_t0_bool', 'chi_t1_bool',
@@ -146,7 +153,8 @@ def process_data(
     high_level_aux_fields = {
         'event', # event number
         'eventWeight',  # computed eventWeight using (genWeight * lumi * xs / sum_of_genWeights)
-        'mass', 'dijet_mass' # diphoton and bb-dijet mass
+        'mass', 'dijet_mass', # diphoton and bb-dijet mass
+        'lepton1_pt', 'lepton2_pt',
     } # https://stackoverflow.com/questions/67003141/how-to-remove-a-field-from-a-collection-of-records-created-by-awkward-zip
 
     for sample_name, sample in samples.items():
@@ -200,58 +208,56 @@ def process_data(
     if len(dont_include_vars) > 0:
         keep_cols = list(high_level_fields - set(dont_include_vars))
 
-        # sig_train1lep_slice = (sig_train_frame['lepton1_pt'] != -999) & (sig_train_frame['lepton2_pt'] == -999)
-        # bkg_train1lep_slice = (bkg_train_frame['lepton1_pt'] != -999) & (bkg_train_frame['lepton2_pt'] == -999)
-        # sig_train_frame = pd.concat(sig_train_frame.loc[sig_train_slice, keep_cols].reset_index(drop=True), sig_test_frame.loc[sig_test_slice, keep_cols].reset_index(drop=True)
-        # bkg_train_frame = bkg_train_frame.loc[bkg_train_slice, keep_cols].reset_index(drop=True)
-        # sig_aux_train_frame = sig_aux_train_frame.loc[sig_train_slice].reset_index(drop=True)
-        # bkg_aux_train_frame = bkg_aux_train_frame.loc[bkg_train_slice].reset_index(drop=True)
+        sig_train_slice = (sig_train_frame['lepton1_pt'] == -999)
+        bkg_train_slice = (bkg_train_frame['lepton1_pt'] == -999)
+        sig_train_frame = sig_train_frame.loc[sig_train_slice, keep_cols].reset_index(drop=True)
+        bkg_train_frame = bkg_train_frame.loc[bkg_train_slice, keep_cols].reset_index(drop=True)
+        sig_aux_train_frame = sig_aux_train_frame.loc[sig_train_slice].reset_index(drop=True)
+        bkg_aux_train_frame = bkg_aux_train_frame.loc[bkg_train_slice].reset_index(drop=True)
 
-        # # sig_test_slice = (sig_test_frame['lepton2_pt'] != -999)
-        # # bkg_test_slice = (bkg_test_frame['lepton2_pt'] != -999)
-        # sig_test_slice = (sig_test_frame['lepton1_pt'] == -999)
-        # bkg_test_slice = (bkg_test_frame['lepton1_pt'] == -999)
-        # sig_test_frame = sig_test_frame.loc[sig_test_slice, keep_cols].reset_index(drop=True)
-        # bkg_test_frame = bkg_test_frame.loc[bkg_test_slice, keep_cols].reset_index(drop=True)
+        # sig_test_slice = (sig_test_frame['lepton1_pt'] > -1000)
+        # bkg_test_slice = (bkg_test_frame['lepton1_pt'] > -1000)
+        sig_test_frame = sig_test_frame[keep_cols].reset_index(drop=True)
+        bkg_test_frame = bkg_test_frame[keep_cols].reset_index(drop=True)
         # sig_aux_test_frame = sig_aux_test_frame.loc[sig_test_slice].reset_index(drop=True)
         # bkg_aux_test_frame = bkg_aux_test_frame.loc[bkg_test_slice].reset_index(drop=True)
 
-        sig_1lep_frame = pd.concat([
-            sig_train_frame.loc[(sig_train_frame['lepton1_pt'] != -999) & (sig_train_frame['lepton2_pt'] == -999), keep_cols].reset_index(drop=True),
-            sig_test_frame.loc[(sig_test_frame['lepton1_pt'] != -999) & (sig_test_frame['lepton2_pt'] == -999), keep_cols].reset_index(drop=True)
-        ]).reset_index(drop=True)
-        bkg_1lep_frame = pd.concat([
-            bkg_train_frame.loc[(bkg_train_frame['lepton1_pt'] != -999) & (bkg_train_frame['lepton2_pt'] == -999), keep_cols].reset_index(drop=True),
-            bkg_test_frame.loc[(bkg_test_frame['lepton1_pt'] != -999) & (bkg_test_frame['lepton2_pt'] == -999), keep_cols].reset_index(drop=True)
-        ]).reset_index(drop=True)
-        sig_aux_1lep_frame = pd.concat([
-            sig_aux_train_frame.loc[(sig_train_frame['lepton1_pt'] != -999) & (sig_train_frame['lepton2_pt'] == -999)].reset_index(drop=True),
-            sig_aux_test_frame.loc[(sig_test_frame['lepton1_pt'] != -999) & (sig_test_frame['lepton2_pt'] == -999)].reset_index(drop=True)
-        ]).reset_index(drop=True)
-        bkg_aux_1lep_frame = pd.concat([
-            bkg_aux_train_frame.loc[(bkg_train_frame['lepton1_pt'] != -999) & (bkg_train_frame['lepton2_pt'] == -999)].reset_index(drop=True),
-            bkg_aux_test_frame.loc[(bkg_test_frame['lepton1_pt'] != -999) & (bkg_test_frame['lepton2_pt'] == -999)].reset_index(drop=True)
-        ]).reset_index(drop=True)
+        # sig_1lep_frame = pd.concat([
+        #     sig_train_frame.loc[(sig_train_frame['lepton1_pt'] != -999) & (sig_train_frame['lepton2_pt'] == -999), keep_cols].reset_index(drop=True),
+        #     sig_test_frame.loc[(sig_test_frame['lepton1_pt'] != -999) & (sig_test_frame['lepton2_pt'] == -999), keep_cols].reset_index(drop=True)
+        # ]).reset_index(drop=True)
+        # bkg_1lep_frame = pd.concat([
+        #     bkg_train_frame.loc[(bkg_train_frame['lepton1_pt'] != -999) & (bkg_train_frame['lepton2_pt'] == -999), keep_cols].reset_index(drop=True),
+        #     bkg_test_frame.loc[(bkg_test_frame['lepton1_pt'] != -999) & (bkg_test_frame['lepton2_pt'] == -999), keep_cols].reset_index(drop=True)
+        # ]).reset_index(drop=True)
+        # sig_aux_1lep_frame = pd.concat([
+        #     sig_aux_train_frame.loc[(sig_train_frame['lepton1_pt'] != -999) & (sig_train_frame['lepton2_pt'] == -999)].reset_index(drop=True),
+        #     sig_aux_test_frame.loc[(sig_test_frame['lepton1_pt'] != -999) & (sig_test_frame['lepton2_pt'] == -999)].reset_index(drop=True)
+        # ]).reset_index(drop=True)
+        # bkg_aux_1lep_frame = pd.concat([
+        #     bkg_aux_train_frame.loc[(bkg_train_frame['lepton1_pt'] != -999) & (bkg_train_frame['lepton2_pt'] == -999)].reset_index(drop=True),
+        #     bkg_aux_test_frame.loc[(bkg_test_frame['lepton1_pt'] != -999) & (bkg_test_frame['lepton2_pt'] == -999)].reset_index(drop=True)
+        # ]).reset_index(drop=True)
 
-        sig_2lep_frame = pd.concat([
-            sig_train_frame.loc[(sig_train_frame['lepton2_pt'] != -999), keep_cols].reset_index(drop=True),
-            sig_test_frame.loc[(sig_test_frame['lepton2_pt'] != -999), keep_cols].reset_index(drop=True)
-        ]).reset_index(drop=True)
-        bkg_2lep_frame = pd.concat([
-            bkg_train_frame.loc[(bkg_train_frame['lepton2_pt'] != -999), keep_cols].reset_index(drop=True),
-            bkg_test_frame.loc[(bkg_test_frame['lepton2_pt'] != -999), keep_cols].reset_index(drop=True)
-        ]).reset_index(drop=True)
-        sig_aux_2lep_frame = pd.concat([
-            sig_aux_train_frame.loc[(sig_train_frame['lepton2_pt'] != -999)].reset_index(drop=True),
-            sig_aux_test_frame.loc[(sig_test_frame['lepton2_pt'] != -999)].reset_index(drop=True)
-        ]).reset_index(drop=True)
-        bkg_aux_2lep_frame = pd.concat([
-            bkg_aux_train_frame.loc[(bkg_train_frame['lepton2_pt'] != -999)].reset_index(drop=True),
-            bkg_aux_test_frame.loc[(bkg_test_frame['lepton2_pt'] != -999)].reset_index(drop=True)
-        ]).reset_index(drop=True)
+        # sig_2lep_frame = pd.concat([
+        #     sig_train_frame.loc[(sig_train_frame['lepton2_pt'] != -999), keep_cols].reset_index(drop=True),
+        #     sig_test_frame.loc[(sig_test_frame['lepton2_pt'] != -999), keep_cols].reset_index(drop=True)
+        # ]).reset_index(drop=True)
+        # bkg_2lep_frame = pd.concat([
+        #     bkg_train_frame.loc[(bkg_train_frame['lepton2_pt'] != -999), keep_cols].reset_index(drop=True),
+        #     bkg_test_frame.loc[(bkg_test_frame['lepton2_pt'] != -999), keep_cols].reset_index(drop=True)
+        # ]).reset_index(drop=True)
+        # sig_aux_2lep_frame = pd.concat([
+        #     sig_aux_train_frame.loc[(sig_train_frame['lepton2_pt'] != -999)].reset_index(drop=True),
+        #     sig_aux_test_frame.loc[(sig_test_frame['lepton2_pt'] != -999)].reset_index(drop=True)
+        # ]).reset_index(drop=True)
+        # bkg_aux_2lep_frame = pd.concat([
+        #     bkg_aux_train_frame.loc[(bkg_train_frame['lepton2_pt'] != -999)].reset_index(drop=True),
+        #     bkg_aux_test_frame.loc[(bkg_test_frame['lepton2_pt'] != -999)].reset_index(drop=True)
+        # ]).reset_index(drop=True)
 
-        sig_train_frame, sig_test_frame, bkg_train_frame, bkg_test_frame = sig_1lep_frame, sig_2lep_frame, bkg_1lep_frame, bkg_2lep_frame
-        sig_aux_train_frame, sig_aux_test_frame, bkg_aux_train_frame, bkg_aux_test_frame = sig_aux_1lep_frame, sig_aux_2lep_frame, bkg_aux_1lep_frame, bkg_aux_2lep_frame
+        # sig_train_frame, sig_test_frame, bkg_train_frame, bkg_test_frame = sig_1lep_frame, sig_2lep_frame, bkg_1lep_frame, bkg_2lep_frame
+        # sig_aux_train_frame, sig_aux_test_frame, bkg_aux_train_frame, bkg_aux_test_frame = sig_aux_1lep_frame, sig_aux_2lep_frame, bkg_aux_1lep_frame, bkg_aux_2lep_frame
 
         for lepton2_var in dont_include_vars:
             high_level_fields.remove(lepton2_var)
@@ -326,9 +332,9 @@ def process_data(
             )
     standardized_to_json = {
         'standardized_variables': [col for col in df_train.columns],
-        'standardized_mean': [mean for mean in x_mean],
-        'standardized_stddev': [std for std in x_std],
-        'standardized_unphysical_values': [min_mean for min_mean in train_min_mean]
+        'standardized_mean': [float(mean) for mean in x_mean],
+        'standardized_stddev': [float(std) for std in x_std],
+        'standardized_unphysical_values': [float(min_mean) for min_mean in train_min_mean]
     }
     with open(output_dirpath + 'standardization.json', 'w') as f:
         json.dump(standardized_to_json, f)
@@ -344,6 +350,8 @@ def process_data(
             var_names = ['lepton1', 'lepton2', '', 'puppiMET']
         elif n_particles == 3:
             var_names = ['lepton1', '', 'puppiMET']
+        elif n_particles == 2:
+            var_names = ['', 'puppiMET']
         else:
             raise Exception(f"Currently the only supported n_particles are 3 and 4. You passed in {n_particles}.")
 
