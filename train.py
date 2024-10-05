@@ -9,7 +9,7 @@ from torch.autograd import Variable
 from EarlyStopping import EarlyStopping
 
 def train(
-    num_epochs, model, criterion, optimizer, scheduler, 
+    num_epochs, model, CRITERION, optimizer, scheduler, 
     state_filename, model_filename, volatile=False, data_loader=None, save_model=True
 ):
     best_model = model.state_dict()
@@ -37,7 +37,21 @@ def train(
             
 
             # Iterate over data.
-            for batch_idx, (particles_data, hlf_data, y_data) in enumerate(data_loader[phase]):
+            for batch_idx, (particles_data, hlf_data, y_data, weight) in enumerate(data_loader[phase]):
+                if CRITERION == "NLLLoss":
+                    print(y_data==0)
+                    print(weight)
+                    print([1.0, np.sum(weight[y_data==0]) / np.sum(weight[y_data==1])])
+                    train_weights = torch.FloatTensor(
+                        [1.0, np.sum(weight.numpy()[y_data==0]) / np.sum(weight.numpy()[y_data==1])]
+                    ).cuda()
+                    criterion = torch.nn.NLLLoss(weight=train_weights)
+                elif CRITERION == "BCELoss":
+                    train_weights = torch.FloatTensor(weight).cuda()
+                    criterion = torch.nn.BCEWithLogitsLoss(pos_weight=train_weights)
+                else:
+                    raise Exception(f"CRITERION must be either 'NLLLoss' or 'BCELoss'. You provided {CRITERION}.")
+                
                 particles_data = particles_data.numpy()
                 arr = np.sum(particles_data!=0, axis=1)[:,0] # the number of particles in each batch
                 arr = [1 if x==0 else x for x in arr]
@@ -60,11 +74,16 @@ def train(
                     optimizer.zero_grad()
                 # forward pass
                 outputs = model(particles_data, hlf_data)
-                print(f"outputs shape: {outputs.shape}")
-                print(f"ydata shape: {y_data.shape}")
-                # _, preds = torch.max(outputs.data, 1)
+                
+                if CRITERION == "NLLLoss":
+                    _, preds = torch.max(outputs.data, 1)
+                elif CRITERION == "BCELoss":
+                    preds = outputs.data
+                else:
+                    raise Exception(f"CRITERION must be either 'NLLLoss' or 'BCELoss'. You provided {CRITERION}.")
                 
                 loss = criterion(outputs, y_data)
+                print(f"loss: {loss}")
                 
                 # backward + optimize only if in training phase
                 if phase == 'training':
@@ -83,8 +102,8 @@ def train(
             else:
                 scheduler.step(epoch_loss)
                 val_losses.append(epoch_loss)
-            # print('{} Loss: {:.4f} Acc: {:.4f}'.format(
-            #     phase, epoch_loss, epoch_acc))
+            print('{} Loss: {:.4f} Acc: {:.4f}'.format(
+                phase, epoch_loss, epoch_acc))
 
             # deep copy the model
             if phase == 'validation' and epoch_acc > best_acc:

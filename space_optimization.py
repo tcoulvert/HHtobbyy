@@ -18,7 +18,7 @@ from InclusiveNetwork import InclusiveNetwork
 from ParticleHLF import ParticleHLF
 from train import train
 
-def optimize_hyperparams(skf, data_list, data_hlf, label, config_filename, epochs=100, criterion=nn.NLLLoss()):
+def optimize_hyperparams(skf, data_list, data_hlf, label, weight, config_filename, epochs=100, CRITERION="NLLLoss"):
     space  = [
         Integer(1, 3, name='hidden_layers'),
         Integer(10, 500, name='initial_nodes'),
@@ -34,18 +34,19 @@ def optimize_hyperparams(skf, data_list, data_hlf, label, config_filename, epoch
     # L1 reg: https://stackoverflow.com/questions/42704283/l1-l2-regularization-in-pytorch
     # batch_size = 4000
 
+
     @use_named_args(space)
     def objective(**X):
         print("New configuration: {}".format(X))
         fom = []
         for train_index, test_index in skf.split(data_hlf, label):
             train_loader = DataLoader(
-                ParticleHLF(data_list[train_index], data_hlf[train_index], label[train_index]), 
+                ParticleHLF(data_list[train_index], data_hlf[train_index], label[train_index], weight[train_index]), 
                 batch_size=int(X['batch_size']), 
                 shuffle=True
             )
             val_loader = DataLoader(
-                ParticleHLF(data_list[test_index], data_hlf[test_index], label[test_index]), 
+                ParticleHLF(data_list[test_index], data_hlf[test_index], label[test_index], weight[train_index]), 
                 batch_size=int(X['batch_size']), 
                 shuffle=True
             )
@@ -60,14 +61,15 @@ def optimize_hyperparams(skf, data_list, data_hlf, label, config_filename, epoch
                 int(X['gru_size']), 
                 float(X['dropout_g']),
                 dnn_input=np.shape(data_hlf)[-1],
-                rnn_input=np.shape(data_list)[-1]
+                rnn_input=np.shape(data_list)[-1],
+                CRITERION=CRITERION,
             ).cuda()
             # model = InclusiveNetwork(X['hidden_layers'], X['initial_nodes'], X['dropout'], X['gru_layers'], X['gru_size'], X['dropout_g'])
 
             optimizer = AMSGrad(model.parameters(), lr=X['learning_rate'], weight_decay=X['L2_reg'])
             scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer,mode ='min',factor=0.5,patience=4)
             best_acc, train_losses, val_losses = train(
-                epochs, model, criterion, optimizer, scheduler,
+                epochs, model, CRITERION, optimizer, scheduler,
                 'state_filename', 'model_filename', data_loader=data_loader, save_model=False
             )
             fom.append(best_acc)

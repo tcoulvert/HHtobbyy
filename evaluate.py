@@ -22,15 +22,17 @@ def fill_array(array_to_fill, value, index, batch_size):
     array_to_fill[index*batch_size:min((index+1)*batch_size, array_to_fill.shape[0])] = value  
 
 def evaluate(
-        p_list, hlf, label, 
+        p_list, hlf, label, weight,
         OUTPUT_DIRPATH, CURRENT_TIME, skf, best_conf,
         train_losses_arr=None, val_losses_arr=None, save=False, only_fold_idx=None,
+        CRITERION="NLLLoss",
         # aux_df=None
     ):
     model = InclusiveNetwork(
         best_conf['hidden_layers'], best_conf['initial_nodes'], best_conf['dropout'], 
         best_conf['gru_layers'], best_conf['gru_size'], best_conf['dropout_g'], 
-        dnn_input=len(hlf[0]), rnn_input=len(p_list[0, 0, :])
+        dnn_input=len(hlf[0]), rnn_input=len(p_list[0, 0, :]),
+        CRITERION=CRITERION
     ).cuda()
 
     fprs = []
@@ -38,7 +40,7 @@ def evaluate(
     thresholds = []
     best_batch_size = best_conf['batch_size']
     val_loader = DataLoader(
-        ParticleHLF(p_list, hlf, label), 
+        ParticleHLF(p_list, hlf, label, weight), 
         batch_size=best_conf['batch_size'],
         shuffle=False
     )
@@ -46,14 +48,14 @@ def evaluate(
     all_pred = np.zeros(shape=(len(hlf),2))
     all_label = np.zeros(shape=(len(hlf)))
 
-    # CURRENT_TIME = '2024-08-08_17-12-14'
     for fold_idx in range(skf.get_n_splits()):
         if only_fold_idx is not None and fold_idx != only_fold_idx:
             continue
         model.load_state_dict(torch.load(OUTPUT_DIRPATH + f'{CURRENT_TIME}_ReallyTopclassStyle_{fold_idx}.torch'))
         model.eval()
         with torch.no_grad():
-            for batch_idx, (particles_data, hlf_data, y_data) in enumerate(val_loader):
+            for batch_idx, (particles_data, hlf_data, y_data, weight) in enumerate(val_loader):
+                
                 # print(f"val_loader: {batch_idx}")
                 particles_data = particles_data.numpy()
                 arr = np.sum(particles_data!=0, axis=1)[:,0] # the number of particles in the whole batch
@@ -70,6 +72,11 @@ def evaluate(
                 particles_data = torch.nn.utils.rnn.pack_padded_sequence(particles_data, t_seq_length, batch_first=True)
 
                 outputs = model(particles_data, hlf_data)
+                print(outputs.size())
+                outputs = torch.stack((
+                    torch.zeros((len(y_data), 1)), torch.reshape(outputs, (len(outputs), 1))
+                ))
+                print(outputs.size())
 
                 # Unsort the predictions (to match the original data order)
                 # https://stackoverflow.com/questions/34159608/how-to-unsort-a-np-array-given-the-argsort

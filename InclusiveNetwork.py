@@ -4,7 +4,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 class InclusiveNetwork(nn.Module):
-    def __init__(self, num_hiddens=2, initial_node=500, dropout=0.5, gru_layers=2, gru_size=50, dropout_g=0.1, rnn_input=6, dnn_input=21, CRITERION='NLLLoss'):
+    def __init__(
+            self, num_hiddens=2, initial_node=500, dropout=0.5, gru_layers=2, gru_size=50, 
+            dropout_g=0.1, rnn_input=6, dnn_input=21, CRITERION='NLLLoss'
+        ):
         super(InclusiveNetwork, self).__init__()
         self.CRITERION = CRITERION
         self.dropout = dropout
