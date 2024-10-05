@@ -60,7 +60,9 @@ def train(
                     optimizer.zero_grad()
                 # forward pass
                 outputs = model(particles_data, hlf_data)
-                _, preds = torch.max(outputs.data, 1)
+                print(f"outputs shape: {outputs.shape}")
+                print(f"ydata shape: {y_data.shape}")
+                # _, preds = torch.max(outputs.data, 1)
                 
                 loss = criterion(outputs, y_data)
                 
