@@ -41,7 +41,7 @@ def train(
                 if CRITERION == "NLLLoss":
                     print(y_data==0)
                     print(weight)
-                    print([1.0, np.sum(weight[y_data==0]) / np.sum(weight[y_data==1])])
+                    print([1.0, np.sum(weight.numpy()[y_data==0]) / np.sum(weight.numpy()[y_data==1])])
                     train_weights = torch.FloatTensor(
                         [1.0, np.sum(weight.numpy()[y_data==0]) / np.sum(weight.numpy()[y_data==1])]
                     ).cuda()
