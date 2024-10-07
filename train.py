@@ -9,7 +9,7 @@ from torch.autograd import Variable
 from EarlyStopping import EarlyStopping
 
 def train(
-    num_epochs, model, CRITERION, optimizer, scheduler, 
+    num_epochs, model, optimizer, scheduler, 
     state_filename, model_filename, volatile=False, data_loader=None, save_model=True
 ):
     best_model = model.state_dict()
@@ -38,19 +38,12 @@ def train(
 
             # Iterate over data.
             for batch_idx, (particles_data, hlf_data, y_data, weight) in enumerate(data_loader[phase]):
-                if CRITERION == "NLLLoss":
-                    print(y_data==0)
-                    print(weight)
-                    print([1.0, np.sum(weight.numpy()[y_data==0]) / np.sum(weight.numpy()[y_data==1])])
-                    train_weights = torch.FloatTensor(
-                        [1.0, np.sum(weight.numpy()[y_data==0]) / np.sum(weight.numpy()[y_data==1])]
-                    ).cuda()
-                    criterion = torch.nn.NLLLoss(weight=train_weights)
-                elif CRITERION == "BCELoss":
-                    train_weights = torch.FloatTensor(weight).cuda()
-                    criterion = torch.nn.BCEWithLogitsLoss(pos_weight=train_weights)
-                else:
-                    raise Exception(f"CRITERION must be either 'NLLLoss' or 'BCELoss'. You provided {CRITERION}.")
+                class_weights = torch.FloatTensor(
+                    [1.0, np.sum(weight.numpy()[y_data==0]) / np.sum(weight.numpy()[y_data==1])]
+                ).cuda()
+                # print(f"class weights = \n{class_weights}")
+                # print(f"event weights = \n{weight}")
+                criterion = torch.nn.NLLLoss(weight=class_weights, reduction='none')
                 
                 particles_data = particles_data.numpy()
                 arr = np.sum(particles_data!=0, axis=1)[:,0] # the number of particles in each batch
@@ -66,7 +59,7 @@ def train(
                 hlf_data = Variable(hlf_data, requires_grad=not volatile).cuda()
                 # hlf_data = Variable(hlf_data, requires_grad=not volatile)
                 y_data = Variable(y_data, requires_grad=False).cuda()
-                # y_data = Variable(y_data, requires_grad=not volatile)
+                weight = Variable(weight, requires_grad=False).cuda()
                 t_seq_length = [arr[i] for i in sorted_indices_la]
                 particles_data = torch.nn.utils.rnn.pack_padded_sequence(particles_data, t_seq_length, batch_first=True)
                 
@@ -75,15 +68,10 @@ def train(
                 # forward pass
                 outputs = model(particles_data, hlf_data)
                 
-                if CRITERION == "NLLLoss":
-                    _, preds = torch.max(outputs.data, 1)
-                elif CRITERION == "BCELoss":
-                    preds = outputs.data
-                else:
-                    raise Exception(f"CRITERION must be either 'NLLLoss' or 'BCELoss'. You provided {CRITERION}.")
+                _, preds = torch.max(outputs.data, 1)
                 
-                loss = criterion(outputs, y_data)
-                print(f"loss: {loss}")
+                intermediate_loss = criterion(outputs, y_data)
+                loss = torch.mean(weight*intermediate_loss)
                 
                 # backward + optimize only if in training phase
                 if phase == 'training':
@@ -94,6 +82,8 @@ def train(
                 # running_loss += loss.data[0]
                 running_loss += loss.data.item()
                 running_corrects += torch.sum(preds == y_data.data)
+                # print(f"running_loss: {running_loss}")
+                # print(f"running_corrects: {running_corrects}")
             
             epoch_loss = running_loss / len(data_loader[phase].dataset)
             epoch_acc = 100. * running_corrects / len(data_loader[phase].dataset)
@@ -102,7 +92,7 @@ def train(
             else:
                 scheduler.step(epoch_loss)
                 val_losses.append(epoch_loss)
-            print('{} Loss: {:.4f} Acc: {:.4f}'.format(
+            print('{} Loss: {:.10f} Acc: {:.10f}'.format(
                 phase, epoch_loss, epoch_acc))
 
             # deep copy the model

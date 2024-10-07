@@ -25,14 +25,12 @@ def evaluate(
         p_list, hlf, label, weight,
         OUTPUT_DIRPATH, CURRENT_TIME, skf, best_conf,
         train_losses_arr=None, val_losses_arr=None, save=False, only_fold_idx=None,
-        CRITERION="NLLLoss",
         # aux_df=None
     ):
     model = InclusiveNetwork(
         best_conf['hidden_layers'], best_conf['initial_nodes'], best_conf['dropout'], 
         best_conf['gru_layers'], best_conf['gru_size'], best_conf['dropout_g'], 
         dnn_input=len(hlf[0]), rnn_input=len(p_list[0, 0, :]),
-        CRITERION=CRITERION
     ).cuda()
 
     fprs = []
@@ -72,11 +70,6 @@ def evaluate(
                 particles_data = torch.nn.utils.rnn.pack_padded_sequence(particles_data, t_seq_length, batch_first=True)
 
                 outputs = model(particles_data, hlf_data)
-                print(outputs.size())
-                outputs = torch.stack((
-                    torch.zeros((len(y_data), 1)), torch.reshape(outputs, (len(outputs), 1))
-                ))
-                print(outputs.size())
 
                 # Unsort the predictions (to match the original data order)
                 # https://stackoverflow.com/questions/34159608/how-to-unsort-a-np-array-given-the-argsort

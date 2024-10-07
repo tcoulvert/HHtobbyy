@@ -3,14 +3,11 @@ import torch
 from torch.utils.data import Dataset
 
 class ParticleHLF(Dataset):
-    def __init__(self, data_particles, data_hlf, data_y, data_weights, CRITERION="NLLLoss"):
+    def __init__(self, data_particles, data_hlf, data_y, data_weights):
         self.len = data_y.shape[0]
         self.data_particles = torch.from_numpy(data_particles).float()
         self.data_hlf = torch.from_numpy(data_hlf).float()
-        if CRITERION == "NLLLoss":
-            self.data_y = torch.from_numpy(data_y).long()
-        elif CRITERION == "BCELoss":
-            self.data_y = torch.from_numpy(data_y).float()
+        self.data_y = torch.from_numpy(data_y).long()
         self.data_weight = torch.from_numpy(data_weights).float()
         
     def __len__(self):

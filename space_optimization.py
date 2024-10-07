@@ -34,7 +34,6 @@ def optimize_hyperparams(skf, data_list, data_hlf, label, weight, config_filenam
     # L1 reg: https://stackoverflow.com/questions/42704283/l1-l2-regularization-in-pytorch
     # batch_size = 4000
 
-
     @use_named_args(space)
     def objective(**X):
         print("New configuration: {}".format(X))
@@ -62,14 +61,13 @@ def optimize_hyperparams(skf, data_list, data_hlf, label, weight, config_filenam
                 float(X['dropout_g']),
                 dnn_input=np.shape(data_hlf)[-1],
                 rnn_input=np.shape(data_list)[-1],
-                CRITERION=CRITERION,
             ).cuda()
             # model = InclusiveNetwork(X['hidden_layers'], X['initial_nodes'], X['dropout'], X['gru_layers'], X['gru_size'], X['dropout_g'])
 
             optimizer = AMSGrad(model.parameters(), lr=X['learning_rate'], weight_decay=X['L2_reg'])
             scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer,mode ='min',factor=0.5,patience=4)
             best_acc, train_losses, val_losses = train(
-                epochs, model, CRITERION, optimizer, scheduler,
+                epochs, model, optimizer, scheduler,
                 'state_filename', 'model_filename', data_loader=data_loader, save_model=False
             )
             fom.append(best_acc)
