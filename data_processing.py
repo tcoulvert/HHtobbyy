@@ -453,11 +453,11 @@ def process_data(
                 full_high_level_fields, full_input_hlf_vars, full_hlf_vars_columns,
                 full_data_aux, full_data_test_aux
             ) = (
-                {0: copy.deepcopy(data_df)}, {0: copy.deepcopy(data_test_df)}, 
-                {0: copy.deepcopy(data_list)}, {0: copy.deepcopy(data_hlf)}, {0: copy.deepcopy(label)}, 
-                {0: copy.deepcopy(data_list_test)}, {0: copy.deepcopy(data_hlf_test)}, {0: copy.deepcopy(label_test)}, 
-                {0: copy.deepcopy(high_level_fields)}, {0: copy.deepcopy(input_hlf_vars)}, {0: copy.deepcopy(hlf_vars_columns)},
-                {0: copy.deepcopy(data_aux)}, {0: copy.deepcopy(data_test_aux)}
+                {f'fold_{0}': copy.deepcopy(data_df)}, {f'fold_{0}': copy.deepcopy(data_test_df)}, 
+                {f'fold_{0}': copy.deepcopy(data_list)}, {f'fold_{0}': copy.deepcopy(data_hlf)}, {f'fold_{0}': copy.deepcopy(label)}, 
+                {f'fold_{0}': copy.deepcopy(data_list_test)}, {f'fold_{0}': copy.deepcopy(data_hlf_test)}, {f'fold_{0}': copy.deepcopy(label_test)}, 
+                {f'fold_{0}': copy.deepcopy(high_level_fields)}, {f'fold_{0}': copy.deepcopy(input_hlf_vars)}, {f'fold_{0}': copy.deepcopy(hlf_vars_columns)},
+                {f'fold_{0}': copy.deepcopy(data_aux)}, {f'fold_{0}': copy.deepcopy(data_test_aux)}
             )
         elif k_fold_test and (fold != (mod_vals[0] - 1) and fold != 0):
             (
@@ -487,7 +487,7 @@ def process_data(
                 copy.deepcopy(high_level_fields), copy.deepcopy(input_hlf_vars), copy.deepcopy(hlf_vars_columns),
                 copy.deepcopy(data_aux), copy.deepcopy(data_test_aux)
             )
-            
+
             return (
                 full_data_df, full_data_test_df, 
                 full_data_list, full_data_hlf, full_label, 
