@@ -25,32 +25,52 @@ def evaluate(
         p_list, hlf, label, weight,
         OUTPUT_DIRPATH, CURRENT_TIME, skf, best_conf,
         train_losses_arr=None, val_losses_arr=None, save=False, only_fold_idx=None,
+        dict_lists=False
         # aux_df=None
     ):
-    model = InclusiveNetwork(
-        best_conf['hidden_layers'], best_conf['initial_nodes'], best_conf['dropout'], 
-        best_conf['gru_layers'], best_conf['gru_size'], best_conf['dropout_g'], 
-        dnn_input=len(hlf[0]), rnn_input=len(p_list[0, 0, :]),
-    ).cuda()
+    if not dict_lists:
+        model = InclusiveNetwork(
+            best_conf['hidden_layers'], best_conf['initial_nodes'], best_conf['dropout'], 
+            best_conf['gru_layers'], best_conf['gru_size'], best_conf['dropout_g'], 
+            dnn_input=len(hlf[0]), rnn_input=len(p_list[0, 0, :]),
+        ).cuda()
+        all_pred = np.zeros(shape=(len(hlf),2))
+        all_label = np.zeros(shape=(len(hlf)))
+    else:
+        model = InclusiveNetwork(
+            best_conf['hidden_layers'], best_conf['initial_nodes'], best_conf['dropout'], 
+            best_conf['gru_layers'], best_conf['gru_size'], best_conf['dropout_g'], 
+            dnn_input=len(hlf['fold_0'][0]), rnn_input=len(p_list['fold_0'][0, 0, :]),
+        ).cuda()
+        all_pred = np.zeros(shape=(len(hlf['fold_0']),2))
+        all_label = np.zeros(shape=(len(hlf['fold_0'])))
 
     fprs = []
     base_tpr = np.linspace(0, 1, 5000)
     thresholds = []
     best_batch_size = best_conf['batch_size']
-    val_loader = DataLoader(
-        ParticleHLF(p_list, hlf, label, weight), 
-        batch_size=best_conf['batch_size'],
-        shuffle=False
-    )
+    
     all_preds, all_labels = [], []
-    all_pred = np.zeros(shape=(len(hlf),2))
-    all_label = np.zeros(shape=(len(hlf)))
+    # all_pred = np.zeros(shape=(len(hlf),2))
+    # all_label = np.zeros(shape=(len(hlf)))
 
-    for fold_idx in range(skf.get_n_splits()):
+    for fold_idx in range(skf.get_n_splits() if not dict_lists else len(p_list)):
         if only_fold_idx is not None and fold_idx != only_fold_idx:
             continue
         model.load_state_dict(torch.load(OUTPUT_DIRPATH + f'{CURRENT_TIME}_ReallyTopclassStyle_{fold_idx}.torch'))
         model.eval()
+        if dict_lists:
+            val_loader = DataLoader(
+                ParticleHLF(p_list[f"fold_{fold_idx}"], hlf[f"fold_{fold_idx}"], label[f"fold_{fold_idx}"], weight[f"fold_{fold_idx}"]), 
+                batch_size=best_conf['batch_size'],
+                shuffle=False
+            )
+        else:
+            val_loader = DataLoader(
+                ParticleHLF(p_list, hlf, label, weight), 
+                batch_size=best_conf['batch_size'],
+                shuffle=False
+            )
         with torch.no_grad():
             for batch_idx, (particles_data, hlf_data, y_data, weight) in enumerate(val_loader):
                 
