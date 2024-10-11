@@ -28,22 +28,11 @@ def evaluate(
         dict_lists=False
         # aux_df=None
     ):
-    if not dict_lists:
-        model = InclusiveNetwork(
-            best_conf['hidden_layers'], best_conf['initial_nodes'], best_conf['dropout'], 
-            best_conf['gru_layers'], best_conf['gru_size'], best_conf['dropout_g'], 
-            dnn_input=len(hlf[0]), rnn_input=len(p_list[0, 0, :]),
-        ).cuda()
-        all_pred = np.zeros(shape=(len(hlf),2))
-        all_label = np.zeros(shape=(len(hlf)))
-    else:
-        model = InclusiveNetwork(
-            best_conf['hidden_layers'], best_conf['initial_nodes'], best_conf['dropout'], 
-            best_conf['gru_layers'], best_conf['gru_size'], best_conf['dropout_g'], 
-            dnn_input=len(hlf['fold_0'][0]), rnn_input=len(p_list['fold_0'][0, 0, :]),
-        ).cuda()
-        all_pred = np.zeros(shape=(len(hlf['fold_0']),2))
-        all_label = np.zeros(shape=(len(hlf['fold_0'])))
+    model = InclusiveNetwork(
+        best_conf['hidden_layers'], best_conf['initial_nodes'], best_conf['dropout'], 
+        best_conf['gru_layers'], best_conf['gru_size'], best_conf['dropout_g'], 
+        dnn_input=len(hlf[0] if not dict_lists else hlf['fold_0'][0]), rnn_input=len(p_list[0, 0, :] if not dict_lists else p_list['fold_0'][0, 0, :]),
+    ).cuda()
 
     fprs = []
     base_tpr = np.linspace(0, 1, 5000)
@@ -59,20 +48,24 @@ def evaluate(
             continue
         model.load_state_dict(torch.load(OUTPUT_DIRPATH + f'{CURRENT_TIME}_ReallyTopclassStyle_{fold_idx}.torch'))
         model.eval()
-        if dict_lists:
-            val_loader = DataLoader(
-                ParticleHLF(p_list[f"fold_{fold_idx}"], hlf[f"fold_{fold_idx}"], label[f"fold_{fold_idx}"], weight[f"fold_{fold_idx}"]), 
-                batch_size=best_conf['batch_size'],
-                shuffle=False
-            )
-        else:
+        if not dict_lists:
+            all_pred = np.zeros(shape=(len(hlf),2))
+            all_label = np.zeros(shape=(len(hlf)))
             val_loader = DataLoader(
                 ParticleHLF(p_list, hlf, label, weight), 
                 batch_size=best_conf['batch_size'],
                 shuffle=False
             )
+        else:
+            all_pred = np.zeros(shape=(len(hlf[f"fold_{fold_idx}"]),2))
+            all_label = np.zeros(shape=(len(hlf[f"fold_{fold_idx}"])))
+            val_loader = DataLoader(
+                ParticleHLF(p_list[f"fold_{fold_idx}"], hlf[f"fold_{fold_idx}"], label[f"fold_{fold_idx}"], weight[f"fold_{fold_idx}"]), 
+                batch_size=best_conf['batch_size'],
+                shuffle=False
+            )
         with torch.no_grad():
-            for batch_idx, (particles_data, hlf_data, y_data, weight) in enumerate(val_loader):
+            for batch_idx, (particles_data, hlf_data, y_data, weight_data) in enumerate(val_loader):
                 
                 # print(f"val_loader: {batch_idx}")
                 particles_data = particles_data.numpy()
