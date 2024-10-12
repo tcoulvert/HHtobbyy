@@ -31,7 +31,7 @@ def evaluate(
     model = InclusiveNetwork(
         best_conf['hidden_layers'], best_conf['initial_nodes'], best_conf['dropout'], 
         best_conf['gru_layers'], best_conf['gru_size'], best_conf['dropout_g'], 
-        dnn_input=len(hlf[0] if not dict_lists else hlf['fold_0'][0]), rnn_input=len(p_list[0, 0, :] if not dict_lists else p_list['fold_0'][0, 0, :]),
+        dnn_input=len(hlf[0] if not dict_lists or only_fold_idx is not None else hlf['fold_0'][0]), rnn_input=len(p_list[0, 0, :] if not dict_lists or only_fold_idx is not None else p_list['fold_0'][0, 0, :]),
     ).cuda()
 
     fprs = []
@@ -113,6 +113,7 @@ def evaluate(
     fprs_left = np.maximum(mean_fprs - std_fprs, 0)
 
     mean_area = auc(mean_fprs, base_tpr)
+    areas = [auc(fpr_fold, base_tpr) for fpr_fold in range(np.shape(fprs)[0])]
 
     if val_losses_arr is None and train_losses_arr is None:
         with open(OUTPUT_DIRPATH + f'{CURRENT_TIME}_IN_perf.json', 'r') as f:
@@ -129,6 +130,7 @@ def evaluate(
             'mean_thresholds': mean_thresholds.tolist(),
             'base_tpr': base_tpr.tolist(),
             'mean_area': float(mean_area),
+            'all_areas': areas.tolist(),
             'all_preds': all_preds,
             'all_labels': all_labels,
             'mean_pred': np.mean(all_preds, axis=0).tolist(),
@@ -147,6 +149,7 @@ def evaluate(
             'mean_thresholds': mean_thresholds.tolist(),
             'base_tpr': base_tpr.tolist(),
             'mean_area': float(mean_area),
+            'all_areas': areas.tolist(),
             'all_preds': all_preds,
             'all_labels': all_labels,
             'mean_pred': np.mean(all_preds, axis=0).tolist(),
