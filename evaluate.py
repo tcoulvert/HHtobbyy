@@ -113,7 +113,7 @@ def evaluate(
     fprs_left = np.maximum(mean_fprs - std_fprs, 0)
 
     mean_area = auc(mean_fprs, base_tpr)
-    areas = [auc(fpr_fold, base_tpr) for fpr_fold in range(np.shape(fprs)[0])]
+    areas = [float(auc(fprs[fpr_fold], base_tpr)) for fpr_fold in range(np.shape(fprs)[0])]
 
     if val_losses_arr is None and train_losses_arr is None:
         with open(OUTPUT_DIRPATH + f'{CURRENT_TIME}_IN_perf.json', 'r') as f:
@@ -130,7 +130,7 @@ def evaluate(
             'mean_thresholds': mean_thresholds.tolist(),
             'base_tpr': base_tpr.tolist(),
             'mean_area': float(mean_area),
-            'all_areas': areas.tolist(),
+            'all_areas': areas,
             'all_preds': all_preds,
             'all_labels': all_labels,
             'mean_pred': np.mean(all_preds, axis=0).tolist(),
@@ -149,7 +149,7 @@ def evaluate(
             'mean_thresholds': mean_thresholds.tolist(),
             'base_tpr': base_tpr.tolist(),
             'mean_area': float(mean_area),
-            'all_areas': areas.tolist(),
+            'all_areas': areas,
             'all_preds': all_preds,
             'all_labels': all_labels,
             'mean_pred': np.mean(all_preds, axis=0).tolist(),
