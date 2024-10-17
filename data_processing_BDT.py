@@ -13,46 +13,7 @@ import awkward as ak
 
 import matplotlib.pyplot as plt
 
-def data_list_index_map(variable_name, data_list, event_mask):
-    # Order of these ifs is important b/c 'lepton' contains 'pt', so if you don't check 'pt' last there will be a bug.
-    if re.search('phi', variable_name) is not None:
-        index3 = 2
-    elif re.search('eta', variable_name) is not None:
-        index3 = 1
-    else:
-        index3 = 0
-
-    mask_arr = np.zeros_like(data_list, dtype=bool)
-    if re.search('lepton', variable_name) is not None:
-        if re.search('1', variable_name) is not None:
-            for i in range(len(data_list)):
-                if not event_mask[i]:
-                    continue
-                lepton1_idx = np.nonzero(np.where(data_list[i, :, 3] == 1, True, False))[0][0]
-                mask_arr[i, lepton1_idx, index3] = True
-        else:
-            for i in range(len(data_list)):
-                if not event_mask[i]:
-                    continue
-                lepton2_idx = np.nonzero(np.where(data_list[i, :, 3] == 1, True, False))[0][1]
-                mask_arr[i, lepton2_idx, index3] = True
-    elif re.search('MET', variable_name) is not None:
-        for i in range(len(data_list)):
-            if not event_mask[i]:
-                continue
-            MET_idx = np.nonzero(np.where(data_list[i, :, 5] == 1, True, False))[0][0]
-            mask_arr[i, MET_idx, index3] = True
-    else:
-        for i in range(len(data_list)):
-            if not event_mask[i]:
-                continue
-            diphoton_idx = np.nonzero(np.where(data_list[i, :, 4] == 1, True, False))[0][0]
-            mask_arr[i, diphoton_idx, index3] = True
-    
-    return mask_arr
-
 def process_data(
-    n_particles, n_particle_fields, 
     signal_filepaths, bkg_filepaths, output_dirpath, 
     seed=None, mod_vals=(2, 2), k_fold_test=False
 ):
@@ -165,12 +126,15 @@ def process_data(
         'lepton1_pt', 'lepton2_pt',
     } # https://stackoverflow.com/questions/67003141/how-to-remove-a-field-from-a-collection-of-records-created-by-awkward-zip
 
+    hlf_list, hlf_aux_list = list(high_level_fields), list(high_level_aux_fields)
+    hlf_list.sort()
+    hlf_aux_list.sort()
     for sample_name, sample in samples.items():
         pandas_samples[sample_name] = {
-            field: ak.to_numpy(sample[field], allow_missing=False) for field in list(high_level_fields).sort()
+            field: ak.to_numpy(sample[field], allow_missing=False) for field in hlf_list
         }
         pandas_aux_samples[sample_name] = {
-            field: ak.to_numpy(sample[field], allow_missing=False) for field in list(high_level_aux_fields).sort()
+            field: ak.to_numpy(sample[field], allow_missing=False) for field in hlf_aux_list
         }
 
     sig_frame = pd.DataFrame(pandas_samples['sig'])
@@ -279,8 +243,6 @@ def process_data(
         normed_bkg_train = (np.ma.array(normed_bkg_train_frame, mask=(normed_bkg_train_frame == FILL_VALUE)) - x_mean)/x_std
         normed_bkg_test_frame = apply_log(copy.deepcopy(bkg_test_frame))
         normed_bkg_test = (np.ma.array(normed_bkg_test_frame, mask=(normed_bkg_test_frame == FILL_VALUE)) - x_mean)/x_std
-        # bkg_train_min = np.min(normed_bkg_train, axis=0)
-        bkg_train_max = np.max(normed_bkg_train, axis=0)
         normed_bkg_train_frame = pd.DataFrame(normed_bkg_train.filled(FILL_VALUE), columns=list(bkg_train_frame))
         normed_bkg_test_frame = pd.DataFrame(normed_bkg_test.filled(FILL_VALUE), columns=list(bkg_test_frame))
 
@@ -289,120 +251,27 @@ def process_data(
         normed_sig_train = (np.ma.array(normed_sig_train_frame, mask=(normed_sig_train_frame == FILL_VALUE)) - x_mean)/x_std
         normed_sig_test_frame = apply_log(copy.deepcopy(sig_test_frame))
         normed_sig_test = (np.ma.array(normed_sig_test_frame, mask=(normed_sig_test_frame == FILL_VALUE)) - x_mean)/x_std
-        # sig_train_min = np.min(normed_sig_train, axis=0)
-        sig_train_max = np.max(normed_sig_train, axis=0)
         normed_sig_train_frame = pd.DataFrame(normed_sig_train.filled(FILL_VALUE), columns=list(sig_train_frame))
         normed_sig_test_frame = pd.DataFrame(normed_sig_test.filled(FILL_VALUE), columns=list(sig_test_frame))
 
-        # train_min = np.min(np.vstack((sig_train_min, bkg_train_min)), axis=0)
-        # train_min_mean = np.mean(np.vstack((train_min, -10*np.ones_like(train_min))), axis=0)
-        train_max = np.min(np.vstack((sig_train_max, bkg_train_max)), axis=0)
-        train_min_mean = np.mean(np.vstack((train_max, 10*np.ones_like(train_max))), axis=0)
-        col_idx_dict = {col: i for i, col in enumerate(df_train.columns)}
-        for df in [
-            normed_sig_train_frame, normed_sig_test_frame, normed_bkg_train_frame, normed_bkg_test_frame
-        ]:
-            for col, i in col_idx_dict.items():
-                if np.all(df[col] != FILL_VALUE):
-                    continue
-                df[col] = np.where(
-                    df[col] != FILL_VALUE, 
-                    df[col], 
-                    train_min_mean[i]
-                )
         standardized_to_json = {
             'standardized_variables': [col for col in df_train.columns],
             'standardized_mean': [float(mean) for mean in x_mean],
             'standardized_stddev': [float(std) for std in x_std],
-            'standardized_unphysical_values': [float(min_mean) for min_mean in train_min_mean]
+            'standardized_unphysical_values': [float(FILL_VALUE) for _ in x_mean]
         }
         with open(output_dirpath + 'standardization.json', 'w') as f:
             json.dump(standardized_to_json, f)
 
-        def to_p_list(data_frame):
-            # Inputs: Pandas data frame
-            # Outputs: Numpy array of dimension (Event, Particle, Attributes)
-            
-            particle_list_sig = np.zeros(shape=(len(data_frame), n_particles+len(extra_RNN_vars), n_particle_fields+len(extra_RNN_vars)))  # +(1 if len(extra_RNN_vars) > 0 else 0)
-            # 4: max particles: l1, l2, dipho, MET
-            # 6: pt, eta, phi, isLep, isDipho, isMET
-            if n_particles == 4:
-                var_names = ['lepton1', 'lepton2', '', 'puppiMET']
-                var_one_hots = [[1, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1]]
-            elif n_particles == 3:
-                var_names = ['lepton1', '', 'puppiMET']
-                var_one_hots = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
-            elif n_particles == 2:
-                var_names = ['', 'puppiMET']
-                var_one_hots = [[1, 0], [0, 1]]
-            elif n_particles == 6:
-                var_names = ['lepton1', 'lepton2', '', 'puppiMET', 'lead_bjet', 'sublead_bjet']
-                var_one_hots = [[1, 0, 0, 0], [1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1], [0, 0, 0, 1]]
-            else:
-                raise Exception(f"Currently the only supported n_particles are 3 and 4. You passed in {n_particles}.")
 
-            for var_idx, var_name in enumerate(var_names):
-                if var_name != '':
-                    var_name = var_name + '_'
+        normed_sig_hlf = normed_sig_train_frame.values
+        normed_sig_test_hlf = normed_sig_test_frame.values
 
-                for local_idx, data_type in {0: 'pt', 1: 'eta', 2: 'phi'}.items():
-                    particle_list_sig[:, var_idx, local_idx] = np.where(data_frame[var_name+data_type].to_numpy() != train_min_mean[col_idx_dict[var_name+data_type]], data_frame[var_name+data_type].to_numpy(), 0)
-                
-                particle_list_sig[:, var_idx, 3:] = np.tile(var_one_hots[var_idx], (data_frame[var_name+'pt'].shape[0], 1))
-                
-                for i in range(len(extra_RNN_vars)):
-                    particle_list_sig[:, var_idx, 6+i] = np.zeros_like(data_frame[var_name+'pt'].to_numpy())
-            
-            for var_idx, var_name in enumerate(extra_RNN_vars, start=4):
-                particle_list_sig[:, var_idx, 0] = np.where(data_frame[var_name].to_numpy() != train_min_mean[col_idx_dict[var_name]], data_frame[var_name].to_numpy(), 0)
-                particle_list_sig[:, var_idx, 1:] = np.zeros_like(particle_list_sig[:, 0, 1:])
-                particle_list_sig[:, var_idx, 2+var_idx] = np.ones_like(particle_list_sig[:, var_idx, 0])
-
-            # Sort the particles in each event in the particle_list
-            #   -> this sorting is used later on to tell the RNN which particles to drop in each event
-            sorted_particle_list = np.zeros_like(particle_list_sig)
-            sorted_indices = np.fliplr(np.argsort(particle_list_sig[:,:,0], axis=1))
-            
-            for i in range(len(data_frame)):
-                sorted_particle_list[i,:,:] = particle_list_sig[i, sorted_indices[i], :]
-            
-            nonzero_indices = np.array(np.where(sorted_particle_list[:,:,0] != 0, True, False))
-            zero_indices = np.logical_not(nonzero_indices)
-            
-            for i in range(len(data_frame)):
-                copy_arr = copy.deepcopy(sorted_particle_list[i, zero_indices[i], :])
-                sorted_particle_list[i, :np.sum(nonzero_indices[i]), :] = sorted_particle_list[i, nonzero_indices[i], :]
-                sorted_particle_list[i, np.sum(nonzero_indices[i]):, :] = copy.deepcopy(copy_arr)
-                
-            return sorted_particle_list
-        
-        normed_sig_list = to_p_list(normed_sig_train_frame)
-        normed_sig_test_list = to_p_list(normed_sig_test_frame)
-        normed_bkg_list = to_p_list(normed_bkg_train_frame)
-        normed_bkg_test_list = to_p_list(normed_bkg_test_frame)
-
-        input_hlf_vars_max = [
-            'puppiMET_sumEt','DeltaR_jg_min','n_jets','chi_t0', 'chi_t1',
-            'CosThetaStar_CS','CosThetaStar_jj', 'DeltaPhi_j1MET','DeltaPhi_j2MET',
-            'leadBjet_leadLepton', 'leadBjet_subleadLepton', 'subleadBjet_leadLepton', 'subleadBjet_subleadLepton', 
-            'dijet_mass',
-            'chi_t0_bool', 'chi_t1_bool',
-            'leadBjet_leadLepton_bool', 'leadBjet_subleadLepton_bool', 'subleadBjet_leadLepton_bool', 'subleadBjet_subleadLepton_bool',
-            'n_leptons'
-        ]
-        input_hlf_vars = []
-        for var in input_hlf_vars_max:
-            if var in high_level_fields and var not in set(extra_RNN_vars):
-                input_hlf_vars.append(var)
-
-        normed_sig_hlf = normed_sig_train_frame[input_hlf_vars].values
-        normed_sig_test_hlf = normed_sig_test_frame[input_hlf_vars].values
-
-        column_list = [col_name for col_name in normed_sig_test_frame[input_hlf_vars].columns]
+        column_list = [col_name for col_name in normed_sig_test_frame.columns]
         hlf_vars_columns = {col_name: i for i, col_name in enumerate(column_list)}
 
-        normed_bkg_hlf = normed_bkg_train_frame[input_hlf_vars].values
-        normed_bkg_test_hlf = normed_bkg_test_frame[input_hlf_vars].values
+        normed_bkg_hlf = normed_bkg_train_frame.values
+        normed_bkg_test_hlf = normed_bkg_test_frame.values
 
         sig_label = np.ones(len(normed_sig_hlf))
         bkg_label = np.zeros(len(normed_bkg_hlf))
@@ -410,79 +279,75 @@ def process_data(
         bkg_test_label = np.zeros(len(normed_bkg_test_hlf))
 
         # Build train data arrays
-        data_list = np.concatenate((normed_sig_list, normed_bkg_list))
         data_hlf = np.concatenate((normed_sig_hlf, normed_bkg_hlf))
         label = np.concatenate((sig_label, bkg_label))
         # Shuffle train arrays
-        p = rng.permutation(len(data_list))
-        data_list, data_hlf, label = data_list[p], data_hlf[p], label[p]
+        p = rng.permutation(len(data_hlf))
+        data_hlf, label = data_hlf[p], label[p]
         # Build and shuffle train DFs
         data_df = pd.concat([sig_train_frame, bkg_train_frame], ignore_index=True)
         data_df = (data_df.reindex(p)).reset_index(drop=True)
         data_aux = pd.concat([sig_aux_train_frame, bkg_aux_train_frame], ignore_index=True)
         data_aux = (data_aux.reindex(p)).reset_index(drop=True)
-        print("Data list: {}".format(data_list.shape))
         print("Data HLF: {}".format(data_hlf.shape))
         print(f"n signal = {len(label[label == 1])}, n bkg = {len(label[label == 0])}")
 
         # Build test data arrays
-        data_list_test = np.concatenate((normed_sig_test_list, normed_bkg_test_list))
         data_hlf_test = np.concatenate((normed_sig_test_hlf, normed_bkg_test_hlf))
         label_test = np.concatenate((sig_test_label, bkg_test_label))
         # Shuffle test arrays
-        p_test = rng.permutation(len(data_list_test))
-        data_list_test, data_hlf_test, label_test = data_list_test[p_test], data_hlf_test[p_test], label_test[p_test]
+        p_test = rng.permutation(len(data_hlf_test))
+        data_hlf_test, label_test = data_hlf_test[p_test], label_test[p_test]
         # Build and shuffle test DFs
         data_test_df = pd.concat([sig_test_frame, bkg_test_frame], ignore_index=True)
         data_test_df = (data_test_df.reindex(p_test)).reset_index(drop=True)
         data_test_aux = pd.concat([sig_aux_test_frame, bkg_aux_test_frame], ignore_index=True)
         data_test_aux = (data_test_aux.reindex(p_test)).reset_index(drop=True)
-        print("Data list test: {}".format(data_list_test.shape))
         print("Data HLF test: {}".format(data_hlf_test.shape))
         print(f"n signal = {len(label_test[label_test == 1])}, n bkg = {len(label_test[label_test == 0])}")
 
         if not k_fold_test:
             return (
                 data_df, data_test_df, 
-                data_list, data_hlf, label, 
-                data_list_test, data_hlf_test, label_test, 
-                high_level_fields, input_hlf_vars, hlf_vars_columns,
+                data_hlf, label, 
+                data_hlf_test, label_test, 
+                high_level_fields, high_level_fields, hlf_vars_columns,
                 data_aux, data_test_aux
             )
         elif k_fold_test and fold == 0:
             (
                 full_data_df, full_data_test_df, 
-                full_data_list, full_data_hlf, full_label, 
-                full_data_list_test, full_data_hlf_test, full_label_test, 
+                full_data_hlf, full_label, 
+                full_data_hlf_test, full_label_test, 
                 full_high_level_fields, full_input_hlf_vars, full_hlf_vars_columns,
                 full_data_aux, full_data_test_aux
             ) = (
                 {f'fold_{0}': copy.deepcopy(data_df)}, {f'fold_{0}': copy.deepcopy(data_test_df)}, 
-                {f'fold_{0}': copy.deepcopy(data_list)}, {f'fold_{0}': copy.deepcopy(data_hlf)}, {f'fold_{0}': copy.deepcopy(label)}, 
-                {f'fold_{0}': copy.deepcopy(data_list_test)}, {f'fold_{0}': copy.deepcopy(data_hlf_test)}, {f'fold_{0}': copy.deepcopy(label_test)}, 
-                {f'fold_{0}': copy.deepcopy(high_level_fields)}, {f'fold_{0}': copy.deepcopy(input_hlf_vars)}, {f'fold_{0}': copy.deepcopy(hlf_vars_columns)},
+                {f'fold_{0}': copy.deepcopy(data_hlf)}, {f'fold_{0}': copy.deepcopy(label)}, 
+                {f'fold_{0}': copy.deepcopy(data_hlf_test)}, {f'fold_{0}': copy.deepcopy(label_test)}, 
+                {f'fold_{0}': copy.deepcopy(high_level_fields)}, {f'fold_{0}': copy.deepcopy(high_level_fields)}, {f'fold_{0}': copy.deepcopy(hlf_vars_columns)},
                 {f'fold_{0}': copy.deepcopy(data_aux)}, {f'fold_{0}': copy.deepcopy(data_test_aux)}
             )
         else:
             (
                 full_data_df[f'fold_{fold}'], full_data_test_df[f'fold_{fold}'], 
-                full_data_list[f'fold_{fold}'], full_data_hlf[f'fold_{fold}'], full_label[f'fold_{fold}'], 
-                full_data_list_test[f'fold_{fold}'], full_data_hlf_test[f'fold_{fold}'], full_label_test[f'fold_{fold}'], 
+                full_data_hlf[f'fold_{fold}'], full_label[f'fold_{fold}'], 
+                full_data_hlf_test[f'fold_{fold}'], full_label_test[f'fold_{fold}'], 
                 full_high_level_fields[f'fold_{fold}'], full_input_hlf_vars[f'fold_{fold}'], full_hlf_vars_columns[f'fold_{fold}'],
                 full_data_aux[f'fold_{fold}'], full_data_test_aux[f'fold_{fold}']
             ) = (
                 copy.deepcopy(data_df), copy.deepcopy(data_test_df), 
-                copy.deepcopy(data_list), copy.deepcopy(data_hlf), copy.deepcopy(label), 
-                copy.deepcopy(data_list_test), copy.deepcopy(data_hlf_test), copy.deepcopy(label_test), 
-                copy.deepcopy(high_level_fields), copy.deepcopy(input_hlf_vars), copy.deepcopy(hlf_vars_columns),
+                copy.deepcopy(data_hlf), copy.deepcopy(label), 
+                copy.deepcopy(data_hlf_test), copy.deepcopy(label_test), 
+                copy.deepcopy(high_level_fields), copy.deepcopy(high_level_fields), copy.deepcopy(hlf_vars_columns),
                 copy.deepcopy(data_aux), copy.deepcopy(data_test_aux)
             )
 
             if k_fold_test and fold == (mod_vals[0] - 1):
                 return (
                     full_data_df, full_data_test_df, 
-                    full_data_list, full_data_hlf, full_label, 
-                    full_data_list_test, full_data_hlf_test, full_label_test, 
+                    full_data_hlf, full_label, 
+                    full_data_hlf_test, full_label_test, 
                     full_high_level_fields, full_input_hlf_vars, full_hlf_vars_columns,
                     full_data_aux, full_data_test_aux
                 )
