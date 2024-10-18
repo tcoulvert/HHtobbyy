@@ -156,6 +156,9 @@ def process_data(
             high_level_fields.remove('dijet_mass')
     else:
         raise Exception("Currently must use either base_vars of extra_vars.")
+    extra_RNN_vars.sort()
+    dont_include_vars.sort()
+
 
     pandas_aux_samples = {}
     high_level_aux_fields = {
@@ -165,12 +168,15 @@ def process_data(
         'lepton1_pt', 'lepton2_pt',
     } # https://stackoverflow.com/questions/67003141/how-to-remove-a-field-from-a-collection-of-records-created-by-awkward-zip
 
+    hlf_list, hlf_aux_list = list(high_level_fields), list(high_level_aux_fields)
+    hlf_list.sort()
+    hlf_aux_list.sort()
     for sample_name, sample in samples.items():
         pandas_samples[sample_name] = {
-            field: ak.to_numpy(sample[field], allow_missing=False) for field in list(high_level_fields).sort()
+            field: ak.to_numpy(sample[field], allow_missing=False) for field in hlf_list
         }
         pandas_aux_samples[sample_name] = {
-            field: ak.to_numpy(sample[field], allow_missing=False) for field in list(high_level_aux_fields).sort()
+            field: ak.to_numpy(sample[field], allow_missing=False) for field in hlf_aux_list
         }
 
     sig_frame = pd.DataFrame(pandas_samples['sig'])
@@ -295,9 +301,9 @@ def process_data(
         normed_sig_test_frame = pd.DataFrame(normed_sig_test.filled(FILL_VALUE), columns=list(sig_test_frame))
 
         # train_min = np.min(np.vstack((sig_train_min, bkg_train_min)), axis=0)
-        # train_min_mean = np.mean(np.vstack((train_min, -10*np.ones_like(train_min))), axis=0)
+        # train_pad = np.mean(np.vstack((train_min, -10*np.ones_like(train_min))), axis=0)
         train_max = np.min(np.vstack((sig_train_max, bkg_train_max)), axis=0)
-        train_min_mean = np.mean(np.vstack((train_max, 10*np.ones_like(train_max))), axis=0)
+        train_pad = np.mean(np.vstack((train_max, 10*np.ones_like(train_max))), axis=0)
         col_idx_dict = {col: i for i, col in enumerate(df_train.columns)}
         for df in [
             normed_sig_train_frame, normed_sig_test_frame, normed_bkg_train_frame, normed_bkg_test_frame
@@ -308,13 +314,13 @@ def process_data(
                 df[col] = np.where(
                     df[col] != FILL_VALUE, 
                     df[col], 
-                    train_min_mean[i]
+                    train_pad[i]
                 )
         standardized_to_json = {
             'standardized_variables': [col for col in df_train.columns],
             'standardized_mean': [float(mean) for mean in x_mean],
             'standardized_stddev': [float(std) for std in x_std],
-            'standardized_unphysical_values': [float(min_mean) for min_mean in train_min_mean]
+            'standardized_unphysical_values': [float(min_mean) for min_mean in train_pad]
         }
         with open(output_dirpath + 'standardization.json', 'w') as f:
             json.dump(standardized_to_json, f)
@@ -340,23 +346,39 @@ def process_data(
                 var_one_hots = [[1, 0, 0, 0], [1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1], [0, 0, 0, 1]]
             else:
                 raise Exception(f"Currently the only supported n_particles are 3 and 4. You passed in {n_particles}.")
+            
+            data_types = {0: 'pt', 1: 'eta', 2: 'phi'}
+            # data_types = {0: 'pt', 1: 'eta', 2: 'phi', 3: 'j1', 4: 'j2'}
 
             for var_idx, var_name in enumerate(var_names):
                 if var_name != '':
                     var_name = var_name + '_'
 
-                for local_idx, data_type in {0: 'pt', 1: 'eta', 2: 'phi'}.items():
-                    particle_list_sig[:, var_idx, local_idx] = np.where(data_frame[var_name+data_type].to_numpy() != train_min_mean[col_idx_dict[var_name+data_type]], data_frame[var_name+data_type].to_numpy(), 0)
+                for local_idx, data_type in data_types.items():
+                    if data_type in {'pt', 'eta', 'phi'}:
+                        particle_list_sig[:, var_idx, local_idx] = np.where(data_frame[var_name+data_type].to_numpy() != train_pad[col_idx_dict[var_name+data_type]], data_frame[var_name+data_type].to_numpy(), 0)
+                    # elif re.search('lepton', var_name) is not None:  # (sub)leadBjet_(sub)leadLepton
+                    #     data_type_ = ('' if data_type == 'j1' else 'sub') + 'leadBjet_' + ('' if re.search('1', var_name) is not None else 'sub') + 'leadLepton'
+                    #     particle_list_sig[:, var_idx, local_idx] = np.where(data_frame[data_type_].to_numpy() != train_pad[col_idx_dict[data_type_]], data_frame[data_type_].to_numpy(), 0)
+                    # elif re.search('MET', var_name) is not None:  # DeltaPhi_j1MET
+                    #     data_type_ = 'DeltaPhi_' + data_type + 'MET'
+                    #     particle_list_sig[:, var_idx, local_idx] = np.where(data_frame[data_type_].to_numpy() != train_pad[col_idx_dict[data_type_]], data_frame[data_type_].to_numpy(), 0)
+                    # elif re.search('bjet', var_name) is not None:  # np.zeros()
+                    #     particle_list_sig[:, var_idx, local_idx] = np.zeros_like(data_frame[var_name+'pt'].to_numpy())
+                    # else:  # diphoton
+                    #     data_type_ = 'DeltaR_jg_min'
+                    #     particle_list_sig[:, var_idx, local_idx] = np.where(data_frame[data_type_].to_numpy() != train_pad[col_idx_dict[data_type_]], data_frame[data_type_].to_numpy(), 0)
+                    
                 
-                particle_list_sig[:, var_idx, 3:] = np.tile(var_one_hots[var_idx], (data_frame[var_name+'pt'].shape[0], 1))
+                particle_list_sig[:, var_idx, len(data_types):] = np.tile(var_one_hots[var_idx], (data_frame[var_name+'pt'].shape[0], 1))
                 
-                for i in range(len(extra_RNN_vars)):
-                    particle_list_sig[:, var_idx, 6+i] = np.zeros_like(data_frame[var_name+'pt'].to_numpy())
+            #     for i in range(n_particle_fields, len(extra_RNN_vars)):
+            #         particle_list_sig[:, var_idx, i] = np.zeros_like(data_frame[var_name+'pt'].to_numpy())
             
-            for var_idx, var_name in enumerate(extra_RNN_vars, start=4):
-                particle_list_sig[:, var_idx, 0] = np.where(data_frame[var_name].to_numpy() != train_min_mean[col_idx_dict[var_name]], data_frame[var_name].to_numpy(), 0)
-                particle_list_sig[:, var_idx, 1:] = np.zeros_like(particle_list_sig[:, 0, 1:])
-                particle_list_sig[:, var_idx, 2+var_idx] = np.ones_like(particle_list_sig[:, var_idx, 0])
+            # for var_idx, var_name in enumerate(extra_RNN_vars, start=4):
+            #     particle_list_sig[:, var_idx, 0] = np.where(data_frame[var_name].to_numpy() != train_pad[col_idx_dict[var_name]], data_frame[var_name].to_numpy(), 0)
+            #     particle_list_sig[:, var_idx, 1:] = np.zeros_like(particle_list_sig[:, 0, 1:])
+            #     particle_list_sig[:, var_idx, 2+var_idx] = np.ones_like(particle_list_sig[:, var_idx, 0])
 
             # Sort the particles in each event in the particle_list
             #   -> this sorting is used later on to tell the RNN which particles to drop in each event
@@ -382,8 +404,11 @@ def process_data(
         normed_bkg_test_list = to_p_list(normed_bkg_test_frame)
 
         input_hlf_vars_max = [
-            'puppiMET_sumEt','DeltaR_jg_min','n_jets','chi_t0', 'chi_t1',
-            'CosThetaStar_CS','CosThetaStar_jj', 'DeltaPhi_j1MET','DeltaPhi_j2MET',
+            'puppiMET_sumEt',
+            'n_jets','chi_t0', 'chi_t1',
+            'CosThetaStar_CS','CosThetaStar_jj', 
+            'DeltaR_jg_min',
+            'DeltaPhi_j1MET','DeltaPhi_j2MET',
             'leadBjet_leadLepton', 'leadBjet_subleadLepton', 'subleadBjet_leadLepton', 'subleadBjet_subleadLepton', 
             'dijet_mass',
             'chi_t0_bool', 'chi_t1_bool',
@@ -394,6 +419,7 @@ def process_data(
         for var in input_hlf_vars_max:
             if var in high_level_fields and var not in set(extra_RNN_vars):
                 input_hlf_vars.append(var)
+        input_hlf_vars.sort()
 
         normed_sig_hlf = normed_sig_train_frame[input_hlf_vars].values
         normed_sig_test_hlf = normed_sig_test_frame[input_hlf_vars].values
