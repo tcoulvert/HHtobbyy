@@ -347,8 +347,8 @@ def process_data(
             else:
                 raise Exception(f"Currently the only supported n_particles are 3 and 4. You passed in {n_particles}.")
             
-            data_types = {0: 'pt', 1: 'eta', 2: 'phi'}
-            # data_types = {0: 'pt', 1: 'eta', 2: 'phi', 3: 'j1', 4: 'j2'}
+            # data_types = {0: 'pt', 1: 'eta', 2: 'phi'}
+            data_types = {0: 'pt', 1: 'eta', 2: 'phi', 3: 'j1', 4: 'j2'}
 
             for var_idx, var_name in enumerate(var_names):
                 if var_name != '':
@@ -357,17 +357,17 @@ def process_data(
                 for local_idx, data_type in data_types.items():
                     if data_type in {'pt', 'eta', 'phi'}:
                         particle_list_sig[:, var_idx, local_idx] = np.where(data_frame[var_name+data_type].to_numpy() != train_pad[col_idx_dict[var_name+data_type]], data_frame[var_name+data_type].to_numpy(), 0)
-                    # elif re.search('lepton', var_name) is not None:  # (sub)leadBjet_(sub)leadLepton
-                    #     data_type_ = ('' if data_type == 'j1' else 'sub') + 'leadBjet_' + ('' if re.search('1', var_name) is not None else 'sub') + 'leadLepton'
-                    #     particle_list_sig[:, var_idx, local_idx] = np.where(data_frame[data_type_].to_numpy() != train_pad[col_idx_dict[data_type_]], data_frame[data_type_].to_numpy(), 0)
-                    # elif re.search('MET', var_name) is not None:  # DeltaPhi_j1MET
-                    #     data_type_ = 'DeltaPhi_' + data_type + 'MET'
-                    #     particle_list_sig[:, var_idx, local_idx] = np.where(data_frame[data_type_].to_numpy() != train_pad[col_idx_dict[data_type_]], data_frame[data_type_].to_numpy(), 0)
-                    # elif re.search('bjet', var_name) is not None:  # np.zeros()
-                    #     particle_list_sig[:, var_idx, local_idx] = np.zeros_like(data_frame[var_name+'pt'].to_numpy())
-                    # else:  # diphoton
-                    #     data_type_ = 'DeltaR_jg_min'
-                    #     particle_list_sig[:, var_idx, local_idx] = np.where(data_frame[data_type_].to_numpy() != train_pad[col_idx_dict[data_type_]], data_frame[data_type_].to_numpy(), 0)
+                    elif re.search('lepton', var_name) is not None:  # (sub)leadBjet_(sub)leadLepton
+                        data_type_ = ('' if data_type == 'j1' else 'sub') + 'leadBjet_' + ('' if re.search('1', var_name) is not None else 'sub') + 'leadLepton'
+                        particle_list_sig[:, var_idx, local_idx] = np.where(data_frame[data_type_].to_numpy() != train_pad[col_idx_dict[data_type_]], data_frame[data_type_].to_numpy(), 0)
+                    elif re.search('MET', var_name) is not None:  # DeltaPhi_j1MET
+                        data_type_ = 'DeltaPhi_' + data_type + 'MET'
+                        particle_list_sig[:, var_idx, local_idx] = np.where(data_frame[data_type_].to_numpy() != train_pad[col_idx_dict[data_type_]], data_frame[data_type_].to_numpy(), 0)
+                    elif re.search('bjet', var_name) is not None:  # np.zeros()
+                        particle_list_sig[:, var_idx, local_idx] = np.zeros_like(data_frame[var_name+'pt'].to_numpy())
+                    else:  # diphoton
+                        data_type_ = 'DeltaR_jg_min'
+                        particle_list_sig[:, var_idx, local_idx] = np.where(data_frame[data_type_].to_numpy() != train_pad[col_idx_dict[data_type_]], data_frame[data_type_].to_numpy(), 0)
                     
                 
                 particle_list_sig[:, var_idx, len(data_types):] = np.tile(var_one_hots[var_idx], (data_frame[var_name+'pt'].shape[0], 1))
@@ -407,9 +407,9 @@ def process_data(
             'puppiMET_sumEt',
             'n_jets','chi_t0', 'chi_t1',
             'CosThetaStar_CS','CosThetaStar_jj', 
-            'DeltaR_jg_min',
-            'DeltaPhi_j1MET','DeltaPhi_j2MET',
-            'leadBjet_leadLepton', 'leadBjet_subleadLepton', 'subleadBjet_leadLepton', 'subleadBjet_subleadLepton', 
+            # 'DeltaR_jg_min',
+            # 'DeltaPhi_j1MET','DeltaPhi_j2MET',
+            # 'leadBjet_leadLepton', 'leadBjet_subleadLepton', 'subleadBjet_leadLepton', 'subleadBjet_subleadLepton', 
             'dijet_mass',
             'chi_t0_bool', 'chi_t1_bool',
             'leadBjet_leadLepton_bool', 'leadBjet_subleadLepton_bool', 'subleadBjet_leadLepton_bool', 'subleadBjet_subleadLepton_bool',
