@@ -43,9 +43,9 @@ def evaluate(
     # all_pred = np.zeros(shape=(len(hlf),2))
     # all_label = np.zeros(shape=(len(hlf)))
 
-    for fold_idx in range(skf.get_n_splits() if not dict_lists else len(p_list)):
-        if only_fold_idx is not None and fold_idx != only_fold_idx:
-            continue
+    for fold_idx in [only_fold_idx] if only_fold_idx is not None else (range(skf.get_n_splits() if not dict_lists else len(p_list))):
+        # if only_fold_idx is not None and fold_idx != only_fold_idx:
+        #     continue
         model.load_state_dict(torch.load(OUTPUT_DIRPATH + f'{CURRENT_TIME}_ReallyTopclassStyle_{fold_idx}.torch'))
         model.eval()
         if not dict_lists:

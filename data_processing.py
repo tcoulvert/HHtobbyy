@@ -13,12 +13,24 @@ import awkward as ak
 
 import matplotlib.pyplot as plt
 
-def data_list_index_map(variable_name, data_list, event_mask):
+def data_list_index_map(variable_name, data_list, event_mask, n_pFields=7):
     # Order of these ifs is important b/c 'lepton' contains 'pt', so if you don't check 'pt' last there will be a bug.
     if re.search('phi', variable_name) is not None:
         index3 = 2
     elif re.search('eta', variable_name) is not None:
         index3 = 1
+    elif (
+        (re.search('leadBjet', variable_name) is not None) 
+        or (re.search('j1MET', variable_name) is not None)
+    ) and n_pFields == 9:
+        index3 = 3
+    elif (
+        (re.search('subleadBjet', variable_name) is not None) 
+        or (re.search('j2MET', variable_name) is not None)
+    ) and n_pFields == 9:
+        index3 = 4
+    elif (re.search('DeltaR_jg_min', variable_name) is not None) and n_pFields == 9:
+        index3 = [4, 5]
     else:
         index3 = 0
 
@@ -28,26 +40,40 @@ def data_list_index_map(variable_name, data_list, event_mask):
             for i in range(len(data_list)):
                 if not event_mask[i]:
                     continue
-                lepton1_idx = np.nonzero(np.where(data_list[i, :, 3] == 1, True, False))[0][0]
+                lepton1_idx = np.nonzero(np.where(data_list[i, :, n_pFields-4] == 1, True, False))[0][0]
                 mask_arr[i, lepton1_idx, index3] = True
         else:
             for i in range(len(data_list)):
                 if not event_mask[i]:
                     continue
-                lepton2_idx = np.nonzero(np.where(data_list[i, :, 3] == 1, True, False))[0][1]
+                lepton2_idx = np.nonzero(np.where(data_list[i, :, n_pFields-4] == 1, True, False))[0][1]
                 mask_arr[i, lepton2_idx, index3] = True
     elif re.search('MET', variable_name) is not None:
         for i in range(len(data_list)):
             if not event_mask[i]:
                 continue
-            MET_idx = np.nonzero(np.where(data_list[i, :, 5] == 1, True, False))[0][0]
+            MET_idx = np.nonzero(np.where(data_list[i, :, n_pFields-2] == 1, True, False))[0][0]
             mask_arr[i, MET_idx, index3] = True
+    elif re.search('bjet', variable_name) is not None:
+        if re.search('lead', variable_name) is not None:
+            for i in range(len(data_list)):
+                if not event_mask[i]:
+                    continue
+                bjet1_idx = np.nonzero(np.where(data_list[i, :, n_pFields-1] == 1, True, False))[0][0]
+                mask_arr[i, bjet1_idx, index3] = True
+        else:
+            for i in range(len(data_list)):
+                if not event_mask[i]:
+                    continue
+                bjet2_idx = np.nonzero(np.where(data_list[i, :, n_pFields-1] == 1, True, False))[0][1]
+                mask_arr[i, bjet2_idx, index3] = True
     else:
         for i in range(len(data_list)):
-            if not event_mask[i]:
-                continue
-            diphoton_idx = np.nonzero(np.where(data_list[i, :, 4] == 1, True, False))[0][0]
-            mask_arr[i, diphoton_idx, index3] = True
+            for index3_ in (index3 if variable_name == 'DeltaR_jg_min' and n_pFields == 9 else [index3]):
+                if not event_mask[i]:
+                    continue
+                diphoton_idx = np.nonzero(np.where(data_list[i, :, n_pFields-3] == 1, True, False))[0][0]
+                mask_arr[i, diphoton_idx, index3_] = True
     
     return mask_arr
 
@@ -347,8 +373,8 @@ def process_data(
             else:
                 raise Exception(f"Currently the only supported n_particles are 3 and 4. You passed in {n_particles}.")
             
-            # data_types = {0: 'pt', 1: 'eta', 2: 'phi'}
-            data_types = {0: 'pt', 1: 'eta', 2: 'phi', 3: 'j1', 4: 'j2'}
+            data_types = {0: 'pt', 1: 'eta', 2: 'phi'}
+            # data_types = {0: 'pt', 1: 'eta', 2: 'phi', 3: 'j1', 4: 'j2'}
 
             for var_idx, var_name in enumerate(var_names):
                 if var_name != '':
@@ -407,9 +433,9 @@ def process_data(
             'puppiMET_sumEt',
             'n_jets','chi_t0', 'chi_t1',
             'CosThetaStar_CS','CosThetaStar_jj', 
-            # 'DeltaR_jg_min',
-            # 'DeltaPhi_j1MET','DeltaPhi_j2MET',
-            # 'leadBjet_leadLepton', 'leadBjet_subleadLepton', 'subleadBjet_leadLepton', 'subleadBjet_subleadLepton', 
+            'DeltaR_jg_min',
+            'DeltaPhi_j1MET','DeltaPhi_j2MET',
+            'leadBjet_leadLepton', 'leadBjet_subleadLepton', 'subleadBjet_leadLepton', 'subleadBjet_subleadLepton', 
             'dijet_mass',
             'chi_t0_bool', 'chi_t1_bool',
             'leadBjet_leadLepton_bool', 'leadBjet_subleadLepton_bool', 'subleadBjet_leadLepton_bool', 'subleadBjet_subleadLepton_bool',
