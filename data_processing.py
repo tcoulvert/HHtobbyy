@@ -373,8 +373,8 @@ def process_data(
             else:
                 raise Exception(f"Currently the only supported n_particles are 3 and 4. You passed in {n_particles}.")
             
-            data_types = {0: 'pt', 1: 'eta', 2: 'phi'}
-            # data_types = {0: 'pt', 1: 'eta', 2: 'phi', 3: 'j1', 4: 'j2'}
+            # data_types = {0: 'pt', 1: 'eta', 2: 'phi'}
+            data_types = {0: 'pt', 1: 'eta', 2: 'phi', 3: 'j1', 4: 'j2'}
 
             for var_idx, var_name in enumerate(var_names):
                 if var_name != '':
@@ -433,9 +433,9 @@ def process_data(
             'puppiMET_sumEt',
             'n_jets','chi_t0', 'chi_t1',
             'CosThetaStar_CS','CosThetaStar_jj', 
-            'DeltaR_jg_min',
-            'DeltaPhi_j1MET','DeltaPhi_j2MET',
-            'leadBjet_leadLepton', 'leadBjet_subleadLepton', 'subleadBjet_leadLepton', 'subleadBjet_subleadLepton', 
+            # 'DeltaR_jg_min',
+            # 'DeltaPhi_j1MET','DeltaPhi_j2MET',
+            # 'leadBjet_leadLepton', 'leadBjet_subleadLepton', 'subleadBjet_leadLepton', 'subleadBjet_subleadLepton', 
             'dijet_mass',
             'chi_t0_bool', 'chi_t1_bool',
             'leadBjet_leadLepton_bool', 'leadBjet_subleadLepton_bool', 'subleadBjet_leadLepton_bool', 'subleadBjet_subleadLepton_bool',
