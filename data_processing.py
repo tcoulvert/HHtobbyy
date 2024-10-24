@@ -284,13 +284,14 @@ def process_data(
         }
         def apply_log(df):
             log_fields = {
-                'puppiMET_sumEt', 'puppiMET_pt', # MET variables
+                'puppiMET_sumEt', 
+                'puppiMET_pt', # MET variables
                 'chi_t0', 'chi_t1', # jet variables
                 'lepton1_pt' ,'lepton2_pt', 'pt', # lepton and diphoton pt
                 'lead_bjet_pt', 'sublead_bjet_pt', # bjet pts
                 'dijet_mass', # mass of b-dijet (resonance for H->bb)
             }
-            for field in log_fields & high_level_fields:
+            for field in (log_fields & high_level_fields) - no_standardize:
                 df[field] = np.where(df[field] > 0, np.log(df[field]), df[field])
             return df
         FILL_VALUE = -999
