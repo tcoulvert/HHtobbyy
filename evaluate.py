@@ -40,8 +40,6 @@ def evaluate(
     best_batch_size = best_conf['batch_size']
     
     all_preds, all_labels = [], []
-    # all_pred = np.zeros(shape=(len(hlf),2))
-    # all_label = np.zeros(shape=(len(hlf)))
 
     for fold_idx in [only_fold_idx] if only_fold_idx is not None else (range(skf.get_n_splits() if not dict_lists else len(p_list))):
         # if only_fold_idx is not None and fold_idx != only_fold_idx:
