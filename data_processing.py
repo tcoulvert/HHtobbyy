@@ -79,7 +79,7 @@ def data_list_index_map(variable_name, data_list, event_mask, n_pFields=7):
 
 def process_data(
     n_particles, n_particle_fields, 
-    signal_filepaths, bkg_filepaths, output_dirpath, 
+    signal_filepaths, bkg_filepaths, output_dirpath,
     seed=None, mod_vals=(2, 2), k_fold_test=False
 ):
     # Load parquet files #
@@ -282,15 +282,15 @@ def process_data(
             'lead_bjet_eta', 'lead_bjet_phi',
             'sublead_bjet_eta', 'sublead_bjet_phi',
         }
+        log_fields = {
+            'puppiMET_sumEt', 
+            'puppiMET_pt', # MET variables
+            'chi_t0', 'chi_t1', # jet variables
+            'lepton1_pt' ,'lepton2_pt', 'pt', # lepton and diphoton pt
+            'lead_bjet_pt', 'sublead_bjet_pt', # bjet pts
+            'dijet_mass', # mass of b-dijet (resonance for H->bb)
+        }
         def apply_log(df):
-            log_fields = {
-                'puppiMET_sumEt', 
-                'puppiMET_pt', # MET variables
-                'chi_t0', 'chi_t1', # jet variables
-                'lepton1_pt' ,'lepton2_pt', 'pt', # lepton and diphoton pt
-                'lead_bjet_pt', 'sublead_bjet_pt', # bjet pts
-                'dijet_mass', # mass of b-dijet (resonance for H->bb)
-            }
             for field in (log_fields & high_level_fields) - no_standardize:
                 df[field] = np.where(df[field] > 0, np.log(df[field]), df[field])
             return df
@@ -344,6 +344,7 @@ def process_data(
                     train_pad[i]
                 )
         standardized_to_json = {
+            'standardized_logs': [True if col in log_fields else False for col in df_train.columns],
             'standardized_variables': [col for col in df_train.columns],
             'standardized_mean': [float(mean) for mean in x_mean],
             'standardized_stddev': [float(std) for std in x_std],
@@ -398,14 +399,6 @@ def process_data(
                     
                 
                 particle_list_sig[:, var_idx, len(data_types):] = np.tile(var_one_hots[var_idx], (data_frame[var_name+'pt'].shape[0], 1))
-                
-            #     for i in range(n_particle_fields, len(extra_RNN_vars)):
-            #         particle_list_sig[:, var_idx, i] = np.zeros_like(data_frame[var_name+'pt'].to_numpy())
-            
-            # for var_idx, var_name in enumerate(extra_RNN_vars, start=4):
-            #     particle_list_sig[:, var_idx, 0] = np.where(data_frame[var_name].to_numpy() != train_pad[col_idx_dict[var_name]], data_frame[var_name].to_numpy(), 0)
-            #     particle_list_sig[:, var_idx, 1:] = np.zeros_like(particle_list_sig[:, 0, 1:])
-            #     particle_list_sig[:, var_idx, 2+var_idx] = np.ones_like(particle_list_sig[:, var_idx, 0])
 
             # Sort the particles in each event in the particle_list
             #   -> this sorting is used later on to tell the RNN which particles to drop in each event

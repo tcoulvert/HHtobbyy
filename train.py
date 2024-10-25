@@ -101,9 +101,9 @@ def train(
                 state = {
                     'net': model, #.module if use_cuda else net,
                     'epoch': epoch,
-                    'best_acc':epoch_acc,
-                    'train_loss':train_losses,
-                    'val_loss':val_losses,
+                    'best_acc': epoch_acc,
+                    'train_loss': train_losses,
+                    'val_loss': val_losses,
                 }
                 if save_model == True:
                     torch.save(state, state_filename)

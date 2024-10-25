@@ -44,7 +44,10 @@ def evaluate(
     for fold_idx in [only_fold_idx] if only_fold_idx is not None else (range(skf.get_n_splits() if not dict_lists else len(p_list))):
         # if only_fold_idx is not None and fold_idx != only_fold_idx:
         #     continue
-        model.load_state_dict(torch.load(OUTPUT_DIRPATH + f'{CURRENT_TIME}_ReallyTopclassStyle_{fold_idx}.torch'))
+        try:
+            model.load_state_dict(torch.load(OUTPUT_DIRPATH + f'{CURRENT_TIME}_ReallyTopclassStyle_{fold_idx}.torch'))
+        except:
+            model.load_state_dict(torch.load(OUTPUT_DIRPATH + '_ttH_Killer_IN_model_'+ f'{fold_idx}.torch'))
         model.eval()
         if not dict_lists:
             all_pred = np.zeros(shape=(len(hlf),2))
