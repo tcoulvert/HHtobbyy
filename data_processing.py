@@ -2,6 +2,7 @@
 import copy
 import glob
 import json
+import os
 import re
 
 # Common Py packages
@@ -350,7 +351,7 @@ def process_data(
             'standardized_stddev': [float(std) for std in x_std],
             'standardized_unphysical_values': [float(min_mean) for min_mean in train_pad]
         }
-        with open(output_dirpath + 'standardization.json', 'w') as f:
+        with open(os.path.join(output_dirpath, f'ttH_Killer_IN_{fold}_standardization.json'), 'w') as f:
             json.dump(standardized_to_json, f)
 
         def to_p_list(data_frame):

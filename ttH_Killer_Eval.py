@@ -3,7 +3,7 @@ import argparse
 import copy
 import glob
 import json
-from pathlib import Path
+import re
 
 # Common Py packages #
 import numpy as np
@@ -70,7 +70,7 @@ class InclusiveNetwork(nn.Module):
     
 # Process the data in the way the model expects #
 def process_data(
-    sample_ak, std_dict, nFolds=5
+    sample_ak, std_dict_filepath_list, nFolds=5
 ):
     hlf_list = [
         'puppiMET_sumEt', 'puppiMET_pt', 'puppiMET_eta', 'puppiMET_phi', # MET variables
@@ -123,6 +123,8 @@ def process_data(
 
 
         # Perform the standardization #
+        with open(std_dict_filepath_list[fold], 'r') as f:
+            std_dict = json.load(f)
         for col_idx, col in enumerate(std_dict['standardized_variables']):
             if std_dict['standardized_logs']:
                 test_df[col] = np.where(
@@ -278,15 +280,16 @@ def evaluate(
 def main(output_dirpath=None):
     parquet_filepath_list = glob.glob(PARQUET_FILEPREFIX+'/**.parquet')
     model_filepath_list = glob.glob(MODEL_FILEPREFIX+'/*.torch')
+    model_filepath_list.sort()
     with open(glob.glob(MODEL_FILEPREFIX+'/*config.json')[0], 'r') as f:
         best_conf = json.load(f)
-    with open(glob.glob(MODEL_FILEPREFIX+'/*standardization.json')[0], 'r') as f:
-        std_dict = json.load(f)
+    std_dict_filepath_list = glob.glob(MODEL_FILEPREFIX+'/*standardization.json')
+    std_dict_filepath_list.sort()
 
     for parquet_filepath in parquet_filepath_list:
         sample = ak.from_parquet(parquet_filepath)
 
-        data_list, data_hlf, data_aux = process_data(sample, std_dict, nFolds=len(model_filepath_list))
+        data_list, data_hlf, data_aux = process_data(sample, std_dict_filepath_list, nFolds=len(model_filepath_list))
 
         preds = evaluate(data_list, data_hlf, best_conf, model_filepath_list)
 

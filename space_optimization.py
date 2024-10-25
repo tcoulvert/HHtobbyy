@@ -23,14 +23,14 @@ def optimize_hyperparams_RR(
         data_list_dict, data_hlf_dict, label_dict, weight_dict, config_filename, NUM_EPOCHS=100, SEED=21
     ):
     space  = [
-        Integer(1, 3, name='hidden_layers'),
+        Integer(1, 10, name='hidden_layers'),
         Integer(10, 500, name='initial_nodes'),
         Real(0.01,0.9,name='dropout'),
-        Integer(2, 3, name='gru_layers'),
+        Integer(1, 10, name='gru_layers'),
         Integer(10, 500, name='gru_size'),
-        Real(0.01,0.9,name='dropout_g'),
+        Real(0.01, 0.9, name='dropout_g'),
         Real(10**-5, 10**-1, "log-uniform", name='learning_rate'),
-        Integer(4000,4001,name='batch_size'),
+        Integer(4000, 4001, name='batch_size'),
         Real(10**-5, 10**-4, "log-uniform", name='L2_reg')
     ]
     # L1 reg: https://stackoverflow.com/questions/42704283/l1-l2-regularization-in-pytorch
@@ -64,11 +64,11 @@ def optimize_hyperparams_RR(
             )
             train_loader = DataLoader(
                 ParticleHLF(train_data_list, train_data_hlf, train_label, train_weight), 
-                batch_size=X['batch_size'], shuffle=True
+                batch_size=int(X['batch_size']), shuffle=True
             )
             val_loader = DataLoader(
                 ParticleHLF(val_data_list, val_data_hlf, val_label, val_weight), 
-                batch_size=X['batch_size'], shuffle=True
+                batch_size=int(X['batch_size']), shuffle=True
             )
             data_loader = {"training": train_loader, "validation": val_loader}
 
