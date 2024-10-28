@@ -74,8 +74,7 @@ def optimize_hyperparams_RR(
 
             best_acc, train_losses, val_losses = train(
                 NUM_EPOCHS, model, optimizer, scheduler, 
-                'state_filename', 'model_filename', data_loader=data_loader, 
-                save_model=False
+                data_loader=data_loader
             )
 
             fom.append(best_acc)
@@ -165,7 +164,7 @@ def optimize_hyperparams(
             scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer,mode ='min',factor=0.5,patience=4)
             best_acc, train_losses, val_losses = train(
                 epochs, model, optimizer, scheduler,
-                'state_filename', 'model_filename', data_loader=data_loader, save_model=False
+                data_loader=data_loader
             )
             fom.append(best_acc)
         Y = np.mean(np.asarray([acc.cpu() for acc in fom]))

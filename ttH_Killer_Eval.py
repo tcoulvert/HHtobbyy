@@ -3,6 +3,7 @@ import argparse
 import copy
 import glob
 import json
+import os
 import re
 
 # Common Py packages #
@@ -16,20 +17,18 @@ import awkward as ak
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from sklearn.model_selection import roc_curve, auc
-from sklearn.metrics import auc
 from torch.utils.data import DataLoader, Dataset
 from torch.autograd import Variable
 
-PARQUET_FILEPREFIX = "/eos/cms/store/group/phys_b2g/HHbbgg/HiggsDNA_parquet/v1"  # Prefix for parquet files
+PARQUET_FILEPREFIX = ""  # Prefix for parquet files
 MODEL_FILEPREFIX = ""
 FILL_VALUE = -999  # Fill value for bad data in parquet files
 SEED = None  # Seed for rng
 
 # NN Dataset class #
 class ParticleHLF(Dataset):
-    def __init__(self, data_particles, data_hlf, data_y, data_weights):
-        self.len = data_y.shape[0]
+    def __init__(self, data_particles, data_hlf):
+        self.len = data_particles.shape[0]
         self.data_particles = torch.from_numpy(data_particles).float()
         self.data_hlf = torch.from_numpy(data_hlf).float()
         
@@ -90,7 +89,9 @@ def process_data(
     hlf_list.sort()
     sample_pd = pd.DataFrame({
         field: ak.to_numpy(sample_ak[field], allow_missing=False) for field in hlf_list
-    })
+    }, dtype=np.float64)
+    n_leptons_mask = (sample_pd.loc[:, 'n_leptons'].to_numpy() == -999)
+    sample_pd.loc[n_leptons_mask, 'n_leptons'] = 0
     aux_list = [
         'event'
     ]
@@ -115,6 +116,49 @@ def process_data(
 
         return train_df, test_df, train_aux_df, test_aux_df
     
+    # Make the p-list for the RNN #
+    def to_p_list(data_frame):
+        # Inputs: Pandas data frame
+        # Outputs: Numpy array of dimension (Event, Particle, Attributes)
+        
+        # 6 particles: lead/sublead lepton, MET, diphoton, lead/sublead bjet
+        # 7 fields per particle: pt, eta, phi, 4D one-hot encoding of particle type
+        particle_list_sig = np.zeros(shape=(len(data_frame), 6, 7))
+
+        var_names = ['lepton1', 'lepton2', '', 'puppiMET', 'lead_bjet', 'sublead_bjet']
+        var_one_hots = [[1, 0, 0, 0], [1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1], [0, 0, 0, 1]]
+        data_types = {0: 'pt', 1: 'eta', 2: 'phi'}
+
+        for var_idx, var_name in enumerate(var_names):
+            if var_name != '':
+                var_name = var_name + '_'
+
+            for local_idx, data_type in data_types.items():
+                particle_list_sig[:, var_idx, local_idx] = np.where(
+                    data_frame[var_name+data_type].to_numpy() != std_dict['standardized_unphysical_values'][std_dict['standardized_variables'].index(var_name+data_type)], 
+                    data_frame[var_name+data_type].to_numpy(), 0
+                )
+            
+            particle_list_sig[:, var_idx, len(data_types):] = np.tile(var_one_hots[var_idx], (data_frame[var_name+'pt'].shape[0], 1))
+
+        # Sort the particles in each event in the particle_list
+        #   -> this sorting is used later on to tell the RNN which particles to drop in each event
+        sorted_particle_list = np.zeros_like(particle_list_sig)
+        sorted_indices = np.fliplr(np.argsort(particle_list_sig[:,:,0], axis=1))
+        
+        for i in range(len(data_frame)):
+            sorted_particle_list[i,:,:] = particle_list_sig[i, sorted_indices[i], :]
+        
+        nonzero_indices = np.array(np.where(sorted_particle_list[:,:,0] != 0, True, False))
+        zero_indices = np.logical_not(nonzero_indices)
+        
+        for i in range(len(data_frame)):
+            copy_arr = copy.deepcopy(sorted_particle_list[i, zero_indices[i], :])
+            sorted_particle_list[i, :np.sum(nonzero_indices[i]), :] = sorted_particle_list[i, nonzero_indices[i], :]
+            sorted_particle_list[i, np.sum(nonzero_indices[i]):, :] = copy.deepcopy(copy_arr)
+            
+        return sorted_particle_list
+    
     for fold in range(nFolds):
         (
             train_df, test_df, 
@@ -126,61 +170,19 @@ def process_data(
         with open(std_dict_filepath_list[fold], 'r') as f:
             std_dict = json.load(f)
         for col_idx, col in enumerate(std_dict['standardized_variables']):
-            if std_dict['standardized_logs']:
-                test_df[col] = np.where(
-                    test_df[col] > 0, np.log(test_df[col]), test_df[col]
-                )
+            print(f"pre-std mask: \n{test_df.loc[:, col]}")
+            if std_dict['standardized_logs'][col_idx]:
+                positive_mask = (test_df.loc[:, col].to_numpy() > 0)
+                test_df.loc[positive_mask, col] = np.log(test_df.loc[positive_mask, col].to_numpy())
             
-            unphysical_mask_arr = (test_df[col] == FILL_VALUE)
+            unphysical_mask_arr = (test_df.loc[:, col].to_numpy() == FILL_VALUE)
 
-            test_df[col] = (
-                test_df[col] - std_dict['standardized_mean'][col_idx]
+            test_df.loc[:, col] = (
+                test_df.loc[:, col].to_numpy() - std_dict['standardized_mean'][col_idx]
             ) / std_dict['standardized_stddev'][col_idx]
 
-            test_df[col][unphysical_mask_arr] = std_dict['standardized_unphysical_values'][col_idx]
-
-        # Make the p-list for the RNN #
-        def to_p_list(data_frame):
-            # Inputs: Pandas data frame
-            # Outputs: Numpy array of dimension (Event, Particle, Attributes)
-            
-            # 6 particles: lead/sublead lepton, MET, diphoton, lead/sublead bjet
-            # 7 fields per particle: pt, eta, phi, 4D one-hot encoding of particle type
-            particle_list_sig = np.zeros(shape=(len(data_frame), 6, 7))
-
-            var_names = ['lepton1', 'lepton2', '', 'puppiMET', 'lead_bjet', 'sublead_bjet']
-            var_one_hots = [[1, 0, 0, 0], [1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1], [0, 0, 0, 1]]
-            data_types = {0: 'pt', 1: 'eta', 2: 'phi'}
-
-            for var_idx, var_name in enumerate(var_names):
-                if var_name != '':
-                    var_name = var_name + '_'
-
-                for local_idx, data_type in data_types.items():
-                    particle_list_sig[:, var_idx, local_idx] = np.where(
-                        data_frame[var_name+data_type].to_numpy() != std_dict['standardized_unphysical_values'][std_dict['standardized_variables'].index(var_name+data_type)], 
-                        data_frame[var_name+data_type].to_numpy(), 0
-                    )
-                
-                particle_list_sig[:, var_idx, len(data_types):] = np.tile(var_one_hots[var_idx], (data_frame[var_name+'pt'].shape[0], 1))
-
-            # Sort the particles in each event in the particle_list
-            #   -> this sorting is used later on to tell the RNN which particles to drop in each event
-            sorted_particle_list = np.zeros_like(particle_list_sig)
-            sorted_indices = np.fliplr(np.argsort(particle_list_sig[:,:,0], axis=1))
-            
-            for i in range(len(data_frame)):
-                sorted_particle_list[i,:,:] = particle_list_sig[i, sorted_indices[i], :]
-            
-            nonzero_indices = np.array(np.where(sorted_particle_list[:,:,0] != 0, True, False))
-            zero_indices = np.logical_not(nonzero_indices)
-            
-            for i in range(len(data_frame)):
-                copy_arr = copy.deepcopy(sorted_particle_list[i, zero_indices[i], :])
-                sorted_particle_list[i, :np.sum(nonzero_indices[i]), :] = sorted_particle_list[i, nonzero_indices[i], :]
-                sorted_particle_list[i, np.sum(nonzero_indices[i]):, :] = copy.deepcopy(copy_arr)
-                
-            return sorted_particle_list
+            test_df.loc[unphysical_mask_arr, col] = std_dict['standardized_unphysical_values'][col_idx]
+            print(f"post-std mask: \n{test_df.loc[:, col]}")
         
         normed_test_list = to_p_list(test_df)
 
@@ -203,7 +205,7 @@ def process_data(
         normed_test_hlf = test_df[input_hlf_vars].values
 
         # Build and shuffle data arrays
-        p = rng.permutation(len(data_list))
+        p = rng.permutation(len(normed_test_list))
         data_list, data_hlf = normed_test_list[p], normed_test_hlf[p]
         data_aux = (test_aux_df.reindex(p)).reset_index(drop=True)
 
@@ -278,14 +280,22 @@ def evaluate(
 
 # Runs the script to add ttH-killer preds to the samples #
 def main(output_dirpath=None):
-    parquet_filepath_list = glob.glob(PARQUET_FILEPREFIX+'/**.parquet')
-    model_filepath_list = glob.glob(MODEL_FILEPREFIX+'/*.torch')
+    # list of parquet filepaths
+    parquet_filepath_list = glob.glob(os.path.join(PARQUET_FILEPREFIX, '**/*.parquet'), recursive=True)
+
+    # list of model filepaths (N models for N folds)
+    model_filepath_list = glob.glob(os.path.join(MODEL_FILEPREFIX, '*.torch'))
     model_filepath_list.sort()
-    with open(glob.glob(MODEL_FILEPREFIX+'/*config.json')[0], 'r') as f:
+
+    # filepath for model config file
+    with open(glob.glob(os.path.join(MODEL_FILEPREFIX, '*config.json'))[0], 'r') as f:
         best_conf = json.load(f)
-    std_dict_filepath_list = glob.glob(MODEL_FILEPREFIX+'/*standardization.json')
+
+    # list of standardization filepaths (N stds for N models)
+    std_dict_filepath_list = glob.glob(os.path.join(MODEL_FILEPREFIX, '*standardization.json'))
     std_dict_filepath_list.sort()
 
+    # Performs the eval for each parquet and saves out the new parquet with the added ttH score field
     for parquet_filepath in parquet_filepath_list:
         sample = ak.from_parquet(parquet_filepath)
 
@@ -293,24 +303,29 @@ def main(output_dirpath=None):
 
         preds = evaluate(data_list, data_hlf, best_conf, model_filepath_list)
 
-        for i, event_id in enumerate(data_aux['event']):
+        # NEED TO FIX THIS FOR LOOP, CANT SET THE FIELD IN PIECES NEED TO DO ALL AT ONCE
+        for i, event_id in enumerate(data_aux[:, 'event']):
             sample['ttH_killer_preds'][sample['event'] == event_id] = preds[event_id % len(model_filepath_list)][i]
 
         dest_filepath = parquet_filepath[:parquet_filepath.rfind('.')] + 'ttH_killer_preds' + parquet_filepath[parquet_filepath.rfind('.'):]
+        if output_dirpath is not None:
+            dest_filepath = os.path.join(output_dirpath, dest_filepath[len(PARQUET_FILEPREFIX):])
+            if not os.path.exists(dest_filepath[:dest_filepath.rfind('/')]):
+                os.makedirs(dest_filepath[:dest_filepath.rfind('/')])
         merged_parquet = ak.to_parquet(sample, dest_filepath)
         
         del sample
-        # print('======================== \n', dest_filepath)
+        print('======================== \n', dest_filepath)
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='Process the HiggsDNA HHbbgg parquets to add the ttH-killer predictions.'
     )
-    parser.add_argument('parquet-fileprefix', dest='parquet_fileprefix', action='store',
+    parser.add_argument('--parquet-fileprefix', action='store', required=True,
         help='The full path to the file prefix where the parquet files are located.'
     )
-    parser.add_argument('model-fileprefix', dest='model_fileprefix', action='store',
+    parser.add_argument('--model-fileprefix', action='store', required=True,
         help='The full path to the file prefix where the trained ttH-Killer model files are located. This directory should contain only the model files, the standardization .json file, and the config .json file.'
     )
     parser.add_argument('--dump', dest='output_dirpath', action='store', default='none',

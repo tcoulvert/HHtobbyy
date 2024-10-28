@@ -1,6 +1,7 @@
 # Stdlib packages
 import copy
 import json
+import os
 
 # Common Py packages
 import numpy as np
@@ -117,7 +118,7 @@ def evaluate(
     areas = [float(auc(fprs[fpr_fold], base_tpr)) for fpr_fold in range(np.shape(fprs)[0])]
 
     if val_losses_arr is None and train_losses_arr is None:
-        with open(OUTPUT_DIRPATH + f'{CURRENT_TIME}_IN_perf.json', 'r') as f:
+        with open(os.path.join(OUTPUT_DIRPATH, f'{CURRENT_TIME}_IN_perf.json'), 'r') as f:
             old_IN_perf = json.load(f)
         IN_perf = {
             'train_losses_arr': old_IN_perf['train_losses_arr'],
@@ -157,7 +158,7 @@ def evaluate(
             'mean_label': np.mean(all_labels, axis=0).tolist(),
         }
     if save:
-        with open(OUTPUT_DIRPATH + f'{CURRENT_TIME}_IN_perf.json', 'w') as f:
+        with open(os.path.join(OUTPUT_DIRPATH, f'{CURRENT_TIME}_IN_perf.json'), 'w') as f:
             json.dump(IN_perf, f)
         with h5py.File(OUTPUT_DIRPATH + f"{CURRENT_TIME}_ReallyInclusive_ROC.h5","w") as out:
             out['FPR'] = mean_fprs

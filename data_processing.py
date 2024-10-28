@@ -94,7 +94,9 @@ def process_data(
         'bkg': bkg_samples_pq,
     }
     for sample in samples.values():
-        sample['n_leptons'] = ak.where(sample['n_leptons'] == -999, 0, sample['n_leptons'])
+        print(sample['n_leptons'])
+        sample['n_leptons'] = ak.where(sample['n_leptons'] == -999, ak.zeros_like(sample['n_leptons']), sample['n_leptons'])
+        print(sample['n_leptons'])
     
     # Convert parquet files to pandas DFs #
     pandas_samples = {}

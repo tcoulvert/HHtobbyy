@@ -10,7 +10,7 @@ from EarlyStopping import EarlyStopping
 
 def train(
     num_epochs, model, optimizer, scheduler, 
-    state_filename, model_filename, volatile=False, data_loader=None, save_model=True
+    state_filename=None, model_filename=None, volatile=False, data_loader=None
 ):
     best_model = model.state_dict()
     best_acc = 0.0
@@ -105,8 +105,9 @@ def train(
                     'train_loss': train_losses,
                     'val_loss': val_losses,
                 }
-                if save_model == True:
+                if state_filename is not None:
                     torch.save(state, state_filename)
+                if model_filename is not None:
                     torch.save(model.state_dict(), model_filename)
                 best_acc = epoch_acc
                 best_model = model.state_dict()
