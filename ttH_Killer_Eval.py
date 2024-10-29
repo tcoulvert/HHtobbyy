@@ -170,7 +170,6 @@ def process_data(
         with open(std_dict_filepath_list[fold], 'r') as f:
             std_dict = json.load(f)
         for col_idx, col in enumerate(std_dict['standardized_variables']):
-            print(f"pre-std mask: \n{test_df.loc[:, col]}")
             if std_dict['standardized_logs'][col_idx]:
                 positive_mask = (test_df.loc[:, col].to_numpy() > 0)
                 test_df.loc[positive_mask, col] = np.log(test_df.loc[positive_mask, col].to_numpy())
@@ -182,7 +181,6 @@ def process_data(
             ) / std_dict['standardized_stddev'][col_idx]
 
             test_df.loc[unphysical_mask_arr, col] = std_dict['standardized_unphysical_values'][col_idx]
-            print(f"post-std mask: \n{test_df.loc[:, col]}")
         
         normed_test_list = to_p_list(test_df)
 
@@ -276,7 +274,7 @@ def evaluate(
 
         all_preds.append(copy.deepcopy(all_pred))
 
-    return np.array(all_preds)
+    return all_preds
 
 # Runs the script to add ttH-killer preds to the samples #
 def main(output_dirpath=None):
@@ -303,11 +301,9 @@ def main(output_dirpath=None):
 
         preds = evaluate(data_list, data_hlf, best_conf, model_filepath_list)
 
-        # NEED TO FIX THIS FOR LOOP, CANT SET THE FIELD IN PIECES NEED TO DO ALL AT ONCE
-        for i, event_id in enumerate(data_aux[:, 'event']):
-            sample['ttH_killer_preds'][sample['event'] == event_id] = preds[event_id % len(model_filepath_list)][i]
+        sample['ttH_killer_preds'] = ak.concatenate([np.exp(preds[fold_idx])[:, 1] for fold_idx in range(len(data_aux))])
 
-        dest_filepath = parquet_filepath[:parquet_filepath.rfind('.')] + 'ttH_killer_preds' + parquet_filepath[parquet_filepath.rfind('.'):]
+        dest_filepath = parquet_filepath[:parquet_filepath.rfind('.')] + '_ttH_killer_preds' + parquet_filepath[parquet_filepath.rfind('.'):]
         if output_dirpath is not None:
             dest_filepath = os.path.join(output_dirpath, dest_filepath[len(PARQUET_FILEPREFIX):])
             if not os.path.exists(dest_filepath[:dest_filepath.rfind('/')]):
