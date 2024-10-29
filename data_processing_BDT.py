@@ -32,98 +32,47 @@ def process_data(
     
     # Convert parquet files to pandas DFs #
     pandas_samples = {}
-    extra_RNN_vars = []
     dont_include_vars = []
-    if re.search('base_vars', output_dirpath) is not None:
-        high_level_fields = {
-            'puppiMET_sumEt', 'puppiMET_pt', 'puppiMET_eta', 'puppiMET_phi', # MET variables
-            'DeltaPhi_j1MET', 'DeltaPhi_j2MET', # jet-MET variables
-            'DeltaR_jg_min', 'n_jets', 'chi_t0', 'chi_t1', # jet variables
-            'lepton1_pt' ,'lepton2_pt', 'pt', # lepton and diphoton pt
-            'lepton1_eta', 'lepton2_eta', 'eta', # lepton and diphoton eta
-            'lepton1_phi', 'lepton2_phi', 'phi', # lepton and diphoton phi
-            'CosThetaStar_CS','CosThetaStar_jj',  # angular variables
-        }
-    elif re.search('extra_vars', output_dirpath) is not None:
-        high_level_fields = {
-            'puppiMET_sumEt', 'puppiMET_pt', 'puppiMET_eta', 'puppiMET_phi', # MET variables
-            'DeltaPhi_j1MET', 'DeltaPhi_j2MET', # jet-MET variables
-            'DeltaR_jg_min', 'n_jets', 'chi_t0', 'chi_t1', # jet variables
-            'lepton1_pt' ,'lepton2_pt', 'pt', # lepton and diphoton pt
-            'lepton1_eta', 'lepton2_eta', 'eta', # lepton and diphoton eta
-            'lepton1_phi', 'lepton2_phi', 'phi', # lepton and diphoton phi
-            'CosThetaStar_CS','CosThetaStar_jj',  # angular variables
-            'dijet_mass', # mass of b-dijet (resonance for H->bb)
-            'leadBjet_leadLepton', 'leadBjet_subleadLepton', # deltaR btwn bjets and leptons (b/c b often decays to muons)
-            'subleadBjet_leadLepton', 'subleadBjet_subleadLepton',
-        }
-        if re.search('no_dijet_mass', output_dirpath) is not None:
-            high_level_fields.remove('dijet_mass')
-        if re.search('lead_lep_only', output_dirpath) is not None:
-            dont_include_vars = [
-                'lepton2_pt', 'lepton2_eta', 'lepton2_phi', 
-                'leadBjet_subleadLepton', 'subleadBjet_subleadLepton'
-            ]
-        elif re.search('no_lep', output_dirpath) is not None:
-            dont_include_vars = [
-                'lepton1_pt', 'lepton1_eta', 'lepton1_phi',
-                'leadBjet_leadLepton', 'subleadBjet_leadLepton',
-                'lepton2_pt', 'lepton2_eta', 'lepton2_phi', 
-                'leadBjet_subleadLepton', 'subleadBjet_subleadLepton'
-            ]
-        if re.search('and_bools', output_dirpath) is not None:
-            high_level_fields = high_level_fields | {
-                'chi_t0_bool', 'chi_t1_bool',
-                'leadBjet_leadLepton_bool', 'leadBjet_subleadLepton_bool',
-                'subleadBjet_leadLepton_bool', 'subleadBjet_subleadLepton_bool'
-            }
-        elif re.search('in_RNN', output_dirpath) is not None:
-            extra_RNN_vars = [
-                'chi_t0', 'chi_t1', 'leadBjet_leadLepton', 'leadBjet_subleadLepton',
-                'subleadBjet_leadLepton', 'subleadBjet_subleadLepton',
-            ]
-        if re.search('\+', output_dirpath) is not None:
-            high_level_fields = high_level_fields | {
-                'n_leptons', 
-                'lead_bjet_pt', 'lead_bjet_eta', 'lead_bjet_phi',
-                'sublead_bjet_pt', 'sublead_bjet_eta', 'sublead_bjet_phi',
-            }
-    elif re.search('no_bad_vars', output_dirpath) is not None:
-        high_level_fields = {
-            'puppiMET_sumEt', 'puppiMET_pt', 'puppiMET_eta', 'puppiMET_phi', # MET variables
-            'DeltaPhi_j1MET', 'DeltaPhi_j2MET', # jet-MET variables
-            'DeltaR_jg_min', 'n_jets', # jet variables
-            'lepton1_pt' ,'lepton2_pt', 'pt', # lepton and diphoton pt
-            'lepton1_eta', 'lepton2_eta', 'eta', # lepton and diphoton eta
-            'lepton1_phi', 'lepton2_phi', 'phi', # lepton and diphoton phi
-            'CosThetaStar_CS','CosThetaStar_jj',  # angular variables
-            'dijet_mass', # mass of b-dijet (resonance for H->bb)
-        }
-        if re.search('no_dijet_mass', output_dirpath) is not None:
-            high_level_fields.remove('dijet_mass')
-    elif re.search('simplified_bad_vars', output_dirpath) is not None:
-        high_level_fields = {
-            'puppiMET_sumEt', 'puppiMET_pt', 'puppiMET_eta', 'puppiMET_phi', # MET variables
-            'DeltaPhi_j1MET', 'DeltaPhi_j2MET', # jet-MET variables
-            'DeltaR_jg_min', 'n_jets', # jet variables
-            'lepton1_pt' ,'lepton2_pt', 'pt', # lepton and diphoton pt
-            'lepton1_eta', 'lepton2_eta', 'eta', # lepton and diphoton eta
-            'lepton1_phi', 'lepton2_phi', 'phi', # lepton and diphoton phi
-            'CosThetaStar_CS','CosThetaStar_jj',  # angular variables
-            'dijet_mass', # mass of b-dijet (resonance for H->bb),
-            'n_leptons'
-        }
-        if re.search('no_dijet_mass', output_dirpath) is not None:
-            high_level_fields.remove('dijet_mass')
-    else:
-        raise Exception("Currently must use either base_vars of extra_vars.")
+    high_level_fields = {
+        'puppiMET_sumEt', 'puppiMET_pt', 'puppiMET_eta', 'puppiMET_phi', # MET variables
+        'DeltaPhi_j1MET', 'DeltaPhi_j2MET', # jet-MET variables
+        'DeltaR_jg_min', 'n_jets', 'chi_t0', 'chi_t1', # jet variables
+        'lepton1_pt', 'lepton2_pt', 'pt', # lepton and diphoton pt
+        'lepton1_eta', 'lepton2_eta', 'eta', # lepton and diphoton eta
+        'lepton1_phi', 'lepton2_phi', 'phi', # lepton and diphoton phi
+        'CosThetaStar_CS','CosThetaStar_jj',  # angular variables
+        'dijet_mass', # mass of b-dijet (resonance for H->bb)
+        'leadBjet_leadLepton', 'leadBjet_subleadLepton', # deltaR btwn bjets and leptons (b/c b often decays to muons)
+        'subleadBjet_leadLepton', 'subleadBjet_subleadLepton',
+        'n_leptons', 
+        'lead_bjet_pt', 'lead_bjet_eta', 'lead_bjet_phi',
+        'sublead_bjet_pt', 'sublead_bjet_eta', 'sublead_bjet_phi',
+        # Yibos BDT variables #
+        'lead_mvaID', 'sublead_mvaID',
+        'lead_pt', 'sublead_pt',
+        'CosThetaStar_gg', 'mass',
+        'HHbbggCandidate_mass',
+        'lead_bjet_btagPNetB', 'sublead_bjet_btagPNetB',
+    }
+    if re.search('two_lepton_veto', output_dirpath) is not None:
+        dont_include_vars = [
+            'lepton2_pt', 'lepton2_eta', 'lepton2_phi', 
+            'leadBjet_subleadLepton', 'subleadBjet_subleadLepton',
+        ]
+    elif re.search('one_lepton_veto', output_dirpath) is not None:
+        dont_include_vars = [
+            'lepton1_pt', 'lepton1_eta', 'lepton1_phi', 
+            'leadBjet_leadLepton', 'subleadBjet_leadLepton',
+            'lepton2_pt', 'lepton2_eta', 'lepton2_phi', 
+            'leadBjet_subleadLepton', 'subleadBjet_subleadLepton',
+        ]
 
     pandas_aux_samples = {}
     high_level_aux_fields = {
         'event', # event number
         'eventWeight',  # computed eventWeight using (genWeight * lumi * xs / sum_of_genWeights)
-        'mass', 'dijet_mass', # diphoton and bb-dijet mass
-        'lepton1_pt', 'lepton2_pt',
+        'mass', 'dijet_mass',  # diphoton and bb-dijet mass
+        'lepton1_pt', 'lepton2_pt',  # renamed to lepton1/2_bool in DataFrame, used to distinguish 0, 1, and 2+ lepton events
     } # https://stackoverflow.com/questions/67003141/how-to-remove-a-field-from-a-collection-of-records-created-by-awkward-zip
 
     hlf_list, hlf_aux_list = list(high_level_fields), list(high_level_aux_fields)
@@ -136,6 +85,9 @@ def process_data(
         pandas_aux_samples[sample_name] = {
             field: ak.to_numpy(sample[field], allow_missing=False) for field in hlf_aux_list
         }
+        for old_field, new_field in [('lepton1_pt', 'lepton1_bool'), ('lepton2_pt', 'lepton2_bool')]:
+            pandas_aux_samples[sample_name][new_field] = copy.deepcopy(pandas_aux_samples[sample_name][old_field] >= 0)
+            del pandas_aux_samples[sample_name][old_field]
 
     sig_frame = pd.DataFrame(pandas_samples['sig'])
     sig_aux_frame = pd.DataFrame(pandas_aux_samples['sig'])
@@ -182,15 +134,22 @@ def process_data(
         if len(dont_include_vars) > 0:
             keep_cols = list(high_level_fields - set(dont_include_vars))
 
-            sig_train_slice = (sig_train_frame['lepton1_pt'] == -999)
-            bkg_train_slice = (bkg_train_frame['lepton1_pt'] == -999)
+            if re.search('two_lepton_veto', output_dirpath) is not None:
+                sig_train_slice = (sig_train_frame['lepton2_pt'] == -999)
+                bkg_train_slice = (bkg_train_frame['lepton2_pt'] == -999)
+                # sig_test_slice = (sig_test_frame['lepton2_pt'] == -999)
+                # bkg_test_slice = (bkg_test_frame['lepton2_pt'] == -999)
+            elif re.search('one_lepton_veto', output_dirpath) is not None:
+                sig_train_slice = (sig_train_frame['lepton1_pt'] == -999)
+                bkg_train_slice = (bkg_train_frame['lepton1_pt'] == -999)
+                # sig_test_slice = (sig_test_frame['lepton1_pt'] == -999)
+                # bkg_test_slice = (bkg_test_frame['lepton1_pt'] == -999)
+            
             sig_train_frame = sig_train_frame.loc[sig_train_slice, keep_cols].reset_index(drop=True)
             bkg_train_frame = bkg_train_frame.loc[bkg_train_slice, keep_cols].reset_index(drop=True)
             sig_aux_train_frame = sig_aux_train_frame.loc[sig_train_slice].reset_index(drop=True)
             bkg_aux_train_frame = bkg_aux_train_frame.loc[bkg_train_slice].reset_index(drop=True)
 
-            # sig_test_slice = (sig_test_frame['lepton1_pt'] > -1000)
-            # bkg_test_slice = (bkg_test_frame['lepton1_pt'] > -1000)
             sig_test_frame = sig_test_frame[keep_cols].reset_index(drop=True)
             bkg_test_frame = bkg_test_frame[keep_cols].reset_index(drop=True)
             # sig_aux_test_frame = sig_aux_test_frame.loc[sig_test_slice].reset_index(drop=True)
@@ -208,9 +167,6 @@ def process_data(
             'lepton1_eta', 'lepton2_eta', 'eta', # lepton and diphoton eta
             'lepton1_phi', 'lepton2_phi', 'phi', # lepton and diphoton phi
             'CosThetaStar_CS','CosThetaStar_jj',
-            'chi_t0_bool', 'chi_t1_bool',
-            'leadBjet_leadLepton_bool', 'leadBjet_subleadLepton_bool',
-            'subleadBjet_leadLepton_bool', 'subleadBjet_subleadLepton_bool',
             'lead_bjet_eta', 'lead_bjet_phi',
             'sublead_bjet_eta', 'sublead_bjet_phi',
         }
