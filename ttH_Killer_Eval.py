@@ -23,6 +23,7 @@ from torch.autograd import Variable
 
 PARQUET_FILEPREFIX = ""  # Prefix for parquet files
 MODEL_FILEPREFIX = ""  # Prefix for model files
+OUTPUT_FILEPREFIX = None  # Prefix for output parquet files
 FILL_VALUE = -999  # Fill value for bad data in parquet files
 SEED = None  # Seed for rng
 
@@ -74,18 +75,18 @@ def process_data(
 ):
     hlf_list = [
         'puppiMET_sumEt', 'puppiMET_pt', 'puppiMET_eta', 'puppiMET_phi', # MET variables
-        'DeltaPhi_j1MET', 'DeltaPhi_j2MET', # jet-MET variables
-        'DeltaR_jg_min', 'n_jets', 'chi_t0', 'chi_t1', # jet variables
+        f'{ANTYPE}_DeltaPhi_j1MET', f'{ANTYPE}_DeltaPhi_j2MET', # jet-MET variables
+        f'{ANTYPE}_DeltaR_jg_min', 'n_jets', f'{ANTYPE}_chi_t0', f'{ANTYPE}_chi_t1', # jet variables
         'lepton1_pt' ,'lepton2_pt', 'pt', # lepton and diphoton pt
         'lepton1_eta', 'lepton2_eta', 'eta', # lepton and diphoton eta
         'lepton1_phi', 'lepton2_phi', 'phi', # lepton and diphoton phi
-        'CosThetaStar_CS','CosThetaStar_jj',  # angular variables
-        'dijet_mass', # mass of b-dijet (resonance for H->bb)
-        'leadBjet_leadLepton', 'leadBjet_subleadLepton', # deltaR btwn bjets and leptons (b/c b often decays to muons)
-        'subleadBjet_leadLepton', 'subleadBjet_subleadLepton',
+        f'{ANTYPE}_CosThetaStar_CS',f'{ANTYPE}_CosThetaStar_jj',  # angular variables
+        f'{ANTYPE}_dijet_mass', # mass of b-dijet (resonance for H->bb)
+        'DeltaR_b1l1', 'DeltaR_b1l2', # deltaR btwn bjets and leptons (b/c b often decays to muons)
+        'DeltaR_b2l1', 'DeltaR_b2l2',
         'n_leptons', 
-        'lead_bjet_pt', 'lead_bjet_eta', 'lead_bjet_phi',
-        'sublead_bjet_pt', 'sublead_bjet_eta', 'sublead_bjet_phi',
+        f'{ANTYPE}_lead_bjet_pt', f'{ANTYPE}_lead_bjet_eta', f'{ANTYPE}_lead_bjet_phi',
+        f'{ANTYPE}_sublead_bjet_pt', f'{ANTYPE}_sublead_bjet_eta', f'{ANTYPE}_sublead_bjet_phi',
     ]
     hlf_list.sort()
     sample_pd = pd.DataFrame({
@@ -187,12 +188,12 @@ def process_data(
 
         input_hlf_vars_max = [
             'puppiMET_sumEt',
-            'n_jets','chi_t0', 'chi_t1',
-            'CosThetaStar_CS','CosThetaStar_jj', 
-            'DeltaR_jg_min',
-            'DeltaPhi_j1MET','DeltaPhi_j2MET',
-            'leadBjet_leadLepton', 'leadBjet_subleadLepton', 'subleadBjet_leadLepton', 'subleadBjet_subleadLepton', 
-            'dijet_mass',
+            'n_jets', f'{ANTYPE}_chi_t0', f'{ANTYPE}_chi_t1',
+            f'{ANTYPE}_CosThetaStar_CS',f'{ANTYPE}_CosThetaStar_jj', 
+            f'{ANTYPE}_DeltaR_jg_min',
+            f'{ANTYPE}_DeltaPhi_j1MET',f'{ANTYPE}_DeltaPhi_j2MET',
+            'DeltaR_b1l1', 'DeltaR_b1l2', 'DeltaR_b2l1', 'DeltaR_b2l2', 
+            f'{ANTYPE}_dijet_mass',
             'n_leptons'
         ]
         input_hlf_vars = []
@@ -278,7 +279,7 @@ def evaluate(
     return all_preds
 
 # Runs the script to add ttH-killer preds to the samples #
-def main(output_dirpath=None):
+def main():
     # list of parquet filepaths
     parquet_filepath_list = glob.glob(os.path.join(PARQUET_FILEPREFIX, '**/*.parquet'), recursive=True)
 
@@ -305,8 +306,8 @@ def main(output_dirpath=None):
         sample['ttH_killer_preds'] = ak.concatenate([np.exp(preds[fold_idx])[:, 1] for fold_idx in range(len(data_aux))])
 
         dest_filepath = parquet_filepath[:parquet_filepath.rfind('.')] + '_ttH_killer_preds' + parquet_filepath[parquet_filepath.rfind('.'):]
-        if output_dirpath is not None:
-            dest_filepath = os.path.join(output_dirpath, dest_filepath[len(PARQUET_FILEPREFIX):])
+        if OUTPUT_FILEPREFIX is not None:
+            dest_filepath = os.path.join(OUTPUT_FILEPREFIX, dest_filepath[len(PARQUET_FILEPREFIX):])
             if not os.path.exists(dest_filepath[:dest_filepath.rfind('/')]):
                 os.makedirs(dest_filepath[:dest_filepath.rfind('/')])
         merged_parquet = ak.to_parquet(sample, dest_filepath)
@@ -325,6 +326,9 @@ if __name__ == '__main__':
     parser.add_argument('--model-fileprefix', action='store', required=True,
         help='The full path to the file prefix where the trained ttH-Killer model files are located. This directory should contain only the model files, the standardization .json file, and the config .json file.'
     )
+    parser.add_argument('--bbgg-analysis', dest='output_dirpath', action='store', default='nonRes',
+        help='Analysis type for the parquets. Currently must either be "nonRes" or "Res", and by default it is nonRes.'
+    )
     parser.add_argument('--dump', dest='output_dirpath', action='store', default='none',
         help='Name of the output path in which the processed parquets will be stored. By default saves the parquets next to the old parquets with a name signifying they have been processed through the ttH-Killer.'
     )
@@ -333,5 +337,10 @@ if __name__ == '__main__':
 
     PARQUET_FILEPREFIX = args.parquet_fileprefix
     MODEL_FILEPREFIX = args.model_fileprefix
+    OUTPUT_FILEPREFIX = None if args.output_dirpath == 'none' else args.output_dirpath
 
-    main(output_dirpath=None if args.output_dirpath == 'none' else args.output_dirpath)
+    ANTYPE = args.bbgg_analysis
+    if ANTYPE not in ["nonRes", "Res"]:
+        raise NotImplementedError
+
+    main()
