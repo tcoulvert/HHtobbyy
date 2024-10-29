@@ -94,9 +94,7 @@ def process_data(
         'bkg': bkg_samples_pq,
     }
     for sample in samples.values():
-        print(sample['n_leptons'])
         sample['n_leptons'] = ak.where(sample['n_leptons'] == -999, ak.zeros_like(sample['n_leptons']), sample['n_leptons'])
-        print(sample['n_leptons'])
     
     # Convert parquet files to pandas DFs #
     pandas_samples = {}
@@ -295,7 +293,8 @@ def process_data(
         }
         def apply_log(df):
             for field in (log_fields & high_level_fields) - no_standardize:
-                df[field] = np.where(df[field] > 0, np.log(df[field]), df[field])
+                mask = (df[field].to_numpy() > 0)
+                df.loc[mask, field] = np.log(df.loc[mask, field])
             return df
         FILL_VALUE = -999
         # Because of zero-padding, standardization needs special treatment
