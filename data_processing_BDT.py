@@ -27,8 +27,8 @@ def process_data(
         'sig': sig_samples_pq,
         'bkg': bkg_samples_pq,
     }
-    for sample in samples.values():
-        sample['n_leptons'] = ak.where(sample['n_leptons'] == -999, 0, sample['n_leptons'])
+    # for sample in samples.values():
+    #     sample['n_leptons'] = ak.where(sample['n_leptons'] == -999, 0, sample['n_leptons'])
     
     # Convert parquet files to pandas DFs #
     pandas_samples = {}
@@ -49,10 +49,14 @@ def process_data(
         'sublead_bjet_pt', 'sublead_bjet_eta', 'sublead_bjet_phi',
         # Yibos BDT variables #
         'lead_mvaID', 'sublead_mvaID',
-        'lead_pt', 'sublead_pt',
-        'CosThetaStar_gg', 'mass',
-        'HHbbggCandidate_mass',
+        'CosThetaStar_gg',
+        'lead_pt_over_Mgg', 'sublead_pt_over_Mgg',
+        'lead_sigmaE_over_E', 'sublead_sigmaE_over_E',
+        'lead_bjet_pt_over_Mgg', 'sublead_bjet_pt_over_Mgg',
         'lead_bjet_btagPNetB', 'sublead_bjet_btagPNetB',
+        'dipho_mass_over_Mggjj', 'dijet_mass_over_Mggjj',
+        # My variables for non-reso reduction #
+        'lead_pfRelIso03_all_quadratic', 'sublead_pfRelIso03_all_quadratic',
     }
     if re.search('two_lepton_veto', output_dirpath) is not None:
         dont_include_vars = [
@@ -85,6 +89,7 @@ def process_data(
         pandas_aux_samples[sample_name] = {
             field: ak.to_numpy(sample[field], allow_missing=False) for field in hlf_aux_list
         }
+        # Compute bool for easy lepton-veto checks
         for old_field, new_field in [('lepton1_pt', 'lepton1_bool'), ('lepton2_pt', 'lepton2_bool')]:
             pandas_aux_samples[sample_name][new_field] = copy.deepcopy(pandas_aux_samples[sample_name][old_field] >= 0)
             del pandas_aux_samples[sample_name][old_field]
@@ -152,11 +157,13 @@ def process_data(
 
             sig_test_frame = sig_test_frame[keep_cols].reset_index(drop=True)
             bkg_test_frame = bkg_test_frame[keep_cols].reset_index(drop=True)
+            # sig_test_frame = sig_test_frame[sig_test_slice, keep_cols].reset_index(drop=True)
+            # bkg_test_frame = bkg_test_frame[bkg_test_slice, keep_cols].reset_index(drop=True)
             # sig_aux_test_frame = sig_aux_test_frame.loc[sig_test_slice].reset_index(drop=True)
             # bkg_aux_test_frame = bkg_aux_test_frame.loc[bkg_test_slice].reset_index(drop=True)
 
-            for lepton2_var in dont_include_vars:
-                high_level_fields.remove(lepton2_var)
+            for var in dont_include_vars:
+                high_level_fields.remove(var)
         ## End further selection for lepton-veto check ##
 
 
@@ -169,6 +176,10 @@ def process_data(
             'CosThetaStar_CS','CosThetaStar_jj',
             'lead_bjet_eta', 'lead_bjet_phi',
             'sublead_bjet_eta', 'sublead_bjet_phi',
+            # Yibo BDT variables #
+            'lead_mvaID', 'sublead_mvaID',
+            'CosThetaStar_gg',
+            'lead_bjet_btagPNetB', 'sublead_bjet_btagPNetB',
         }
         def apply_log(df):
             log_fields = {

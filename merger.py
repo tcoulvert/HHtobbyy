@@ -13,9 +13,7 @@ vec.register_awkward()
 # lpc_redirector = "root://cmseos.fnal.gov/"
 # lxplus_redirector = "root://eosuser.cern.ch/"
 # lxplus_fileprefix = "/eos/cms/store/group/phys_b2g/HHbbgg/HiggsDNA_parquet/v1"
-# LPC_FILEPREFIX = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v1"
-# LPC_FILEPREFIX = "/uscms/home/tsievert/nobackup/XHYbbgg/HiggsDNA_official/output_test_HH"
-LPC_FILEPREFIX = "/uscms/home/tsievert/nobackup/XHYbbgg/HiggsDNA_official/output_test_ttH_10"
+LPC_FILEPREFIX = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v1"
 FORCE_RERUN = True
 NO_BSM = True
 FILL_VALUE = -999
@@ -287,7 +285,7 @@ def add_ttH_vars(sample):
         sample['puppiMET_eta'] = [0 for _ in range(ak.num(sample['event'], axis=0))]
 
     # Electrons and Muons #
-    for var in ['pt', 'eta', 'phi', 'MVA']:
+    for var in ['pt', 'eta', 'phi']:
         sample[f'lead_electron_{var}'] = lead_lepton_var(sample, 4, 1, var)
         sample[f'sublead_electron_{var}'] = sublead_lepton_var(sample, 4, 1, sample[f'lead_electron_{var}'], var)
         sample[f'lead_muon_{var}'] = lead_lepton_var(sample, 4, 2, var)
@@ -302,6 +300,19 @@ def add_ttH_vars(sample):
         'leadBjet_subleadLepton', 'subleadBjet_leadLepton', 'subleadBjet_subleadLepton'
     ]:
         sample[f'{var}_bool'] = ak.where(sample[var] != FILL_VALUE, 1, 0)
+
+    # Yibo BDT variables #
+    # photon variables
+    sample['lead_pt_over_Mgg'] = sample['lead_pt'] / sample['mass']
+    sample['sublead_pt_over_Mgg'] = sample['sublead_pt'] / sample['mass']
+    sample['lead_sigmaE_over_E'] = sample['lead_energyErr'] / sample['lead_energyRaw']
+    sample['sublead_sigmaE_over_E'] = sample['sublead_energyErr'] / sample['sublead_energyRaw']
+    # bjet variables
+    sample['lead_bjet_pt_over_Mjj'] = sample['lead_bjet_pt'] / sample['dijet_mass']
+    sample['sublead_bjet_pt_over_Mjj'] = sample['sublead_bjet_pt'] / sample['dijet_mass']
+    # diphoton, dijet variables
+    sample['dipho_mass_over_Mggjj'] = sample['mass'] / sample['HHbbggCandidate_mass']
+    sample['dijet_mass_over_Mggjj'] = sample['dijet_mass'] / sample['HHbbggCandidate_mass']
 
     # different tt final state variables #
     # sample['fully_leptonic'] = sample['lepton2_pt'] != FILL_VALUE
@@ -395,8 +406,8 @@ def main():
 
     for data_era, dir_list in dir_lists.items():
         for dir_name in dir_list:
-            if dir_name not in {'ttHToGG', 'GluGluToHH'}:
-                continue
+            # if dir_name not in {'ttHToGG', 'GluGluToHH'}:
+            #     continue
             for sample_type in ['nominal']: # Eventually change to os.listdir(LPC_FILEPREFIX+'/'+data_era+'/'+dir_name)
                 # Load all the parquets of a single sample into an ak array
                 sample = ak.concatenate(
@@ -426,7 +437,7 @@ def main():
                     # sample['eventWeight'] = ak.where(sample['genWeight'] < 0, -1, 1) * (sample['luminosity'] * sample['cross_section'] / sum_of_abs_genWeight)
                     sample['eventWeight'] = sample['genWeight'] * (sample['luminosity'] * sample['cross_section'] / sample['sumGenWeights'])
         
-                destdir = LPC_FILEPREFIX+'/'+data_era+'_merged_v2/'+dir_name+'/'+sample_type+'/'
+                destdir = LPC_FILEPREFIX+'/'+data_era+'_merged_v3/'+dir_name+'/'+sample_type+'/'
                 if not os.path.exists(destdir):
                     os.makedirs(destdir)
                 merged_parquet = ak.to_parquet(sample, destdir+dir_name+'_'+sample_type+'.parquet')
