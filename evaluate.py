@@ -2,6 +2,7 @@
 import copy
 import json
 import os
+import warnings
 
 # Common Py packages
 import numpy as np
@@ -26,7 +27,7 @@ def evaluate(
         p_list, hlf, label, weight,
         OUTPUT_DIRPATH, CURRENT_TIME, skf, best_conf,
         train_losses_arr=None, val_losses_arr=None, save=False, only_fold_idx=None,
-        dict_lists=False
+        dict_lists=False, model_filepath=None
         # aux_df=None
     ):
     model = InclusiveNetwork(
@@ -43,12 +44,14 @@ def evaluate(
     all_preds, all_labels = [], []
 
     for fold_idx in [only_fold_idx] if only_fold_idx is not None else (range(skf.get_n_splits() if not dict_lists else len(p_list))):
-        # if only_fold_idx is not None and fold_idx != only_fold_idx:
-        #     continue
         try:
-            model.load_state_dict(torch.load(OUTPUT_DIRPATH + f'{CURRENT_TIME}_ReallyTopclassStyle_{fold_idx}.torch'))
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                model.load_state_dict(torch.load(OUTPUT_DIRPATH + f'{CURRENT_TIME}_ReallyTopclassStyle_{fold_idx}.torch'))
         except:
-            model.load_state_dict(torch.load(OUTPUT_DIRPATH + '_ttH_Killer_IN_model_'+ f'{fold_idx}.torch'))
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                model.load_state_dict(torch.load(OUTPUT_DIRPATH + '_ttH_Killer_IN_model_'+ f'{fold_idx}.torch'))
         model.eval()
         if not dict_lists:
             all_pred = np.zeros(shape=(len(hlf),2))
@@ -160,7 +163,7 @@ def evaluate(
     if save:
         with open(os.path.join(OUTPUT_DIRPATH, f'{CURRENT_TIME}_IN_perf.json'), 'w') as f:
             json.dump(IN_perf, f)
-        with h5py.File(OUTPUT_DIRPATH + f"{CURRENT_TIME}_ReallyInclusive_ROC.h5","w") as out:
+        with h5py.File(os.path.join(OUTPUT_DIRPATH, f"{CURRENT_TIME}_ReallyInclusive_ROC.h5"),"w") as out:
             out['FPR'] = mean_fprs
             out['dFPR'] = std_fprs
             out['TPR'] = base_tpr

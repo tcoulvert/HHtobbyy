@@ -5,6 +5,7 @@ import glob
 import json
 import os
 import re
+import warnings
 
 # Common Py packages #
 import numpy as np
@@ -21,7 +22,7 @@ from torch.utils.data import DataLoader, Dataset
 from torch.autograd import Variable
 
 PARQUET_FILEPREFIX = ""  # Prefix for parquet files
-MODEL_FILEPREFIX = ""
+MODEL_FILEPREFIX = ""  # Prefix for model files
 FILL_VALUE = -999  # Fill value for bad data in parquet files
 SEED = None  # Seed for rng
 
@@ -238,9 +239,9 @@ def evaluate(
     all_preds = []
 
     for fold_idx in range(len(p_list)):
-        # if only_fold_idx is not None and fold_idx != only_fold_idx:
-        #     continue
-        model.load_state_dict(torch.load(model_filepath_list[fold_idx]))
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            model.load_state_dict(torch.load(model_filepath_list[fold_idx]))
         model.eval()
         all_pred = np.zeros(shape=(len(hlf[f"fold_{fold_idx}"]),2))
         eval_loader = DataLoader(
