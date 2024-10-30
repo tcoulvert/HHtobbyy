@@ -12,8 +12,6 @@ import pandas as pd
 # HEP packages
 import awkward as ak
 
-import matplotlib.pyplot as plt
-
 FILL_VALUE = -999
 
 def process_data(
@@ -48,7 +46,7 @@ def process_data(
         'CosThetaStar_gg',
         'lead_pt_over_Mgg', 'sublead_pt_over_Mgg',
         'lead_sigmaE_over_E', 'sublead_sigmaE_over_E',
-        'lead_bjet_pt_over_Mgg', 'sublead_bjet_pt_over_Mgg',
+        'lead_bjet_pt_over_Mjj', 'sublead_bjet_pt_over_Mjj',
         'lead_bjet_btagPNetB', 'sublead_bjet_btagPNetB',
         'lead_bjet_sigmapT_over_pT', 'sublead_bjet_sigmapT_over_pT',
         'dipho_mass_over_Mggjj', 'dijet_mass_over_Mggjj',
@@ -90,7 +88,7 @@ def process_data(
         for old_field, new_field in [('lepton1_pt', 'lepton1_bool'), ('lepton2_pt', 'lepton2_bool')]:
             pandas_aux_samples[sample_name][new_field] = copy.deepcopy(pandas_aux_samples[sample_name][old_field] != FILL_VALUE)
             del pandas_aux_samples[sample_name][old_field]
-        pd.DataFrame(pandas_aux_samples[sample_name])
+        pandas_aux_samples[sample_name] = pd.DataFrame(pandas_aux_samples[sample_name])
 
     # Randomly shuffle DFs and split into train and test samples #
     rng = np.random.default_rng(seed=seed)
@@ -171,7 +169,7 @@ def process_data(
         def apply_log_and_exp(df):
             for field in log_fields & high_level_fields:
                 mask = (df.loc[:, field].to_numpy() > 0)
-                df.loc[mask, field] = np.log(df[mask, field])
+                df.loc[mask, field] = np.log(df.loc[mask, field])
 
             for field in exp_fields & high_level_fields:
                 mask = (df.loc[:, field].to_numpy() != FILL_VALUE)
