@@ -319,6 +319,7 @@ def add_ttH_vars(sample):
     # diphoton, dijet variables
     sample['dipho_mass_over_Mggjj'] = sample['mass'] / sample['HHbbggCandidate_mass']
     sample['dijet_mass_over_Mggjj'] = sample['dijet_mass'] / sample['HHbbggCandidate_mass']
+    sample['pt_balance'] = sample['HHbbggCandidate_pt'] / (sample['lead_pt'] + sample['sublead_pt'] + sample['lead_bjet_pt'] + sample['sublead_bjet_pt'])
 
     # different tt final state variables #
     # sample['fully_leptonic'] = sample['lepton2_pt'] != FILL_VALUE
