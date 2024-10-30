@@ -20,7 +20,6 @@ def process_data(
     seed=None, mod_vals=(2, 2), k_fold_test=False
 ):
     # Load parquet files #
-    
     sig_samples_list = [ak.from_parquet(glob.glob(dir_path)) for dir_path in signal_filepaths]
     sig_samples_pq = ak.concatenate(sig_samples_list)
     bkg_samples_list = [ak.from_parquet(glob.glob(dir_path)) for dir_path in bkg_filepaths]
