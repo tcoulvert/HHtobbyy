@@ -298,9 +298,12 @@ def add_ttH_vars(sample):
 
     # bool values #
     for var in ['chi_t0', 'chi_t1','leadBjet_leadLepton', 
-        'leadBjet_subleadLepton', 'subleadBjet_leadLepton', 'subleadBjet_subleadLepton'
+        'leadBjet_subleadLepton', 'subleadBjet_leadLepton', 'subleadBjet_subleadLepton',
     ]:
         sample[f'{var}_bool'] = ak.where(sample[var] != FILL_VALUE, 1, 0)
+
+    for var in ['lepton1', 'lepton2']:
+        sample[f'{var}_bool'] = ak.where(sample[f'{var}_pt'] != FILL_VALUE, 1, 0)
 
     # Yibo BDT variables #
     # photon variables

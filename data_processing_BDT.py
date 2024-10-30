@@ -3,6 +3,7 @@ import copy
 import glob
 import json
 import re
+import os
 
 # Common Py packages
 import numpy as np
@@ -16,20 +17,14 @@ import matplotlib.pyplot as plt
 FILL_VALUE = -999
 
 def process_data(
-    signal_filepaths, bkg_filepaths, output_dirpath, 
+    filepaths_dict, output_dirpath, order=None,
     seed=None, mod_vals=(2, 2), k_fold_test=False
 ):
     # Load parquet files #
-    sig_samples_list = [ak.from_parquet(glob.glob(dir_path)) for dir_path in signal_filepaths]
-    sig_samples_pq = ak.concatenate(sig_samples_list)
-    bkg_samples_list = [ak.from_parquet(glob.glob(dir_path)) for dir_path in bkg_filepaths]
-    bkg_samples_pq = ak.concatenate(bkg_samples_list)
-    samples = {
-        'sig': sig_samples_pq,
-        'bkg': bkg_samples_pq,
-    }
-    # for sample in samples.values():
-    #     sample['n_leptons'] = ak.where(sample['n_leptons'] == -999, 0, sample['n_leptons'])
+    samples = {}
+    for sample_name, sample_filepaths in filepaths_dict.items():
+        sample_list = [ak.from_parquet(glob.glob(dir_path)) for dir_path in sample_filepaths]
+        samples[sample_name] = ak.concatenate(sample_list)
     
     # Convert parquet files to pandas DFs #
     pandas_samples = {}
@@ -85,9 +80,9 @@ def process_data(
     hlf_list.sort()
     hlf_aux_list.sort()
     for sample_name, sample in samples.items():
-        pandas_samples[sample_name] = {
+        pandas_samples[sample_name] = pd.DataFrame({
             field: ak.to_numpy(sample[field], allow_missing=False) for field in hlf_list
-        }
+        })
         pandas_aux_samples[sample_name] = {
             field: ak.to_numpy(sample[field], allow_missing=False) for field in hlf_aux_list
         }
@@ -95,79 +90,58 @@ def process_data(
         for old_field, new_field in [('lepton1_pt', 'lepton1_bool'), ('lepton2_pt', 'lepton2_bool')]:
             pandas_aux_samples[sample_name][new_field] = copy.deepcopy(pandas_aux_samples[sample_name][old_field] != FILL_VALUE)
             del pandas_aux_samples[sample_name][old_field]
-
-    sig_frame = pd.DataFrame(pandas_samples['sig'])
-    sig_aux_frame = pd.DataFrame(pandas_aux_samples['sig'])
-    bkg_frame = pd.DataFrame(pandas_samples['bkg'])
-    bkg_aux_frame = pd.DataFrame(pandas_aux_samples['bkg'])
+        pd.DataFrame(pandas_aux_samples[sample_name])
 
     # Randomly shuffle DFs and split into train and test samples #
     rng = np.random.default_rng(seed=seed)
-    sig_idx = rng.permutation(sig_frame.index)
-    bkg_idx = rng.permutation(bkg_frame.index)
-    sig_frame = sig_frame.reindex(sig_idx)
-    sig_aux_frame = sig_aux_frame.reindex(sig_idx)
-    bkg_frame = bkg_frame.reindex(bkg_idx)
-    bkg_aux_frame = bkg_aux_frame.reindex(bkg_idx)
+    for sample_name in pandas_samples.keys():
+        idx = rng.permutation(pandas_samples[sample_name].index)
+        pandas_samples[sample_name] = pandas_samples[sample_name].reindex(idx)
+        pandas_aux_samples[sample_name] = pandas_aux_samples[sample_name].reindex(idx)
 
-    def train_test_split_df(sig_df, sig_aux_df, bkg_df, bkg_aux_df, method='modulus', dataset_num=0):
-        if method == 'modulus':
-            # Train/Val events are those with odd event #s, test events have even event #s
-            sig_train_frame = sig_df.loc[(sig_aux_df['event'] % mod_vals[0]).ne(dataset_num)].reset_index(drop=True)
-            sig_test_frame = sig_df.loc[(sig_aux_df['event'] % mod_vals[1]).eq(dataset_num)].reset_index(drop=True)
+    def train_test_split_df(dict_of_dfs, dict_of_aux_dfs, dataset_num=0):
+        # Train/Val events are those with eventID % mod_val != fold, test events are the others
+        train_dict_of_dfs, test_dict_of_dfs, train_dict_of_aux_dfs, test_dict_of_aux_dfs = {}, {}, {}, {}
+        for sample_name in dict_of_dfs.keys():
+            train_mask = (dict_of_aux_dfs[sample_name]['event'] % mod_vals[0]).ne(dataset_num)
+            test_mask = (dict_of_aux_dfs[sample_name]['event'] % mod_vals[0]).eq(dataset_num)
 
-            sig_aux_train_frame = sig_aux_df.loc[(sig_aux_df['event'] % mod_vals[0]).ne(dataset_num)].reset_index(drop=True)
-            sig_aux_test_frame = sig_aux_df.loc[(sig_aux_df['event'] % mod_vals[1]).eq(dataset_num)].reset_index(drop=True)
+            train_dict_of_dfs[sample_name] = dict_of_dfs[sample_name].loc[train_mask].reset_index(drop=True)
+            test_dict_of_dfs[sample_name] = dict_of_dfs[sample_name].loc[test_mask].reset_index(drop=True)
+            train_dict_of_aux_dfs[sample_name] = dict_of_aux_dfs[sample_name].loc[train_mask].reset_index(drop=True)
+            test_dict_of_aux_dfs[sample_name] = dict_of_aux_dfs[sample_name].loc[test_mask].reset_index(drop=True)
 
-            bkg_train_frame = bkg_df.loc[(bkg_aux_df['event'] % mod_vals[0]).ne(dataset_num)].reset_index(drop=True)
-            bkg_test_frame = bkg_df.loc[(bkg_aux_df['event'] % mod_vals[1]).eq(dataset_num)].reset_index(drop=True)
-
-            bkg_aux_train_frame = bkg_aux_df.loc[(bkg_aux_df['event'] % mod_vals[0]).ne(dataset_num)].reset_index(drop=True)
-            bkg_aux_test_frame = bkg_aux_df.loc[(bkg_aux_df['event'] % mod_vals[1]).eq(dataset_num)].reset_index(drop=True)
-        else:
-            raise Exception(f"Only 2 accepted methods: 'sample' and 'modulus'. You input {method}")
-        return sig_train_frame, sig_test_frame, sig_aux_train_frame, sig_aux_test_frame, bkg_train_frame, bkg_test_frame, bkg_aux_train_frame, bkg_aux_test_frame
+        return train_dict_of_dfs, test_dict_of_dfs, train_dict_of_aux_dfs, test_dict_of_aux_dfs
     
     for fold in range(mod_vals[0] if k_fold_test else 1):
 
         (
-            sig_train_frame, sig_test_frame, 
-            sig_aux_train_frame, sig_aux_test_frame, 
-            bkg_train_frame, bkg_test_frame,
-            bkg_aux_train_frame, bkg_aux_test_frame
-        ) = train_test_split_df(sig_frame, sig_aux_frame, bkg_frame, bkg_aux_frame, dataset_num=fold)
+            train_dict_of_dfs, test_dict_of_dfs, 
+            train_dict_of_aux_dfs, test_dict_of_aux_dfs
+        ) = train_test_split_df(pandas_samples, pandas_aux_samples, dataset_num=fold)
 
         ## Further selection for lepton-veto check ##
         if len(dont_include_vars) > 0:
             keep_cols = list(high_level_fields - set(dont_include_vars))
 
-            if re.search('two_lepton_veto', output_dirpath) is not None:
-                sig_train_slice = (sig_train_frame['lepton2_pt'] == -999)
-                bkg_train_slice = (bkg_train_frame['lepton2_pt'] == -999)
-                # sig_test_slice = (sig_test_frame['lepton2_pt'] == -999)
-                # bkg_test_slice = (bkg_test_frame['lepton2_pt'] == -999)
-            elif re.search('one_lepton_veto', output_dirpath) is not None:
-                sig_train_slice = (sig_train_frame['lepton1_pt'] == -999)
-                bkg_train_slice = (bkg_train_frame['lepton1_pt'] == -999)
-                # sig_test_slice = (sig_test_frame['lepton1_pt'] == -999)
-                # bkg_test_slice = (bkg_test_frame['lepton1_pt'] == -999)
-            
-            sig_train_frame = sig_train_frame.loc[sig_train_slice, keep_cols].reset_index(drop=True)
-            bkg_train_frame = bkg_train_frame.loc[bkg_train_slice, keep_cols].reset_index(drop=True)
-            sig_aux_train_frame = sig_aux_train_frame.loc[sig_train_slice].reset_index(drop=True)
-            bkg_aux_train_frame = bkg_aux_train_frame.loc[bkg_train_slice].reset_index(drop=True)
+            for sample_name in train_dict_of_dfs.keys():
+                if re.search('two_lepton_veto', output_dirpath) is not None:
+                    train_slice = (train_dict_of_dfs[sample_name]['lepton2_pt'] == -999)
+                    # test_slice = (test_dict_of_dfs[sample_name]['lepton2_pt'] == -999)
+                elif re.search('one_lepton_veto', output_dirpath) is not None:
+                    train_slice = (train_dict_of_dfs[sample_name]['lepton1_pt'] == -999)
+                    # test_slice = (test_dict_of_dfs[sample_name]['lepton2_pt'] == -999)
 
-            sig_test_frame = sig_test_frame[keep_cols].reset_index(drop=True)
-            bkg_test_frame = bkg_test_frame[keep_cols].reset_index(drop=True)
-            # sig_test_frame = sig_test_frame[sig_test_slice, keep_cols].reset_index(drop=True)
-            # bkg_test_frame = bkg_test_frame[bkg_test_slice, keep_cols].reset_index(drop=True)
-            # sig_aux_test_frame = sig_aux_test_frame.loc[sig_test_slice].reset_index(drop=True)
-            # bkg_aux_test_frame = bkg_aux_test_frame.loc[bkg_test_slice].reset_index(drop=True)
+                train_dict_of_dfs[sample_name].loc[train_slice, keep_cols].reset_index(drop=True)
+                train_dict_of_aux_dfs[sample_name].loc[train_slice].reset_index(drop=True)
+
+                test_dict_of_dfs[sample_name].loc[keep_cols].reset_index(drop=True)
+                # test_dict_of_dfs[sample_name].loc[test_slice, keep_cols].reset_index(drop=True)
+                # test_dict_of_aux_dfs[sample_name].loc[test_slice].reset_index(drop=True)
 
             for var in dont_include_vars:
                 high_level_fields.remove(var)
         ## End further selection for lepton-veto check ##
-
 
         # Perform the standardization #
         no_standardize = {
@@ -204,9 +178,16 @@ def process_data(
                 df.loc[mask, field] = np.exp(df.loc[mask, field])
 
             return df
+
+        # This sorting needs to be done to ensure we're always making the data structures with the same position/label for each class.
+        if order is None:
+            sample_names = [sample_name for sample_name in train_dict_of_dfs.keys()]
+            sample_names.sort()
+        else:
+            sample_names = order
         
         # Because of zero-padding, standardization needs special treatment
-        df_train = pd.concat([sig_train_frame, bkg_train_frame], ignore_index=True)
+        df_train = pd.concat([train_dict_of_dfs[sample_name] for sample_name in sample_names], ignore_index=True)
         df_train = df_train.sample(frac=1, random_state=seed).reset_index(drop=True)
         df_train = apply_log_and_exp(copy.deepcopy(df_train))
         masked_x_sample = np.ma.array(df_train, mask=(df_train == FILL_VALUE))
@@ -217,81 +198,88 @@ def process_data(
                 x_mean[i] = 0
                 x_std[i] = 1
 
-        # Standardize background
-        normed_bkg_train_frame = apply_log_and_exp(copy.deepcopy(bkg_train_frame))
-        normed_bkg_train = (np.ma.array(normed_bkg_train_frame, mask=(normed_bkg_train_frame == FILL_VALUE)) - x_mean)/x_std
-        normed_bkg_test_frame = apply_log_and_exp(copy.deepcopy(bkg_test_frame))
-        normed_bkg_test = (np.ma.array(normed_bkg_test_frame, mask=(normed_bkg_test_frame == FILL_VALUE)) - x_mean)/x_std
-        normed_bkg_train_frame = pd.DataFrame(normed_bkg_train.filled(FILL_VALUE), columns=list(bkg_train_frame))
-        normed_bkg_test_frame = pd.DataFrame(normed_bkg_test.filled(FILL_VALUE), columns=list(bkg_test_frame))
+        # Standardize samples
+        std_train_dict_of_dfs, std_test_dict_of_dfs = {}, {}
+        for sample_name in sample_names:
+            std_train_df = apply_log_and_exp(copy.deepcopy(train_dict_of_dfs[sample_name]))
+            normed_train = (np.ma.array(std_train_df, mask=(std_train_df == FILL_VALUE)) - x_mean)/x_std
+            std_train_dict_of_dfs[sample_name] = pd.DataFrame(normed_train.filled(FILL_VALUE), columns=list(df_train))
 
-        # Standardize signal
-        normed_sig_train_frame = apply_log_and_exp(copy.deepcopy(sig_train_frame))
-        normed_sig_train = (np.ma.array(normed_sig_train_frame, mask=(normed_sig_train_frame == FILL_VALUE)) - x_mean)/x_std
-        normed_sig_test_frame = apply_log_and_exp(copy.deepcopy(sig_test_frame))
-        normed_sig_test = (np.ma.array(normed_sig_test_frame, mask=(normed_sig_test_frame == FILL_VALUE)) - x_mean)/x_std
-        normed_sig_train_frame = pd.DataFrame(normed_sig_train.filled(FILL_VALUE), columns=list(sig_train_frame))
-        normed_sig_test_frame = pd.DataFrame(normed_sig_test.filled(FILL_VALUE), columns=list(sig_test_frame))
+            std_test_df = apply_log_and_exp(copy.deepcopy(test_dict_of_dfs[sample_name]))
+            normed_test = (np.ma.array(std_test_df, mask=(std_test_df == FILL_VALUE)) - x_mean)/x_std
+            std_test_dict_of_dfs[sample_name] = pd.DataFrame(normed_test.filled(FILL_VALUE), columns=list(df_train))
 
         standardized_to_json = {
+            'standardized_logs': [True if col in log_fields else False for col in df_train.columns],
+            'standardized_exps': [True if col in exp_fields else False for col in df_train.columns],
             'standardized_variables': [col for col in df_train.columns],
             'standardized_mean': [float(mean) for mean in x_mean],
-            'standardized_stddev': [float(std) for std in x_std],
-            'standardized_unphysical_values': [float(FILL_VALUE) for _ in x_mean]
+            'standardized_stddev': [float(std) for std in x_std]
         }
-        with open(output_dirpath + 'standardization.json', 'w') as f:
+        with open(os.path.join(output_dirpath, f'MultiBDT_{fold}_standardization.json'), 'w') as f:
             json.dump(standardized_to_json, f)
 
-
-        normed_sig_hlf = normed_sig_train_frame.values
-        normed_sig_test_hlf = normed_sig_test_frame.values
-
-        column_list = [col_name for col_name in normed_sig_test_frame.columns]
+        column_list = [col_name for col_name in df_train.columns]
         hlf_vars_columns = {col_name: i for i, col_name in enumerate(column_list)}
 
-        normed_bkg_hlf = normed_bkg_train_frame.values
-        normed_bkg_test_hlf = normed_bkg_test_frame.values
 
-        sig_label = np.ones(len(normed_sig_hlf))
-        bkg_label = np.zeros(len(normed_bkg_hlf))
-        sig_test_label = np.ones(len(normed_sig_test_hlf))
-        bkg_test_label = np.zeros(len(normed_bkg_test_hlf))
+        # Build pre-std DF
+        train_df = pd.concat([train_dict_of_dfs[sample_name] for sample_name in sample_names], ignore_index=True)
+        train_aux_df = pd.concat([train_dict_of_aux_dfs[sample_name] for sample_name in sample_names], ignore_index=True)
+        test_df = pd.concat([test_dict_of_dfs[sample_name] for sample_name in sample_names], ignore_index=True)
+        test_aux_df = pd.concat([test_dict_of_aux_dfs[sample_name] for sample_name in sample_names], ignore_index=True)
 
-        # Build train data arrays
-        data_hlf = np.concatenate((normed_sig_hlf, normed_bkg_hlf))
-        label = np.concatenate((sig_label, bkg_label))
+    
+        def get_labels():
+            if len(filepaths_dict) > 2:
+                train_labels, test_labels = [], []
+                for i, sample_name in enumerate(sample_names):
+                    sample_label = [0 if j != i else 1 for j in range(len(sample_names))]
+                    train_labels.append(np.tile(sample_label, (np.shape(std_train_data)[0], 1)))
+                    test_labels.append(np.tile(sample_label, (np.shape(std_test_data)[0], 1)))
+            else:
+                train_labels, test_labels = [], []
+                for i, sample_name in enumerate(sample_names):
+                    train_labels.append(np.ones(np.shape(std_train_data)[0]) if i == 0 else np.zeros(np.shape(std_train_data)[0]))
+                    test_labels.append(np.ones(np.shape(std_test_data)[0]) if i == 0 else np.zeros(np.shape(std_test_data)[0]))
+
+            return np.concatenate(train_labels), np.concatenate(test_labels)
+
+        # Build data arrays
+        std_train_data = pd.concat([std_train_dict_of_dfs[sample_name] for sample_name in sample_names], ignore_index=True).values
+        std_test_data = pd.concat([std_test_dict_of_dfs[sample_name] for sample_name in sample_names], ignore_index=True).values
+        # Build labels
+        train_labels, test_labels = get_labels()
+
         # Shuffle train arrays
-        p = rng.permutation(len(data_hlf))
-        data_hlf, label = data_hlf[p], label[p]
-        # Build and shuffle train DFs
-        data_df = pd.concat([sig_train_frame, bkg_train_frame], ignore_index=True)
-        data_df = (data_df.reindex(p)).reset_index(drop=True)
-        data_aux = pd.concat([sig_aux_train_frame, bkg_aux_train_frame], ignore_index=True)
-        data_aux = (data_aux.reindex(p)).reset_index(drop=True)
-        print("Data HLF: {}".format(data_hlf.shape))
-        print(f"n signal = {len(label[label == 1])}, n bkg = {len(label[label == 0])}")
+        p = rng.permutation(len(std_train_data))
+        std_train_data, train_labels = std_train_data[p], train_labels[p]
+        # Shuffle train DFs
+        train_df = (train_df.reindex(p)).reset_index(drop=True)
+        train_aux_df = (train_aux_df.reindex(p)).reset_index(drop=True)
+        print("Data HLF: {}".format(std_train_data.shape))
+        for sample_name in sample_names:
+            print(f"num {sample_name} = {np.shape(std_train_dict_of_dfs[sample_name].values)[0]}")
+        # print(f"n signal = {len(label[label == 1])}, n bkg = {len(label[label == 0])}")
 
-        # Build test data arrays
-        data_hlf_test = np.concatenate((normed_sig_test_hlf, normed_bkg_test_hlf))
-        label_test = np.concatenate((sig_test_label, bkg_test_label))
         # Shuffle test arrays
-        p_test = rng.permutation(len(data_hlf_test))
-        data_hlf_test, label_test = data_hlf_test[p_test], label_test[p_test]
+        p_test = rng.permutation(len(std_test_data))
+        std_test_data, test_labels = std_test_data[p_test], test_labels[p_test]
         # Build and shuffle test DFs
-        data_test_df = pd.concat([sig_test_frame, bkg_test_frame], ignore_index=True)
-        data_test_df = (data_test_df.reindex(p_test)).reset_index(drop=True)
-        data_test_aux = pd.concat([sig_aux_test_frame, bkg_aux_test_frame], ignore_index=True)
-        data_test_aux = (data_test_aux.reindex(p_test)).reset_index(drop=True)
-        print("Data HLF test: {}".format(data_hlf_test.shape))
-        print(f"n signal = {len(label_test[label_test == 1])}, n bkg = {len(label_test[label_test == 0])}")
+        test_df = (test_df.reindex(p_test)).reset_index(drop=True)
+        test_aux_df = (test_aux_df.reindex(p_test)).reset_index(drop=True)
+        print("Data HLF test: {}".format(std_test_data.shape))
+        for sample_name in sample_names:
+            print(f"num {sample_name} = {np.shape(std_test_dict_of_dfs[sample_name].values)[0]}")
+        # print(f"n signal = {len(label_test[label_test == 1])}, n bkg = {len(label_test[label_test == 0])}")
 
         if not k_fold_test:
             return (
-                data_df, data_test_df, 
-                data_hlf, label, 
-                data_hlf_test, label_test, 
+                train_df, test_df, 
+                std_train_data, train_labels, 
+                std_test_data, test_labels, 
                 high_level_fields, high_level_fields, hlf_vars_columns,
-                data_aux, data_test_aux
+                train_aux_df, test_aux_df
             )
         elif k_fold_test and fold == 0:
             (
@@ -301,11 +289,11 @@ def process_data(
                 full_high_level_fields, full_input_hlf_vars, full_hlf_vars_columns,
                 full_data_aux, full_data_test_aux
             ) = (
-                {f'fold_{0}': copy.deepcopy(data_df)}, {f'fold_{0}': copy.deepcopy(data_test_df)}, 
-                {f'fold_{0}': copy.deepcopy(data_hlf)}, {f'fold_{0}': copy.deepcopy(label)}, 
-                {f'fold_{0}': copy.deepcopy(data_hlf_test)}, {f'fold_{0}': copy.deepcopy(label_test)}, 
+                {f'fold_{0}': copy.deepcopy(train_df)}, {f'fold_{0}': copy.deepcopy(test_df)}, 
+                {f'fold_{0}': copy.deepcopy(std_train_data)}, {f'fold_{0}': copy.deepcopy(train_labels)}, 
+                {f'fold_{0}': copy.deepcopy(std_test_data)}, {f'fold_{0}': copy.deepcopy(test_labels)}, 
                 {f'fold_{0}': copy.deepcopy(high_level_fields)}, {f'fold_{0}': copy.deepcopy(high_level_fields)}, {f'fold_{0}': copy.deepcopy(hlf_vars_columns)},
-                {f'fold_{0}': copy.deepcopy(data_aux)}, {f'fold_{0}': copy.deepcopy(data_test_aux)}
+                {f'fold_{0}': copy.deepcopy(train_aux_df)}, {f'fold_{0}': copy.deepcopy(test_aux_df)}
             )
         else:
             (
@@ -315,11 +303,11 @@ def process_data(
                 full_high_level_fields[f'fold_{fold}'], full_input_hlf_vars[f'fold_{fold}'], full_hlf_vars_columns[f'fold_{fold}'],
                 full_data_aux[f'fold_{fold}'], full_data_test_aux[f'fold_{fold}']
             ) = (
-                copy.deepcopy(data_df), copy.deepcopy(data_test_df), 
-                copy.deepcopy(data_hlf), copy.deepcopy(label), 
-                copy.deepcopy(data_hlf_test), copy.deepcopy(label_test), 
+                copy.deepcopy(train_df), copy.deepcopy(test_df), 
+                copy.deepcopy(std_train_data), copy.deepcopy(train_labels), 
+                copy.deepcopy(std_test_data), copy.deepcopy(test_labels), 
                 copy.deepcopy(high_level_fields), copy.deepcopy(high_level_fields), copy.deepcopy(hlf_vars_columns),
-                copy.deepcopy(data_aux), copy.deepcopy(data_test_aux)
+                copy.deepcopy(train_aux_df), copy.deepcopy(test_aux_df)
             )
 
             if k_fold_test and fold == (mod_vals[0] - 1):
