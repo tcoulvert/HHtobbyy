@@ -6,6 +6,7 @@ import os
 import re
 
 import awkward as ak
+import numpy as np
 import pyarrow.parquet as pq
 import vector as vec
 vec.register_awkward()
@@ -305,11 +306,13 @@ def add_ttH_vars(sample):
     # photon variables
     sample['lead_pt_over_Mgg'] = sample['lead_pt'] / sample['mass']
     sample['sublead_pt_over_Mgg'] = sample['sublead_pt'] / sample['mass']
-    sample['lead_sigmaE_over_E'] = sample['lead_energyErr'] / sample['lead_energyRaw']
-    sample['sublead_sigmaE_over_E'] = sample['sublead_energyErr'] / sample['sublead_energyRaw']
+    sample['lead_sigmaE_over_E'] = sample['lead_energyErr'] / (sample['lead_pt'] * np.cosh(sample['lead_eta']))
+    sample['sublead_sigmaE_over_E'] = sample['sublead_energyErr'] / (sample['sublead_pt'] * np.cosh(sample['sublead_eta']))
     # bjet variables
     sample['lead_bjet_pt_over_Mjj'] = sample['lead_bjet_pt'] / sample['dijet_mass']
     sample['sublead_bjet_pt_over_Mjj'] = sample['sublead_bjet_pt'] / sample['dijet_mass']
+    sample['lead_bjet_sigmapT_over_pT'] = sample['lead_bjet_PNetRegPtRawRes'] / sample['lead_bjet_pt']
+    sample['sublead_bjet_sigmapT_over_pT'] = sample['sublead_bjet_PNetRegPtRawRes'] / sample['sublead_bjet_pt']
     # diphoton, dijet variables
     sample['dipho_mass_over_Mggjj'] = sample['mass'] / sample['HHbbggCandidate_mass']
     sample['dijet_mass_over_Mggjj'] = sample['dijet_mass'] / sample['HHbbggCandidate_mass']
@@ -446,7 +449,7 @@ def main():
                 print('======================== \n', dir_name)
                 run_samples['run_samples_list'].append(dir_name)
                 with open(LPC_FILEPREFIX+'/'+data_era+'/completed_samples.json', 'w') as f:
-                     json.dump(run_samples, f)
+                    json.dump(run_samples, f)
 
 
 if __name__ == '__main__':

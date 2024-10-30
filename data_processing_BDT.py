@@ -13,6 +13,8 @@ import awkward as ak
 
 import matplotlib.pyplot as plt
 
+FILL_VALUE = -999
+
 def process_data(
     signal_filepaths, bkg_filepaths, output_dirpath, 
     seed=None, mod_vals=(2, 2), k_fold_test=False
@@ -54,6 +56,7 @@ def process_data(
         'lead_sigmaE_over_E', 'sublead_sigmaE_over_E',
         'lead_bjet_pt_over_Mgg', 'sublead_bjet_pt_over_Mgg',
         'lead_bjet_btagPNetB', 'sublead_bjet_btagPNetB',
+        'lead_bjet_sigmapT_over_pT', 'sublead_bjet_sigmapT_over_pT',
         'dipho_mass_over_Mggjj', 'dijet_mass_over_Mggjj',
         # My variables for non-reso reduction #
         'lead_pfRelIso03_all_quadratic', 'sublead_pfRelIso03_all_quadratic',
@@ -91,7 +94,7 @@ def process_data(
         }
         # Compute bool for easy lepton-veto checks
         for old_field, new_field in [('lepton1_pt', 'lepton1_bool'), ('lepton2_pt', 'lepton2_bool')]:
-            pandas_aux_samples[sample_name][new_field] = copy.deepcopy(pandas_aux_samples[sample_name][old_field] >= 0)
+            pandas_aux_samples[sample_name][new_field] = copy.deepcopy(pandas_aux_samples[sample_name][old_field] != FILL_VALUE)
             del pandas_aux_samples[sample_name][old_field]
 
     sig_frame = pd.DataFrame(pandas_samples['sig'])
@@ -181,22 +184,32 @@ def process_data(
             'CosThetaStar_gg',
             'lead_bjet_btagPNetB', 'sublead_bjet_btagPNetB',
         }
-        def apply_log(df):
-            log_fields = {
-                'puppiMET_sumEt', 'puppiMET_pt', # MET variables
-                'chi_t0', 'chi_t1', # jet variables
-                'lepton1_pt' ,'lepton2_pt', 'pt', # lepton and diphoton pt
-                'lead_bjet_pt', 'sublead_bjet_pt', # bjet pts
-                'dijet_mass', # mass of b-dijet (resonance for H->bb)
-            }
+        log_fields = {
+            'puppiMET_sumEt', 'puppiMET_pt', # MET variables
+            'chi_t0', 'chi_t1', # jet variables
+            'lepton1_pt' ,'lepton2_pt', 'pt', # lepton and diphoton pt
+            'lead_bjet_pt', 'sublead_bjet_pt', # bjet pts
+            'dijet_mass', # mass of b-dijet (resonance for H->bb)
+        }
+        exp_fields = {
+            'lead_sigmaE_over_E', 'sublead_sigmaE_over_E',
+            'lead_bjet_sigmapT_over_pT', 'sublead_bjet_sigmapT_over_pT',
+        }
+        def apply_log_and_exp(df):
             for field in log_fields & high_level_fields:
-                df[field] = np.where(df[field] > 0, np.log(df[field]), df[field])
+                mask = (df.loc[:, field].to_numpy() > 0)
+                df.loc[mask, field] = np.log(df[mask, field])
+
+            for field in exp_fields & high_level_fields:
+                mask = (df.loc[:, field].to_numpy() != FILL_VALUE)
+                df.loc[mask, field] = np.exp(df.loc[mask, field])
+
             return df
-        FILL_VALUE = -999
+        
         # Because of zero-padding, standardization needs special treatment
         df_train = pd.concat([sig_train_frame, bkg_train_frame], ignore_index=True)
         df_train = df_train.sample(frac=1, random_state=seed).reset_index(drop=True)
-        df_train = apply_log(copy.deepcopy(df_train))
+        df_train = apply_log_and_exp(copy.deepcopy(df_train))
         masked_x_sample = np.ma.array(df_train, mask=(df_train == FILL_VALUE))
         x_mean = masked_x_sample.mean(axis=0)
         x_std = masked_x_sample.std(axis=0)
@@ -206,17 +219,17 @@ def process_data(
                 x_std[i] = 1
 
         # Standardize background
-        normed_bkg_train_frame = apply_log(copy.deepcopy(bkg_train_frame))
+        normed_bkg_train_frame = apply_log_and_exp(copy.deepcopy(bkg_train_frame))
         normed_bkg_train = (np.ma.array(normed_bkg_train_frame, mask=(normed_bkg_train_frame == FILL_VALUE)) - x_mean)/x_std
-        normed_bkg_test_frame = apply_log(copy.deepcopy(bkg_test_frame))
+        normed_bkg_test_frame = apply_log_and_exp(copy.deepcopy(bkg_test_frame))
         normed_bkg_test = (np.ma.array(normed_bkg_test_frame, mask=(normed_bkg_test_frame == FILL_VALUE)) - x_mean)/x_std
         normed_bkg_train_frame = pd.DataFrame(normed_bkg_train.filled(FILL_VALUE), columns=list(bkg_train_frame))
         normed_bkg_test_frame = pd.DataFrame(normed_bkg_test.filled(FILL_VALUE), columns=list(bkg_test_frame))
 
         # Standardize signal
-        normed_sig_train_frame = apply_log(copy.deepcopy(sig_train_frame))
+        normed_sig_train_frame = apply_log_and_exp(copy.deepcopy(sig_train_frame))
         normed_sig_train = (np.ma.array(normed_sig_train_frame, mask=(normed_sig_train_frame == FILL_VALUE)) - x_mean)/x_std
-        normed_sig_test_frame = apply_log(copy.deepcopy(sig_test_frame))
+        normed_sig_test_frame = apply_log_and_exp(copy.deepcopy(sig_test_frame))
         normed_sig_test = (np.ma.array(normed_sig_test_frame, mask=(normed_sig_test_frame == FILL_VALUE)) - x_mean)/x_std
         normed_sig_train_frame = pd.DataFrame(normed_sig_train.filled(FILL_VALUE), columns=list(sig_train_frame))
         normed_sig_test_frame = pd.DataFrame(normed_sig_test.filled(FILL_VALUE), columns=list(sig_test_frame))
