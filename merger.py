@@ -339,14 +339,14 @@ def add_ttH_vars(sample):
 
 def main():
     dir_lists = {
-        # 'Run3_2022preEE': None,
-        'Run3_2022postEE': None
+        'Run3_2022preEE': None,
+        # 'Run3_2022postEE': None
     }
     # set of all the preEE and postEE extra directories that don't contain parquet files
     non_parquet_set = {
-            'json_files', 'resonant_incomplete', 'ReadMe.md~~', 'ReadMe.md~', 'ReadMe.md', 
-            'ReadMe_m.swp', 'ReadMe_m.swn', 'ReadMe_m.swm', 'ReadMe_m.swo', '.ReadMe.md.swp', '.ReadMe.md.swx',
-            'completed_samples.json'
+        'json_files', 'resonant_incomplete', 'ReadMe.md~~', 'ReadMe.md~', 'ReadMe.md', 
+        'ReadMe_m.swp', 'ReadMe_m.swn', 'ReadMe_m.swm', 'ReadMe_m.swo', '.ReadMe.md.swp', '.ReadMe.md.swx',
+        'completed_samples.json'
     }
     
     for data_era in dir_lists.keys():
@@ -380,7 +380,7 @@ def main():
 
     # MC Era: total era luminosity [fb^-1] #
     luminosities = {
-        # 'Run3_2022preEE': 7.9804, 
+        'Run3_2022preEE': 7.9804, 
         'Run3_2022postEE': 26.6717
     }
     
