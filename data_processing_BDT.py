@@ -51,7 +51,7 @@ def process_data(
         'lead_bjet_sigmapT_over_pT', 'sublead_bjet_sigmapT_over_pT',
         'dipho_mass_over_Mggjj', 'dijet_mass_over_Mggjj',
         # My variables for non-reso reduction #
-        'lead_pfRelIso03_all_quadratic', 'sublead_pfRelIso03_all_quadratic',
+        # 'lead_pfRelIso03_all_quadratic', 'sublead_pfRelIso03_all_quadratic',
     }
     if re.search('two_lepton_veto', output_dirpath) is not None:
         dont_include_vars = [
@@ -233,8 +233,8 @@ def process_data(
                 train_labels, test_labels = [], []
                 for i, sample_name in enumerate(sample_names):
                     sample_label = [0 if j != i else 1 for j in range(len(sample_names))]
-                    train_labels.append(np.tile(sample_label, (np.shape(std_train_data)[0], 1)))
-                    test_labels.append(np.tile(sample_label, (np.shape(std_test_data)[0], 1)))
+                    train_labels.append(np.tile(sample_label, (np.shape(std_train_dict_of_dfs[sample_name])[0], 1)))
+                    test_labels.append(np.tile(sample_label, (np.shape(std_test_dict_of_dfs[sample_name])[0], 1)))
             else:
                 train_labels, test_labels = [], []
                 for i, sample_name in enumerate(sample_names):
