@@ -16,7 +16,7 @@ FILL_VALUE = -999
 
 def process_data(
     filepaths_dict, output_dirpath, order=None,
-    seed=None, mod_vals=(2, 2), k_fold_test=False
+    seed=None, mod_vals=(2, 2), k_fold_test=False, save=True
 ):
     # Load parquet files #
     samples = {}
@@ -214,8 +214,9 @@ def process_data(
             'standardized_mean': [float(mean) for mean in x_mean],
             'standardized_stddev': [float(std) for std in x_std]
         }
-        with open(os.path.join(output_dirpath, f'MultiBDT_{fold}_standardization.json'), 'w') as f:
-            json.dump(standardized_to_json, f)
+        if save:
+            with open(os.path.join(output_dirpath, f'MultiBDT_{fold}_standardization.json'), 'w') as f:
+                json.dump(standardized_to_json, f)
 
         column_list = [col_name for col_name in df_train.columns]
         hlf_vars_columns = {col_name: i for i, col_name in enumerate(column_list)}
@@ -276,7 +277,7 @@ def process_data(
                 train_df, test_df, 
                 std_train_data, train_labels, 
                 std_test_data, test_labels, 
-                high_level_fields, high_level_fields, hlf_vars_columns,
+                hlf_vars_columns,
                 train_aux_df, test_aux_df
             )
         elif k_fold_test and fold == 0:
@@ -284,13 +285,13 @@ def process_data(
                 full_data_df, full_data_test_df, 
                 full_data_hlf, full_label, 
                 full_data_hlf_test, full_label_test, 
-                full_high_level_fields, full_input_hlf_vars, full_hlf_vars_columns,
+                full_hlf_vars_columns,
                 full_data_aux, full_data_test_aux
             ) = (
                 {f'fold_{0}': copy.deepcopy(train_df)}, {f'fold_{0}': copy.deepcopy(test_df)}, 
                 {f'fold_{0}': copy.deepcopy(std_train_data)}, {f'fold_{0}': copy.deepcopy(train_labels)}, 
                 {f'fold_{0}': copy.deepcopy(std_test_data)}, {f'fold_{0}': copy.deepcopy(test_labels)}, 
-                {f'fold_{0}': copy.deepcopy(high_level_fields)}, {f'fold_{0}': copy.deepcopy(high_level_fields)}, {f'fold_{0}': copy.deepcopy(hlf_vars_columns)},
+                {f'fold_{0}': copy.deepcopy(hlf_vars_columns)},
                 {f'fold_{0}': copy.deepcopy(train_aux_df)}, {f'fold_{0}': copy.deepcopy(test_aux_df)}
             )
         else:
@@ -298,13 +299,13 @@ def process_data(
                 full_data_df[f'fold_{fold}'], full_data_test_df[f'fold_{fold}'], 
                 full_data_hlf[f'fold_{fold}'], full_label[f'fold_{fold}'], 
                 full_data_hlf_test[f'fold_{fold}'], full_label_test[f'fold_{fold}'], 
-                full_high_level_fields[f'fold_{fold}'], full_input_hlf_vars[f'fold_{fold}'], full_hlf_vars_columns[f'fold_{fold}'],
+                full_hlf_vars_columns[f'fold_{fold}'],
                 full_data_aux[f'fold_{fold}'], full_data_test_aux[f'fold_{fold}']
             ) = (
                 copy.deepcopy(train_df), copy.deepcopy(test_df), 
                 copy.deepcopy(std_train_data), copy.deepcopy(train_labels), 
                 copy.deepcopy(std_test_data), copy.deepcopy(test_labels), 
-                copy.deepcopy(high_level_fields), copy.deepcopy(high_level_fields), copy.deepcopy(hlf_vars_columns),
+                copy.deepcopy(hlf_vars_columns),
                 copy.deepcopy(train_aux_df), copy.deepcopy(test_aux_df)
             )
 
@@ -313,7 +314,7 @@ def process_data(
                     full_data_df, full_data_test_df, 
                     full_data_hlf, full_label, 
                     full_data_hlf_test, full_label_test, 
-                    full_high_level_fields, full_input_hlf_vars, full_hlf_vars_columns,
+                    full_hlf_vars_columns,
                     full_data_aux, full_data_test_aux
                 )
 
