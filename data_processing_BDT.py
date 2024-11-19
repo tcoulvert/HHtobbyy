@@ -256,9 +256,9 @@ def process_data(
         # Shuffle train DFs
         train_df = (train_df.reindex(p)).reset_index(drop=True)
         train_aux_df = (train_aux_df.reindex(p)).reset_index(drop=True)
-        print("Data HLF: {}".format(std_train_data.shape))
-        for sample_name in sample_names:
-            print(f"num {sample_name} = {np.shape(std_train_dict_of_dfs[sample_name].values)[0]}")
+        # print("Data HLF: {}".format(std_train_data.shape))
+        # for sample_name in sample_names:
+        #     print(f"num {sample_name} = {np.shape(std_train_dict_of_dfs[sample_name].values)[0]}")
         # print(f"n signal = {len(label[label == 1])}, n bkg = {len(label[label == 0])}")
 
         # Shuffle test arrays
@@ -267,9 +267,9 @@ def process_data(
         # Build and shuffle test DFs
         test_df = (test_df.reindex(p_test)).reset_index(drop=True)
         test_aux_df = (test_aux_df.reindex(p_test)).reset_index(drop=True)
-        print("Data HLF test: {}".format(std_test_data.shape))
-        for sample_name in sample_names:
-            print(f"num {sample_name} = {np.shape(std_test_dict_of_dfs[sample_name].values)[0]}")
+        # print("Data HLF test: {}".format(std_test_data.shape))
+        # for sample_name in sample_names:
+        #     print(f"num {sample_name} = {np.shape(std_test_dict_of_dfs[sample_name].values)[0]}")
         # print(f"n signal = {len(label_test[label_test == 1])}, n bkg = {len(label_test[label_test == 0])}")
 
         if not k_fold_test:
