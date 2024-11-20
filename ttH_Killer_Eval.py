@@ -302,6 +302,7 @@ def main():
         data_list, data_hlf, data_aux = process_data(sample, std_dict_filepath_list, nFolds=len(model_filepath_list))
 
         preds = evaluate(data_list, data_hlf, best_conf, model_filepath_list)
+        print(ak.Array(preds).type.show())
 
         sample['ttH_killer_preds'] = ak.concatenate([np.exp(preds[fold_idx])[:, 1] for fold_idx in range(len(data_aux))])
 
