@@ -293,7 +293,7 @@ def add_ttH_vars(sample):
         sample[f'sublead_muon_{var}'] = sublead_lepton_var(sample, 4, 2, sample[f'lead_muon_{var}'], var)
 
     # n_leptons #
-    sample['n_leptons'] = n_leptons(sample, 1) == -999
+    sample['n_leptons'] = n_leptons(sample, 1)
     sample['n_leptons'] = ak.where(sample['n_leptons'] == -999, 0, sample['n_leptons'])
 
     # bool values #

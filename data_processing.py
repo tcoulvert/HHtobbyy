@@ -81,7 +81,8 @@ def data_list_index_map(variable_name, data_list, event_mask, n_pFields=7):
 def process_data(
     n_particles, n_particle_fields, 
     signal_filepaths, bkg_filepaths, output_dirpath,
-    seed=None, mod_vals=(2, 2), k_fold_test=False
+    seed=None, mod_vals=(2, 2), k_fold_test=False,
+    save_std=False
 ):
     # Load parquet files #
     
@@ -93,8 +94,6 @@ def process_data(
         'sig': sig_samples_pq,
         'bkg': bkg_samples_pq,
     }
-    for sample in samples.values():
-        sample['n_leptons'] = ak.where(sample['n_leptons'] == -999, ak.zeros_like(sample['n_leptons']), sample['n_leptons'])
     
     # Convert parquet files to pandas DFs #
     pandas_samples = {}
@@ -186,7 +185,6 @@ def process_data(
     extra_RNN_vars.sort()
     dont_include_vars.sort()
 
-
     pandas_aux_samples = {}
     high_level_aux_fields = {
         'event', # event number
@@ -246,6 +244,7 @@ def process_data(
             bkg_train_frame, bkg_test_frame,
             bkg_aux_train_frame, bkg_aux_test_frame
         ) = train_test_split_df(sig_frame, sig_aux_frame, bkg_frame, bkg_aux_frame, dataset_num=fold)
+
 
         ## Further selection for lepton-veto check ##
         if len(dont_include_vars) > 0:
@@ -352,8 +351,9 @@ def process_data(
             'standardized_stddev': [float(std) for std in x_std],
             'standardized_unphysical_values': [float(min_mean) for min_mean in train_pad]
         }
-        with open(os.path.join(output_dirpath, f'ttH_Killer_IN_{fold}_standardization.json'), 'w') as f:
-            json.dump(standardized_to_json, f)
+        if save_std:
+            with open(os.path.join(output_dirpath, f'ttH_Killer_IN_{fold}_standardization.json'), 'w') as f:
+                json.dump(standardized_to_json, f)
 
         def to_p_list(data_frame):
             # Inputs: Pandas data frame
