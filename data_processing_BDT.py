@@ -56,7 +56,11 @@ def process_data(
         'lead_bjet_sigmapT_over_pT', 'sublead_bjet_sigmapT_over_pT',
         'dipho_mass_over_Mggjj', 'dijet_mass_over_Mggjj',
         # My variables for non-reso reduction #
-        # 'lead_pfRelIso03_all_quadratic', 'sublead_pfRelIso03_all_quadratic',
+        'lead_pfRelIso03_all_quadratic', 'sublead_pfRelIso03_all_quadratic',
+        # Michael's DNN variables #
+        'DeltaR_j1g1', 'DeltaR_j1g2', 'DeltaR_j2g1', 'DeltaR_j2g2',
+        'HHbbggCandidate_pt', 'HHbbggCandidate_eta', 'HHbbggCandidate_phi',
+        'HHbbggCandidate_mass',
     }
     if re.search('two_lepton_veto', output_dirpath) is not None:
         dont_include_vars = [
@@ -159,6 +163,8 @@ def process_data(
             'lead_mvaID', 'sublead_mvaID',
             'CosThetaStar_gg',
             'lead_bjet_btagPNetB', 'sublead_bjet_btagPNetB',
+            # Michael's DNN variables #
+            'HHbbggCandidate_eta', 'HHbbggCandidate_phi',
         }
         log_fields = {
             'puppiMET_sumEt', 'puppiMET_pt', # MET variables
@@ -166,6 +172,7 @@ def process_data(
             'lepton1_pt' ,'lepton2_pt', 'pt', # lepton and diphoton pt
             'lead_bjet_pt', 'sublead_bjet_pt', # bjet pts
             'dijet_mass', # mass of b-dijet (resonance for H->bb)
+            'HHbbggCandidate_pt', 'HHbbggCandidate_mass'  # HH object fields
         }
         exp_fields = {
             'lead_sigmaE_over_E', 'sublead_sigmaE_over_E',
