@@ -26,7 +26,7 @@ def process_data(
 
     # Rescale factor for sig and bkg samples
     sum_of_sig = np.sum(samples[order[0]]['eventWeight'])
-    sum_of_bkg = np.sum([samples[order[i]]['eventWeight'] for i in range(1, len(order))])
+    sum_of_bkg = np.sum(np.concatenate([samples[order[i]]['eventWeight'] for i in range(1, len(order))], axis=0), axis=None)
     sig_rescale_factor = sum_of_bkg / sum_of_sig
     
     # Convert parquet files to pandas DFs #
