@@ -23,6 +23,11 @@ def process_data(
     for sample_name, sample_filepaths in filepaths_dict.items():
         sample_list = [ak.from_parquet(glob.glob(dir_path)) for dir_path in sample_filepaths]
         samples[sample_name] = ak.concatenate(sample_list)
+
+    # Rescale factor for sig and bkg samples
+    sum_of_sig = np.sum(samples[order[0]]['eventWeight'])
+    sum_of_bkg = np.sum([samples[order[i]]['eventWeight'] for i in range(1, len(order))])
+    sig_rescale_factor = sum_of_bkg / sum_of_sig
     
     # Convert parquet files to pandas DFs #
     pandas_samples = {}
@@ -274,6 +279,7 @@ def process_data(
 
         if not k_fold_test:
             return (
+                sig_rescale_factor,
                 train_df, test_df, 
                 std_train_data, train_labels, 
                 std_test_data, test_labels, 
@@ -311,6 +317,7 @@ def process_data(
 
             if k_fold_test and fold == (mod_vals[0] - 1):
                 return (
+                    sig_rescale_factor,
                     full_data_df, full_data_test_df, 
                     full_data_hlf, full_label, 
                     full_data_hlf_test, full_label_test, 
