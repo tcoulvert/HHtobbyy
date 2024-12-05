@@ -20,8 +20,8 @@ from ParticleHLF import ParticleHLF
 from train import train
 
 def optimize_hyperparams_RR(
-        data_list_dict, data_hlf_dict, label_dict, weight_dict, config_filename, NUM_EPOCHS=100, SEED=21
-    ):
+    data_list_dict, data_hlf_dict, label_dict, weight_dict, config_filename, NUM_EPOCHS=100, SEED=21
+):
     space  = [
         Integer(1, 10, name='hidden_layers'),
         Integer(10, 500, name='initial_nodes'),
