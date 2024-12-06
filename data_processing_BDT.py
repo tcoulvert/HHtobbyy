@@ -63,17 +63,44 @@ def process_data(
         'HHbbggCandidate_mass',
     }
     if re.search('two_lepton_veto', output_dirpath) is not None:
-        dont_include_vars = [
+        dont_include_vars.extend([
             'lepton2_pt', 'lepton2_eta', 'lepton2_phi', 
             'leadBjet_subleadLepton', 'subleadBjet_subleadLepton',
-        ]
+        ])
     elif re.search('one_lepton_veto', output_dirpath) is not None:
-        dont_include_vars = [
+        dont_include_vars.extend([
             'lepton1_pt', 'lepton1_eta', 'lepton1_phi', 
             'leadBjet_leadLepton', 'subleadBjet_leadLepton',
             'lepton2_pt', 'lepton2_eta', 'lepton2_phi', 
             'leadBjet_subleadLepton', 'subleadBjet_subleadLepton',
-        ]
+        ])
+    if re.search('no_photonIso', output_dirpath) is not None:
+        dont_include_vars.extend([
+            'DeltaR_j1g1', 'DeltaR_j1g2', 'DeltaR_j2g1', 'DeltaR_j2g2', 'DeltaR_jg_min',
+            'lead_pfRelIso03_all_quadratic', 'sublead_pfRelIso03_all_quadratic',
+        ])
+    if re.search('no_HH', output_dirpath) is not None:
+        dont_include_vars.extend([
+            'HHbbggCandidate_pt', 'HHbbggCandidate_eta', 'HHbbggCandidate_phi',
+        ])
+    if re.search('no_leptonIso', output_dirpath) is not None:
+        dont_include_vars.extend([
+            'leadBjet_leadLepton', 'leadBjet_subleadLepton',
+            'subleadBjet_leadLepton', 'subleadBjet_subleadLepton',
+        ])
+    if re.search('no_diphoton', output_dirpath) is not None:
+        dont_include_vars.extend([
+            'pt', 'eta', 'phi',
+        ])
+    if re.search('no_lepton', output_dirpath) is not None:
+        dont_include_vars.extend([
+            'lepton1_pt', 'lepton2_pt', 'lepton1_eta', 'lepton2_eta',
+            'lepton1_phi', 'lepton2_phi', 'n_leptons',
+        ])
+    if re.search('no_MET', output_dirpath) is not None:
+        dont_include_vars.extend([
+            'puppiMET_sumEt', 'puppiMET_pt', 'puppiMET_eta', 'puppiMET_phi',
+        ])
 
     pandas_aux_samples = {}
     high_level_aux_fields = {
@@ -81,7 +108,8 @@ def process_data(
         'eventWeight',  # computed eventWeight using (genWeight * lumi * xs / sum_of_genWeights)
         'mass', 'dijet_mass',  # diphoton and bb-dijet mass
         'lepton1_pt', 'lepton2_pt',  # renamed to lepton1/2_bool in DataFrame, used to distinguish 0, 1, and 2+ lepton events
-    } # https://stackoverflow.com/questions/67003141/how-to-remove-a-field-from-a-collection-of-records-created-by-awkward-zip
+        # 'hash'  # for ensuring sorting of events after training/testing is performed
+    }
 
     hlf_list, hlf_aux_list = list(high_level_fields), list(high_level_aux_fields)
     hlf_list.sort()
@@ -138,6 +166,8 @@ def process_data(
                 elif re.search('one_lepton_veto', output_dirpath) is not None:
                     train_slice = (train_dict_of_dfs[sample_name]['lepton1_pt'] == -999)
                     # test_slice = (test_dict_of_dfs[sample_name]['lepton2_pt'] == -999)
+                else:
+                    train_slice = (train_dict_of_dfs[sample_name]['pt'] >= -999)
 
                 train_dict_of_dfs[sample_name].loc[train_slice, keep_cols].reset_index(drop=True)
                 train_dict_of_aux_dfs[sample_name].loc[train_slice].reset_index(drop=True)

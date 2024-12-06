@@ -321,6 +321,12 @@ def add_ttH_vars(sample):
     sample['dijet_mass_over_Mggjj'] = sample['dijet_mass'] / sample['HHbbggCandidate_mass']
     sample['pt_balance'] = sample['HHbbggCandidate_pt'] / (sample['lead_pt'] + sample['sublead_pt'] + sample['lead_bjet_pt'] + sample['sublead_bjet_pt'])
 
+    # hash #
+    hash_arr = np.zeros_like(ak.to_numpy(sample['pt']))
+    for event_idx in range(len(sample['pt'])):
+        hash_arr[event_idx] = hash(str(sample['event'])+str(sample['lumi'])+str(sample['run']))
+    sample['hash'] = hash_arr  # Used to re-order the ttH killer output to match the input files
+
     # different tt final state variables #
     # sample['fully_leptonic'] = sample['lepton2_pt'] != FILL_VALUE
     # sample['fully_hadronic'] = ~sample['fully_leptonic'] & (sample['jet6_pt'] != FILL_VALUE)
