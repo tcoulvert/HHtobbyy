@@ -15,7 +15,7 @@ import awkward as ak
 FILL_VALUE = -999
 
 def process_data(
-    filepaths_dict, output_dirpath, order=None,
+    filepaths_dict, output_dirpath, order,
     seed=None, mod_vals=(2, 2), k_fold_test=False, save=True
 ):
     # Load parquet files #
@@ -108,8 +108,9 @@ def process_data(
         'eventWeight',  # computed eventWeight using (genWeight * lumi * xs / sum_of_genWeights)
         'mass', 'dijet_mass',  # diphoton and bb-dijet mass
         'lepton1_pt', 'lepton2_pt',  # renamed to lepton1/2_bool in DataFrame, used to distinguish 0, 1, and 2+ lepton events
-        # 'hash'  # for ensuring sorting of events after training/testing is performed
     }
+    if 'hash' in samples[order[0]].fields:
+        high_level_aux_fields.add('hash')  # for ensuring sorting of events after training/testing is performed
 
     hlf_list, hlf_aux_list = list(high_level_fields), list(high_level_aux_fields)
     hlf_list.sort()
@@ -218,16 +219,9 @@ def process_data(
                 df.loc[mask, field] = np.exp(df.loc[mask, field])
 
             return df
-
-        # This sorting needs to be done to ensure we're always making the data structures with the same position/label for each class.
-        if order is None:
-            sample_names = [sample_name for sample_name in train_dict_of_dfs.keys()]
-            sample_names.sort()
-        else:
-            sample_names = order
         
         # Because of zero-padding, standardization needs special treatment
-        df_train = pd.concat([train_dict_of_dfs[sample_name] for sample_name in sample_names], ignore_index=True)
+        df_train = pd.concat([train_dict_of_dfs[sample_name] for sample_name in order], ignore_index=True)
         df_train = df_train.sample(frac=1, random_state=seed).reset_index(drop=True)
         df_train = apply_log_and_exp(copy.deepcopy(df_train))
         masked_x_sample = np.ma.array(df_train, mask=(df_train == FILL_VALUE))
@@ -240,7 +234,7 @@ def process_data(
 
         # Standardize samples
         std_train_dict_of_dfs, std_test_dict_of_dfs = {}, {}
-        for sample_name in sample_names:
+        for sample_name in order:
             std_train_df = apply_log_and_exp(copy.deepcopy(train_dict_of_dfs[sample_name]))
             normed_train = (np.ma.array(std_train_df, mask=(std_train_df == FILL_VALUE)) - x_mean)/x_std
             std_train_dict_of_dfs[sample_name] = pd.DataFrame(normed_train.filled(FILL_VALUE), columns=list(df_train))
@@ -265,30 +259,30 @@ def process_data(
 
 
         # Build pre-std DF
-        train_df = pd.concat([train_dict_of_dfs[sample_name] for sample_name in sample_names], ignore_index=True)
-        train_aux_df = pd.concat([train_dict_of_aux_dfs[sample_name] for sample_name in sample_names], ignore_index=True)
-        test_df = pd.concat([test_dict_of_dfs[sample_name] for sample_name in sample_names], ignore_index=True)
-        test_aux_df = pd.concat([test_dict_of_aux_dfs[sample_name] for sample_name in sample_names], ignore_index=True)
+        train_df = pd.concat([train_dict_of_dfs[sample_name] for sample_name in order], ignore_index=True)
+        train_aux_df = pd.concat([train_dict_of_aux_dfs[sample_name] for sample_name in order], ignore_index=True)
+        test_df = pd.concat([test_dict_of_dfs[sample_name] for sample_name in order], ignore_index=True)
+        test_aux_df = pd.concat([test_dict_of_aux_dfs[sample_name] for sample_name in order], ignore_index=True)
 
     
         def get_labels():
             if len(filepaths_dict) > 2:
                 train_labels, test_labels = [], []
-                for i, sample_name in enumerate(sample_names):
-                    sample_label = [0 if j != i else 1 for j in range(len(sample_names))]
+                for i, sample_name in enumerate(order):
+                    sample_label = [0 if j != i else 1 for j in range(len(order))]
                     train_labels.append(np.tile(sample_label, (np.shape(std_train_dict_of_dfs[sample_name])[0], 1)))
                     test_labels.append(np.tile(sample_label, (np.shape(std_test_dict_of_dfs[sample_name])[0], 1)))
             else:
                 train_labels, test_labels = [], []
-                for i, sample_name in enumerate(sample_names):
+                for i, sample_name in enumerate(order):
                     train_labels.append(np.ones(np.shape(std_train_data)[0]) if i == 0 else np.zeros(np.shape(std_train_data)[0]))
                     test_labels.append(np.ones(np.shape(std_test_data)[0]) if i == 0 else np.zeros(np.shape(std_test_data)[0]))
 
             return np.concatenate(train_labels), np.concatenate(test_labels)
 
         # Build data arrays
-        std_train_data = pd.concat([std_train_dict_of_dfs[sample_name] for sample_name in sample_names], ignore_index=True).values
-        std_test_data = pd.concat([std_test_dict_of_dfs[sample_name] for sample_name in sample_names], ignore_index=True).values
+        std_train_data = pd.concat([std_train_dict_of_dfs[sample_name] for sample_name in order], ignore_index=True).values
+        std_test_data = pd.concat([std_test_dict_of_dfs[sample_name] for sample_name in order], ignore_index=True).values
         # Build labels
         train_labels, test_labels = get_labels()
 
@@ -299,7 +293,7 @@ def process_data(
         train_df = (train_df.reindex(p)).reset_index(drop=True)
         train_aux_df = (train_aux_df.reindex(p)).reset_index(drop=True)
         # print("Data HLF: {}".format(std_train_data.shape))
-        # for sample_name in sample_names:
+        # for sample_name in order:
         #     print(f"num {sample_name} = {np.shape(std_train_dict_of_dfs[sample_name].values)[0]}")
         # print(f"n signal = {len(label[label == 1])}, n bkg = {len(label[label == 0])}")
 
@@ -310,7 +304,7 @@ def process_data(
         test_df = (test_df.reindex(p_test)).reset_index(drop=True)
         test_aux_df = (test_aux_df.reindex(p_test)).reset_index(drop=True)
         # print("Data HLF test: {}".format(std_test_data.shape))
-        # for sample_name in sample_names:
+        # for sample_name in order:
         #     print(f"num {sample_name} = {np.shape(std_test_dict_of_dfs[sample_name].values)[0]}")
         # print(f"n signal = {len(label_test[label_test == 1])}, n bkg = {len(label_test[label_test == 0])}")
 
