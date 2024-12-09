@@ -16,7 +16,8 @@ FILL_VALUE = -999
 
 def process_data(
     filepaths_dict, output_dirpath, order,
-    seed=None, mod_vals=(2, 2), k_fold_test=False, save=True
+    seed=None, mod_vals=(2, 2), k_fold_test=False, save=True,
+    std_json_dirpath=None
 ):
     # Load parquet files #
     samples = {}
@@ -25,9 +26,12 @@ def process_data(
         samples[sample_name] = ak.concatenate(sample_list)
 
     # Rescale factor for sig and bkg samples
-    sum_of_sig = np.sum(samples[order[0]]['eventWeight'])
-    sum_of_bkg = np.sum(np.concatenate([samples[order[i]]['eventWeight'] for i in range(1, len(order))], axis=0), axis=None)
-    sig_rescale_factor = sum_of_bkg / sum_of_sig
+    if len(filepaths_dict) > 1:
+        sum_of_sig = np.sum(samples[order[0]]['eventWeight'])
+        sum_of_bkg = np.sum(np.concatenate([samples[order[i]]['eventWeight'] for i in range(1, len(order))], axis=0), axis=None)
+        sig_rescale_factor = sum_of_bkg / sum_of_sig
+    else:
+        sig_rescale_factor = -999
     
     # Convert parquet files to pandas DFs #
     pandas_samples = {}
@@ -220,17 +224,40 @@ def process_data(
 
             return df
         
+
         # Because of zero-padding, standardization needs special treatment
         df_train = pd.concat([train_dict_of_dfs[sample_name] for sample_name in order], ignore_index=True)
         df_train = df_train.sample(frac=1, random_state=seed).reset_index(drop=True)
         df_train = apply_log_and_exp(copy.deepcopy(df_train))
         masked_x_sample = np.ma.array(df_train, mask=(df_train == FILL_VALUE))
-        x_mean = masked_x_sample.mean(axis=0)
-        x_std = masked_x_sample.std(axis=0)
-        for i, col in enumerate(df_train.columns):
-            if col in no_standardize:
-                x_mean[i] = 0
-                x_std[i] = 1
+
+        if std_json_dirpath is not None:
+            std_json_filepath = glob.glob(std_json_dirpath+f'/*{fold}_standardization.json')[0]
+            with open(std_json_filepath, 'r') as f:
+                standardized_to_json = json.load(f)
+
+            assert np.all(standardized_to_json['standardized_mean'] == df_train.columns), f"columns don't match -> std - DF cols \n{set(standardized_to_json['standardized_mean']) - set(df_train.columns)} \nand DF - std cols \nstd - DF cols \n{set(df_train.columns) - set(standardized_to_json['standardized_mean'])}"
+            x_mean = standardized_to_json['standardized_mean']
+            x_std = standardized_to_json['standardized_stddev']
+        
+        else:
+            x_mean = masked_x_sample.mean(axis=0)
+            x_std = masked_x_sample.std(axis=0)
+            for i, col in enumerate(df_train.columns):
+                if col in no_standardize:
+                    x_mean[i] = 0
+                    x_std[i] = 1
+
+            standardized_to_json = {
+                'standardized_logs': [True if col in log_fields else False for col in df_train.columns],
+                'standardized_exps': [True if col in exp_fields else False for col in df_train.columns],
+                'standardized_variables': [col for col in df_train.columns],
+                'standardized_mean': [float(mean) for mean in x_mean],
+                'standardized_stddev': [float(std) for std in x_std]
+            }
+            if save:
+                with open(os.path.join(output_dirpath, f'MultiBDT_{fold}_standardization.json'), 'w') as f:
+                    json.dump(standardized_to_json, f)
 
         # Standardize samples
         std_train_dict_of_dfs, std_test_dict_of_dfs = {}, {}
@@ -242,17 +269,6 @@ def process_data(
             std_test_df = apply_log_and_exp(copy.deepcopy(test_dict_of_dfs[sample_name]))
             normed_test = (np.ma.array(std_test_df, mask=(std_test_df == FILL_VALUE)) - x_mean)/x_std
             std_test_dict_of_dfs[sample_name] = pd.DataFrame(normed_test.filled(FILL_VALUE), columns=list(df_train))
-
-        standardized_to_json = {
-            'standardized_logs': [True if col in log_fields else False for col in df_train.columns],
-            'standardized_exps': [True if col in exp_fields else False for col in df_train.columns],
-            'standardized_variables': [col for col in df_train.columns],
-            'standardized_mean': [float(mean) for mean in x_mean],
-            'standardized_stddev': [float(std) for std in x_std]
-        }
-        if save:
-            with open(os.path.join(output_dirpath, f'MultiBDT_{fold}_standardization.json'), 'w') as f:
-                json.dump(standardized_to_json, f)
 
         column_list = [col_name for col_name in df_train.columns]
         hlf_vars_columns = {col_name: i for i, col_name in enumerate(column_list)}
