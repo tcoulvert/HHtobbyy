@@ -138,6 +138,12 @@ def process_data(
             del pandas_aux_samples[sample_name][old_field]
         pandas_aux_samples[sample_name] = pd.DataFrame(pandas_aux_samples[sample_name])
 
+    if len(dont_include_vars) > 0:
+        for var in dont_include_vars:
+            high_level_fields.remove(var)
+        hlf_list = list(high_level_fields)
+        hlf_list.sort()
+
     # Randomly shuffle DFs and split into train and test samples #
     rng = np.random.default_rng(seed=seed)
     for sample_name in pandas_samples.keys():
@@ -167,8 +173,7 @@ def process_data(
         ) = train_test_split_df(pandas_samples, pandas_aux_samples, dataset_num=fold)
 
         if len(dont_include_vars) > 0:
-            keep_cols = list(high_level_fields - set(dont_include_vars))
-
+            
             for sample_name in train_dict_of_dfs.keys():
                 if re.search('two_lepton_veto', output_dirpath) is not None:
                     train_slice = (train_dict_of_dfs[sample_name]['lepton2_pt'] == -999)
@@ -180,14 +185,12 @@ def process_data(
                     train_slice = (train_dict_of_dfs[sample_name]['pt'] >= -999)
                     test_slice = (test_dict_of_dfs[sample_name]['pt'] >= -999)
 
-                train_dict_of_dfs[sample_name].loc[train_slice, keep_cols].reset_index(drop=True)
+                train_dict_of_dfs[sample_name].loc[train_slice, hlf_list].reset_index(drop=True)
                 train_dict_of_aux_dfs[sample_name].loc[train_slice].reset_index(drop=True)
 
-                test_dict_of_dfs[sample_name].loc[test_slice, keep_cols].reset_index(drop=True)
+                test_dict_of_dfs[sample_name].loc[test_slice, hlf_list].reset_index(drop=True)
                 test_dict_of_aux_dfs[sample_name].loc[test_slice].reset_index(drop=True)
 
-            for var in dont_include_vars:
-                high_level_fields.remove(var)
 
         # Perform the standardization #
         no_standardize = {
@@ -232,7 +235,7 @@ def process_data(
         # Because of zero-padding, standardization needs special treatment
         df_train = pd.concat([train_dict_of_dfs[sample_name] for sample_name in order], ignore_index=True)
         df_train = df_train.sample(frac=1, random_state=seed).reset_index(drop=True)
-        df_train = apply_log_and_exp(copy.deepcopy(df_train))
+        df_train = apply_log_and_exp(df_train)
         masked_x_sample = np.ma.array(df_train, mask=(df_train == FILL_VALUE))
 
         if std_json_dirpath is not None:
