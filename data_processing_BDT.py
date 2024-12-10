@@ -109,12 +109,13 @@ def process_data(
     pandas_aux_samples = {}
     high_level_aux_fields = {
         'event', # event number
-        'eventWeight',  # computed eventWeight using (genWeight * lumi * xs / sum_of_genWeights)
         'mass', 'dijet_mass',  # diphoton and bb-dijet mass
         'lepton1_pt', 'lepton2_pt',  # renamed to lepton1/2_bool in DataFrame, used to distinguish 0, 1, and 2+ lepton events
     }
     if 'hash' in samples[order[0]].fields:
         high_level_aux_fields.add('hash')  # for ensuring sorting of events after training/testing is performed
+    if 'eventWeight' in samples[order[0]].fields:
+        high_level_aux_fields.add('eventWeight')  # computed eventWeight using (genWeight * lumi * xs / sum_of_genWeights)
 
     hlf_list, hlf_aux_list = list(high_level_fields), list(high_level_aux_fields)
     hlf_list.sort()
@@ -236,7 +237,7 @@ def process_data(
             with open(std_json_filepath, 'r') as f:
                 standardized_to_json = json.load(f)
 
-            assert np.all(standardized_to_json['standardized_mean'] == df_train.columns), f"columns don't match -> std - DF cols \n{set(standardized_to_json['standardized_mean']) - set(df_train.columns)} \nand DF - std cols \nstd - DF cols \n{set(df_train.columns) - set(standardized_to_json['standardized_mean'])}"
+            assert np.all(standardized_to_json['standardized_variables'] == df_train.columns), f"columns don't match -> std - DF cols \n{set(standardized_to_json['standardized_mean']) - set(df_train.columns)} \nand DF - std cols \nstd - DF cols \n{set(df_train.columns) - set(standardized_to_json['standardized_mean'])}"
             x_mean = standardized_to_json['standardized_mean']
             x_std = standardized_to_json['standardized_stddev']
         
