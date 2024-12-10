@@ -16,7 +16,7 @@ FILL_VALUE = -999
 
 def process_data(
     filepaths_dict, output_dirpath, order,
-    seed=None, mod_vals=(2, 2), k_fold_test=False, save=True,
+    seed=None, mod_vals=(5, 5), k_fold_test=True, save=True,
     std_json_dirpath=None
 ):
     # Load parquet files #
@@ -37,7 +37,7 @@ def process_data(
     pandas_samples = {}
     dont_include_vars = []
     high_level_fields = {
-        'puppiMET_sumEt', 'puppiMET_pt', 'puppiMET_eta', 'puppiMET_phi', # MET variables
+        'puppiMET_sumEt', 'puppiMET_pt', 'puppiMET_phi', # MET variables
         'DeltaPhi_j1MET', 'DeltaPhi_j2MET', # jet-MET variables
         'DeltaR_jg_min', 'n_jets', 'chi_t0', 'chi_t1', # jet variables
         'lepton1_pt', 'lepton2_pt', 'pt', # lepton and diphoton pt
@@ -64,7 +64,6 @@ def process_data(
         # Michael's DNN variables #
         'DeltaR_j1g1', 'DeltaR_j1g2', 'DeltaR_j2g1', 'DeltaR_j2g2',
         'HHbbggCandidate_pt', 'HHbbggCandidate_eta', 'HHbbggCandidate_phi',
-        'HHbbggCandidate_mass',
     }
     if re.search('two_lepton_veto', output_dirpath) is not None:
         dont_include_vars.extend([
@@ -103,8 +102,14 @@ def process_data(
         ])
     if re.search('no_MET', output_dirpath) is not None:
         dont_include_vars.extend([
-            'puppiMET_sumEt', 'puppiMET_pt', 'puppiMET_eta', 'puppiMET_phi',
+            'puppiMET_sumEt', 'puppiMET_pt', 'puppiMET_phi',
         ])
+    if (
+        re.search('v2', output_dirpath) is not None
+        and re.search('nonres_and_ttH_and_DNN_vars$', output_dirpath[:output_dirpath.rfind('/')]) is not None
+    ):
+        high_level_fields.add('puppiMET_eta')
+        high_level_fields.add('HHbbggCandidate_mass')
 
     pandas_aux_samples = {}
     high_level_aux_fields = {
@@ -161,30 +166,28 @@ def process_data(
             train_dict_of_aux_dfs, test_dict_of_aux_dfs
         ) = train_test_split_df(pandas_samples, pandas_aux_samples, dataset_num=fold)
 
-        ## Further selection for lepton-veto check ##
         if len(dont_include_vars) > 0:
             keep_cols = list(high_level_fields - set(dont_include_vars))
 
             for sample_name in train_dict_of_dfs.keys():
                 if re.search('two_lepton_veto', output_dirpath) is not None:
                     train_slice = (train_dict_of_dfs[sample_name]['lepton2_pt'] == -999)
-                    # test_slice = (test_dict_of_dfs[sample_name]['lepton2_pt'] == -999)
+                    test_slice = (test_dict_of_dfs[sample_name]['lepton2_pt'] == -999)
                 elif re.search('one_lepton_veto', output_dirpath) is not None:
                     train_slice = (train_dict_of_dfs[sample_name]['lepton1_pt'] == -999)
-                    # test_slice = (test_dict_of_dfs[sample_name]['lepton2_pt'] == -999)
+                    test_slice = (test_dict_of_dfs[sample_name]['lepton1_pt'] == -999)
                 else:
                     train_slice = (train_dict_of_dfs[sample_name]['pt'] >= -999)
+                    test_slice = (test_dict_of_dfs[sample_name]['pt'] >= -999)
 
                 train_dict_of_dfs[sample_name].loc[train_slice, keep_cols].reset_index(drop=True)
                 train_dict_of_aux_dfs[sample_name].loc[train_slice].reset_index(drop=True)
 
-                test_dict_of_dfs[sample_name].loc[keep_cols].reset_index(drop=True)
-                # test_dict_of_dfs[sample_name].loc[test_slice, keep_cols].reset_index(drop=True)
-                # test_dict_of_aux_dfs[sample_name].loc[test_slice].reset_index(drop=True)
+                test_dict_of_dfs[sample_name].loc[test_slice, keep_cols].reset_index(drop=True)
+                test_dict_of_aux_dfs[sample_name].loc[test_slice].reset_index(drop=True)
 
             for var in dont_include_vars:
                 high_level_fields.remove(var)
-        ## End further selection for lepton-veto check ##
 
         # Perform the standardization #
         no_standardize = {
