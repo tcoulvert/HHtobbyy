@@ -93,7 +93,11 @@ def process_data(
         ])
     if re.search('no_diphoton', output_dirpath) is not None:
         dont_include_vars.extend([
-            'pt', 'eta', 'phi',
+            'pt', 'eta', 'phi', 'dipho_mass_over_Mggjj'
+        ])
+    if re.search('no_diphoMass', output_dirpath) is not None:
+        dont_include_vars.extend([
+            'dipho_mass_over_Mggjj'
         ])
     if re.search('no_lepton', output_dirpath) is not None:
         dont_include_vars.extend([
@@ -185,11 +189,11 @@ def process_data(
                     train_slice = (train_dict_of_dfs[sample_name]['pt'] >= -999)
                     test_slice = (test_dict_of_dfs[sample_name]['pt'] >= -999)
 
-                train_dict_of_dfs[sample_name].loc[train_slice, hlf_list].reset_index(drop=True)
-                train_dict_of_aux_dfs[sample_name].loc[train_slice].reset_index(drop=True)
+                train_dict_of_dfs[sample_name] = train_dict_of_dfs[sample_name].loc[train_slice, hlf_list].reset_index(drop=True)
+                train_dict_of_aux_dfs[sample_name] = train_dict_of_aux_dfs[sample_name].loc[train_slice].reset_index(drop=True)
 
-                test_dict_of_dfs[sample_name].loc[test_slice, hlf_list].reset_index(drop=True)
-                test_dict_of_aux_dfs[sample_name].loc[test_slice].reset_index(drop=True)
+                test_dict_of_dfs[sample_name] = test_dict_of_dfs[sample_name].loc[test_slice, hlf_list].reset_index(drop=True)
+                test_dict_of_aux_dfs[sample_name] = test_dict_of_aux_dfs[sample_name].loc[test_slice].reset_index(drop=True)
 
 
         # Perform the standardization #
