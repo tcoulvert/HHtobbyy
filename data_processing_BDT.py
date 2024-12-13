@@ -99,6 +99,18 @@ def process_data(
         dont_include_vars.extend([
             'dipho_mass_over_Mggjj'
         ])
+    if re.search('no_diphoPt', output_dirpath) is not None:
+        dont_include_vars.extend([
+            'pt'
+        ])
+    if re.search('no_diphoEta', output_dirpath) is not None:
+        dont_include_vars.extend([
+            'eta'
+        ])
+    if re.search('no_diphoPhi', output_dirpath) is not None:
+        dont_include_vars.extend([
+            'phi'
+        ])
     if re.search('no_lepton', output_dirpath) is not None:
         dont_include_vars.extend([
             'lepton1_pt', 'lepton2_pt', 'lepton1_eta', 'lepton2_eta',
