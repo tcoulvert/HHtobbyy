@@ -137,6 +137,8 @@ def process_data(
         high_level_aux_fields.add('hash')  # for ensuring sorting of events after training/testing is performed
     if 'eventWeight' in samples[order[0]].fields:
         high_level_aux_fields.add('eventWeight')  # computed eventWeight using (genWeight * lumi * xs / sum_of_genWeights)
+    if 'sample_name' in samples[order[0]].fields:
+        high_level_aux_fields.add('sample_name')  # computed eventWeight using (genWeight * lumi * xs / sum_of_genWeights)
 
     hlf_list, hlf_aux_list = list(high_level_fields), list(high_level_aux_fields)
     hlf_list.sort()

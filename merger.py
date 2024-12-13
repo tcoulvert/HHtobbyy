@@ -426,6 +426,7 @@ def main():
                 sample = ak.concatenate(
                     [ak.from_parquet(LPC_FILEPREFIX+'/'+data_era+'/'+dir_name+'/'+sample_type+'/'+file) for file in os.listdir(LPC_FILEPREFIX+'/'+data_era+'/'+dir_name+'/'+sample_type+'/')]
                 )
+                sample['sample_name'] = [dir_name for _ in range(len(sample['event']))]
                 add_ttH_vars(sample)
         
                 if re.match('Data', dir_name) is None:
