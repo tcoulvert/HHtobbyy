@@ -63,7 +63,7 @@ def process_data(
         'lead_pfRelIso03_all_quadratic', 'sublead_pfRelIso03_all_quadratic',
         # Michael's DNN variables #
         'DeltaR_j1g1', 'DeltaR_j1g2', 'DeltaR_j2g1', 'DeltaR_j2g2',
-        'HHbbggCandidate_pt', 'HHbbggCandidate_eta', 'HHbbggCandidate_phi',
+        'HHbbggCandidate_pt', 'HHbbggCandidate_eta'
     }
     if re.search('two_lepton_veto', output_dirpath) is not None:
         dont_include_vars.extend([
@@ -85,6 +85,7 @@ def process_data(
     if re.search('no_HH', output_dirpath) is not None:
         dont_include_vars.extend([
             'HHbbggCandidate_pt', 'HHbbggCandidate_eta', 'HHbbggCandidate_phi',
+            'HHbbggCandidate_mass'
         ])
     if re.search('no_leptonIso', output_dirpath) is not None:
         dont_include_vars.extend([
@@ -126,11 +127,17 @@ def process_data(
     ):
         high_level_fields.add('puppiMET_eta')
         high_level_fields.add('HHbbggCandidate_mass')
+    if (
+        re.search('v3', output_dirpath) is not None
+        and re.search('nonres_and_ttH_and_DNN_vars$', output_dirpath[:output_dirpath.rfind('/')]) is not None
+    ):
+        high_level_fields.add('HHbbggCandidate_phi')
 
     pandas_aux_samples = {}
     high_level_aux_fields = {
         'event', # event number
         'mass', 'dijet_mass',  # diphoton and bb-dijet mass
+        'HHbbggCandidate_mass',
         'lepton1_pt', 'lepton2_pt',  # renamed to lepton1/2_bool in DataFrame, used to distinguish 0, 1, and 2+ lepton events
     }
     if 'hash' in samples[order[0]].fields:
