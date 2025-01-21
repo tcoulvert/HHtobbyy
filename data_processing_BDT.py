@@ -127,9 +127,8 @@ def process_data(
     ):
         high_level_fields.add('puppiMET_eta')
         high_level_fields.add('HHbbggCandidate_mass')
-    if (
+    elif (
         re.search('v3', output_dirpath) is not None
-        and re.search('nonres_and_ttH_and_DNN_vars$', output_dirpath[:output_dirpath.rfind('/')]) is not None
     ):
         high_level_fields.add('HHbbggCandidate_phi')
 
