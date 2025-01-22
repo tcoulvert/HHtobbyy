@@ -42,7 +42,7 @@ def process_data(
         'DeltaR_jg_min', 'n_jets', 'chi_t0', 'chi_t1', # jet variables
         'lepton1_pt', 'lepton2_pt', 'pt', # lepton and diphoton pt
         'lepton1_eta', 'lepton2_eta', 'eta', # lepton and diphoton eta
-        'lepton1_phi', 'lepton2_phi', 'phi', # lepton and diphoton phi
+        'lepton1_phi', 'lepton2_phi', # lepton phi
         'CosThetaStar_CS','CosThetaStar_jj',  # angular variables
         'dijet_mass', # mass of b-dijet (resonance for H->bb)
         'leadBjet_leadLepton', 'leadBjet_subleadLepton', # deltaR btwn bjets and leptons (b/c b often decays to muons)
@@ -58,9 +58,7 @@ def process_data(
         'lead_bjet_pt_over_Mjj', 'sublead_bjet_pt_over_Mjj',
         'lead_bjet_btagPNetB', 'sublead_bjet_btagPNetB',
         'lead_bjet_sigmapT_over_pT', 'sublead_bjet_sigmapT_over_pT',
-        'dipho_mass_over_Mggjj', 'dijet_mass_over_Mggjj',
-        # My variables for non-reso reduction #
-        'lead_pfRelIso03_all_quadratic', 'sublead_pfRelIso03_all_quadratic',
+        'dijet_mass_over_Mggjj',
         # Michael's DNN variables #
         'DeltaR_j1g1', 'DeltaR_j1g2', 'DeltaR_j2g1', 'DeltaR_j2g2',
         'HHbbggCandidate_pt', 'HHbbggCandidate_eta'
@@ -131,6 +129,21 @@ def process_data(
         re.search('v3', output_dirpath) is not None
     ):
         high_level_fields.add('HHbbggCandidate_phi')
+    elif (
+        re.search('v4', output_dirpath) is not None
+        and re.search('no_diphoPhi', output_dirpath) is None
+    ):
+        high_level_fields.add('phi')
+    elif (
+        (
+            re.search('v1', output_dirpath) is not None
+            or re.search('v2', output_dirpath) is not None
+            or re.search('v3', output_dirpath) is not None
+            or re.search('v4', output_dirpath) is not None
+        )
+        and re.search('no_diphoMass', output_dirpath) is None
+    ):
+        high_level_fields.add('dipho_mass_over_Mggjj')
 
     pandas_aux_samples = {}
     high_level_aux_fields = {
@@ -164,6 +177,8 @@ def process_data(
 
     if len(dont_include_vars) > 0:
         for var in dont_include_vars:
+            if var not in high_level_fields:
+                continue
             high_level_fields.remove(var)
         hlf_list = list(high_level_fields)
         hlf_list.sort()
