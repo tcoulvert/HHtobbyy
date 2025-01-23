@@ -37,19 +37,18 @@ def process_data(
     pandas_samples = {}
     dont_include_vars = []
     high_level_fields = {
-        'puppiMET_sumEt', 'puppiMET_pt', 'puppiMET_phi', # MET variables
+        'puppiMET_sumEt', 'puppiMET_pt', # MET variables
         'DeltaPhi_j1MET', 'DeltaPhi_j2MET', # jet-MET variables
         'DeltaR_jg_min', 'n_jets', 'chi_t0', 'chi_t1', # jet variables
         'lepton1_pt', 'lepton2_pt', 'pt', # lepton and diphoton pt
         'lepton1_eta', 'lepton2_eta', 'eta', # lepton and diphoton eta
-        'lepton1_phi', 'lepton2_phi', # lepton phi
         'CosThetaStar_CS','CosThetaStar_jj',  # angular variables
         'dijet_mass', # mass of b-dijet (resonance for H->bb)
         'leadBjet_leadLepton', 'leadBjet_subleadLepton', # deltaR btwn bjets and leptons (b/c b often decays to muons)
         'subleadBjet_leadLepton', 'subleadBjet_subleadLepton',
         'n_leptons', 
-        'lead_bjet_pt', 'lead_bjet_eta', 'lead_bjet_phi',
-        'sublead_bjet_pt', 'sublead_bjet_eta', 'sublead_bjet_phi',
+        'lead_bjet_pt', 'lead_bjet_eta',
+        'sublead_bjet_pt', 'sublead_bjet_eta',
         # Yibos BDT variables #
         'lead_mvaID', 'sublead_mvaID',
         'CosThetaStar_gg',
@@ -60,7 +59,6 @@ def process_data(
         'lead_bjet_sigmapT_over_pT', 'sublead_bjet_sigmapT_over_pT',
         'dijet_mass_over_Mggjj',
         # Michael's DNN variables #
-        'DeltaR_j1g1', 'DeltaR_j1g2', 'DeltaR_j2g1', 'DeltaR_j2g2',
         'HHbbggCandidate_pt', 'HHbbggCandidate_eta'
     }
     if re.search('two_lepton_veto', output_dirpath) is not None:
@@ -96,7 +94,7 @@ def process_data(
         ])
     if re.search('no_diphoMass', output_dirpath) is not None:
         dont_include_vars.extend([
-            'dipho_mass_over_Mggjj'
+            'dipho_mass_over_Mggjj', 'lead_pt_over_Mgg', 'sublead_pt_over_Mgg',
         ])
     if re.search('no_diphoPt', output_dirpath) is not None:
         dont_include_vars.extend([
@@ -135,15 +133,35 @@ def process_data(
     ):
         high_level_fields.add('phi')
     elif (
-        (
-            re.search('v1', output_dirpath) is not None
-            or re.search('v2', output_dirpath) is not None
-            or re.search('v3', output_dirpath) is not None
-            or re.search('v4', output_dirpath) is not None
-        )
-        and re.search('no_diphoMass', output_dirpath) is None
+        re.search('v5', output_dirpath) is not None
+        and re.search('no_photonIso', output_dirpath) is not None
     ):
-        high_level_fields.add('dipho_mass_over_Mggjj')
+        high_level_fields.add('DeltaR_jg_min')
+    elif (
+        re.search('v1', output_dirpath) is not None
+        or re.search('v2', output_dirpath) is not None
+        or re.search('v3', output_dirpath) is not None
+        or re.search('v4', output_dirpath) is not None
+    ):
+        if re.search('no_diphoMass', output_dirpath) is None:
+            high_level_fields.add('dipho_mass_over_Mggjj')
+        if re.search('no_photonIso', output_dirpath) is None:
+            high_level_fields.add('DeltaR_j1g1')
+            high_level_fields.add('DeltaR_j1g2')
+            high_level_fields.add('DeltaR_j2g1')
+            high_level_fields.add('DeltaR_j2g2')
+        # photons pt / Myy
+        high_level_fields.add('lead_pt_over_Mgg')
+        high_level_fields.add('sublead_pt_over_Mgg')
+        # lepton phi
+        high_level_fields.add('lepton1_phi')
+        high_level_fields.add('lepton2_phi')
+        # bjets phi
+        high_level_fields.add('lead_bjet_phi')
+        high_level_fields.add('sublead_bjet_phi')
+        # puppiMET phi
+        high_level_fields.add('puppiMET_phi')
+        
 
     pandas_aux_samples = {}
     high_level_aux_fields = {
@@ -243,7 +261,7 @@ def process_data(
             # Yibo BDT variables #
             'lead_mvaID', 'sublead_mvaID',
             'CosThetaStar_gg',
-            'lead_bjet_btagPNetB', 'sublead_bjet_btagPNetB',
+            # 'lead_bjet_btagPNetB', 'sublead_bjet_btagPNetB',
             # Michael's DNN variables #
             'HHbbggCandidate_eta', 'HHbbggCandidate_phi',
         }
@@ -256,8 +274,9 @@ def process_data(
             'HHbbggCandidate_pt', 'HHbbggCandidate_mass'  # HH object fields
         }
         exp_fields = {
-            'lead_sigmaE_over_E', 'sublead_sigmaE_over_E',
-            'lead_bjet_sigmapT_over_pT', 'sublead_bjet_sigmapT_over_pT',
+            # 'lead_sigmaE_over_E', 'sublead_sigmaE_over_E',
+            # 'lead_bjet_sigmapT_over_pT', 'sublead_bjet_sigmapT_over_pT',
+            ''
         }
         def apply_log_and_exp(df):
             for field in log_fields & high_level_fields:
