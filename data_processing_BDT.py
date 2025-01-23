@@ -16,7 +16,7 @@ FILL_VALUE = -999
 
 def process_data(
     filepaths_dict, output_dirpath, order,
-    seed=None, mod_vals=(5, 5), k_fold_test=True, save=True,
+    seed=21, mod_vals=(5, 5), k_fold_test=True, save=True,
     std_json_dirpath=None, resample=False
 ):
     # Load parquet files #
