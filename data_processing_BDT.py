@@ -258,6 +258,7 @@ def process_data(
             'CosThetaStar_CS','CosThetaStar_jj',
             'lead_bjet_eta', 'lead_bjet_phi',
             'sublead_bjet_eta', 'sublead_bjet_phi',
+            # 'dijet_mass',
             # Yibo BDT variables #
             'lead_mvaID', 'sublead_mvaID',
             'CosThetaStar_gg',
