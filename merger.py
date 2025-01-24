@@ -236,12 +236,10 @@ def add_ttH_vars(sample):
 
             z_jet_4mom = sample['dijet_4mom'] + sample[f'jet{i}_4mom']
 
-            better_isr_bool = ak.where(
-                (
-                    ak.where(z_jet_4mom.pt < min_total_pt, True, False)
-                    | ak.where(min_total_pt == FILL_VALUE, True, False)
-                ) & jet_i_mask
-            )
+            better_isr_bool = (
+                ak.where(z_jet_4mom.pt < min_total_pt, True, False)
+                | ak.where(min_total_pt == FILL_VALUE, True, False)
+            ) & jet_i_mask
             min_total_pt = ak.where(
                 better_isr_bool, z_jet_4mom.pt, min_total_pt
             )
@@ -497,7 +495,7 @@ def main():
                     # sample['eventWeight'] = ak.where(sample['genWeight'] < 0, -1, 1) * (sample['luminosity'] * sample['cross_section'] / sum_of_abs_genWeight)
                     sample['eventWeight'] = sample['genWeight'] * (sample['luminosity'] * sample['cross_section'] / sample['sumGenWeights'])
         
-                destdir = LPC_FILEPREFIX+'/'+data_era+'_merged_v4/'+dir_name+'/'+sample_type+'/'
+                destdir = LPC_FILEPREFIX+'/'+data_era+'_merged_v5/'+dir_name+'/'+sample_type+'/'
                 if not os.path.exists(destdir):
                     os.makedirs(destdir)
                 merged_parquet = ak.to_parquet(sample, destdir+dir_name+'_'+sample_type+'.parquet')
