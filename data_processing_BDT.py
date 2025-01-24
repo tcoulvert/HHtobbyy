@@ -17,7 +17,7 @@ FILL_VALUE = -999
 def process_data(
     filepaths_dict, output_dirpath, order,
     seed=21, mod_vals=(5, 5), k_fold_test=True, save=True,
-    std_json_dirpath=None, resample=False
+    std_json_dirpath=None, other_bkg_rescale=5
 ):
     # Load parquet files #
     samples = {}
@@ -28,7 +28,15 @@ def process_data(
     # Rescale factor for sig and bkg samples
     if len(filepaths_dict) > 1:
         sum_of_sig = np.sum(samples[order[0]]['eventWeight'])
-        sum_of_bkg = np.sum(np.concatenate([samples[order[i]]['eventWeight'] for i in range(1, len(order))], axis=0), axis=None)
+        sum_of_bkg = np.sum(
+            np.concatenate(
+                [
+                    samples[order[i]]['eventWeight']*(
+                        other_bkg_rescale if (re.search('HH', order[i]) is None and re.search('non-res', order[i]) is None) else 1
+                    ) for i in range(1, len(order))
+                ], axis=0
+            ), axis=None
+        )
         sig_rescale_factor = sum_of_bkg / sum_of_sig
     else:
         sig_rescale_factor = -999
@@ -52,7 +60,6 @@ def process_data(
         # Yibos BDT variables #
         'lead_mvaID', 'sublead_mvaID',
         'CosThetaStar_gg',
-        'lead_pt_over_Mgg', 'sublead_pt_over_Mgg',
         'lead_sigmaE_over_E', 'sublead_sigmaE_over_E',
         'lead_bjet_pt_over_Mjj', 'sublead_bjet_pt_over_Mjj',
         'lead_bjet_btagPNetB', 'sublead_bjet_btagPNetB',
@@ -271,12 +278,10 @@ def process_data(
             'chi_t0', 'chi_t1', # jet variables
             'lepton1_pt' ,'lepton2_pt', 'pt', # lepton and diphoton pt
             'lead_bjet_pt', 'sublead_bjet_pt', # bjet pts
-            'dijet_mass', # mass of b-dijet (resonance for H->bb)
+            # 'dijet_mass', # mass of b-dijet (resonance for H->bb)
             'HHbbggCandidate_pt', 'HHbbggCandidate_mass'  # HH object fields
         }
         exp_fields = {
-            # 'lead_sigmaE_over_E', 'sublead_sigmaE_over_E',
-            # 'lead_bjet_sigmapT_over_pT', 'sublead_bjet_sigmapT_over_pT',
             ''
         }
         def apply_log_and_exp(df):
