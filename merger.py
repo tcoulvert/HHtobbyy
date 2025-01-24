@@ -38,27 +38,30 @@ def add_ttH_vars(sample):
         # Convention: clockwise is (+), anti-clockwise is (-)
         subtract_angles = phi1 - phi2
         return ak.where(ak_abs(subtract_angles) <= math.pi, subtract_angles, subtract_angles + 2*math.pi*ak_sign(subtract_angles, inverse=True))
-
+    
+    def deltaEta(eta1, eta2):
+        return ak_abs(eta1 - eta2)
 
     # Funcs for chi^2 #
     def jets_mask(sample, jet_size, i, j, t_mask, i_mask=None, j_mask=None):
-        jet_i_mask = t_mask & ak.where(
-                sample[f'jet{i}_4mom'].deltaR(sample[f'lead_bjet_4mom']) > jet_size, True, False
-            ) & ak.where(
-                sample[f'jet{i}_4mom'].deltaR(sample[f'sublead_bjet_4mom']) > jet_size, True, False
-            ) & ak.where(sample[f'jet{i}_pt'] != FILL_VALUE, True, False)
+        jet_i_mask = t_mask & jet_mask(sample, jet_size, i)
         if i_mask is not None:
             jet_i_mask = jet_i_mask & i_mask
         
-        jet_j_mask = t_mask & ak.where(
-                sample[f'jet{j}_4mom'].deltaR(sample[f'lead_bjet_4mom']) > jet_size, True, False
-            ) & ak.where(
-                sample[f'jet{j}_4mom'].deltaR(sample[f'sublead_bjet_4mom']) > jet_size, True, False
-            ) & ak.where(sample[f'jet{j}_pt'] != FILL_VALUE, True, False)
+        jet_j_mask = t_mask & jet_mask(sample, jet_size, j)
         if j_mask is not None:
             jet_j_mask = jet_j_mask & j_mask
     
         return jet_i_mask, jet_j_mask
+    
+    def jet_mask(sample, jet_size, i):
+        return (
+            ak.where(
+                sample[f'jet{i}_4mom'].deltaR(sample[f'lead_bjet_4mom']) > jet_size, True, False
+            ) & ak.where(
+                sample[f'jet{i}_4mom'].deltaR(sample[f'sublead_bjet_4mom']) > jet_size, True, False
+            ) & ak.where(sample[f'jet{i}_pt'] != FILL_VALUE, True, False)
+        )
 
     def find_wjet_topjet(sample, num_jets, jet_size, w_mass, top_mass, t_mask, chi_form='t0'):
         jet_combos = []
@@ -223,6 +226,29 @@ def add_ttH_vars(sample):
             pass_num, 
             prev_lepton_pass
         )
+
+    def zh_isr_jet(sample, num_jets, jet_size):
+        min_total_pt = ak.Array([FILL_VALUE for _ in range(ak.num(sample['event'], axis=0))])
+        isr_jet_4mom = copy.deepcopy(sample['jet1_4mom'])
+
+        for i in range(1, num_jets+1):
+            jet_i_mask = jet_mask(sample, jet_size, i)
+
+            z_jet_4mom = sample['dijet_4mom'] + sample[f'jet{i}_4mom']
+
+            better_isr_bool = ak.where(
+                (
+                    ak.where(z_jet_4mom.pt < min_total_pt, True, False)
+                    | ak.where(min_total_pt == FILL_VALUE, True, False)
+                ) & jet_i_mask
+            )
+            min_total_pt = ak.where(
+                better_isr_bool, z_jet_4mom.pt, min_total_pt
+            )
+            isr_jet_4mom = ak.where(
+                better_isr_bool, sample[f'jet{i}_4mom'], isr_jet_4mom
+            )
+        return isr_jet_4mom, min_total_pt
     
     # Abs of cos #
     sample['abs_CosThetaStar_CS'] = ak.where(sample['CosThetaStar_CS'] >= 0, sample['CosThetaStar_CS'], -1*sample['CosThetaStar_CS'])
@@ -320,6 +346,26 @@ def add_ttH_vars(sample):
     sample['dipho_mass_over_Mggjj'] = sample['mass'] / sample['HHbbggCandidate_mass']
     sample['dijet_mass_over_Mggjj'] = sample['dijet_mass'] / sample['HHbbggCandidate_mass']
     sample['pt_balance'] = sample['HHbbggCandidate_pt'] / (sample['lead_pt'] + sample['sublead_pt'] + sample['lead_bjet_pt'] + sample['sublead_bjet_pt'])
+
+    # VH variables #
+    sample['DeltaPhi_jj'] = deltaPhi(sample['lead_bjet_phi'], sample['sublead_bjet_phi'])
+    sample['DeltaEta_jj'] = deltaEta(sample['lead_bjet_phi'], sample['sublead_bjet_phi'])
+    sample['dijet_4mom'] = ak.zip(
+        {
+            'rho': sample['dijet_pt'], # rho is synonym for pt
+            'phi': sample['dijet_phi'],
+            'eta': sample['dijet_eta'],
+            'tau': sample['dijet_mass'], # tau is synonym for mass
+        }, with_name='Momentum4D'
+    )
+    isr_jet_4mom, min_total_pt = zh_isr_jet(sample, 6, 0.4)
+    sample['isr_jet_pt'] =ak.where(
+        min_total_pt != FILL_VALUE,
+        isr_jet_4mom.pt,
+        FILL_VALUE
+    )
+    # isr jet angle with dijet
+    # dijet pt?
 
     # hash #
     hash_arr = np.zeros_like(ak.to_numpy(sample['pt']))

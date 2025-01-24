@@ -47,9 +47,11 @@ def process_data(
     high_level_fields = {
         'puppiMET_sumEt', 'puppiMET_pt', # MET variables
         'DeltaPhi_j1MET', 'DeltaPhi_j2MET', # jet-MET variables
-        'DeltaR_jg_min', 'n_jets', 'chi_t0', 'chi_t1', # jet variables
-        'lepton1_pt', 'lepton2_pt', 'pt', # lepton and diphoton pt
-        'lepton1_eta', 'lepton2_eta', 'eta', # lepton and diphoton eta
+        'DeltaR_jg_min', 'n_jets', 
+        'chi_t0', 'chi_t1', # jet variables
+        'lepton1_pt', 'lepton1_eta', 
+        'lepton2_pt', 'lepton2_eta',  # lepton pt, eta
+        'pt', 'eta',  # diphoton pt, eta
         'CosThetaStar_CS','CosThetaStar_jj',  # angular variables
         'dijet_mass', # mass of b-dijet (resonance for H->bb)
         'leadBjet_leadLepton', 'leadBjet_subleadLepton', # deltaR btwn bjets and leptons (b/c b often decays to muons)
@@ -123,6 +125,14 @@ def process_data(
     if re.search('no_MET', output_dirpath) is not None:
         dont_include_vars.extend([
             'puppiMET_sumEt', 'puppiMET_pt', 'puppiMET_phi',
+        ])
+    if re.search('no_badVars', output_dirpath) is not None:
+        dont_include_vars.extend([
+            'lepton2_pt', 'lepton2_eta',
+            'leadBjet_subleadLepton', 'subleadBjet_subleadLepton',
+            # 'lepton1_eta', 'n_leptons',
+            # 'chi_t1',
+            # 'leadBjet_leadLepton', 'leadBjet_subleadLepton',
         ])
     if (
         re.search('v2', output_dirpath) is not None
@@ -265,7 +275,7 @@ def process_data(
             'CosThetaStar_CS','CosThetaStar_jj',
             'lead_bjet_eta', 'lead_bjet_phi',
             'sublead_bjet_eta', 'sublead_bjet_phi',
-            # 'dijet_mass',
+            'n_leptons',
             # Yibo BDT variables #
             'lead_mvaID', 'sublead_mvaID',
             'CosThetaStar_gg',
@@ -275,10 +285,10 @@ def process_data(
         }
         log_fields = {
             'puppiMET_sumEt', 'puppiMET_pt', # MET variables
-            'chi_t0', 'chi_t1', # jet variables
+            # 'chi_t0', 
+            'chi_t1', # jet variables
             'lepton1_pt' ,'lepton2_pt', 'pt', # lepton and diphoton pt
             'lead_bjet_pt', 'sublead_bjet_pt', # bjet pts
-            # 'dijet_mass', # mass of b-dijet (resonance for H->bb)
             'HHbbggCandidate_pt', 'HHbbggCandidate_mass'  # HH object fields
         }
         exp_fields = {
