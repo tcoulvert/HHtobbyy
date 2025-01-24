@@ -248,7 +248,7 @@ def add_ttH_vars(sample):
             isr_jet_4mom = ak.where(
                 better_isr_bool, sample[f'jet{i}_4mom'], isr_jet_4mom
             )
-        return isr_jet_4mom, min_total_pt
+        return isr_jet_4mom, ak.where(min_total_pt != FILL_VALUE, True, False)
     
     # Abs of cos #
     sample['abs_CosThetaStar_CS'] = ak.where(sample['CosThetaStar_CS'] >= 0, sample['CosThetaStar_CS'], -1*sample['CosThetaStar_CS'])
@@ -358,14 +358,14 @@ def add_ttH_vars(sample):
             'tau': sample['dijet_mass'], # tau is synonym for mass
         }, with_name='Momentum4D'
     )
-    isr_jet_4mom, min_total_pt = zh_isr_jet(sample, 6, 0.4)
-    sample['isr_jet_pt'] =ak.where(
-        min_total_pt != FILL_VALUE,
-        isr_jet_4mom.pt,
+    isr_jet_4mom, isr_jet_bool = zh_isr_jet(sample, 6, 0.4)
+    sample['isr_jet_pt'] = ak.where(isr_jet_bool, isr_jet_4mom.pt, FILL_VALUE)  # pt of isr jet
+    sample['DeltaPhi_isr_jet_z'] = ak.where(  # phi angle between isr jet and z candidate
+        isr_jet_bool, 
+        deltaPhi(isr_jet_4mom.phi, sample['dijet_phi']), 
         FILL_VALUE
     )
-    # isr jet angle with dijet
-    # dijet pt?
+    # dijet pt -> already in parquets
 
     # hash #
     hash_arr = np.zeros_like(ak.to_numpy(sample['pt']))

@@ -69,6 +69,12 @@ def process_data(
         'dijet_mass_over_Mggjj',
         # Michael's DNN variables #
         'HHbbggCandidate_pt', 'HHbbggCandidate_eta'
+        # # ATLAS variables #
+        # 'pt_balance',
+        # # ZH variables #
+        # 'DeltaPhi_jj', 'DeltaEta_jj',
+        # 'isr_jet_pt', 'DeltaPhi_isr_jet_z',
+        # 'dijet_pt'
     }
     if re.search('two_lepton_veto', output_dirpath) is not None:
         dont_include_vars.extend([
