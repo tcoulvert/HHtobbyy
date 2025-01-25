@@ -136,9 +136,8 @@ def process_data(
         dont_include_vars.extend([
             'lepton2_pt', 'lepton2_eta',
             'leadBjet_subleadLepton', 'subleadBjet_subleadLepton',
-            # 'lepton1_eta', 'n_leptons',
-            # 'chi_t1',
-            # 'leadBjet_leadLepton', 'leadBjet_subleadLepton',
+            'lepton1_eta', 'n_leptons', 'subleadBjet_leadLepton',
+            # 'chi_t1', 'leadBjet_leadLepton',
         ])
     if (
         re.search('v2', output_dirpath) is not None
