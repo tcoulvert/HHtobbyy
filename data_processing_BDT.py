@@ -68,13 +68,13 @@ def process_data(
         'lead_bjet_sigmapT_over_pT', 'sublead_bjet_sigmapT_over_pT',
         'dijet_mass_over_Mggjj',
         # Michael's DNN variables #
-        'HHbbggCandidate_pt', 'HHbbggCandidate_eta'
-        # # ATLAS variables #
-        # 'pt_balance',
-        # # ZH variables #
-        # 'DeltaPhi_jj', 'DeltaEta_jj',
-        # 'isr_jet_pt', 'DeltaPhi_isr_jet_z',
-        # 'dijet_pt'
+        'HHbbggCandidate_pt', 'HHbbggCandidate_eta',
+        # ATLAS variables #
+        'pt_balance',
+        # ZH variables #
+        'DeltaPhi_jj', 'DeltaEta_jj',
+        'isr_jet_pt', 'DeltaPhi_isr_jet_z',
+        'dijet_pt',
     }
     if re.search('two_lepton_veto', output_dirpath) is not None:
         dont_include_vars.extend([
@@ -288,6 +288,8 @@ def process_data(
             # 'lead_bjet_btagPNetB', 'sublead_bjet_btagPNetB',
             # Michael's DNN variables #
             'HHbbggCandidate_eta', 'HHbbggCandidate_phi',
+            # VH variables #
+            'DeltaPhi_jj', 'DeltaPhi_isr_jet_z',
         }
         log_fields = {
             'puppiMET_sumEt', 'puppiMET_pt', # MET variables
@@ -295,7 +297,9 @@ def process_data(
             'chi_t1', # jet variables
             'lepton1_pt' ,'lepton2_pt', 'pt', # lepton and diphoton pt
             'lead_bjet_pt', 'sublead_bjet_pt', # bjet pts
-            'HHbbggCandidate_pt', 'HHbbggCandidate_mass'  # HH object fields
+            'HHbbggCandidate_pt', 'HHbbggCandidate_mass',  # HH object fields
+            # VH and ATLAS variables #
+            'dijet_pt', 'isr_jet_pt', 'pt_balance'
         }
         exp_fields = {
             ''
