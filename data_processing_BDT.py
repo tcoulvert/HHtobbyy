@@ -136,10 +136,15 @@ def process_data(
         dont_include_vars.extend([
             'lepton2_pt', 'lepton2_eta',
             'leadBjet_subleadLepton', 'subleadBjet_subleadLepton',
-            'dijet_mass_over_Mggjj',
             'lepton1_eta', 'n_leptons', 'subleadBjet_leadLepton',
+            'dijet_mass_over_Mggjj',
             # 'chi_t1', 'leadBjet_leadLepton',
         ])
+    if re.search('no_badMyyVars', output_dirpath) is not None:
+        dont_include_vars.extend([
+            'dijet_mass_over_Mggjj', 'puppiMET_sumEt'
+        ])
+    
     if (
         re.search('v2', output_dirpath) is not None
         and re.search('nonres_and_ttH_and_DNN_vars$', output_dirpath[:output_dirpath.rfind('/')]) is not None
