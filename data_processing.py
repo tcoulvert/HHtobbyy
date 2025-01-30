@@ -82,7 +82,7 @@ def process_data(
     n_particles, n_particle_fields, 
     signal_filepaths, bkg_filepaths, output_dirpath,
     seed=None, mod_vals=(2, 2), k_fold_test=False,
-    save_std=False
+    save_std=False, std_json_dirpath=None
 ):
     # Load parquet files #
     
@@ -301,12 +301,23 @@ def process_data(
         df_train = df_train.sample(frac=1, random_state=seed).reset_index(drop=True)
         df_train = apply_log(copy.deepcopy(df_train))
         masked_x_sample = np.ma.array(df_train, mask=(df_train == FILL_VALUE))
-        x_mean = masked_x_sample.mean(axis=0)
-        x_std = masked_x_sample.std(axis=0)
-        for i, col in enumerate(df_train.columns):
-            if col in no_standardize:
-                x_mean[i] = 0
-                x_std[i] = 1
+
+        if std_json_dirpath is not None:
+            std_json_filepath = glob.glob(std_json_dirpath+f'/*{fold}_standardization.json')[0]
+            with open(std_json_filepath, 'r') as f:
+                standardized_to_json = json.load(f)
+
+            assert np.all(standardized_to_json['standardized_variables'] == df_train.columns), f"columns don't match -> std - DF cols \n{set(standardized_to_json['standardized_mean']) - set(df_train.columns)} \nand DF - std cols \nstd - DF cols \n{set(df_train.columns) - set(standardized_to_json['standardized_mean'])}"
+            x_mean = standardized_to_json['standardized_mean']
+            x_std = standardized_to_json['standardized_stddev']
+        
+        else:
+            x_mean = masked_x_sample.mean(axis=0)
+            x_std = masked_x_sample.std(axis=0)
+            for i, col in enumerate(df_train.columns):
+                if col in no_standardize:
+                    x_mean[i] = 0
+                    x_std[i] = 1
 
         # Standardize background
         normed_bkg_train_frame = apply_log(copy.deepcopy(bkg_train_frame))
@@ -351,7 +362,7 @@ def process_data(
             'standardized_stddev': [float(std) for std in x_std],
             'standardized_unphysical_values': [float(min_mean) for min_mean in train_pad]
         }
-        if save_std:
+        if save_std and std_json_dirpath is None:
             with open(os.path.join(output_dirpath, f'ttH_Killer_IN_{fold}_standardization.json'), 'w') as f:
                 json.dump(standardized_to_json, f)
 
