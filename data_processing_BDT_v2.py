@@ -127,7 +127,8 @@ def process_data(
         'isr_jet_pt': 'isr_jet_pt', 'DeltaPhi_isr_jet_z': 'DeltaPhi_isr_jet_z',
         
         # Aux fields
-        'event': 'event', 'mass': 'mass', 'lepton1_pt': 'lepton1_pt', 'lepton2_pt': 'lepton2_pt',
+        'event': 'event', 'mass': 'mass', 'HH_PNetRegMass': 'nonRes_HHbbggCandidate_mass',
+        'lepton1_pt': 'lepton1_pt', 'lepton2_pt': 'lepton2_pt',
         'hash': 'hash', 'eventWeight': 'eventWeight', 'sample_name': 'sample_name'
     }
         
