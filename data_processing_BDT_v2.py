@@ -137,7 +137,7 @@ def process_data(
     high_level_aux_fields = {
         'event', # event number
         'mass', 'dijet_PNetRegMass',  # diphoton and bb-dijet mass
-        'nonRes_HHbbggCandidate_mass',
+        'HH_PNetRegMass',
         'lepton1_pt', 'lepton2_pt',  # renamed to lepton1/2_bool in DataFrame, used to distinguish 0, 1, and 2+ lepton events
     }
     if 'hash' in samples[order[0]].fields:
