@@ -89,7 +89,7 @@ def process_data(
     }
     std_mapping = {
         # MET variables
-        'puppiMET_sumEt': 'puppiMET_sumEt', 'puppiMET_pt': 'puppiMET_sumEt',
+        'puppiMET_sumEt': 'puppiMET_sumEt', 'puppiMET_pt': 'puppiMET_pt',
 
         # jet vars
         'nonRes_DeltaPhi_j1MET': 'DeltaPhi_j1MET', 'nonRes_DeltaPhi_j2MET': 'DeltaPhi_j2MET', 'nonRes_DeltaR_jg_min': 'DeltaR_jg_min', 
