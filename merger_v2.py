@@ -14,7 +14,7 @@ vec.register_awkward()
 # lpc_redirector = "root://cmseos.fnal.gov/"
 # lxplus_redirector = "root://eosuser.cern.ch/"
 # lxplus_fileprefix = "/eos/cms/store/group/phys_b2g/HHbbgg/HiggsDNA_parquet/v2"
-LPC_FILEPREFIX1 = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v2/Run3_2022_merged_v1"
+# LPC_FILEPREFIX1 = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v2/Run3_2022_merged_v1"
 LPC_FILEPREFIX = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v2/Run3_2022"
 FILL_VALUE = -999
 NUM_JETS = 10
@@ -51,14 +51,14 @@ def add_vars(sample):
             ) & ak.where(sample[f'jet{i}_pt'] != FILL_VALUE, True, False)
         )
 
-    def zh_isr_jet(sample):
+    def zh_isr_jet(sample, dijet_4mom, jet_4moms):
         min_total_pt = ak.Array([FILL_VALUE for _ in range(ak.num(sample['event'], axis=0))])
-        isr_jet_4mom = copy.deepcopy(sample['jet1_4mom'])
+        isr_jet_4mom = copy.deepcopy(jet_4moms['jet1_4mom'])
 
         for i in range(1, NUM_JETS+1):
             jet_i_mask = jet_mask(sample, i)
 
-            z_jet_4mom = sample['dijet_4mom'] + sample[f'jet{i}_4mom']
+            z_jet_4mom = dijet_4mom + jet_4moms[f'jet{i}_4mom']
 
             better_isr_bool = (
                 ak.where(z_jet_4mom.pt < min_total_pt, True, False)
@@ -68,7 +68,7 @@ def add_vars(sample):
                 better_isr_bool, z_jet_4mom.pt, min_total_pt
             )
             isr_jet_4mom = ak.where(
-                better_isr_bool, sample[f'jet{i}_4mom'], isr_jet_4mom
+                better_isr_bool, jet_4moms[f'jet{i}_4mom'], isr_jet_4mom
             )
         return isr_jet_4mom, ak.where(min_total_pt != FILL_VALUE, True, False)
     
@@ -81,8 +81,9 @@ def add_vars(sample):
         return robust_parT
     
     # Regressed bjet kinematics #
+    bjet_4moms = {}
     for field in ['lead', 'sublead']:
-        sample[f'{field}_bjet_4mom'] = ak.zip(
+        bjet_4moms[f'{field}_bjet_4mom'] = ak.zip(
             {
                 'rho': sample[f'nonRes_{field}_bjet_pt'] * sample[f'nonRes_{field}_bjet_PNetRegPtRawCorr'] * sample[f'nonRes_{field}_bjet_PNetRegPtRawCorrNeutrino'], # rho is synonym for pt
                 'phi': sample[f'nonRes_{field}_bjet_phi'],
@@ -93,11 +94,12 @@ def add_vars(sample):
     # Improved bjet bTag score and regressed mass #
     for field in ['lead', 'sublead']:
         sample[f'{field}_bjet_btagRobustParTAK4B'] = robustParT(sample, bjet_type=field)
-        sample[f'{field}_bjet_PNetRegPt'] = sample[f'{field}_bjet_4mom'].pt
+        sample[f'{field}_bjet_PNetRegPt'] = bjet_4moms[f'{field}_bjet_4mom'].pt
 
     # Regressed jet kinematics #
+    jet_4moms = {}
     for i in range(1, NUM_JETS+1):
-        sample[f'jet{i}_4mom'] = ak.zip(
+        jet_4moms[f'jet{i}_4mom'] = ak.zip(
             {
                 'rho': sample[f'jet{i}_pt'] * sample[f'jet{i}_PNetRegPtRawCorr'] * sample[f'jet{i}_PNetRegPtRawCorrNeutrino'],
                 'phi': sample[f'jet{i}_phi'],
@@ -107,14 +109,14 @@ def add_vars(sample):
         )
 
     # Regressed dijet kinematics #
-    sample['dijet_4mom'] = sample['lead_bjet_4mom'] + sample['sublead_bjet_4mom']
-    sample['dijet_PNetRegPt'] = sample['dijet_4mom'].pt
-    sample['dijet_PNetRegEta'] = sample['dijet_4mom'].eta
-    sample['dijet_PNetRegPhi'] = sample['dijet_4mom'].phi
-    sample['dijet_PNetRegMass'] = sample['dijet_4mom'].mass
+    dijet_4mom = bjet_4moms['lead_bjet_4mom'] + bjet_4moms['sublead_bjet_4mom']
+    sample['dijet_PNetRegPt'] = dijet_4mom.pt
+    sample['dijet_PNetRegEta'] = dijet_4mom.eta
+    sample['dijet_PNetRegPhi'] = dijet_4mom.phi
+    sample['dijet_PNetRegMass'] = dijet_4mom.mass
 
     # Regressed HH kinematics
-    sample['diphoton_4mom'] = ak.zip(
+    diphoton_4mom = ak.zip(
         {
             'rho': sample['pt'],
             'phi': sample['phi'],
@@ -122,11 +124,11 @@ def add_vars(sample):
             'tau': sample['mass'],
         }, with_name='Momentum4D'
     )
-    sample['HH_4mom'] = sample['diphoton_4mom'] + sample['dijet_4mom']
-    sample['HH_PNetRegPt'] = sample['HH_4mom'].pt
-    sample['HH_PNetRegEta'] = sample['HH_4mom'].eta
-    sample['HH_PNetRegPhi'] = sample['HH_4mom'].phi
-    sample['HH_PNetRegMass'] = sample['HH_4mom'].mass
+    HH_4mom = diphoton_4mom + dijet_4mom
+    sample['HH_PNetRegPt'] = HH_4mom.pt
+    sample['HH_PNetRegEta'] = HH_4mom.eta
+    sample['HH_PNetRegPhi'] = HH_4mom.phi
+    sample['HH_PNetRegMass'] = HH_4mom.mass
 
     # Nonres BDT variables #
     for field in ['lead', 'sublead']:
@@ -141,7 +143,7 @@ def add_vars(sample):
     # VH variables #
     sample['DeltaPhi_jj'] = deltaPhi(sample['nonRes_lead_bjet_phi'], sample['nonRes_sublead_bjet_phi'])
     sample['DeltaEta_jj'] = deltaEta(sample['nonRes_lead_bjet_eta'], sample['nonRes_sublead_bjet_eta'])
-    isr_jet_4mom, isr_jet_bool = zh_isr_jet(sample)
+    isr_jet_4mom, isr_jet_bool = zh_isr_jet(sample, dijet_4mom, jet_4moms)
     sample['isr_jet_pt'] = ak.where(isr_jet_bool, isr_jet_4mom.pt, FILL_VALUE)  # pt of isr jet
     sample['DeltaPhi_isr_jet_z'] = ak.where(  # phi angle between isr jet and z candidate
         isr_jet_bool, 
@@ -158,8 +160,8 @@ def add_vars(sample):
 
 def main():
     sim_dir_lists = {
-        # 'preEE': None,
-        'postEE': None
+        'preEE': None,
+        # 'postEE': None
     }
     data_dir_lists = {
         'Data': None,
@@ -199,7 +201,7 @@ def main():
     for data_era in sim_dir_lists.keys():
         all_sim_dirs_set = set(
             os.listdir(
-                LPC_FILEPREFIX1+'/sim/'+data_era
+                LPC_FILEPREFIX+'/sim/'+data_era
             )
         )
 
@@ -228,18 +230,19 @@ def main():
             for sample_type in ['nominal']:
                 # Load all the parquets of a single sample into an ak array
                 sample = ak.concatenate(
-                    [ak.from_parquet(file) for file in glob.glob(LPC_FILEPREFIX1+'/sim/'+data_era+'/'+dir_name+'/'+sample_type+'/*.parquet')]
+                    [ak.from_parquet(file) for file in glob.glob(LPC_FILEPREFIX+'/sim/'+data_era+'/'+dir_name+'/'+sample_type+'/*.parquet')]
                 )
-                print('loads array')
+
+                sample_fields = set([field for field in sample.fields])
+                for field in sample.fields:
+                    if re.match('Res', field) is not None or re.search('4mom', field) is not None:
+                        sample_fields.remove(field)
+                sample = ak.zip({
+                    field: sample[field] for field in sample_fields
+                })
 
                 sample['sample_name'] = dir_name
 
-                # sample['sumGenWeights'] = sum(
-                #     float(pq.read_table(file).schema.metadata['sum_genw_presel']) for file in glob.glob(
-                #         LPC_FILEPREFIX+'/sim/'+data_era+'/'+dir_name+'/'+sample_type+'/*'
-                #     )
-                # )
-                # sample['eventWeight'] = sample['genWeight'] * (luminosities[data_era] * cross_sections[dir_name] / sample['sumGenWeights'])
                 sample['eventWeight'] = sample['weight_central'] * luminosities[data_era] * cross_sections[dir_name]
 
                 add_vars(sample)
