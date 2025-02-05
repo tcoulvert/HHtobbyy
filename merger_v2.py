@@ -243,7 +243,7 @@ def main():
 
                 sample['sample_name'] = dir_name
 
-                sample['eventWeight'] = sample['weight_central'] * luminosities[data_era] * cross_sections[dir_name]
+                sample['eventWeight'] = sample['weight'] * luminosities[data_era] * cross_sections[dir_name]
 
                 add_vars(sample)
         

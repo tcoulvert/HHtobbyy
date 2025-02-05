@@ -24,10 +24,11 @@ def process_data(
     for sample_name, sample_filepaths in filepaths_dict.items():
         sample_list = [ak.from_parquet(glob.glob(dir_path)) for dir_path in sample_filepaths]
         samples[sample_name] = ak.concatenate(sample_list)
+        samples[sample_name] = samples[sample_name][samples[sample_name]['nonRes_has_two_btagged_jets']]
 
-    for field in samples[order[0]].fields:
-        print(field)
-        print('-'*60)
+    # for field in samples[order[0]].fields:
+    #     print(field)
+    #     print('-'*60)
 
     # Rescale factor for sig and bkg samples
     if len(filepaths_dict) > 1:
@@ -285,6 +286,8 @@ def process_data(
                 if col in no_standardize:
                     x_mean[i] = 0
                     x_std[i] = 1
+                print(f"{col} mean = {x_mean[i]}")
+
 
             standardized_to_json = {
                 'standardized_logs': [True if col in log_fields else False for col in df_train.columns],
