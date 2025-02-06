@@ -28,6 +28,28 @@ def process_data(
             samples[sample_name]['nonRes_has_two_btagged_jets'] & samples[sample_name]['is_nonRes']  # eventually need to decide what to do with Res category...
         ]
 
+        # for subsample_name in [
+        #     # ggF HH
+        #     'GluGluToHH', 
+        #     # ttH
+        #     'ttHToGG', 'ttHtoGG_M_125',
+        #     # VH
+        #     'VHToGG', 'VHtoGG_M_125',
+        #     # non-res + ggFH + VBFH
+        #     'GGJets', 
+        #     'GJetPt20To40', 'GJetPt40', 
+        #     'GluGluHToGG', 'GluGluHToGG_M_125', 
+        #     'VBFHToGG', 'VBFHToGG_M_125'
+        # ]:
+        #     mask = samples[sample_name]['sample_name'] == subsample_name
+        #     if ak.all(~mask):
+        #         continue
+
+        #     print(f"{subsample_name} weights = {samples[sample_name]['weight'][mask]}")
+        #     print(f"{subsample_name} min weight = {np.min(ak.to_numpy(samples[sample_name]['weight'][mask]))}, max weight = {np.max(ak.to_numpy(samples[sample_name]['weight'][mask]))}")
+        #     print(f"{subsample_name} weights * lumi * xs = {samples[sample_name]['eventWeight'][mask]}")
+        #     print('-'*60)
+
     # for field in samples[order[0]].fields:
     #     print(field)
     #     print('-'*60)
