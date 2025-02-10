@@ -18,7 +18,7 @@ LPC_FILEPREFIX_MERGED = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDN
 LPC_FILEPREFIX = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v2/Run3_2022"
 FILL_VALUE = -999
 NUM_JETS = 10
-FORCE_RERUN = False
+FORCE_RERUN = True
 
 
 def add_vars(sample):
@@ -96,6 +96,8 @@ def add_vars(sample):
     for field in ['lead', 'sublead']:
         sample[f'{field}_bjet_btagRobustParTAK4B'] = robustParT(sample, bjet_type=field)
         sample[f'{field}_bjet_PNetRegPt'] = bjet_4moms[f'{field}_bjet_4mom'].pt
+        sample[f'{field}_bjet_sigmapT_over_pT'] = sample[f'nonRes_{field}_bjet_PNetRegPtRawRes'] / sample[f'nonRes_{field}_bjet_pt']
+        sample[f'{field}_bjet_sigmapT_over_RegPt'] = sample[f'nonRes_{field}_bjet_PNetRegPtRawRes'] / sample[f'{field}_bjet_PNetRegPt']
 
     # Regressed jet kinematics #
     jet_4moms = {}
@@ -136,18 +138,21 @@ def add_vars(sample):
         # photon variables
         sample[f'{field}_sigmaE_over_E'] = sample[f'{field}_energyErr'] / (sample[f'{field}_pt'] * np.cosh(sample[f'{field}_eta']))
         # bjet variables
-        sample[f'{field}_bjet_pt_over_Mjj'] = sample[f'{field}_bjet_PNetRegPt'] / sample['dijet_PNetRegMass']
+        sample[f'{field}_bjet_pt_over_Mjj'] = sample[f'nonRes_{field}_bjet_pt'] / sample['nonRes_dijet_mass']
+        sample[f'{field}_bjet_RegPt_over_Mjj'] = sample[f'{field}_bjet_PNetRegPt'] / sample['dijet_PNetRegMass']
 
     # mHH variables #
-    sample['pt_balance'] = sample['HH_PNetRegPt'] / (sample['lead_pt'] + sample['sublead_pt'] + sample['lead_bjet_PNetRegPt'] + sample['sublead_bjet_PNetRegPt'])
+    sample['RegPt_balance'] = sample['HH_PNetRegPt'] / (sample['lead_pt'] + sample['sublead_pt'] + sample['lead_bjet_PNetRegPt'] + sample['sublead_bjet_PNetRegPt'])
+    sample['pt_balance'] = sample['nonRes_HHbbggCandidate_pt'] / (sample['lead_pt'] + sample['sublead_pt'] + sample['nonRes_lead_bjet_pt'] + sample['nonRes_sublead_bjet_pt'])
+
 
     # VH variables #
     sample['DeltaPhi_jj'] = deltaPhi(sample['nonRes_lead_bjet_phi'], sample['nonRes_sublead_bjet_phi'])
     sample['DeltaEta_jj'] = deltaEta(sample['nonRes_lead_bjet_eta'], sample['nonRes_sublead_bjet_eta'])
     isr_jet_4mom, isr_jet_bool = zh_isr_jet(sample, dijet_4mom, jet_4moms)
-    sample['isr_jet_pt'] = ak.where(isr_jet_bool, isr_jet_4mom.pt, FILL_VALUE)  # pt of isr jet
+    sample['isr_jet_RegPt'] = ak.where(isr_jet_bool, isr_jet_4mom.pt, FILL_VALUE)  # pt of isr jet
     sample['DeltaPhi_isr_jet_z'] = ak.where(  # phi angle between isr jet and z candidate
-        isr_jet_bool, 
+        isr_jet_bool,
         deltaPhi(isr_jet_4mom.phi, sample['nonRes_dijet_phi']), 
         FILL_VALUE
     )
@@ -264,12 +269,13 @@ def main():
         for dir_name in dir_list:
             for sample_type in ['nominal']:
                 # Load all the parquets of a single sample into an ak array
-                print(dir_name)
-                sample = ak.concatenate(
-                    [ak.from_parquet(file) for file in glob.glob(LPC_FILEPREFIX+'/sim/'+data_era+'/'+dir_name+'/'+sample_type+'/*.parquet')]
-                )
+                print(data_era+': '+dir_name)
+                sample_list = [ak.from_parquet(file) for file in glob.glob(LPC_FILEPREFIX+'/sim/'+data_era+'/'+dir_name+'/'+sample_type+'/*merged.parquet')]
+                if len(sample_list) < 1:
+                    continue
+                sample = ak.concatenate(sample_list)
 
-                sample_fields = set([field for field in sample.fields])
+                sample_fields = [field for field in sample.fields]
                 for field in sample.fields:
                     if re.match('Res', field) is not None or re.search('4mom', field) is not None:
                         sample_fields.remove(field)
