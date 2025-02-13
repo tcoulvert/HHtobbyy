@@ -30,6 +30,16 @@ def process_data(
                     gjet_idx = idx
                     break
             sample_list[gjet_idx]['eventWeight'] = sample_list[gjet_idx]['eventWeight'] * 1.3
+        elif re.search('VH', sample_name) is not None:
+            ZandWH_idxs = []
+            for idx, dir_path in enumerate(sample_filepaths):
+                if re.search('VH', dir_path) is None:
+                    ZandWH_idxs.append(idx)
+            for idx in ZandWH_idxs:
+                sample_list[idx] = sample_list[idx][
+                    (sample_list[idx]['nonRes_lead_bjet_btagPNetB'] > 0.8)
+                    & (sample_list[idx]['nonRes_sublead_bjet_btagPNetB'] > 0.8)
+                ]
         samples[sample_name] = ak.concatenate(sample_list)
         samples[sample_name] = samples[sample_name][
             samples[sample_name]['nonRes_has_two_btagged_jets'] & samples[sample_name]['is_nonRes']  # eventually need to decide what to do with Res category...
