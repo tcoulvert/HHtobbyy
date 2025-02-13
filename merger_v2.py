@@ -49,7 +49,7 @@ def add_vars(sample):
                 sample['nonRes_lead_bjet_jet_idx'] != i, True, False
             ) & ak.where(
                 sample['nonRes_sublead_bjet_jet_idx'] != i, True, False
-            ) & ak.where(sample[f'jet{i}_pt'] != FILL_VALUE, True, False)
+            ) & ak.where(sample[f'jet{i}_mass'] != FILL_VALUE, True, False)
         )
 
     def zh_isr_jet(sample, dijet_4mom, jet_4moms):
@@ -215,6 +215,12 @@ def main():
         'DDQCDGJets': 1,
         'TTGG': 1
     }
+    sample_name_map = {
+        'GluGlutoHHto2B2G_kl_1p00_kt_1p00_c2_0p00': 'GluGluToHH', 'GluGluHToGG_M_125': 'GluGluHToGG', 
+        'ttHtoGG_M_125': 'ttHToGG', 'VBFHToGG_M_125': 'VBFHToGG', 'VHtoGG_M_125': 'VHToGG',
+        'BBHto2G_M_125': 'bbHToGG', 'ZH_Hto2G_Zto2Q_M-125': 'ZHToQQGG', 
+        'WminusH_Hto2G_Wto2Q_M-125': 'W-HToQQGG', 'WplusH_Hto2G_Wto2Q_M-125': 'W+HToQQGG'
+    }
     
     for data_era in sim_dir_lists.keys():
         all_sim_dirs_set = set(
@@ -283,7 +289,7 @@ def main():
                     field: sample[field] for field in sample_fields
                 })
 
-                sample['sample_name'] = dir_name
+                sample['sample_name'] = dir_name if dir_name not in sample_name_map else sample_name_map[dir_name]
 
                 sample['eventWeight'] = sample['weight'] * luminosities[data_era] * cross_sections[dir_name]
 

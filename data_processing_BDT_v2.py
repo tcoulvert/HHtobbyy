@@ -23,13 +23,13 @@ def process_data(
     samples = {}
     for sample_name, sample_filepaths in filepaths_dict.items():
         sample_list = [ak.from_parquet(glob.glob(dir_path)) for dir_path in sample_filepaths]
-        # if re.search('non-res', sample_name) is not None:
-        #     gjet_idx = -1
-        #     for idx, dir_path in enumerate(sample_filepaths):
-        #         if re.search('GJetPt40', dir_path) is not None:
-        #             gjet_idx = idx
-        #             break
-        #     sample_list[gjet_idx]['eventWeight'] = sample_list[gjet_idx]['eventWeight'] * 1.3
+        if re.search('non-res', sample_name) is not None:
+            gjet_idx = -1
+            for idx, dir_path in enumerate(sample_filepaths):
+                if re.search('GJetPt40', dir_path) is not None:
+                    gjet_idx = idx
+                    break
+            sample_list[gjet_idx]['eventWeight'] = sample_list[gjet_idx]['eventWeight'] * 1.3
         samples[sample_name] = ak.concatenate(sample_list)
         samples[sample_name] = samples[sample_name][
             samples[sample_name]['nonRes_has_two_btagged_jets'] & samples[sample_name]['is_nonRes']  # eventually need to decide what to do with Res category...
@@ -107,18 +107,37 @@ def process_data(
         'nonRes_CosThetaStar_CS', 'nonRes_CosThetaStar_jj', 'nonRes_CosThetaStar_gg',
 
         # dijet vars
-        'nonRes_dijet_mass', 'nonRes_dijet_pt',
-        # 'dijet_PNetRegMass', 'dijet_PNetRegPt',
+        # 'nonRes_dijet_mass', 'nonRes_dijet_pt',
+        'dijet_PNetRegMass', 'dijet_PNetRegPt',
 
         # bjet vars
-        'nonRes_lead_bjet_pt', 'nonRes_lead_bjet_eta', 'nonRes_lead_bjet_btagPNetB',
-        'lead_lead_bjet_sigmapT_over_pT', 'lead_bjet_pt_over_Mjj',
-        'nonRes_sublead_bjet_pt', 'nonRes_sublead_bjet_eta', 'nonRes_sublead_bjet_btagPNetB',
-        'sublead_lead_bjet_sigmapT_over_pT', 'sublead_bjet_pt_over_Mjj',
-        # 'lead_bjet_PNetRegPt', 'nonRes_lead_bjet_eta', 'lead_bjet_btagRobustParTAK4B',
-        # 'lead_bjet_sigmapT_over_RegPt', 'lead_bjet_RegPt_over_Mjj',
-        # 'sublead_bjet_PNetRegPt', 'nonRes_sublead_bjet_eta', 'sublead_bjet_btagRobustParTAK4B',
-        # 'sublead_bjet_sigmapT_over_RegPt', 'sublead_bjet_RegPt_over_Mjj',
+        # 'nonRes_lead_bjet_pt', # pt
+        'lead_bjet_PNetRegPt',
+        # --------------------
+        'nonRes_lead_bjet_eta', # eta
+        # --------------------
+        'nonRes_lead_bjet_btagPNetB', # btag scores
+        # 'lead_bjet_btagRobustParTAK4B',
+        # --------------------
+        # 'lead_bjet_sigmapT_over_pT', # sigma pt over pt
+        'lead_bjet_sigmapT_over_RegPt',
+        # --------------------
+        # 'lead_bjet_pt_over_Mjj', # pt over Mjj
+        'lead_bjet_RegPt_over_Mjj',
+        # --------------------
+        # 'nonRes_sublead_bjet_pt', 
+        'sublead_bjet_PNetRegPt',
+        # --------------------
+        'nonRes_sublead_bjet_eta', 
+        # --------------------
+        'nonRes_sublead_bjet_btagPNetB',
+        # 'sublead_bjet_btagRobustParTAK4B',
+        # --------------------
+        # 'sublead_bjet_sigmapT_over_pT', 
+        'sublead_bjet_sigmapT_over_RegPt',
+        # --------------------
+        # 'sublead_bjet_pt_over_Mjj',
+        'sublead_bjet_RegPt_over_Mjj',
 
         # diphoton vars
         'pt', 'eta',
@@ -129,8 +148,8 @@ def process_data(
         'sublead_mvaID_run3', 'sublead_sigmaE_over_E',
         
         # HH vars
-        'nonRes_HHbbggCandidate_pt', 'nonRes_HHbbggCandidate_eta', 'pt_balance',
-        # 'HH_PNetRegPt', 'HH_PNetRegEta', 'RegPt_balance',
+        # 'nonRes_HHbbggCandidate_pt', 'nonRes_HHbbggCandidate_eta', 'pt_balance',
+        'HH_PNetRegPt', 'HH_PNetRegEta', 'RegPt_balance',
 
         # ZH vars
         'DeltaPhi_jj', 'DeltaEta_jj',
@@ -163,9 +182,9 @@ def process_data(
         'sublead_bjet_sigmapT_over_RegPt': 'sublead_bjet_sigmapT_over_pT', 'sublead_bjet_RegPt_over_Mjj': 'sublead_bjet_pt_over_Mjj',
         # ------------------------
         'nonRes_lead_bjet_pt': 'lead_bjet_pt', 'nonRes_lead_bjet_btagPNetB': 'lead_bjet_btagPNetB',
-        'lead_lead_bjet_sigmapT_over_pT': 'lead_bjet_sigmapT_over_pT', 'lead_bjet_pt_over_Mjj': 'lead_bjet_pt_over_Mjj',
+        'lead_bjet_sigmapT_over_pT': 'lead_bjet_sigmapT_over_pT', 'lead_bjet_pt_over_Mjj': 'lead_bjet_pt_over_Mjj',
         'nonRes_sublead_bjet_pt': 'sublead_bjet_pt', 'nonRes_sublead_bjet_btagPNetB': 'sublead_bjet_btagPNetB',
-        'sublead_lead_bjet_sigmapT_over_pT': 'sublead_bjet_sigmapT_over_pT', 'sublead_bjet_pt_over_Mjj': 'sublead_bjet_pt_over_Mjj',
+        'sublead_bjet_sigmapT_over_pT': 'sublead_bjet_sigmapT_over_pT', 'sublead_bjet_pt_over_Mjj': 'sublead_bjet_pt_over_Mjj',
 
         # diphoton vars
         'pt': 'pt', 'eta': 'eta',
@@ -176,7 +195,7 @@ def process_data(
         'sublead_mvaID_run3': 'sublead_mvaID', 'sublead_sigmaE_over_E': 'sublead_sigmaE_over_E',
         
         # HH vars
-        'HH_PNetRegPt': 'HHbbggCandidate_pt', 'HH_PNetRegEta': 'HHbbggCandidate_eta', 'RegPt_balance': 'RegPt_balance',
+        'HH_PNetRegPt': 'HHbbggCandidate_pt', 'HH_PNetRegEta': 'HHbbggCandidate_eta', 'RegPt_balance': 'pt_balance',
         # ------------------------
         'nonRes_HHbbggCandidate_pt': 'HHbbggCandidate_pt', 'nonRes_HHbbggCandidate_eta': 'HHbbggCandidate_eta', 'pt_balance': 'pt_balance',
 
