@@ -78,9 +78,9 @@ def process_data(
         #     print(f"{subsample_name} weights * lumi * xs = {samples[sample_name]['eventWeight'][mask]}")
         #     print('-'*60)
 
-    for field in samples[order[0]].fields:
-        print(field)
-        print('-'*60)
+    # for field in samples[order[0]].fields:
+    #     print(field)
+    #     print('-'*60)
 
     # Rescale factor for sig and bkg samples
     if len(filepaths_dict) > 1:
