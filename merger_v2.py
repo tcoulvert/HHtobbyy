@@ -315,7 +315,7 @@ def main():
                 [ak.from_parquet(file) for file in glob.glob(LPC_FILEPREFIX+'/data/'+dir_name+'/*.parquet')]
             )
             
-            sample['sample_name'] = dir_name
+            sample['sample_name'] = data_era + '_' + dir_name
 
             add_vars(sample, data=True)
     

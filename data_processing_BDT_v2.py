@@ -23,26 +23,25 @@ def process_data(
     samples = {}
     for sample_name, sample_filepaths in filepaths_dict.items():
         sample_list = [ak.from_parquet(glob.glob(dir_path)) for dir_path in sample_filepaths]
-        if re.search('non-res', sample_name) is not None:
-            gjet_idx = -1
-            for idx, dir_path in enumerate(sample_filepaths):
-                if re.search('GJetPt40', dir_path) is not None:
-                    gjet_idx = idx
-                    break
-            sample_list[gjet_idx]['eventWeight'] = sample_list[gjet_idx]['eventWeight'] * 1.3
-        elif re.search('VH', sample_name) is not None:
+        if re.search('VH', sample_name) is not None:
             ZandWH_idxs = []
             for idx, dir_path in enumerate(sample_filepaths):
                 if re.search('VH', dir_path) is None:
                     ZandWH_idxs.append(idx)
             for idx in ZandWH_idxs:
+                if idx%2 == 0:
+                    TIGHT_PNETBTAG_WP = 0.6734
+                else:
+                    TIGHT_PNETBTAG_WP = 0.6915
                 sample_list[idx] = sample_list[idx][
-                    (sample_list[idx]['nonRes_lead_bjet_btagPNetB'] > 0.8)
-                    & (sample_list[idx]['nonRes_sublead_bjet_btagPNetB'] > 0.8)
+                    (sample_list[idx]['nonRes_lead_bjet_btagPNetB'] > TIGHT_PNETBTAG_WP)
+                    & (sample_list[idx]['nonRes_sublead_bjet_btagPNetB'] > TIGHT_PNETBTAG_WP)
                 ]
         samples[sample_name] = ak.concatenate(sample_list)
         samples[sample_name] = samples[sample_name][
-            samples[sample_name]['nonRes_has_two_btagged_jets'] & samples[sample_name]['is_nonRes']  # eventually need to decide what to do with Res category...
+            samples[sample_name]['nonRes_has_two_btagged_jets'] 
+            & samples[sample_name]['is_nonRes']  # eventually need to decide what to do with Res category...
+            & samples[sample_name]['fiducialGeometricFlag']
         ]
 
         # gjet40_mask = samples[sample_name]['sample_name'] == 'GJetPt40'
