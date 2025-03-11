@@ -38,10 +38,15 @@ def process_data(
                     & (sample_list[idx]['nonRes_sublead_bjet_btagPNetB'] > TIGHT_PNETBTAG_WP)
                 ]
         samples[sample_name] = ak.concatenate(sample_list)
+        for field in samples[order[0]].fields:
+            print(field)
+            print('-'*60)
         samples[sample_name] = samples[sample_name][
             samples[sample_name]['nonRes_has_two_btagged_jets'] 
             & samples[sample_name]['is_nonRes']  # eventually need to decide what to do with Res category...
-            & samples[sample_name]['fiducialGeometricFlag']
+            & (
+                samples[sample_name]['fiducialGeometricFlag'] if 'fiducialGeometricFlag' in samples[sample_name].fields else samples[sample_name]['pass_fiducial_geometric']
+            )
         ]
 
         # gjet40_mask = samples[sample_name]['sample_name'] == 'GJetPt40'
