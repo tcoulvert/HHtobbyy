@@ -14,7 +14,7 @@ vec.register_awkward()
 # lpc_redirector = "root://cmseos.fnal.gov/"
 # lxplus_redirector = "root://eosuser.cern.ch/"
 # lxplus_fileprefix = "/eos/cms/store/group/phys_b2g/HHbbgg/HiggsDNA_parquet/v2"
-LPC_FILEPREFIX_MERGED = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v2/Run3_2022_merged_v1"
+LPC_FILEPREFIX_MERGED = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v2/Run3_2022_merged_v2"
 LPC_FILEPREFIX = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v2/Run3_2022"
 FILL_VALUE = -999
 NUM_JETS = 10
@@ -170,7 +170,7 @@ def add_vars(sample, data=False):
 
 def main():
     sim_dir_lists = {
-        'preEE': None,
+        # 'preEE': None,
         'postEE': None
     }
     data_dir_lists = {
@@ -275,37 +275,37 @@ def main():
         )
         data_dir_lists[data_era].sort()
         
-    # for data_era, dir_list in sim_dir_lists.items():
-    #     for dir_name in dir_list:
-    #         for sample_type in ['nominal']:
-    #             # Load all the parquets of a single sample into an ak array
-    #             print(data_era+': '+dir_name)
-    #             sample_list = [ak.from_parquet(file) for file in glob.glob(LPC_FILEPREFIX+'/sim/'+data_era+'/'+dir_name+'/'+sample_type+'/*merged.parquet')]
-    #             if len(sample_list) < 1:
-    #                 continue
-    #             sample = ak.concatenate(sample_list)
+    for data_era, dir_list in sim_dir_lists.items():
+        for dir_name in dir_list:
+            for sample_type in ['nominal']:
+                # Load all the parquets of a single sample into an ak array
+                print(data_era+': '+dir_name)
+                sample_list = [ak.from_parquet(file) for file in glob.glob(LPC_FILEPREFIX+'/sim/'+data_era+'/'+dir_name+'/'+sample_type+'/*merged.parquet')]
+                if len(sample_list) < 1:
+                    continue
+                sample = ak.concatenate(sample_list)
 
-    #             sample_fields = [field for field in sample.fields]
-    #             for field in sample.fields:
-    #                 if re.match('Res', field) is not None or re.search('4mom', field) is not None:
-    #                     sample_fields.remove(field)
-    #             sample = ak.zip({
-    #                 field: sample[field] for field in sample_fields
-    #             })
+                sample_fields = [field for field in sample.fields]
+                for field in sample.fields:
+                    if re.match('Res', field) is not None or re.search('4mom', field) is not None:
+                        sample_fields.remove(field)
+                sample = ak.zip({
+                    field: sample[field] for field in sample_fields
+                })
 
-    #             sample['sample_name'] = dir_name if dir_name not in sample_name_map else sample_name_map[dir_name]
+                sample['sample_name'] = dir_name if dir_name not in sample_name_map else sample_name_map[dir_name]
 
-    #             sample['eventWeight'] = sample['weight'] * luminosities[data_era] * cross_sections[dir_name]
+                sample['eventWeight'] = sample['weight'] * luminosities[data_era] * cross_sections[dir_name]
 
-    #             add_vars(sample)
+                add_vars(sample)
         
-    #             destdir = LPC_FILEPREFIX_MERGED+'/sim/'+data_era+'/'+dir_name+'/'+sample_type+'/'
-    #             if not os.path.exists(destdir):
-    #                 os.makedirs(destdir)
-    #             merged_parquet = ak.to_parquet(sample, destdir+dir_name+'_merged.parquet')
+                destdir = LPC_FILEPREFIX_MERGED+'/sim/'+data_era+'/'+dir_name+'/'+sample_type+'/'
+                if not os.path.exists(destdir):
+                    os.makedirs(destdir)
+                merged_parquet = ak.to_parquet(sample, destdir+dir_name+'_merged.parquet')
                 
-    #             del sample
-    #             print('======================== \n', destdir)
+                del sample
+                print('======================== \n', destdir)
 
     for data_era, dir_list in data_dir_lists.items():
         for dir_name in dir_list:

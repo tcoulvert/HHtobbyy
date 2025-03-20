@@ -38,9 +38,6 @@ def process_data(
                     & (sample_list[idx]['nonRes_sublead_bjet_btagPNetB'] > TIGHT_PNETBTAG_WP)
                 ]
         samples[sample_name] = ak.concatenate(sample_list)
-        for field in samples[order[0]].fields:
-            print(field)
-            print('-'*60)
         samples[sample_name] = samples[sample_name][
             samples[sample_name]['nonRes_has_two_btagged_jets'] 
             & samples[sample_name]['is_nonRes']  # eventually need to decide what to do with Res category...
@@ -48,43 +45,6 @@ def process_data(
                 samples[sample_name]['fiducialGeometricFlag'] if 'fiducialGeometricFlag' in samples[sample_name].fields else samples[sample_name]['pass_fiducial_geometric']
             )
         ]
-
-        # gjet40_mask = samples[sample_name]['sample_name'] == 'GJetPt40'
-        # if ak.all(~gjet40_mask):
-        #     continue
-        # else:
-        #     samples[sample_name]['eventWeight'] = ak.where(
-        #         gjet40_mask,
-        #         samples[sample_name]['eventWeight'] * 1.3,
-        #         samples[sample_name]['eventWeight']
-        #     )
-            
-
-        # for subsample_name in [
-        #     # ggF HH
-        #     'GluGluToHH', 
-        #     # ttH
-        #     'ttHToGG', 'ttHtoGG_M_125',
-        #     # VH
-        #     'VHToGG', 'VHtoGG_M_125',
-        #     # non-res + ggFH + VBFH
-        #     'GGJets', 
-        #     'GJetPt20To40', 'GJetPt40', 
-        #     'GluGluHToGG', 'GluGluHToGG_M_125', 
-        #     'VBFHToGG', 'VBFHToGG_M_125'
-        # ]:
-        #     mask = samples[sample_name]['sample_name'] == subsample_name
-        #     if ak.all(~mask):
-        #         continue
-
-        #     print(f"{subsample_name} weights = {samples[sample_name]['weight'][mask]}")
-        #     print(f"{subsample_name} min weight = {np.min(ak.to_numpy(samples[sample_name]['weight'][mask]))}, max weight = {np.max(ak.to_numpy(samples[sample_name]['weight'][mask]))}")
-        #     print(f"{subsample_name} weights * lumi * xs = {samples[sample_name]['eventWeight'][mask]}")
-        #     print('-'*60)
-
-    # for field in samples[order[0]].fields:
-    #     print(field)
-    #     print('-'*60)
 
     # Rescale factor for sig and bkg samples
     if len(filepaths_dict) > 1:
