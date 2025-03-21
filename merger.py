@@ -13,15 +13,15 @@ vec.register_awkward()
 
 # lpc_redirector = "root://cmseos.fnal.gov/"
 # lxplus_redirector = "root://eosuser.cern.ch/"
-# lxplus_fileprefix = "/eos/cms/store/group/phys_b2g/HHbbgg/HiggsDNA_parquet/v1"
-LPC_FILEPREFIX = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v1"
-FORCE_RERUN = True
-NO_BSM = True
+# lxplus_fileprefix = "/eos/cms/store/group/phys_b2g/HHbbgg/HiggsDNA_parquet/v2"
+lpc_fileprefix = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v2/"
 FILL_VALUE = -999
+NUM_JETS = 10
+FORCE_RERUN = True
 
-def add_ttH_vars(sample):
+
+def add_vars(sample, data=False):
     
-    # Funcs for Abs of cos and DeltaPhi #
     def ak_sign(ak_array, inverse=False):
         if not inverse:
             return ak.where(ak_array < 0, -1, 1)
@@ -41,200 +41,24 @@ def add_ttH_vars(sample):
     
     def deltaEta(eta1, eta2):
         return ak_abs(eta1 - eta2)
-
-    # Funcs for chi^2 #
-    def jets_mask(sample, jet_size, i, j, t_mask, i_mask=None, j_mask=None):
-        jet_i_mask = t_mask & jet_mask(sample, jet_size, i)
-        if i_mask is not None:
-            jet_i_mask = jet_i_mask & i_mask
-        
-        jet_j_mask = t_mask & jet_mask(sample, jet_size, j)
-        if j_mask is not None:
-            jet_j_mask = jet_j_mask & j_mask
     
-        return jet_i_mask, jet_j_mask
-    
-    def jet_mask(sample, jet_size, i):
+    def jet_mask(sample, i):
         return (
             ak.where(
-                sample[f'jet{i}_4mom'].deltaR(sample[f'lead_bjet_4mom']) > jet_size, True, False
+                sample['nonRes_lead_bjet_jet_idx'] != i, True, False
             ) & ak.where(
-                sample[f'jet{i}_4mom'].deltaR(sample[f'sublead_bjet_4mom']) > jet_size, True, False
-            ) & ak.where(sample[f'jet{i}_pt'] != FILL_VALUE, True, False)
+                sample['nonRes_sublead_bjet_jet_idx'] != i, True, False
+            ) & ak.where(sample[f'jet{i}_mass'] != FILL_VALUE, True, False)
         )
 
-    def find_wjet_topjet(sample, num_jets, jet_size, w_mass, top_mass, t_mask, chi_form='t0'):
-        jet_combos = []
-        for i in range(1, num_jets+1):
-            jet_combos.extend(
-                [(i, j) for j in range(i+1, num_jets+1)]
-            )
-    
-        chosen_w1jets = ak.Array(
-            [
-                {'i': FILL_VALUE, 'j': FILL_VALUE} for _ in range(ak.num(sample['event'], axis=0))
-            ]
-        )
-        chosen_w1jets_deltaR = ak.Array(
-            [0 for _ in range(ak.num(sample['event'], axis=0))]
-        )
-    
-        
-        for i, j in jet_combos:
-            # Masks for non bjets and jet exists (jet_pt != FILL_VALUE)
-            jet_i_mask, jet_j_mask = jets_mask(sample, jet_size, i, j, t_mask)
-    
-            # Select w-jets by minimizing deltaR between two not b-jets
-            w1_decision_mask = (
-                ak.where(
-                    sample[f'jet{i}_4mom'].deltaR(sample[f'jet{j}_4mom']) < 
-                    chosen_w1jets_deltaR, 
-                    True, False
-                ) | ak.where(
-                    sample['w1jet_4mom'].mass == 0, True, False
-                )
-            ) & jet_i_mask & jet_j_mask
-            
-            sample['w1jet_4mom'] = ak.where(
-                w1_decision_mask,
-                sample[f'jet{i}_4mom'] + sample[f'jet{j}_4mom'], sample['w1jet_4mom']
-            )
-    
-            
-            chosen_w1jets['i'] = ak.where(
-                w1_decision_mask,
-                i, chosen_w1jets['i']
-            )
-            chosen_w1jets['j'] = ak.where(
-                w1_decision_mask,
-                j, chosen_w1jets['j']
-            )
-            chosen_w1jets_deltaR = ak.where(
-                w1_decision_mask,
-                sample[f'jet{i}_4mom'].deltaR(sample[f'jet{j}_4mom']), chosen_w1jets_deltaR
-            )
-    
-        # Select bjet by minimizing deltaR between W-jet and b-jet
-        bjet_mass_comparison_mask = ak.where(
-            sample['w1jet_4mom'].deltaR(sample[f'lead_bjet_4mom']) <
-            sample['w1jet_4mom'].deltaR(sample[f'sublead_bjet_4mom']),
-            True, False
-        )
-        sample['top1jet_4mom'] = ak.where(
-            bjet_mass_comparison_mask,
-            sample['w1jet_4mom'] + sample[f'lead_bjet_4mom'], 
-            sample['w1jet_4mom'] + sample[f'sublead_bjet_4mom']
-        )
-    
-        if chi_form == 't1':
-            # Select other wjet by dijet of reminaing two jets 
-            for k, l in jet_combos:
-                # Masks for non-bjets, not choosing same jets as w1, and jet exists (jet_pt != FILL_VALUE)
-                jet_k_mask, jet_l_mask = jets_mask(
-                    sample, jet_size, k, l, t_mask, 
-                    i_mask=ak.where(chosen_w1jets['i'] != k, True, False),
-                    j_mask=ak.where(chosen_w1jets['j'] != l, True, False)
-                )
-                
-                w2_decision_mask = jet_k_mask & jet_l_mask
-                sample['w2jet_4mom'] = ak.where(
-                    w2_decision_mask,
-                    sample[f'jet{k}_4mom'] + sample[f'jet{l}_4mom'], sample['w2jet_4mom']
-                )
-            # Select other bjet 
-            sample['top2jet_4mom'] = ak.where(
-                ~bjet_mass_comparison_mask,
-                sample['w1jet_4mom'] + sample[f'lead_bjet_4mom'], 
-                sample['w1jet_4mom'] + sample[f'sublead_bjet_4mom']
-            )
-
-    def chi_t0(sample, num_jets, jet_size):
-        w_mass = 80.377
-        top_mass = 172.76
-    
-        # To not include events with 4 extra jets, as its covered by chi_t1
-        t_mask = ak.where(
-            sample['jet4_pt'] != FILL_VALUE, True, False
-        ) & ak.where(
-            sample['jet6_pt'] == FILL_VALUE, True, False
-        )
-        
-        find_wjet_topjet(
-            sample, num_jets, jet_size, w_mass, top_mass, t_mask, chi_form='t0'
-        )
-        
-        term1 = ((w_mass - ak.where(sample['w1jet_4mom'].mass == 0, FILL_VALUE, sample['w1jet_4mom'].mass)) / (0.1 * w_mass))**2
-        term2 = ((top_mass - ak.where(sample['w1jet_4mom'].mass == 0, FILL_VALUE, sample['top1jet_4mom'].mass)) / (0.1 * top_mass))**2
-    
-        return ak.where(t_mask, term1+term2, FILL_VALUE)
-        
-    def chi_t1(sample, num_jets, jet_size):
-        w_mass = 80.377
-        top_mass = 172.76
-    
-        t_mask = ak.where(
-            sample['jet6_pt'] != FILL_VALUE, True, False
-        )
-        
-        find_wjet_topjet(
-            sample, num_jets, jet_size, w_mass, top_mass, t_mask, chi_form='t1'
-        )
-    
-        term1_1 = ((w_mass - ak.where(sample['w1jet_4mom'].mass == 0, FILL_VALUE, sample['w1jet_4mom'].mass)) / (0.1 * w_mass))**2
-        term1_2 = ((top_mass - ak.where(sample['w1jet_4mom'].mass == 0, FILL_VALUE, sample['top1jet_4mom'].mass)) / (0.1 * top_mass))**2
-    
-        term2_1 = ((w_mass - ak.where(sample['w1jet_4mom'].mass == 0, FILL_VALUE, sample['w2jet_4mom'].mass)) / (0.1 * w_mass))**2
-        term2_2 = ((top_mass - ak.where(sample['w1jet_4mom'].mass == 0, FILL_VALUE, sample['top2jet_4mom'].mass)) / (0.1 * top_mass))**2
-    
-        return ak.where(t_mask, term1_1+term1_2+term2_1+term2_2, FILL_VALUE)
-
-    def deltaR_bjet_lepton(sample, lepton_type='lead', bjet_type='lead'):
-        return ak.where(
-            ak.where(sample[f'lepton{1 if lepton_type == "lead" else 2}_pt'] != FILL_VALUE, True, False) & ak.where(sample[f'{bjet_type}_bjet_pt'] != FILL_VALUE, True, False),
-            sample[f'{lepton_type}_lepton_4mom'].deltaR(sample[f'{bjet_type}_bjet_4mom']),
-            FILL_VALUE
-        )
-    
-    def lead_lepton_var(sample, pass_num, lepton_gen, var):
-        if pass_num > 1:
-            prev_lepton_pass = lead_lepton_var(sample, pass_num-1, lepton_gen, var)
-        else:
-            prev_lepton_pass = ak.Array([FILL_VALUE for _ in range(ak.num(sample['event'], axis=0))])
-        return ak.where(
-            ak.where(sample[f'lepton{pass_num}_generation'] == lepton_gen, True, False) & ak.where(prev_lepton_pass == FILL_VALUE, True, False), 
-            sample[f'lepton{pass_num}_{var}'], 
-            prev_lepton_pass
-        )
-    def sublead_lepton_var(sample, pass_num, lepton_gen, lead_lepton, var):
-        if pass_num > 2:
-            prev_lepton_pass = sublead_lepton_var(sample, pass_num-1, lepton_gen, lead_lepton, var)
-        else:
-            prev_lepton_pass = ak.Array([FILL_VALUE for _ in range(ak.num(sample['event'], axis=0))])
-        return ak.where(
-            ak.where(sample[f'lepton{pass_num}_generation'] == lepton_gen, True, False) & ak.where(prev_lepton_pass == FILL_VALUE, True, False) & ak.where(lead_lepton != sample[f'lepton{pass_num}_{var}'], True, False), 
-            sample[f'lepton{pass_num}_{var}'], 
-            prev_lepton_pass
-        )
-    
-    def n_leptons(sample, pass_num):
-        if pass_num < 4:
-            prev_lepton_pass = n_leptons(sample, pass_num+1)
-        else:
-            prev_lepton_pass = ak.Array([FILL_VALUE for _ in range(ak.num(sample['event'], axis=0))])
-        return ak.where(
-            ak.where(prev_lepton_pass == FILL_VALUE, True, False) & ak.where(sample[f'lepton{pass_num}_pt'] != FILL_VALUE, True, False),
-            pass_num, 
-            prev_lepton_pass
-        )
-
-    def zh_isr_jet(sample, num_jets, jet_size):
+    def zh_isr_jet(sample, dijet_4mom, jet_4moms):
         min_total_pt = ak.Array([FILL_VALUE for _ in range(ak.num(sample['event'], axis=0))])
-        isr_jet_4mom = copy.deepcopy(sample['jet1_4mom'])
+        isr_jet_4mom = copy.deepcopy(jet_4moms['jet1_4mom'])
 
-        for i in range(1, num_jets+1):
-            jet_i_mask = jet_mask(sample, jet_size, i)
+        for i in range(1, NUM_JETS+1):
+            jet_i_mask = jet_mask(sample, i)
 
-            z_jet_4mom = sample['dijet_4mom'] + sample[f'jet{i}_4mom']
+            z_jet_4mom = dijet_4mom + jet_4moms[f'jet{i}_4mom']
 
             better_isr_bool = (
                 ak.where(z_jet_4mom.pt < min_total_pt, True, False)
@@ -244,126 +68,108 @@ def add_ttH_vars(sample):
                 better_isr_bool, z_jet_4mom.pt, min_total_pt
             )
             isr_jet_4mom = ak.where(
-                better_isr_bool, sample[f'jet{i}_4mom'], isr_jet_4mom
+                better_isr_bool, jet_4moms[f'jet{i}_4mom'], isr_jet_4mom
             )
         return isr_jet_4mom, ak.where(min_total_pt != FILL_VALUE, True, False)
     
-    # Abs of cos #
-    sample['abs_CosThetaStar_CS'] = ak.where(sample['CosThetaStar_CS'] >= 0, sample['CosThetaStar_CS'], -1*sample['CosThetaStar_CS'])
-    sample['abs_CosThetaStar_jj'] = ak.where(sample['CosThetaStar_jj'] >= 0, sample['CosThetaStar_jj'], -1*sample['CosThetaStar_jj'])
+    def robustParT(sample, bjet_type='lead'):
+        robust_parT = ak.Array([FILL_VALUE for _ in range(ak.num(sample['event'], axis=0))])
 
-    # DeltaPhi of (j, MET) #
-    sample['DeltaPhi_j1MET'] = deltaPhi(sample['lead_bjet_phi'], sample['puppiMET_phi'])
-    sample['DeltaPhi_j2MET'] = deltaPhi(sample['sublead_bjet_phi'], sample['puppiMET_phi'])
+        for i in range(1, NUM_JETS+1):
+            robust_parT = ak.where(sample[f"nonRes_{bjet_type}_bjet_jet_idx"] == i, sample[f"jet{i}_btagRobustParTAK4B"], robust_parT)
 
-    # chi^2 #
+        return robust_parT
+    
+    def max_nonbjet_btag(sample):
+        max_btag_score = ak.Array([0. for _ in range(ak.num(sample['event'], axis=0))])
+
+        for i in range(1, NUM_JETS+1):
+            jet_i_mask = jet_mask(sample, i)
+
+            larger_btag_bool = jet_i_mask & (
+                sample[f'jet{i}_btagPNetB'] > max_btag_score
+            )
+
+            max_btag_score = ak.where(
+                larger_btag_bool, sample[f'jet{i}_btagPNetB'], max_btag_score
+            )
+        return max_btag_score
+    
+    # Regressed bjet kinematics #
+    bjet_4moms = {}
     for field in ['lead', 'sublead']:
-        sample[f'{field}_bjet_4mom'] = ak.zip(
+        bjet_4moms[f'{field}_bjet_4mom'] = ak.zip(
             {
-                'rho': sample[f'{field}_bjet_pt'], # rho is synonym for pt
-                'phi': sample[f'{field}_bjet_phi'],
-                'eta': sample[f'{field}_bjet_eta'],
-                'tau': sample[f'{field}_bjet_mass'], # tau is synonym for mass
+                'rho': sample[f'nonRes_{field}_bjet_pt'] * sample[f'nonRes_{field}_bjet_PNetRegPtRawCorr'] * sample[f'nonRes_{field}_bjet_PNetRegPtRawCorrNeutrino'], # rho is synonym for pt
+                'phi': sample[f'nonRes_{field}_bjet_phi'],
+                'eta': sample[f'nonRes_{field}_bjet_eta'],
+                'tau': sample[f'nonRes_{field}_bjet_mass'], # tau is synonym for mass
             }, with_name='Momentum4D'
         )
+    # Improved bjet bTag score and regressed mass #
+    for field in ['lead', 'sublead']:
+        sample[f'{field}_bjet_btagRobustParTAK4B'] = robustParT(sample, bjet_type=field)
+        sample[f'{field}_bjet_PNetRegPt'] = bjet_4moms[f'{field}_bjet_4mom'].pt
+        sample[f'{field}_bjet_sigmapT_over_pT'] = sample[f'nonRes_{field}_bjet_PNetRegPtRawRes'] / sample[f'nonRes_{field}_bjet_pt']
+        sample[f'{field}_bjet_sigmapT_over_RegPt'] = sample[f'nonRes_{field}_bjet_PNetRegPtRawRes'] / sample[f'{field}_bjet_PNetRegPt']
 
-    for i in range(1, 7): # how to not hard-code 7 jets?
-        sample[f'jet{i}_4mom'] = ak.zip(
+    # Regressed jet kinematics #
+    jet_4moms = {}
+    for i in range(1, NUM_JETS+1):
+        jet_4moms[f'jet{i}_4mom'] = ak.zip(
             {
-                'rho': sample[f'jet{i}_pt'],
+                'rho': sample[f'jet{i}_pt'] * sample[f'jet{i}_PNetRegPtRawCorr'] * sample[f'jet{i}_PNetRegPtRawCorrNeutrino'],
                 'phi': sample[f'jet{i}_phi'],
                 'eta': sample[f'jet{i}_eta'],
                 'tau': sample[f'jet{i}_mass'],
             }, with_name='Momentum4D'
         )
-            
-    for jet_type in ['w', 'top']:
-        for jet_num in range(1, 3):
-            # sample[f'{jet_type}{jet_num}jet_4mom'] = ak.copy(sample['zero_vector'])
-            sample[f'{jet_type}{jet_num}jet_4mom'] = ak.Array(
-                [
-                    {'rho': 0, 'phi': 0, 'eta': 0, 'tau': 0} for _ in range(ak.num(sample['event'], axis=0))
-                ], with_name='Momentum4D'
-            )
 
-    sample['chi_t0'] = chi_t0(sample, 6, 0.4)
-    sample['chi_t1'] = chi_t1(sample, 6, 0.4)
-    
-    # lepton angulars #
-    for field in ['lead', 'sublead']:
-        sample[f'{field}_lepton_4mom'] = ak.zip(
-            {
-                'rho': sample[f'lepton{"1" if field == "lead" else "2"}_pt'], # rho is synonym for pt
-                'phi': sample[f'lepton{"1" if field == "lead" else "2"}_phi'],
-                'eta': sample[f'lepton{"1" if field == "lead" else "2"}_eta'],
-                'tau': sample[f'lepton{"1" if field == "lead" else "2"}_mass'], # tau is synonym for mass
-            }, with_name='Momentum4D'
-        )
-    
-    sample['leadBjet_leadLepton'] = deltaR_bjet_lepton(sample)
-    sample['leadBjet_subleadLepton'] = deltaR_bjet_lepton(sample, lepton_type='sublead')
-    sample['subleadBjet_leadLepton'] = deltaR_bjet_lepton(sample, bjet_type='sublead')
-    sample['subleadBjet_subleadLepton'] = deltaR_bjet_lepton(sample, lepton_type='sublead', bjet_type='sublead')
+    # Regressed dijet kinematics #
+    dijet_4mom = bjet_4moms['lead_bjet_4mom'] + bjet_4moms['sublead_bjet_4mom']
+    sample['dijet_PNetRegPt'] = dijet_4mom.pt
+    sample['dijet_PNetRegEta'] = dijet_4mom.eta
+    sample['dijet_PNetRegPhi'] = dijet_4mom.phi
+    sample['dijet_PNetRegMass'] = dijet_4mom.mass
 
-    # MET vars (only for v1 parquets) #
-    if 'puppiMET_eta' not in set(sample.fields):
-        sample['puppiMET_eta'] = [0 for _ in range(ak.num(sample['event'], axis=0))]
-
-    # Electrons and Muons #
-    for var in ['pt', 'eta', 'phi']:
-        sample[f'lead_electron_{var}'] = lead_lepton_var(sample, 4, 1, var)
-        sample[f'sublead_electron_{var}'] = sublead_lepton_var(sample, 4, 1, sample[f'lead_electron_{var}'], var)
-        sample[f'lead_muon_{var}'] = lead_lepton_var(sample, 4, 2, var)
-        sample[f'sublead_muon_{var}'] = sublead_lepton_var(sample, 4, 2, sample[f'lead_muon_{var}'], var)
-
-    # n_leptons #
-    sample['n_leptons'] = n_leptons(sample, 1)
-    sample['n_leptons'] = ak.where(sample['n_leptons'] == -999, 0, sample['n_leptons'])
-
-    # bool values #
-    for var in ['chi_t0', 'chi_t1','leadBjet_leadLepton', 
-        'leadBjet_subleadLepton', 'subleadBjet_leadLepton', 'subleadBjet_subleadLepton',
-    ]:
-        sample[f'{var}_bool'] = ak.where(sample[var] != FILL_VALUE, 1, 0)
-
-    for var in ['lepton1', 'lepton2']:
-        sample[f'{var}_bool'] = ak.where(sample[f'{var}_pt'] != FILL_VALUE, 1, 0)
-
-    # Yibo BDT variables #
-    # photon variables
-    sample['lead_pt_over_Mgg'] = sample['lead_pt'] / sample['mass']
-    sample['sublead_pt_over_Mgg'] = sample['sublead_pt'] / sample['mass']
-    sample['lead_sigmaE_over_E'] = sample['lead_energyErr'] / (sample['lead_pt'] * np.cosh(sample['lead_eta']))
-    sample['sublead_sigmaE_over_E'] = sample['sublead_energyErr'] / (sample['sublead_pt'] * np.cosh(sample['sublead_eta']))
-    # bjet variables
-    sample['lead_bjet_pt_over_Mjj'] = sample['lead_bjet_pt'] / sample['dijet_mass']
-    sample['sublead_bjet_pt_over_Mjj'] = sample['sublead_bjet_pt'] / sample['dijet_mass']
-    sample['lead_bjet_sigmapT_over_pT'] = sample['lead_bjet_PNetRegPtRawRes'] / sample['lead_bjet_pt']
-    sample['sublead_bjet_sigmapT_over_pT'] = sample['sublead_bjet_PNetRegPtRawRes'] / sample['sublead_bjet_pt']
-    # diphoton, dijet variables
-    sample['dipho_mass_over_Mggjj'] = sample['mass'] / sample['HHbbggCandidate_mass']
-    sample['dijet_mass_over_Mggjj'] = sample['dijet_mass'] / sample['HHbbggCandidate_mass']
-    sample['pt_balance'] = sample['HHbbggCandidate_pt'] / (sample['lead_pt'] + sample['sublead_pt'] + sample['lead_bjet_pt'] + sample['sublead_bjet_pt'])
-
-    # VH variables #
-    sample['DeltaPhi_jj'] = deltaPhi(sample['lead_bjet_phi'], sample['sublead_bjet_phi'])
-    sample['DeltaEta_jj'] = deltaEta(sample['lead_bjet_phi'], sample['sublead_bjet_phi'])
-    sample['dijet_4mom'] = ak.zip(
+    # Regressed HH kinematics
+    diphoton_4mom = ak.zip(
         {
-            'rho': sample['dijet_pt'], # rho is synonym for pt
-            'phi': sample['dijet_phi'],
-            'eta': sample['dijet_eta'],
-            'tau': sample['dijet_mass'], # tau is synonym for mass
+            'rho': sample['pt'],
+            'phi': sample['phi'],
+            'eta': sample['eta'],
+            'tau': sample['mass'],
         }, with_name='Momentum4D'
     )
-    isr_jet_4mom, isr_jet_bool = zh_isr_jet(sample, 6, 0.4)
-    sample['isr_jet_pt'] = ak.where(isr_jet_bool, isr_jet_4mom.pt, FILL_VALUE)  # pt of isr jet
+    HH_4mom = diphoton_4mom + dijet_4mom
+    sample['HH_PNetRegPt'] = HH_4mom.pt
+    sample['HH_PNetRegEta'] = HH_4mom.eta
+    sample['HH_PNetRegPhi'] = HH_4mom.phi
+    sample['HH_PNetRegMass'] = HH_4mom.mass
+
+    # Nonres BDT variables #
+    for field in ['lead', 'sublead']:
+        # photon variables
+        sample[f'{field}_sigmaE_over_E'] = sample[f'{field}_energyErr'] / (sample[f'{field}_pt'] * np.cosh(sample[f'{field}_eta']))
+        # bjet variables
+        sample[f'{field}_bjet_pt_over_Mjj'] = sample[f'nonRes_{field}_bjet_pt'] / sample['nonRes_dijet_mass']
+        sample[f'{field}_bjet_RegPt_over_Mjj'] = sample[f'{field}_bjet_PNetRegPt'] / sample['dijet_PNetRegMass']
+
+    # mHH variables #
+    sample['RegPt_balance'] = sample['HH_PNetRegPt'] / (sample['lead_pt'] + sample['sublead_pt'] + sample['lead_bjet_PNetRegPt'] + sample['sublead_bjet_PNetRegPt'])
+    sample['pt_balance'] = sample['nonRes_HHbbggCandidate_pt'] / (sample['lead_pt'] + sample['sublead_pt'] + sample['nonRes_lead_bjet_pt'] + sample['nonRes_sublead_bjet_pt'])
+
+
+    # VH variables #
+    sample['DeltaPhi_jj'] = deltaPhi(sample['nonRes_lead_bjet_phi'], sample['nonRes_sublead_bjet_phi'])
+    sample['DeltaEta_jj'] = deltaEta(sample['nonRes_lead_bjet_eta'], sample['nonRes_sublead_bjet_eta'])
+    isr_jet_4mom, isr_jet_bool = zh_isr_jet(sample, dijet_4mom, jet_4moms)
+    sample['isr_jet_RegPt'] = ak.where(isr_jet_bool, isr_jet_4mom.pt, FILL_VALUE)  # pt of isr jet
     sample['DeltaPhi_isr_jet_z'] = ak.where(  # phi angle between isr jet and z candidate
-        isr_jet_bool, 
-        deltaPhi(isr_jet_4mom.phi, sample['dijet_phi']), 
+        isr_jet_bool,
+        deltaPhi(isr_jet_4mom.phi, sample['nonRes_dijet_phi']), 
         FILL_VALUE
     )
-    # dijet pt -> already in parquets
 
     # hash #
     hash_arr = np.zeros_like(ak.to_numpy(sample['pt']))
@@ -371,75 +177,56 @@ def add_ttH_vars(sample):
         hash_arr[event_idx] = hash(str(sample['event'])+str(sample['lumi'])+str(sample['run']))
     sample['hash'] = hash_arr  # Used to re-order the ttH killer output to match the input files
 
-    # different tt final state variables #
-    # sample['fully_leptonic'] = sample['lepton2_pt'] != FILL_VALUE
-    # sample['fully_hadronic'] = ~sample['fully_leptonic'] & (sample['jet6_pt'] != FILL_VALUE)
-    # sample['semi_leptonic'] = ~sample['fully_leptonic'] & ~sample['fully_hadronic']
-    # print(f"num fully-lep = {ak.sum(sample['fully_leptonic'])}")
-    # print(f"num full-had = {ak.sum(sample['fully_hadronic'])}")
-    # print(f"num semi-lep = {ak.sum(sample['semi_leptonic'])}")
-    # print(f"num semi-lep w/ 1 lepton = {ak.sum(sample['semi_leptonic'][sample['lepton1_pt'] != FILL_VALUE])}")
-    # print(f"num semi-lep w/ 4+ jets = {ak.sum(sample['semi_leptonic'][sample['jet4_pt'] != FILL_VALUE])}")
-    # print(f"num semi-lep w/ 1 lepton & 4+ jets = {ak.sum(sample['semi_leptonic'][(sample['jet4_pt'] != FILL_VALUE) & (sample['lepton1_pt'] != FILL_VALUE)])}")
-    # print(f"num semi-lep w/o 1 lepton & 4+ jets = {ak.sum(sample['semi_leptonic'][(sample['jet4_pt'] == FILL_VALUE) & (sample['lepton1_pt'] == FILL_VALUE)])}")
+    # max non-bjet btag score -> sets lower limit for resampling #
+    sample['max_nonbjet_btag'] = max_nonbjet_btag(sample)
 
-    # bjets with energy corrections #
-    # for bjet_type in ['lead', 'sublead']:
-    #     sample[f'{bjet_type}_bjet_4mom_corr'] = copy.deepcopy(sample[f'{bjet_type}_bjet_4mom'])
-    #     sample[f'{bjet_type}_bjet_4mom_corr']['rho'] = sample[f'{bjet_type}_bjet_4mom_corr']['rho'](1 - sample[f'{bjet_type}_bjet_)
+
+def get_merged_filepath(unmerged_filepath):
+    return os.path.join(
+        unmerged_filepath[:unmerged_filepath.rfind("Run3_202")+len("Run3_202x")] 
+        + "_merged"
+        + unmerged_filepath[unmerged_filepath.rfind("Run3_202")+len("Run3_202x"):],
+        ""
+    )
+
+def slim_parquets(sample):
+    sample_fields = [field for field in sample.fields]
+    for field in sample.fields:
+        if re.match('Res', field) is not None or re.search('4mom', field) is not None:
+            sample_fields.remove(field)
+    sample = ak.zip({
+        field: sample[field] for field in sample_fields
+    })
 
 def main():
-    dir_lists = {
-        'Run3_2022preEE': None,
-        'Run3_2022postEE': None
+    sim_dir_lists = {
+        os.path.join(lpc_fileprefix, "Run3_2022", "sim", "preEE", ""): None,
+        os.path.join(lpc_fileprefix, "Run3_2022", "sim", "postEE", ""): None,
+        os.path.join(lpc_fileprefix, "Run3_2023", "sim", "preBPix", ""): None,
+        os.path.join(lpc_fileprefix, "Run3_2023", "sim", "postBPix", ""): None,
     }
-    # set of all the preEE and postEE extra directories that don't contain parquet files
-    non_parquet_set = {
-        'json_files', 'resonant_incomplete', 'ReadMe.md~~', 'ReadMe.md~', 'ReadMe.md', 
-        'ReadMe_m.swp', 'ReadMe_m.swn', 'ReadMe_m.swm', 'ReadMe_m.swo', '.ReadMe.md.swp', '.ReadMe.md.swx',
-        'completed_samples.json'
+    data_dir_lists = {
+        os.path.join(lpc_fileprefix, "Run3_2022", "data", ""): None,
+        os.path.join(lpc_fileprefix, "Run3_2023", "data", ""): None,
     }
     
-    for data_era in dir_lists.keys():
-        if not FORCE_RERUN and os.path.exists(LPC_FILEPREFIX+'/'+data_era+'/completed_samples.json'):
-            with open(LPC_FILEPREFIX+'/'+data_era+'/completed_samples.json', 'r') as f:
-                run_samples = json.load(f)
-        else:
-            # 'GluGluToHH', 'GGJets', 'GJetPt20To40', 'GJetPt40', 'GluGluHToGG', 'ttHToGG', 'VBFHToGG', 'VHToGG'
-            run_samples = {
-                'run_samples_list': []
-            }
-
-        dont_merge_set = non_parquet_set | set(run_samples['run_samples_list'])
-        
-        output = os.listdir(
-            LPC_FILEPREFIX+'/'+data_era
-        )
-        
-        output_set = set(output)
-        output_set -= dont_merge_set
-
-        if NO_BSM:
-            bsm_set = set()
-            for sample_name in os.listdir(LPC_FILEPREFIX+'/'+data_era):
-                if re.search('_', sample_name) is not None and re.search('Data', sample_name) is None:  # and sample_name != 'VBFHHto2B2G_CV_1_C2V_1_C3_1':
-                    bsm_set.add(sample_name)
-            output_set -= bsm_set
-        
-        dir_lists[data_era] = list(output_set)
-        
-
     # MC Era: total era luminosity [fb^-1] #
     luminosities = {
-        'Run3_2022preEE': 7.9804, 
-        'Run3_2022postEE': 26.6717
+        os.path.join(lpc_fileprefix, "Run3_2022", "sim", "preEE", ""): 7.9804,
+        os.path.join(lpc_fileprefix, "Run3_2022", "sim", "postEE", ""): 26.6717,
+        os.path.join(lpc_fileprefix, "Run3_2023", "sim", "preBPix", ""): 17.794,
+        os.path.join(lpc_fileprefix, "Run3_2023", "sim", "postBPix", ""): 9.451,
     }
+
+    
     
     # Name: cross section [fb] @ sqrrt{s}=13.6 TeV & m_H=125.09 GeV #
     #   -> Do we not need to care about other HH processes? https://arxiv.org/pdf/1910.00012.pdf
     cross_sections = {
         # https://twiki.cern.ch/twiki/bin/view/LHCPhysics/LHCHWGHH?redirectedfrom=LHCPhysics.LHCHXSWGHH#Current_recommendations_for_HH_c
         'GluGluToHH': 34.43*0.0026,
+        'GluGlutoHHto2B2G_kl_1p00_kt_1p00_c2_0p00': 34.43*0.0026,
+        'GluGlutoHHto2B2G_kl-1p00_kt-1p00_c2-0p00': 34.43*0.0026,
         # https://xsdb-temp.app.cern.ch/xsdb/?columns=37748736&currentPage=0&pageSize=10&searchQuery=DAS%3DGG-Box-3Jets_MGG-80_13p6TeV_sherpa
         'GGJets': 88750, 
         # https://xsdb-temp.app.cern.ch/xsdb/?columns=37748736&currentPage=0&pageSize=10&searchQuery=DAS%3DGJet_PT-20to40_DoubleEMEnriched_MGG-80_TuneCP5_13p6TeV_pythia8
@@ -448,63 +235,177 @@ def main():
         'GJetPt40': 919100, 
         # https://twiki.cern.ch/twiki/bin/view/LHCPhysics/CERNYellowReportPageAt13TeV#gluon_gluon_Fusion_Process
         'GluGluHToGG': 48520*0.00228,
+        'GluGluHToGG_M_125': 48520*0.00228,
+        'GluGluHtoGG': 48520*0.00228,
         # https://twiki.cern.ch/twiki/bin/view/LHCPhysics/CERNYellowReportPageAt13TeV#ttH_Process
         'ttHToGG': 506.5*0.00228,
+        'ttHtoGG_M_125': 506.5*0.00228,
+        'ttHtoGG': 506.5*0.00228,
         # https://twiki.cern.ch/twiki/bin/view/LHCPhysics/CERNYellowReportPageAt13TeV#VBF_Process
         'VBFHToGG': 3779*0.00228,
+        'VBFHToGG_M_125': 3779*0.00228,
         # https://twiki.cern.ch/twiki/bin/view/LHCPhysics/CERNYellowReportPageAt13TeV#WH_Process + https://twiki.cern.ch/twiki/bin/view/LHCPhysics/CERNYellowReportPageAt13TeV#ZH_Process
         'VHToGG': (1369 + 882.4)*0.00228,
+        'VHtoGG_M_125': (1369 + 882.4)*0.00228,
+        'VHtoGG': (1369 + 882.4)*0.00228,
+        # https://twiki.cern.ch/twiki/bin/view/LHCPhysics/CERNYellowReportPageAt13TeV#bbH_Process
+        'BBHto2G_M_125': 526.5*0.00228,
+        'bbHtoGG': 526.5*0.00228,
+        # https://twiki.cern.ch/twiki/bin/view/LHCPhysics/CERNYellowReportPageAt13TeV#ppZH_Total_Cross_Section_with_ap +  https://pdg.lbl.gov/2018/listings/rpp2018-list-z-boson.pdf
+        'ZH_Hto2G_Zto2Q_M-125': 882.4*0.00228*0.69911,
+        # https://twiki.cern.ch/twiki/bin/view/LHCPhysics/CERNYellowReportPageAt13TeV#ppWH_Total_Cross_Section_with_ap +  https://pdg.lbl.gov/2022/listings/rpp2022-list-w-boson.pdf
+        'WminusH_Hto2G_Wto2Q_M-125': 1369*0.00228*0.6741,
+        # https://twiki.cern.ch/twiki/bin/view/LHCPhysics/CERNYellowReportPageAt13TeV#ppWH_Total_Cross_Section_with_ap +  https://pdg.lbl.gov/2022/listings/rpp2022-list-w-boson.pdf
+        'WplusH_Hto2G_Wto2Q_M-125': 1369*0.00228*0.6741,
+        # Other potential samples
+        'DDQCDGJets': 1,
+        'TTGG': 1
     }
-    for data_era in dir_lists.keys():
-        for dir_name in dir_lists[data_era]:
-            if dir_name in cross_sections or re.match('Data', dir_name) is not None:
-                continue
-            cross_sections[dir_name] = 0.001 # set to 1e-3 [fb] for now, need to find actual numbers for many of these samples
+    sample_name_map = {
+        'GluGlutoHHto2B2G_kl_1p00_kt_1p00_c2_0p00': 'GluGluToHH', 
+        'GluGlutoHHto2B2G_kl-1p00_kt-1p00_c2-0p00': 'GluGluToHH', 
+        'GluGluHToGG_M_125': 'GluGluHToGG',
+        'GluGluHtoGG': 'GluGluHToGG',
+        'ttHtoGG_M_125': 'ttHToGG', 
+        'ttHtoGG': 'ttHToGG',
+        'VBFHToGG_M_125': 'VBFHToGG', 
+        'VBFHtoGG': 'VBFHToGG', 
+        'VHtoGG_M_125': 'VHToGG',
+        'VHtoGG': 'VHToGG',
+        'BBHto2G_M_125': 'bbHToGG', 
+        'bbHtoGG': 'bbHToGG',
+        'ZH_Hto2G_Zto2Q_M-125': 'ZHToQQGG', 
+        'WminusH_Hto2G_Wto2Q_M-125': 'W-HToQQGG', 
+        'WplusH_Hto2G_Wto2Q_M-125': 'W+HToQQGG'
+    }
+    
+    # Pull MC sample dir_list
+    for sim_era in sim_dir_lists.keys():
+        all_sim_dirs_set = set(os.listdir(sim_era))
 
-    for data_era, dir_list in dir_lists.items():
+        cross_sections_set = set([key for key in cross_sections.keys()])
+
+        if not FORCE_RERUN:
+            already_run_dirs_set = set(
+                os.listdir(get_merged_filepath(sim_era))
+            )
+        else:
+            already_run_dirs_set = set()
+
+        sim_dir_lists[sim_era] = list(
+            (all_sim_dirs_set & cross_sections_set) - already_run_dirs_set
+        )
+        sim_dir_lists[sim_era].sort()
+        print(f"{sim_era} list = \n{sim_dir_lists[sim_era]}")
+
+
+    # Pull Data sample dir_list
+    for data_era in data_dir_lists.keys():
+        all_data_dirs_set = set(os.listdir(data_era))
+
+        bad_dirs_set = set()
+        for data_dir in all_data_dirs_set:
+            if data_dir[0] == '.':
+                bad_dirs_set.add(data_dir)
+
+        if not FORCE_RERUN:
+            already_run_dirs_set = set(
+                os.listdir(get_merged_filepath(data_era))
+            )
+        else:
+            already_run_dirs_set = set()
+
+        data_dir_lists[data_era] = list(
+            (all_data_dirs_set - bad_dirs_set) - already_run_dirs_set
+        )
+        data_dir_lists[data_era].sort()
+        print(f"{data_era} list = \n{data_dir_lists[data_era]}")
+        
+    # Perform the variable calculation and merging
+    for sim_era, dir_list in sim_dir_lists.items():
+
         for dir_name in dir_list:
-            # if dir_name not in {'ttHToGG', 'GluGluToHH'}:
-            #     continue
-            for sample_type in ['nominal']: # Eventually change to os.listdir(LPC_FILEPREFIX+'/'+data_era+'/'+dir_name)
+
+            sample_dirpath = os.path.join(sim_era, dir_name, "")
+
+            for sample_type in os.listdir(sample_dirpath):
+
+                sample_type_dirpath = os.path.join(sample_dirpath, sample_type, "")
+
                 # Load all the parquets of a single sample into an ak array
-                sample = ak.concatenate(
-                    [ak.from_parquet(LPC_FILEPREFIX+'/'+data_era+'/'+dir_name+'/'+sample_type+'/'+file) for file in os.listdir(LPC_FILEPREFIX+'/'+data_era+'/'+dir_name+'/'+sample_type+'/')]
-                )
-                sample['sample_name'] = [dir_name for _ in range(len(sample['event']))]
-                add_ttH_vars(sample)
-        
-                if re.match('Data', dir_name) is None:
-                    # Compute the sum of genWeights for proper MC rescaling.
-                    sample['sumGenWeights'] = sum(
-                        float(pq.read_table(file).schema.metadata[b'sum_genw_presel']) for file in glob.glob(
-                            LPC_FILEPREFIX+'/'+data_era+'/'+dir_name+'/'+sample_type+'/*'
-                        )
+                print(sim_era[sim_era[:-1].rfind('/'):-1]+': '+dir_name)
+                sample_list = [ak.from_parquet(file) for file in glob.glob(os.path.join(sample_type_dirpath, '*.parquet'))]
+                if len(sample_list) < 1:
+                    continue
+                sample = ak.concatenate(sample_list)
+
+                # Compute sum of gen weights
+                sample['sumGenWeights'] = sum(
+                    float(pq.read_table(file).schema.metadata[b'sum_genw_presel']) for file in glob.glob(
+                        os.path.join(sample_type_dirpath, '*.parquet')
                     )
+                )
+                # Rescale weights gy sum of genweights
+                sample['weight_nominal'] = sample['weight']
+                syst_weight_fields = [field for field in sample.fields if (("weight_" in field) and ("Up" in field or "Down" in field))]
+                for weight_field in ["weight"] + syst_weight_fields:
+                    sample[weight_field] = sample[weight_field] / sample['sumGenWeights']
+
+                # Slim parquets by removing Res fields (for now)
+                slim_parquets(sample)
+
+                # Add useful parquet meta-info
+                sample['sample_name'] = dir_name if dir_name not in sample_name_map else sample_name_map[dir_name]
+                sample['sample_era'] = sim_era[sim_era[:-1].rfind('/'):-1]
+                sample['eventWeight'] = sample['weight'] * luminosities[sim_era] * cross_sections[dir_name]
+
+                # Add necessary extra variables
+                add_vars(sample)
         
-                    # Store luminostity computed from https://twiki.cern.ch/twiki/bin/viewauth/CMS/PdmVRun3Analysis
-                    #   and summing over lumis of the same type (e.g. all 22EE era lumis summed).
-                    sample['luminosity'] = luminosities[data_era]
-            
-                    # If the process has a defined cross section, use defined xs otherwise use 1e-3 [fb] for now.
-                    sample['cross_section'] = cross_sections[dir_name]
-        
-                    # Define eventWeight array for hist plotting.
-                    # print('========================')
-                    # abs_genWeight = ak.where(sample['genWeight'] < 0, -sample['genWeight'], sample['genWeight'])
-                    # sum_of_abs_genWeight = ak.sum(ak.where(sample['genWeight'] < 0, -1, 1), axis=0)
-                    # sample['eventWeight'] = ak.where(sample['genWeight'] < 0, -1, 1) * (sample['luminosity'] * sample['cross_section'] / sum_of_abs_genWeight)
-                    sample['eventWeight'] = sample['genWeight'] * (sample['luminosity'] * sample['cross_section'] / sample['sumGenWeights'])
-        
-                destdir = LPC_FILEPREFIX+'/'+data_era+'_merged_v5/'+dir_name+'/'+sample_type+'/'
+                # Save out merged parquet
+                destdir = get_merged_filepath(sample_type_dirpath)
                 if not os.path.exists(destdir):
                     os.makedirs(destdir)
-                merged_parquet = ak.to_parquet(sample, destdir+dir_name+'_'+sample_type+'.parquet')
+                filepath = os.path.join(destdir, dir_name+'_merged.parquet')
+                merged_parquet = ak.to_parquet(sample, filepath)
                 
+                # Delete sample for memory reasons
                 del sample
-                print('======================== \n', dir_name)
-                run_samples['run_samples_list'].append(dir_name)
-                with open(LPC_FILEPREFIX+'/'+data_era+'/completed_samples.json', 'w') as f:
-                    json.dump(run_samples, f)
+                print('======================== \n', destdir)
+
+    for data_era, dir_list in data_dir_lists.items():
+
+        for dir_name in dir_list:
+
+            sample_dirpath = os.path.join(sim_era, dir_name, "")
+
+            # Load all the parquets of a single sample into an ak array
+            print(dir_name)
+            sample_list = [ak.from_parquet(file) for file in glob.glob(os.path.join(sample_dirpath, '*.parquet'))]
+            if len(sample_list) < 1:
+                continue
+            sample = ak.concatenate(sample_list)
+
+            # Slim parquets by removing Res fields (for now)
+            slim_parquets(sample)
+            
+            # Add useful parquet meta-info
+            sample['sample_name'] = dir_name
+            sample['sample_era'] = data_era[data_era[:-1].rfind('/'):-1]
+
+            # Add necessary extra variables
+            add_vars(sample, data=True)
+    
+            # Save out merged parquet
+            destdir = get_merged_filepath(sample_dirpath)
+            if not os.path.exists(destdir):
+                os.makedirs(destdir)
+            filepath = os.path.join(destdir, dir_name+'_merged.parquet')
+            merged_parquet = ak.to_parquet(sample, filepath)
+            
+            # Delete sample for memory reasons
+            del sample
+            print('======================== \n', destdir)
 
 
 if __name__ == '__main__':
