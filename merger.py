@@ -17,7 +17,7 @@ vec.register_awkward()
 lpc_fileprefix = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v2/"
 FILL_VALUE = -999
 NUM_JETS = 10
-FORCE_RERUN = True
+FORCE_RERUN = False
 
 
 def add_vars(sample, data=False):
@@ -286,9 +286,13 @@ def main():
         cross_sections_set = set([key for key in cross_sections.keys()])
 
         if not FORCE_RERUN:
-            already_run_dirs_set = set(
-                os.listdir(get_merged_filepath(sim_era))
-            )
+            try:
+                already_run_dirs_set = set(
+                    os.listdir(get_merged_filepath(sim_era))
+                )
+            except:
+                FileNotFoundError
+                already_run_dirs_set = set()
         else:
             already_run_dirs_set = set()
 
@@ -296,7 +300,6 @@ def main():
             (all_sim_dirs_set & cross_sections_set) - already_run_dirs_set
         )
         sim_dir_lists[sim_era].sort()
-        print(f"{sim_era} list = \n{sim_dir_lists[sim_era]}")
 
 
     # Pull Data sample dir_list
@@ -309,9 +312,13 @@ def main():
                 bad_dirs_set.add(data_dir)
 
         if not FORCE_RERUN:
-            already_run_dirs_set = set(
-                os.listdir(get_merged_filepath(data_era))
-            )
+            try:
+                already_run_dirs_set = set(
+                    os.listdir(get_merged_filepath(data_era))
+                )
+            except:
+                FileNotFoundError
+                already_run_dirs_set = set()
         else:
             already_run_dirs_set = set()
 
@@ -319,7 +326,6 @@ def main():
             (all_data_dirs_set - bad_dirs_set) - already_run_dirs_set
         )
         data_dir_lists[data_era].sort()
-        print(f"{data_era} list = \n{data_dir_lists[data_era]}")
         
     # Perform the variable calculation and merging
     for sim_era, dir_list in sim_dir_lists.items():
@@ -333,30 +339,31 @@ def main():
                 sample_type_dirpath = os.path.join(sample_dirpath, sample_type, "")
 
                 # Load all the parquets of a single sample into an ak array
-                print(sim_era[sim_era[:-1].rfind('/'):-1]+': '+dir_name)
+                print(sim_era[sim_era[:-1].rfind('/')+1:-1]+': '+dir_name)
                 sample_list = [ak.from_parquet(file) for file in glob.glob(os.path.join(sample_type_dirpath, '*.parquet'))]
                 if len(sample_list) < 1:
                     continue
                 sample = ak.concatenate(sample_list)
 
-                # Compute sum of gen weights
-                sample['sumGenWeights'] = sum(
-                    float(pq.read_table(file).schema.metadata[b'sum_genw_presel']) for file in glob.glob(
-                        os.path.join(sample_type_dirpath, '*.parquet')
+                if 'weight_nominal' not in sample.fields and dir_name != 'DDQCDGJets':
+                    # Compute sum of gen weights
+                    sample['sumGenWeights'] = sum(
+                        float(pq.read_table(file).schema.metadata[b'sum_genw_presel']) for file in glob.glob(
+                            os.path.join(sample_type_dirpath, '*.parquet')
+                        )
                     )
-                )
-                # Rescale weights gy sum of genweights
-                sample['weight_nominal'] = sample['weight']
-                syst_weight_fields = [field for field in sample.fields if (("weight_" in field) and ("Up" in field or "Down" in field))]
-                for weight_field in ["weight"] + syst_weight_fields:
-                    sample[weight_field] = sample[weight_field] / sample['sumGenWeights']
+                    # Rescale weights by sum of genweights
+                    sample['weight_nominal'] = sample['weight']
+                    syst_weight_fields = [field for field in sample.fields if (("weight_" in field) and ("Up" in field or "Down" in field))]
+                    for weight_field in ["weight"] + syst_weight_fields:
+                        sample[weight_field] = sample[weight_field] / sample['sumGenWeights']
 
                 # Slim parquets by removing Res fields (for now)
                 slim_parquets(sample)
 
                 # Add useful parquet meta-info
                 sample['sample_name'] = dir_name if dir_name not in sample_name_map else sample_name_map[dir_name]
-                sample['sample_era'] = sim_era[sim_era[:-1].rfind('/'):-1]
+                sample['sample_era'] = sim_era[sim_era[:-1].rfind('/')+1:-1]
                 sample['eventWeight'] = sample['weight'] * luminosities[sim_era] * cross_sections[dir_name]
 
                 # Add necessary extra variables
@@ -391,7 +398,7 @@ def main():
             
             # Add useful parquet meta-info
             sample['sample_name'] = dir_name
-            sample['sample_era'] = data_era[data_era[:-1].rfind('/'):-1]
+            sample['sample_era'] = data_era[data_era[:-1].rfind('/')+1:-1]
 
             # Add necessary extra variables
             add_vars(sample, data=True)

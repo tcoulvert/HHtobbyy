@@ -46,6 +46,10 @@ def process_data(
             )
         ]
 
+        for smpl_name in np.unique(samples[sample_name]['sample_name']):
+            smpl_mask = samples[sample_name]['sample_name'] == smpl_name
+            print(f"{smpl_name} has 'max_nonbjet_btag'? {'max_nonbjet_btag' in samples[sample_name][smpl_mask].fields}")
+
     # Rescale factor for sig and bkg samples
     if len(filepaths_dict) > 1:
         sum_of_sig = np.sum(samples[order[0]]['eventWeight'])
@@ -180,7 +184,7 @@ def process_data(
         # Aux fields
         'event': 'event', 'mass': 'mass', 'HH_PNetRegMass': 'HHbbggCandidate_mass', 'HHbbggCandidate_mass': 'HHbbggCandidate_mass',
         'lepton1_pt': 'lepton1_pt', 'lepton2_pt': 'lepton2_pt',
-        'hash': 'hash', 'eventWeight': 'eventWeight', 'sample_name': 'sample_name'
+        'hash': 'hash', 'eventWeight': 'eventWeight', 'sample_name': 'sample_name', 'max_nonbjet_btag': 'max_nonbjet_btag'
     }
         
 
@@ -199,32 +203,7 @@ def process_data(
         high_level_aux_fields.add('sample_name')
     if 'max_nonbjet_btag' in samples[order[0]].fields:
         high_level_aux_fields.add('max_nonbjet_btag')
-    else:  # remove this if statement upon the next merging run (when we run 22+23 combined)
-        def jet_mask(sample, i):
-            return (
-                ak.where(
-                    sample['nonRes_lead_bjet_jet_idx'] != i, True, False
-                ) & ak.where(
-                    sample['nonRes_sublead_bjet_jet_idx'] != i, True, False
-                ) & ak.where(sample[f'jet{i}_mass'] != FILL_VALUE, True, False)
-            )
-        def max_nonbjet_btag(sample):
-            max_btag_score = ak.Array([0. for _ in range(ak.num(sample['event'], axis=0))])
 
-            for i in range(1, 10+1):
-                jet_i_mask = jet_mask(sample, i)
-
-                larger_btag_bool = jet_i_mask & (
-                    sample[f'jet{i}_btagPNetB'] > max_btag_score
-                )
-
-                max_btag_score = ak.where(
-                    larger_btag_bool, sample[f'jet{i}_btagPNetB'], max_btag_score
-                )
-            return max_btag_score
-        for sample_name, sample in samples.items():
-            sample['max_nonbjet_btag'] = max_nonbjet_btag(sample)
-        high_level_aux_fields.add('max_nonbjet_btag')
 
     hlf_list, hlf_aux_list = list(high_level_fields), list(high_level_aux_fields)
     hlf_list.sort()
