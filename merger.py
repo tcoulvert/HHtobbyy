@@ -328,66 +328,68 @@ def main():
         data_dir_lists[data_era].sort()
         
     # Perform the variable calculation and merging
-    for sim_era, dir_list in sim_dir_lists.items():
+    # for sim_era, dir_list in sim_dir_lists.items():
 
-        for dir_name in dir_list:
+    #     for dir_name in dir_list:
 
-            sample_dirpath = os.path.join(sim_era, dir_name, "")
+    #         sample_dirpath = os.path.join(sim_era, dir_name, "")
 
-            for sample_type in os.listdir(sample_dirpath):
+    #         for sample_type in os.listdir(sample_dirpath):
 
-                sample_type_dirpath = os.path.join(sample_dirpath, sample_type, "")
+    #             sample_type_dirpath = os.path.join(sample_dirpath, sample_type, "")
 
-                # Load all the parquets of a single sample into an ak array
-                print(sim_era[sim_era[:-1].rfind('/')+1:-1]+': '+dir_name)
-                sample_list = [ak.from_parquet(file) for file in glob.glob(os.path.join(sample_type_dirpath, '*.parquet'))]
-                if len(sample_list) < 1:
-                    continue
-                sample = ak.concatenate(sample_list)
+    #             # Load all the parquets of a single sample into an ak array
+    #             print(sim_era[sim_era[:-1].rfind('/')+1:-1]+': '+dir_name)
+    #             sample_list = [ak.from_parquet(file) for file in glob.glob(os.path.join(sample_type_dirpath, '*.parquet'))]
+    #             if len(sample_list) < 1:
+    #                 continue
+    #             sample = ak.concatenate(sample_list)
 
-                if 'weight_nominal' not in sample.fields and dir_name != 'DDQCDGJets':
-                    # Compute sum of gen weights
-                    sample['sumGenWeights'] = sum(
-                        float(pq.read_table(file).schema.metadata[b'sum_genw_presel']) for file in glob.glob(
-                            os.path.join(sample_type_dirpath, '*.parquet')
-                        )
-                    )
-                    # Rescale weights by sum of genweights
-                    sample['weight_nominal'] = sample['weight']
-                    syst_weight_fields = [field for field in sample.fields if (("weight_" in field) and ("Up" in field or "Down" in field))]
-                    for weight_field in ["weight"] + syst_weight_fields:
-                        sample[weight_field] = sample[weight_field] / sample['sumGenWeights']
+    #             if 'weight_nominal' not in sample.fields and dir_name != 'DDQCDGJets':
+    #                 # Compute sum of gen weights
+    #                 sample['sumGenWeights'] = sum(
+    #                     float(pq.read_table(file).schema.metadata[b'sum_genw_presel']) for file in glob.glob(
+    #                         os.path.join(sample_type_dirpath, '*.parquet')
+    #                     )
+    #                 )
+    #                 # Rescale weights by sum of genweights
+    #                 sample['weight_nominal'] = sample['weight']
+    #                 syst_weight_fields = [field for field in sample.fields if (("weight_" in field) and ("Up" in field or "Down" in field))]
+    #                 for weight_field in ["weight"] + syst_weight_fields:
+    #                     sample[weight_field] = sample[weight_field] / sample['sumGenWeights']
 
-                # Slim parquets by removing Res fields (for now)
-                slim_parquets(sample)
+    #             # Slim parquets by removing Res fields (for now)
+    #             slim_parquets(sample)
 
-                # Add useful parquet meta-info
-                sample['sample_name'] = dir_name if dir_name not in sample_name_map else sample_name_map[dir_name]
-                sample['sample_era'] = sim_era[sim_era[:-1].rfind('/')+1:-1]
-                sample['eventWeight'] = sample['weight'] * luminosities[sim_era] * cross_sections[dir_name]
+    #             # Add useful parquet meta-info
+    #             sample['sample_name'] = dir_name if dir_name not in sample_name_map else sample_name_map[dir_name]
+    #             sample['sample_era'] = sim_era[sim_era[:-1].rfind('/')+1:-1]
+    #             sample['eventWeight'] = sample['weight'] * luminosities[sim_era] * cross_sections[dir_name]
 
-                # Add necessary extra variables
-                add_vars(sample)
+    #             # Add necessary extra variables
+    #             add_vars(sample)
         
-                # Save out merged parquet
-                destdir = get_merged_filepath(sample_type_dirpath)
-                if not os.path.exists(destdir):
-                    os.makedirs(destdir)
-                filepath = os.path.join(destdir, dir_name+'_merged.parquet')
-                merged_parquet = ak.to_parquet(sample, filepath)
+    #             # Save out merged parquet
+    #             destdir = get_merged_filepath(sample_type_dirpath)
+    #             if not os.path.exists(destdir):
+    #                 os.makedirs(destdir)
+    #             filepath = os.path.join(destdir, dir_name+'_merged.parquet')
+    #             merged_parquet = ak.to_parquet(sample, filepath)
                 
-                # Delete sample for memory reasons
-                del sample
-                print('======================== \n', destdir)
+    #             # Delete sample for memory reasons
+    #             del sample
+    #             print('======================== \n', destdir)
 
     for data_era, dir_list in data_dir_lists.items():
 
         for dir_name in dir_list:
 
-            sample_dirpath = os.path.join(sim_era, dir_name, "")
+            sample_dirpath = os.path.join(data_era, dir_name, "")
 
             # Load all the parquets of a single sample into an ak array
             print(dir_name)
+            print(os.path.join(sample_dirpath, '*.parquet'))
+            print(glob.glob(os.path.join(sample_dirpath, '*.parquet')))
             sample_list = [ak.from_parquet(file) for file in glob.glob(os.path.join(sample_dirpath, '*.parquet'))]
             if len(sample_list) < 1:
                 continue
