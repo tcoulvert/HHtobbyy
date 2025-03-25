@@ -46,10 +46,6 @@ def process_data(
             )
         ]
 
-        for smpl_name in np.unique(samples[sample_name]['sample_name']):
-            smpl_mask = samples[sample_name]['sample_name'] == smpl_name
-            print(f"{smpl_name} has 'max_nonbjet_btag'? {'max_nonbjet_btag' in samples[sample_name][smpl_mask].fields}")
-
     # Rescale factor for sig and bkg samples
     if len(filepaths_dict) > 1:
         sum_of_sig = np.sum(samples[order[0]]['eventWeight'])
