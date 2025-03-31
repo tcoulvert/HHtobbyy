@@ -202,10 +202,10 @@ def slim_parquets(sample):
 
 def main():
     sim_dir_lists = {
-        # os.path.join(lpc_fileprefix, "Run3_2022", "sim", "preEE", ""): None,
-        # os.path.join(lpc_fileprefix, "Run3_2022", "sim", "postEE", ""): None,
+        os.path.join(lpc_fileprefix, "Run3_2022", "sim", "preEE", ""): None,
+        os.path.join(lpc_fileprefix, "Run3_2022", "sim", "postEE", ""): None,
         os.path.join(lpc_fileprefix, "Run3_2023", "sim", "preBPix", ""): None,
-        # os.path.join(lpc_fileprefix, "Run3_2023", "sim", "postBPix", ""): None,
+        os.path.join(lpc_fileprefix, "Run3_2023", "sim", "postBPix", ""): None,
     }
     data_dir_lists = {
         os.path.join(lpc_fileprefix, "Run3_2022", "data", ""): None,
@@ -218,6 +218,7 @@ def main():
         os.path.join(lpc_fileprefix, "Run3_2022", "sim", "postEE", ""): 26.6717,
         os.path.join(lpc_fileprefix, "Run3_2023", "sim", "preBPix", ""): 17.794,
         os.path.join(lpc_fileprefix, "Run3_2023", "sim", "postBPix", ""): 9.451,
+        os.path.join(lpc_fileprefix, "Run3_2024", "sim", "2024", ""): 109.08,
     }
 
     
@@ -251,6 +252,7 @@ def main():
         'VHToGG': (1369 + 882.4)*0.00228,
         'VHtoGG_M_125': (1369 + 882.4)*0.00228,
         'VHtoGG': (1369 + 882.4)*0.00228,
+        'VHtoGG_M-125': (1369 + 882.4)*0.00228,
         # https://twiki.cern.ch/twiki/bin/view/LHCPhysics/CERNYellowReportPageAt13TeV#bbH_Process
         'BBHto2G_M_125': 526.5*0.00228,
         'bbHtoGG': 526.5*0.00228,
@@ -275,6 +277,7 @@ def main():
         'VBFHtoGG': 'VBFHToGG', 
         'VHtoGG_M_125': 'VHToGG',
         'VHtoGG': 'VHToGG',
+        'VHtoGG_M-125': 'VHToGG',
         'BBHto2G_M_125': 'bbHToGG', 
         'bbHtoGG': 'bbHToGG',
         'ZH_Hto2G_Zto2Q_M-125': 'ZHToQQGG', 
@@ -334,7 +337,7 @@ def main():
     for sim_era, dir_list in sim_dir_lists.items():
 
         for dir_name in dir_list:
-            if dir_name != 'VBFHtoGG': continue
+            if dir_name != 'VHtoGG_M-125': continue
 
             sample_dirpath = os.path.join(sim_era, dir_name, "")
 
