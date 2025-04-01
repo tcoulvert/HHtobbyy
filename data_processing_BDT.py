@@ -117,9 +117,9 @@ def process_data(
         'pt', 'eta',
 
         # Photon vars
-        'lead_mvaID_run3', 'lead_sigmaE_over_E',
+        'lead_mvaID', 'lead_sigmaE_over_E',
         # 'lead_mvaID_nano', 'sublead_mvaID_nano',
-        'sublead_mvaID_run3', 'sublead_sigmaE_over_E',
+        'sublead_mvaID', 'sublead_sigmaE_over_E',
         
         # HH vars
         # 'nonRes_HHbbggCandidate_pt', 'nonRes_HHbbggCandidate_eta', 'pt_balance',
@@ -164,9 +164,9 @@ def process_data(
         'pt': 'pt', 'eta': 'eta',
 
         # Photon vars
-        'lead_mvaID_run3': 'lead_mvaID', 'lead_sigmaE_over_E': 'lead_sigmaE_over_E',
+        'lead_mvaID_run3': 'lead_mvaID', 'lead_sigmaE_over_E': 'lead_sigmaE_over_E', 'lead_mvaID': 'lead_mvaID',
         # 'lead_mvaID_nano', 'sublead_mvaID_nano',
-        'sublead_mvaID_run3': 'sublead_mvaID', 'sublead_sigmaE_over_E': 'sublead_sigmaE_over_E',
+        'sublead_mvaID_run3': 'sublead_mvaID', 'sublead_sigmaE_over_E': 'sublead_sigmaE_over_E', 'sublead_mvaID': 'sublead_mvaID',
         
         # HH vars
         'HH_PNetRegPt': 'HHbbggCandidate_pt', 'HH_PNetRegEta': 'HHbbggCandidate_eta', 'RegPt_balance': 'pt_balance',
