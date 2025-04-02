@@ -1,3 +1,4 @@
+import copy
 import glob
 import json
 import os
@@ -17,23 +18,15 @@ plt.rcParams.update({'font.size': 20})
 cmap_petroff10 = ["#3f90da", "#ffa90e", "#bd1f01", "#94a4a2", "#832db6", "#a96b59", "#e76300", "#b9ac70", "#717581", "#92dadd"]
 plt.rcParams.update({"axes.prop_cycle": cycler("color", cmap_petroff10)})
 
-# LPC_FILEPREFIX = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v1"
-# LPC_FILEPREFIX = "/uscms/home/tsievert/nobackup/XHYbbgg/HiggsDNA_official/output_test_HH"
-# LPC_FILEPREFIX = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v2/Run3_2022_merged_v1"
 lpc_fileprefix = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v2/"
-Run3_2022 = 'Run3_2022_merged/sim'
-Run3_2023 = 'Run3_2023_merged/sim'
-LPC_FILEPREFIX_SIM = LPC_FILEPREFIX +'/sim'
-LPC_FILEPREFIX_DATA = LPC_FILEPREFIX +'/data'
-DESTDIR = 'v2_comparison_plots'
+LPC_FILEPREFIX_22 = os.path.join(lpc_fileprefix, 'Run3_2022_merged', 'sim', '')
+LPC_FILEPREFIX_23 = os.path.join(lpc_fileprefix, 'Run3_2023_merged', 'sim', '')
+
+DESTDIR = 'syst_unc_plots'
 if not os.path.exists(DESTDIR):
     os.makedirs(DESTDIR)
 
 APPLY_WEIGHTS = True
-SINGLE_B_WPS = {
-    'preEE': {'L': 0.047, 'M': 0.245, 'T': 0.6734, 'XT': 0.7862, 'XXT': 0.961},
-    'postEE': {'L': 0.0499, 'M': 0.2605, 'T': 0.6915, 'XT': 0.8033, 'XXT': 0.9664}
-}
 MC_DATA_MASK = 'MC_Data_mask'
 FILL_VALUE = -999
 MC_NAMES_PRETTY = {
@@ -56,45 +49,38 @@ MC_NAMES_PRETTY = {
     'GluGlutoHHto2B2G_kl_1p00_kt_1p00_c2_0p00': r"ggF $HH\rightarrow bb\gamma\gamma$",
 }
 LUMINOSITIES = {
-    '2022preEE': 7.9804, 
-    '2022postEE': 26.6717,
-    # Need to fill in lumis for other eras #
+    os.path.join(lpc_fileprefix, "Run3_2022", "sim", "preEE", ""): 7.9804,
+    os.path.join(lpc_fileprefix, "Run3_2022", "sim", "postEE", ""): 26.6717,
+    os.path.join(lpc_fileprefix, "Run3_2023", "sim", "preBPix", ""): 17.794,
+    os.path.join(lpc_fileprefix, "Run3_2023", "sim", "postBPix", ""): 9.451,
+    # os.path.join(lpc_fileprefix, "Run3_2024", "sim", "2024", ""): 109.08,
 }
 LUMINOSITIES['total_lumi'] = sum(LUMINOSITIES.values())
 
 # Dictionary of variables
 VARIABLES = {
     # key: hist.axis axes for plotting #
-    # MET variables
-    'puppiMET_sumEt': hist.axis.Regular(40, 150., 2000, name='var', label=r'puppiMET $\Sigma E_T$ [GeV]', growth=False, underflow=False, overflow=False), 
-    # jet-photon variables
-    'nonRes_DeltaR_jg_min': hist.axis.Regular(30, 0, 5, name='var', label=r'min$(\Delta R(jet, \gamma))$', growth=False, underflow=False, overflow=False), 
-    # jet variables
-    'n_jets': hist.axis.Integer(0, 10, name='var', label=r'$n_{jets}$', growth=False, underflow=False, overflow=False), 
-    # ATLAS variables #
-    'RegPt_balance': hist.axis.Regular(100, 0., 2., name='var', label=r'$HH p_{T} / (\gamma1 p_{T} + \gamma2 p_{T} + j1 p_{T} + j2 p_{T})$', growth=False, underflow=False, overflow=False), 
-    # photon variables
-    'lead_mvaID_run3': hist.axis.Regular(100, -1., 1, name='var', label=r'lead $\gamma$ MVA ID', growth=False, underflow=False, overflow=False), 
-    'sublead_mvaID_run3': hist.axis.Regular(100, -1., 1, name='var', label=r'sublead $\gamma$ MVA ID', growth=False, underflow=False, overflow=False), 
-}
-BLINDED_VARIABLES = {
-    # dijet variables
-    'dijet_PNetRegMass': (
-        hist.axis.Regular(24, 70., 190., name='var', label=r'$M_{jj}$ [GeV]', growth=False, underflow=False, overflow=False),
-        [100, 150]
-    ),
+    # # MET variables
+    # 'puppiMET_sumEt': hist.axis.Regular(40, 150., 2000, name='var', label=r'puppiMET $\Sigma E_T$ [GeV]', growth=False, underflow=False, overflow=False), 
+    # # jet-photon variables
+    # 'nonRes_DeltaR_jg_min': hist.axis.Regular(30, 0, 5, name='var', label=r'min$(\Delta R(jet, \gamma))$', growth=False, underflow=False, overflow=False), 
+    # # jet variables
+    # 'n_jets': hist.axis.Integer(0, 10, name='var', label=r'$n_{jets}$', growth=False, underflow=False, overflow=False), 
+    # # ATLAS variables #
+    # 'RegPt_balance': hist.axis.Regular(100, 0., 2., name='var', label=r'$HH p_{T} / (\gamma1 p_{T} + \gamma2 p_{T} + j1 p_{T} + j2 p_{T})$', growth=False, underflow=False, overflow=False), 
+    # # photon variables
+    # 'lead_mvaID_run3': hist.axis.Regular(100, -1., 1, name='var', label=r'lead $\gamma$ MVA ID', growth=False, underflow=False, overflow=False), 
+    # 'sublead_mvaID_run3': hist.axis.Regular(100, -1., 1, name='var', label=r'sublead $\gamma$ MVA ID', growth=False, underflow=False, overflow=False), 
+    # # dijet variables
+    # 'dijet_PNetRegMass': (
+    #     hist.axis.Regular(24, 70., 190., name='var', label=r'$M_{jj}$ [GeV]', growth=False, underflow=False, overflow=False),
+    #     [100, 150]
+    # ),
     # diphoton variables
     'mass': (
         hist.axis.Regular(50, 25., 180., name='var', label=r'$M_{\gamma\gamma}$ [GeV]', growth=False, underflow=False, overflow=False),
         [115, 135]
     )
-}
-# Set of extra MC variables necessary for MC/Data comparison, defined in merger.py
-MC_EXTRA_VARS = {
-    'eventWeight', 'weight', MC_DATA_MASK
-}
-DATA_EXTRA_VARS = {
-    MC_DATA_MASK
 }
 
 def sideband_cuts(sample):
@@ -105,9 +91,7 @@ def sideband_cuts(sample):
     event_mask = (
         sample['nonRes_has_two_btagged_jets'] 
         & sample['is_nonRes']
-        & (
-            sample['fiducialGeometricFlag'] if 'fiducialGeometricFlag' in sample.fields else sample['pass_fiducial_geometric']
-        )
+        & sample['fiducialGeometricFlag']
     )
     sample[MC_DATA_MASK] = event_mask
 
@@ -117,52 +101,28 @@ def get_mc_dir_lists(dir_lists: dict):
       -> Automatically checks if the merger.py file has been run.
     """
     
-    for data_era in dir_lists.keys():
-        processed_samples = [
-            sample[sample.rfind('/')+1:] for sample in glob.glob(LPC_FILEPREFIX_SIM+'/'+data_era+'/*')
-        ]
-        
-        # if not set(processed_samples) >= set(MC_NAMES_PRETTY.keys()):
-        #     raise Exception(
-        #         f"Failed to find processed parquets for {data_era}. \nYou may have run the merger.py script already, however not all of the minimal files were found."
-        #     )
-        common_samples = list(set(MC_NAMES_PRETTY.keys()) & set(processed_samples))
-        common_samples.sort()
-        dir_lists[data_era] = [sample_name for sample_name in common_samples]
+    # Pull MC sample dir_list
+    for sim_era in dir_lists.keys():
+        dir_list = list(os.listdir(sim_era))
 
-def get_data_dir_lists(dir_lists: dict):
-    
-    for data_era in dir_lists.keys():
-        processed_samples = [
-            sample[sample.rfind('/')+1:] for sample in glob.glob(LPC_FILEPREFIX_DATA+'/*')
-        ]
-        processed_samples.sort()
-        
-        dir_lists[data_era] = processed_samples
+        for dir_name in dir_list:
+            if (
+                re.search('up', dir_name.lower()) is None
+                and re.search('down', dir_name.lower()) is None
+                and re.search('nominal', dir_name.lower()) is None
+            ):
+                dir_list.remove(dir_name)
 
-def slimmed_parquet(extra_variables: dict, sample=None):
+        dir_list.sort()
+        dir_lists[sim_era] = copy.deepcopy(dir_list)
+
+def slimmed_parquet(sample):
     """
     Either slims the parquet or creates a new slim parquet.
     """
-    if sample is None:
-        return ak.zip(
-            {field: FILL_VALUE if field != MC_DATA_MASK and field != 'eventWeight' else False for field in set(VARIABLES.keys()) | extra_variables | set(BLINDED_VARIABLES.keys())}
-        )
-    else:
-        return ak.zip(
-            {field: sample[field] for field in set(VARIABLES.keys()) | extra_variables | set(BLINDED_VARIABLES.keys())}
-        )
-
-def make_mc_dict(dir_lists: dict):
-    """
-    Creates the dictionary of mc samples, where each sample is a slimmed parquet containing
-      only the specified variables.
-    """
-    mc_dict = {}
-    for data_era, dir_list in dir_lists.items():
-        for dir_name in dir_list:
-            mc_dict[dir_name] = slimmed_parquet(MC_EXTRA_VARS)
-    return mc_dict
+    return ak.zip(
+        {field: sample[field] for field in VARIABLES.keys()}
+    )
 
 def concatenate_records(base_sample, added_sample):
     """
@@ -321,66 +281,68 @@ def main():
     """
     Performs the Data-MC comparison.
     """
-    # Minimal data files for MC-Data comparison for ttH-Killer variables
     mc_dir_lists = {
-        'preEE': None,
-        'postEE': None
-        # Need to add other data eras eventually (2023, etc)
+        os.path.join(lpc_fileprefix, "Run3_2022", "sim", "preEE", ""): None,
+        os.path.join(lpc_fileprefix, "Run3_2022", "sim", "postEE", ""): None,
+        os.path.join(lpc_fileprefix, "Run3_2023", "sim", "preBPix", ""): None,
+        os.path.join(lpc_fileprefix, "Run3_2023", "sim", "postBPix", ""): None,
     }
+    
+    # MC Era: total era luminosity [fb^-1] #
+    luminosities = {
+        os.path.join(lpc_fileprefix, "Run3_2022", "sim", "preEE", ""): 7.9804,
+        os.path.join(lpc_fileprefix, "Run3_2022", "sim", "postEE", ""): 26.6717,
+        os.path.join(lpc_fileprefix, "Run3_2023", "sim", "preBPix", ""): 17.794,
+        os.path.join(lpc_fileprefix, "Run3_2023", "sim", "postBPix", ""): 9.451,
+        # os.path.join(lpc_fileprefix, "Run3_2024", "sim", "2024", ""): 109.08,
+    }
+    luminosities['total_lumi'] = sum(luminosities.values())
+    
+
     get_mc_dir_lists(mc_dir_lists)
     # Make parquet dicts, merged by samples and pre-slimmed (keeping only VARIABLES and EXTRA_VARIABLES)
     # MC_pqs = make_mc_dict(mc_dir_lists)
     MC_pqs = {}
     
     for data_era, dir_list in mc_dir_lists.items():
+
         for dir_name in dir_list:
-            for sample_type in ['nominal']:  # Ignores the scale-ups and scale-downs. Not computed in merger.py.
-                print('======================== \n', dir_name+" started")
-                dirpath = LPC_FILEPREFIX_SIM+'/'+data_era+'/'+dir_name+'/'+sample_type+'/*merged.parquet'
-                sample = ak.concatenate([
-                    ak.from_parquet(file) for file in glob.glob(dirpath)
-                ])
+            print('======================== \n', dir_name+" started")
 
-                # perform necessary cuts to apply pre-selections
-                sideband_cuts(sample)
+            nominal_dirpath = os.path.join(data_era, dir_name, 'nominal', '*merged.parquet')
+            MC_pqs[dir_name] = {
+                'nominal': ak.from_parquet(glob.glob(nominal_dirpath)[0])
+            }
 
-                # MC_pqs[dir_name] = concatenate_records(
-                #     MC_pqs[dir_name], slimmed_parquet(MC_EXTRA_VARS, sample)
-                # )
-                MC_pqs[dir_name] = slimmed_parquet(MC_EXTRA_VARS, sample)
-                
-                del sample
-                print('======================== \n', dir_name+" finished")
+            for syst_name in ['Et_dependent_ScaleEB', 'Et_dependent_ScaleEE', 'Et_dependent_Smearing', 'jec_syst_Total', 'jer_syst']:
+                print('======================== \n', syst_name+" started")
 
-    data_dir_lists = {
-        'data': None
-    }
-    get_data_dir_lists(data_dir_lists)
-    Data_pqs = {}
+                syst_up_name = syst_name+'_up'
+                syst_down_name = syst_name+'_down'
 
-    for data_era, dir_list in data_dir_lists.items():
-        for dir_name in dir_list:
-            dirpath = LPC_FILEPREFIX_DATA+'/'+dir_name+'/*merged.parquet'
-            sample = ak.concatenate([
-                ak.from_parquet(file) for file in glob.glob(dirpath)
-            ])
+                syst_up_dirpath = os.path.join(data_era, dir_name, syst_up_name, '*merged.parquet')
+                syst_down_dirpath = os.path.join(data_era, dir_name, syst_down_name, '*merged.parquet')
 
-            # perform necessary cuts to enter ttH enriched region
-            sideband_cuts(sample)
+                syst_up_sample = ak.from_parquet(glob.glob(syst_up_dirpath)[0])
+                sideband_cuts(syst_up_sample)
+                syst_down_sample = ak.from_parquet(glob.glob(syst_down_dirpath)[0])
+                sideband_cuts(syst_down_sample)
 
-            Data_pqs[dir_name] = slimmed_parquet(DATA_EXTRA_VARS, sample)
-            
-            del sample
-            print('======================== \n', dir_name)
+                MC_pqs[dir_name] = {
+                    syst_up_name: slimmed_parquet(syst_up_sample)
+                }
+                MC_pqs[dir_name] = {
+                    syst_down_name: slimmed_parquet(syst_down_sample)
+                }
+
+                del syst_up_sample, syst_down_sample
+                print('======================== \n', syst_name+" finished")
+
+            print('======================== \n', dir_name+" finished")
 
     # Ploting over variables for MC and Data
     for variable, axis in VARIABLES.items():
-        mc_hist, data_hist, ratio_hist = generate_hists(MC_pqs, Data_pqs, variable, axis)
-        plot(variable, mc_hist, data_hist, ratio_hist)
-
-    # Ploting over variables for MC and Data
-    for variable, (axis, blind_edges) in BLINDED_VARIABLES.items():
-        mc_hist, data_hist, ratio_hist = generate_hists(MC_pqs, Data_pqs, variable, axis, blind_edges=blind_edges)
+        syst_hist, nominal_hist, ratio_hist = generate_hists(MC_pqs, variable, axis)
         plot(variable, mc_hist, data_hist, ratio_hist)
 
 if __name__ == '__main__':
