@@ -81,48 +81,28 @@ def process_data(
         'nonRes_CosThetaStar_CS', 'nonRes_CosThetaStar_jj', 'nonRes_CosThetaStar_gg',
 
         # dijet vars
-        # 'nonRes_dijet_mass', 'nonRes_dijet_pt',
         'dijet_PNetRegMass', 'dijet_PNetRegPt',
 
         # bjet vars
-        # 'nonRes_lead_bjet_pt', # pt
         'lead_bjet_PNetRegPt',
-        # --------------------
         'nonRes_lead_bjet_eta', # eta
-        # --------------------
         'nonRes_lead_bjet_btagPNetB', # btag scores
-        # 'lead_bjet_btagRobustParTAK4B',
-        # --------------------
-        # 'lead_bjet_sigmapT_over_pT', # sigma pt over pt
         'lead_bjet_sigmapT_over_RegPt',
-        # --------------------
-        # 'lead_bjet_pt_over_Mjj', # pt over Mjj
         'lead_bjet_RegPt_over_Mjj',
-        # --------------------
-        # 'nonRes_sublead_bjet_pt', 
         'sublead_bjet_PNetRegPt',
-        # --------------------
         'nonRes_sublead_bjet_eta', 
-        # --------------------
         'nonRes_sublead_bjet_btagPNetB',
-        # 'sublead_bjet_btagRobustParTAK4B',
-        # --------------------
-        # 'sublead_bjet_sigmapT_over_pT', 
         'sublead_bjet_sigmapT_over_RegPt',
-        # --------------------
-        # 'sublead_bjet_pt_over_Mjj',
         'sublead_bjet_RegPt_over_Mjj',
 
         # diphoton vars
         'pt', 'eta',
 
         # Photon vars
-        'lead_mvaID', 'lead_sigmaE_over_E',
-        # 'lead_mvaID_nano', 'sublead_mvaID_nano',
-        'sublead_mvaID', 'sublead_sigmaE_over_E',
+        'lead_mvaID_nano', 'lead_sigmaE_over_E',
+        'sublead_mvaID_nano', 'sublead_sigmaE_over_E',
         
         # HH vars
-        # 'nonRes_HHbbggCandidate_pt', 'nonRes_HHbbggCandidate_eta', 'pt_balance',
         'HH_PNetRegPt', 'HH_PNetRegEta', 'RegPt_balance',
 
         # ZH vars
@@ -165,7 +145,7 @@ def process_data(
 
         # Photon vars
         'lead_mvaID_run3': 'lead_mvaID', 'lead_sigmaE_over_E': 'lead_sigmaE_over_E', 'lead_mvaID': 'lead_mvaID',
-        # 'lead_mvaID_nano', 'sublead_mvaID_nano',
+        'lead_mvaID_nano': 'lead_mvaID', 'sublead_mvaID_nano': 'sublead_mvaID',
         'sublead_mvaID_run3': 'sublead_mvaID', 'sublead_sigmaE_over_E': 'sublead_sigmaE_over_E', 'sublead_mvaID': 'sublead_mvaID',
         
         # HH vars
