@@ -39,7 +39,7 @@ MC_NAMES_PRETTY = {
     "VBFHToGG": r"VBF $H\rightarrow \gamma\gamma$",
     "VHToGG": r"V$H\rightarrow\gamma\gamma$",
     "ttHToGG": r"$t\bar{t}H\rightarrow\gamma\gamma$",
-    'bbHtoGG': r"$b\bar{b}H\rightarrow\gamma\gamma$",
+    "bbHToGG": r"$b\bar{b}H\rightarrow\gamma\gamma$",
     # signal
     "GluGluToHH": r"ggF $HH\rightarrow bb\gamma\gamma$",
 }
@@ -68,7 +68,7 @@ VARIABLES = {
     # 'sublead_mvaID_run3': hist.axis.Regular(100, -1., 1, name='var', label=r'sublead $\gamma$ MVA ID', growth=False, underflow=False, overflow=False), 
     # # dijet variables
     # 'dijet_PNetRegMass': hist.axis.Regular(24, 70., 190., name='var', label=r'$M_{jj}$ [GeV]', growth=False, underflow=False, overflow=False)
-    'mass': hist.axis.Regular(20, 75., 175., name='var', label=r'$M_{\gamma\gamma}$ [GeV]', growth=False, underflow=False, overflow=False)
+    'mass': hist.axis.Regular(20, 115., 135., name='var', label=r'$M_{\gamma\gamma}$ [GeV]', growth=False, underflow=False, overflow=False)
 }
 EXTRA_VARIABLES = {
     'eventWeight'
@@ -94,24 +94,45 @@ def get_mc_dir_lists(dir_lists: dict):
     
     # Pull MC sample dir_list
     for sim_era in dir_lists.keys():
-        dir_list = list(os.listdir(sim_era))
-
-        for dir_name in dir_list:
-            if (
-                re.search('up', dir_name.lower()) is None
-                and re.search('down', dir_name.lower()) is None
-                and re.search('nominal', dir_name.lower()) is None
-            ):
-                dir_list.remove(dir_name)
-
-        dir_list.sort()
-        dir_lists[sim_era] = copy.deepcopy(dir_list)
+        dir_lists[sim_era] = list(os.listdir(sim_era))
+        dir_lists[sim_era].sort()
 
 def find_dirname(dir_name):
-    for std_sample_name in MC_NAMES_PRETTY.keys():
-        if std_sample_name[:3].lower() == dir_name[:3].lower():
-            return std_sample_name
-    return None
+    sample_name_map = {
+        # ggf HH (signal)
+        'GluGluToHH': 'GluGluToHH',
+        'GluGlutoHHto2B2G_kl_1p00_kt_1p00_c2_0p00': 'GluGluToHH',
+        'GluGlutoHHto2B2G_kl-1p00_kt-1p00_c2-0p00': 'GluGluToHH',
+        # prompt-prompt non-resonant
+        'GGJets': 'GGJets', 
+        # prompt-fake non-resonant
+        'GJetPt20To40': 'GJetPt20To40', 
+        'GJetPt40': 'GJetPt40', 
+        # ggf H
+        'GluGluHToGG': 'GluGluHToGG',
+        'GluGluHToGG_M_125': 'GluGluHToGG',
+        'GluGluHtoGG': 'GluGluHToGG',
+        # ttH
+        'ttHToGG': 'ttHToGG',
+        'ttHtoGG_M_125': 'ttHToGG',
+        'ttHtoGG': 'ttHToGG',
+        # vbf H
+        'VBFHToGG': 'VBFHToGG',
+        'VBFHToGG_M_125': 'VBFHToGG',
+        'VBFHtoGG': 'VBFHToGG',
+        # VH
+        'VHToGG': 'VHToGG',
+        'VHtoGG_M_125': 'VHToGG',
+        'VHtoGG': 'VHToGG',
+        'VHtoGG_M-125': 'VHToGG',
+        # bbH
+        'BBHto2G_M_125': 'bbHToGG',
+        'bbHtoGG': 'bbHToGG',
+    }
+    if dir_name in sample_name_map:
+        return sample_name_map[dir_name]
+    else:
+        return None
 
 def slimmed_parquet(sample):
     """
@@ -140,7 +161,7 @@ def generate_hists(pq_dict: dict, variable: str, axis):
         if APPLY_WEIGHTS:
             syst_hists[ak_name] = hist.Hist(axis, storage='weight').fill(
                 var=ak_arr[variable],
-                weight=ak_arr['eventWeight']
+                weight=ak_arr['eventWeight'],
             )
         else:
             syst_hists[ak_name] = hist.Hist(axis).fill(
@@ -156,20 +177,20 @@ def generate_hists(pq_dict: dict, variable: str, axis):
             ratio_type = 'up'
         elif re.search("down", ak_name.lower()) is not None:
             ratio_type = 'down'
-        numer_values = ak_hist.values().flatten()
-        denom_values = syst_hists["nominal"].values().flatten()
+        numer_values = ak_hist.values()
+        denom_values = syst_hists["nominal"].values()
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             ratio_dict[f'{ratio_type}_ratio_values'] = numer_values / denom_values
             ratio_dict[f'{ratio_type}_ratio_err'] = ratio_error(
                 numer_values, denom_values, 
-                ak_hist.variances().flatten(),
-                syst_hists["nominal"].variances().flatten()
+                ak_hist.variances(),
+                syst_hists["nominal"].variances()
             )
 
     return syst_hists, ratio_dict
 
-def plot_ratio(ratio, mpl_ax, hist_axis, numer_err=None, denom_err=None, central_value=1.0):
+def plot_ratio(ratio, mpl_ax, hist_axis, numer_err=None, denom_err=None, central_value=1.0, color='black', lw=2.):
     """
     Does the ratio plot (code copied from Hist.plot_ratio_array b/c they don't
       do what we need.)
@@ -181,13 +202,19 @@ def plot_ratio(ratio, mpl_ax, hist_axis, numer_err=None, denom_err=None, central
         arr[arr == 0] = np.nan
         arr[np.isinf(arr)] = np.nan
 
-    mpl_ax.set_ylim(0, 2)
+    mpl_ax.set_ylim(0., 2.5)
+    # if np.min(ratio - numer_err) > 0.8 and np.max(ratio + numer_err) < 1.2:
+    #     mpl_ax.set_ylim(0.8, 1.2)
     mpl_ax.axhline(
-        central_value, color="black", linestyle="dashed", linewidth=1.0
+        central_value, color="black", linestyle="solid", lw=1.
     )
     mpl_ax.errorbar(
-        hist_axis.centers[0], ratio, yerr=numer_err,
-        color="black", marker="o", linestyle="none"
+        hist_axis.centers[0], ratio, yerr=numer_err, 
+        fmt='none', lw=lw, color=color, alpha=0.8
+    )
+    mpl_ax.stairs(
+        ratio, edges=hist_axis.edges[0], fill=False, 
+        baseline=1., lw=lw, color=color, alpha=0.8
     )
 
     if denom_err is not None:
@@ -218,17 +245,19 @@ def plot(
     fig, axs = plt.subplots(
         2, 1, sharex=True, height_ratios=[4,1], figsize=(10, 8)
     )
+    linewidth=2.
     for syst_name, syst_hist in syst_hists.items():
         hep.histplot(
-            syst_hist, label=syst_name, w2=syst_hist.variances().flatten(), 
-            ax=axs[0], linewidth=3, histtype="step"
+            syst_hist, label=syst_name, yerr=syst_hist.variances(),
+            ax=axs[0], lw=linewidth, histtype="step", alpha=0.8
         )
     
-    for ratio_type in ["up", "down"]:
+    for idx, ratio_type in enumerate(["up", "down"]):
         plot_ratio(
             ratio_dict[f'{ratio_type}_ratio_values'], axs[1], 
             numer_err=ratio_dict[f'{ratio_type}_ratio_err'],
-            denom_err=None, hist_axis=syst_hists["nominal"].axes
+            denom_err=None, hist_axis=syst_hists["nominal"].axes,
+            color=cmap_petroff10[idx+1], lw=linewidth
         )
     
     # Plotting niceties #
@@ -277,6 +306,10 @@ def main():
         for dir_name in dir_list:
             std_dirname = find_dirname(dir_name)
             if std_dirname is None:
+                print(f'{dir_name} not in samples selected for this computation.')
+                continue
+            if len(os.listdir(os.path.join(data_era, dir_name))) == 1:
+                print(f'{dir_name} does not have variations computed.')
                 continue
             print('======================== \n', std_dirname+" started")
             MC_pqs[data_era][std_dirname] = {}
@@ -286,6 +319,7 @@ def main():
             sideband_cuts(nominal_sample)
 
             for syst_name in ['Et_dependent_ScaleEB', 'Et_dependent_ScaleEE', 'Et_dependent_Smearing', 'jec_syst_Total', 'jer_syst']:
+            # for syst_name in ['Et_dependent_Smearing']:
                 print('======================== \n', syst_name+" started")
 
                 syst_up_dirpath = os.path.join(data_era, dir_name, syst_name+'_up', '*merged.parquet')
