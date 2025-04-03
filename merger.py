@@ -337,7 +337,6 @@ def main():
     for sim_era, dir_list in sim_dir_lists.items():
 
         for dir_name in dir_list:
-            if dir_name != 'VHtoGG_M-125': continue
 
             sample_dirpath = os.path.join(sim_era, dir_name, "")
 
@@ -395,8 +394,6 @@ def main():
 
     #         # Load all the parquets of a single sample into an ak array
     #         print(dir_name)
-    #         print(os.path.join(sample_dirpath, '*.parquet'))
-    #         print(glob.glob(os.path.join(sample_dirpath, '*.parquet')))
     #         sample_list = [ak.from_parquet(file) for file in glob.glob(os.path.join(sample_dirpath, '*.parquet'))]
     #         if len(sample_list) < 1:
     #             continue
