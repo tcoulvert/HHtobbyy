@@ -332,8 +332,8 @@ def main():
 
                 MC_pqs[data_era][std_dirname][syst_name] = {
                     "nominal": slimmed_parquet(nominal_sample),
-                    syst_name+"up": slimmed_parquet(syst_up_sample),
-                    syst_name+"down": slimmed_parquet(syst_down_sample)
+                    syst_name+"_up": slimmed_parquet(syst_up_sample),
+                    syst_name+"_down": slimmed_parquet(syst_down_sample)
                 }
 
                 del syst_up_sample, syst_down_sample
@@ -352,6 +352,31 @@ def main():
 
             print('======================== \n', std_dirname+" finished")
 
+    # for std_dirname, dir_systs in MC_pqs[data_era].items():
+
+    #     for syst_name, syst_aks in dir_systs.items():
+
+    #         MC_pqs[data_era][std_dirname][syst_name] = {
+    #             "nominal": slimmed_parquet(nominal_sample),
+    #             syst_name+"_up": slimmed_parquet(syst_up_sample),
+    #             syst_name+"_down": slimmed_parquet(syst_down_sample)
+    #         }
+ 
+    #         for data_era in 
+    #         cross_era_dict = {
+
+    #         }
+
+    #         # Ploting over variables for MC and Data
+    #         for variable, axis in VARIABLES.items():
+    #             syst_hists, ratio_hists = generate_hists(MC_pqs[data_era][std_dirname][syst_name], variable, axis)
+    #             plot_dirpath = os.path.join(year, cut_era, std_dirname, '')
+    #             plot(
+    #                 variable, syst_hists, ratio_hists, 
+    #                 era=cut_era, year=year, lumi=LUMINOSITIES[data_era], 
+    #                 sample_name=MC_NAMES_PRETTY[std_dirname], systname=syst_name,
+    #                 rel_dirpath=plot_dirpath
+    #             )
             
 
 if __name__ == '__main__':
