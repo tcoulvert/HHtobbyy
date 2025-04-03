@@ -261,7 +261,7 @@ def plot(
         )
     
     # Plotting niceties #
-    hep.cms.lumitext(f"{year}{era} {lumi} (13.6 TeV)", ax=axs[0])
+    hep.cms.lumitext(f"{year}{era} {lumi:.2f}" + r"fb$^{-1}$ (13.6 TeV)", ax=axs[0])
     hep.cms.text("Work in Progress", ax=axs[0])
     # Plot legend properly
     axs[0].legend()
