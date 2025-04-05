@@ -99,8 +99,8 @@ def process_data(
         'pt', 'eta',
 
         # Photon vars
-        'lead_mvaID_nano', 'lead_sigmaE_over_E',
-        'sublead_mvaID_nano', 'sublead_sigmaE_over_E',
+        'lead_mvaID', 'lead_sigmaE_over_E',
+        'sublead_mvaID', 'sublead_sigmaE_over_E',
         
         # HH vars
         'HH_PNetRegPt', 'HH_PNetRegEta', 'RegPt_balance',

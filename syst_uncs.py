@@ -233,6 +233,16 @@ def ratio_error(numer_values, denom_values, numer_err, denom_err):
     )
     return ratio_err
 
+def compute_uncertainty(syst_hists: dict, syst_name):
+    nominal_integral = np.sum(syst_hists["nominal"].values())
+
+    up_integral = np.sum(syst_hists[syst_name+"_up"].values())
+    down_integral = np.sum(syst_hists[syst_name+"_down"].values())
+
+    diff_integral = np.abs(up_integral - down_integral)
+
+    return float(diff_integral / nominal_integral)
+
 def plot(
     variable: str, syst_hists: dict, ratio_dict: dict, 
     year='2022', era='postEE', lumi=0.0, sample_name='signal',
@@ -296,12 +306,14 @@ def main():
     # Make parquet dicts, merged by samples and pre-slimmed (keeping only VARIABLES and EXTRA_VARIABLES)
     # MC_pqs = make_mc_dict(mc_dir_lists)
     MC_pqs = {}
+    uncertainty_value = {}
     
     for data_era, dir_list in mc_dir_lists.items():
         cut_era = data_era[data_era[:-1].rfind('/')+1:-1]
         year = data_era[data_era.find('Run3_202')+len('Run3_'):data_era.find('Run3_202')+len('Run3_202x')]
         print('======================== \n', year+''+cut_era+" started")
         MC_pqs[data_era] = {}
+        uncertainty_value[data_era] = {}
 
         for dir_name in dir_list:
             std_dirname = find_dirname(dir_name)
@@ -313,6 +325,7 @@ def main():
                 continue
             print('======================== \n', std_dirname+" started")
             MC_pqs[data_era][std_dirname] = {}
+            uncertainty_value[data_era][std_dirname] = {}
 
             nominal_dirpath = os.path.join(data_era, dir_name, 'nominal', '*merged.parquet')
             nominal_sample = ak.from_parquet(glob.glob(nominal_dirpath)[0])
@@ -335,6 +348,7 @@ def main():
                     syst_name+"_up": slimmed_parquet(syst_up_sample),
                     syst_name+"_down": slimmed_parquet(syst_down_sample)
                 }
+                uncertainty_value[data_era][std_dirname][syst_name] = {}
 
                 del syst_up_sample, syst_down_sample
                 print('======================== \n', syst_name+" finished")
@@ -349,8 +363,12 @@ def main():
                         sample_name=MC_NAMES_PRETTY[std_dirname], systname=syst_name,
                         rel_dirpath=plot_dirpath
                     )
+                    uncertainty_value[data_era][std_dirname][syst_name][variable] = compute_uncertainty(syst_hists, syst_name)
 
             print('======================== \n', std_dirname+" finished")
+
+    with open(os.path.join(DESTDIR, "uncertainties.json"), "w") as f:
+        json.dump(uncertainty_value, f)
 
     # for std_dirname, dir_systs in MC_pqs[data_era].items():
 
