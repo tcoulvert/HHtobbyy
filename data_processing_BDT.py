@@ -160,7 +160,8 @@ def process_data(
         # Aux fields
         'event': 'event', 'mass': 'mass', 'HH_PNetRegMass': 'HHbbggCandidate_mass', 'HHbbggCandidate_mass': 'HHbbggCandidate_mass',
         'lepton1_pt': 'lepton1_pt', 'lepton2_pt': 'lepton2_pt',
-        'hash': 'hash', 'eventWeight': 'eventWeight', 'sample_name': 'sample_name', 'max_nonbjet_btag': 'max_nonbjet_btag'
+        'hash': 'hash', 'eventWeight': 'eventWeight', 'sample_name': 'sample_name', 'max_nonbjet_btag': 'max_nonbjet_btag',
+        'MultiBDT_output': 'MultiBDT_output',
     }
         
 
@@ -179,6 +180,8 @@ def process_data(
         high_level_aux_fields.add('sample_name')
     if 'max_nonbjet_btag' in samples[order[0]].fields:
         high_level_aux_fields.add('max_nonbjet_btag')
+    if 'MultiBDT_output' in samples[order[0]].fields:
+        high_level_aux_fields.add('MultiBDT_output')
 
 
     hlf_list, hlf_aux_list = list(high_level_fields), list(high_level_aux_fields)
@@ -195,6 +198,7 @@ def process_data(
         for old_field, new_field in [('lepton1_pt', 'lepton1_bool'), ('lepton2_pt', 'lepton2_bool')]:
             pandas_aux_samples[sample_name][new_field] = copy.deepcopy(pandas_aux_samples[sample_name][old_field] != FILL_VALUE)
             del pandas_aux_samples[sample_name][old_field]
+        pandas_aux_samples[sample_name]['MultiBDT_output'] = pandas_aux_samples[sample_name]['MultiBDT_output'][:, 0]
         pandas_aux_samples[sample_name] = pd.DataFrame(pandas_aux_samples[sample_name])
 
     if len(dont_include_vars) > 0:

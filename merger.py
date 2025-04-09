@@ -19,7 +19,7 @@ vec.register_awkward()
 lpc_fileprefix = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v2/"
 FILL_VALUE = -999
 NUM_JETS = 10
-FORCE_RERUN = True
+FORCE_RERUN = False
 
 
 def add_vars(sample, data=False):
@@ -110,7 +110,7 @@ def add_vars(sample, data=False):
         )
     # Improved bjet bTag score and regressed mass #
     for field in ['lead', 'sublead']:
-        sample[f'{field}_bjet_btagRobustParTAK4B'] = robustParT(sample, bjet_type=field)
+        # sample[f'{field}_bjet_btagRobustParTAK4B'] = robustParT(sample, bjet_type=field)
         sample[f'{field}_bjet_PNetRegPt'] = bjet_4moms[f'{field}_bjet_4mom'].pt
         sample[f'{field}_bjet_sigmapT_over_pT'] = sample[f'nonRes_{field}_bjet_PNetRegPtRawRes'] / sample[f'nonRes_{field}_bjet_pt']
         sample[f'{field}_bjet_sigmapT_over_RegPt'] = sample[f'nonRes_{field}_bjet_PNetRegPtRawRes'] / sample[f'{field}_bjet_PNetRegPt']
@@ -184,12 +184,16 @@ def add_vars(sample, data=False):
 
 
 def get_merged_filepath(unmerged_filepath):
-    return os.path.join(
+    merged_filepath = os.path.join(
         unmerged_filepath[:unmerged_filepath.rfind("Run3_202")+len("Run3_202x")] 
         + "_merged"
         + unmerged_filepath[unmerged_filepath.rfind("Run3_202")+len("Run3_202x"):],
         ""
     )
+    if re.search("nominal", merged_filepath) is not None:
+        merged_filepath = merged_filepath[:merged_filepath.find('nominal')]
+    
+    return merged_filepath
 
 def slim_parquets(sample):
     sample_fields = [field for field in sample.fields]
@@ -208,8 +212,9 @@ def main():
         os.path.join(lpc_fileprefix, "Run3_2023", "sim", "postBPix", ""): None,
     }
     data_dir_lists = {
-        os.path.join(lpc_fileprefix, "Run3_2022", "data", ""): None,
-        os.path.join(lpc_fileprefix, "Run3_2023", "data", ""): None,
+        # os.path.join(lpc_fileprefix, "Run3_2022", "data", ""): None,
+        # os.path.join(lpc_fileprefix, "Run3_2023", "data", ""): None,
+        os.path.join(lpc_fileprefix, "Run3_2024", "data", ""): None,
     }
     
     # MC Era: total era luminosity [fb^-1] #
@@ -307,7 +312,6 @@ def main():
         )
         sim_dir_lists[sim_era].sort()
 
-
     # Pull Data sample dir_list
     for data_era in data_dir_lists.keys():
         all_data_dirs_set = set(os.listdir(data_era))
@@ -333,92 +337,102 @@ def main():
         )
         data_dir_lists[data_era].sort()
         
+
     # Perform the variable calculation and merging
-    for sim_era, dir_list in sim_dir_lists.items():
-
-        for dir_name in dir_list:
-
-            sample_dirpath = os.path.join(sim_era, dir_name, "")
-
-            for sample_type in os.listdir(sample_dirpath):
-
-                sample_type_dirpath = os.path.join(sample_dirpath, sample_type, "")
-
-                # Load all the parquets of a single sample into an ak array
-                print(sim_era[sim_era[:-1].rfind('/')+1:-1]+': '+dir_name)
-                sample_list = [ak.from_parquet(file) for file in glob.glob(os.path.join(sample_type_dirpath, '*.parquet'))]
-                if len(sample_list) < 1:
-                    continue
-                sample = ak.concatenate(sample_list)
-
-                if 'weight_nominal' not in sample.fields and dir_name != 'DDQCDGJets':
-                    # Compute sum of gen weights
-                    sample['sumGenWeights'] = sum(
-                        float(pq.read_table(file).schema.metadata[b'sum_genw_presel']) for file in glob.glob(
-                            os.path.join(sample_type_dirpath, '*.parquet')
-                        )
-                    )
-                    # Rescale weights by sum of genweights
-                    sample['weight_nominal'] = sample['weight']
-                    syst_weight_fields = [field for field in sample.fields if (("weight_" in field) and ("Up" in field or "Down" in field))]
-                    for weight_field in ["weight"] + syst_weight_fields:
-                        sample[weight_field] = sample[weight_field] / sample['sumGenWeights']
-
-                # Slim parquets by removing Res fields (for now)
-                slim_parquets(sample)
-
-                # Add useful parquet meta-info
-                sample['sample_name'] = dir_name if dir_name not in sample_name_map else sample_name_map[dir_name]
-                sample['sample_era'] = sim_era[sim_era[:-1].rfind('/')+1:-1]
-                sample['eventWeight'] = sample['weight'] * luminosities[sim_era] * cross_sections[dir_name]
-
-                # Add necessary extra variables
-                add_vars(sample)
-        
-                # Save out merged parquet
-                destdir = get_merged_filepath(sample_type_dirpath)
-                if not os.path.exists(destdir):
-                    os.makedirs(destdir)
-                filepath = os.path.join(destdir, dir_name+'_merged.parquet')
-                merged_parquet = ak.to_parquet(sample, filepath)
-                
-                # Delete sample for memory reasons
-                del sample
-                print('======================== \n', destdir)
-
-    # for data_era, dir_list in data_dir_lists.items():
+    # for sim_era, dir_list in sim_dir_lists.items():
 
     #     for dir_name in dir_list:
 
-    #         sample_dirpath = os.path.join(data_era, dir_name, "")
+    #         sample_dirpath = os.path.join(sim_era, dir_name, "")
 
-    #         # Load all the parquets of a single sample into an ak array
-    #         print(dir_name)
-    #         sample_list = [ak.from_parquet(file) for file in glob.glob(os.path.join(sample_dirpath, '*.parquet'))]
-    #         if len(sample_list) < 1:
-    #             continue
-    #         sample = ak.concatenate(sample_list)
+    #         for sample_type in os.listdir(sample_dirpath):
 
-    #         # Slim parquets by removing Res fields (for now)
-    #         slim_parquets(sample)
+    #             sample_type_dirpath = os.path.join(sample_dirpath, sample_type, "")
+
+    #             # Load all the parquets of a single sample into an ak array
+    #             print(sim_era[sim_era[:-1].rfind('/')+1:-1]+': '+dir_name)
+    #             sample_list = [ak.from_parquet(file) for file in glob.glob(os.path.join(sample_type_dirpath, '*.parquet'))]
+    #             if len(sample_list) < 1:
+    #                 continue
+    #             sample = ak.concatenate(sample_list)
+
+    #             if 'weight_nominal' not in sample.fields and dir_name != 'DDQCDGJets':
+    #                 # Compute sum of gen weights
+    #                 sample['sumGenWeights'] = sum(
+    #                     float(pq.read_table(file).schema.metadata[b'sum_genw_presel']) for file in glob.glob(
+    #                         os.path.join(sample_type_dirpath, '*.parquet')
+    #                     )
+    #                 )
+    #                 # Rescale weights by sum of genweights
+    #                 sample['weight_nominal'] = sample['weight']
+    #                 syst_weight_fields = [field for field in sample.fields if (("weight_" in field) and ("Up" in field or "Down" in field))]
+    #                 for weight_field in ["weight"] + syst_weight_fields:
+    #                     sample[weight_field] = sample[weight_field] / sample['sumGenWeights']
+
+    #             # Slim parquets by removing Res fields (for now)
+    #             slim_parquets(sample)
+
+    #             # Add useful parquet meta-info
+    #             sample['sample_name'] = dir_name if dir_name not in sample_name_map else sample_name_map[dir_name]
+    #             sample['sample_era'] = sim_era[sim_era[:-1].rfind('/')+1:-1]
+    #             sample['eventWeight'] = sample['weight'] * luminosities[sim_era] * cross_sections[dir_name]
+
+    #             # Add necessary extra variables
+    #             add_vars(sample)
+        
+    #             # Save out merged parquet
+    #             destdir = get_merged_filepath(sample_type_dirpath)
+    #             if not os.path.exists(destdir):
+    #                 os.makedirs(destdir)
+    #             filepath = os.path.join(destdir, dir_name+'_merged.parquet')
+    #             merged_parquet = ak.to_parquet(sample, filepath)
+                
+    #             # Delete sample for memory reasons
+    #             del sample
+    #             print('======================== \n', destdir)
+
+    for data_era, dir_list in data_dir_lists.items():
+
+        for dir_name in dir_list:
+
+            if re.search('2024', data_era) is not None:
+                sample_dirpath = os.path.join(data_era, dir_name, "nominal", "")
+            else:
+                sample_dirpath = os.path.join(data_era, dir_name, "")
+
+            # Load all the parquets of a single sample into an ak array
+            print(dir_name)
+            sample_list = []
+            for file in glob.glob(os.path.join(sample_dirpath, '*.parquet')):
+                try:
+                    sample_list.append(ak.from_parquet(file))
+                except:
+                    print('append failed, skipping file')
+                    continue
+            if len(sample_list) < 1:
+                continue
+            sample = ak.concatenate(sample_list)
+
+            # Slim parquets by removing Res fields (for now)
+            slim_parquets(sample)
             
-    #         # Add useful parquet meta-info
-    #         sample['sample_name'] = dir_name
-    #         sample['sample_era'] = data_era[data_era[:-1].rfind('/')+1:-1]
+            # Add useful parquet meta-info
+            sample['sample_name'] = dir_name
+            sample['sample_era'] = data_era[data_era[:-1].rfind('/')+1:-1]
 
-    #         # Add necessary extra variables
-    #         add_vars(sample, data=True)
+            # Add necessary extra variables
+            add_vars(sample, data=True)
     
-    #         # Save out merged parquet
-    #         destdir = get_merged_filepath(sample_dirpath)
-    #         if not os.path.exists(destdir):
-    #             os.makedirs(destdir)
-    #         filepath = os.path.join(destdir, dir_name+'_merged.parquet')
-    #         merged_parquet = ak.to_parquet(sample, filepath)
+            # Save out merged parquet
+            destdir = get_merged_filepath(sample_dirpath)
+            if not os.path.exists(destdir):
+                os.makedirs(destdir)
+            filepath = os.path.join(destdir, dir_name+'_merged.parquet')
+            merged_parquet = ak.to_parquet(sample, filepath)
             
-    #         # Delete sample for memory reasons
-    #         del sample
-    #         print('======================== \n', destdir)
+            # Delete sample for memory reasons
+            del sample
+            print('======================== \n', destdir)
 
 
 if __name__ == '__main__':
