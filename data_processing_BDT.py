@@ -198,7 +198,8 @@ def process_data(
         for old_field, new_field in [('lepton1_pt', 'lepton1_bool'), ('lepton2_pt', 'lepton2_bool')]:
             pandas_aux_samples[sample_name][new_field] = copy.deepcopy(pandas_aux_samples[sample_name][old_field] != FILL_VALUE)
             del pandas_aux_samples[sample_name][old_field]
-        pandas_aux_samples[sample_name]['MultiBDT_output'] = pandas_aux_samples[sample_name]['MultiBDT_output'][:, 0]
+        if 'MultiBDT_output' in high_level_aux_fields:
+            pandas_aux_samples[sample_name]['MultiBDT_output'] = pandas_aux_samples[sample_name]['MultiBDT_output'][:, 0]
         pandas_aux_samples[sample_name] = pd.DataFrame(pandas_aux_samples[sample_name])
 
     if len(dont_include_vars) > 0:
