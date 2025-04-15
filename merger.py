@@ -176,7 +176,12 @@ def add_vars(sample, data=False):
     # hash #
     hash_arr = np.zeros_like(ak.to_numpy(sample['pt']))
     for event_idx in range(len(sample['pt'])):
-        hash_arr[event_idx] = hash(str(sample['event'])+str(sample['lumi'])+str(sample['run']))
+        hash_arr[event_idx] = hash(
+            str(sample['event'][event_idx])
+            +str(sample['lumi'][event_idx])
+            +str(sample['run'][event_idx])
+            +str(sample['pt'][event_idx])
+        )
     sample['hash'] = hash_arr  # Used to re-order the ttH killer output to match the input files
 
     # max non-bjet btag score -> sets lower limit for resampling #
@@ -225,6 +230,8 @@ def main():
         os.path.join(lpc_fileprefix, "Run3_2023", "sim", "postBPix", ""): 9.451,
         os.path.join(lpc_fileprefix, "Run3_2024", "sim", "2024", ""): 109.08,
     }
+
+    # run_only_fields = {'hash'}
 
     
     
