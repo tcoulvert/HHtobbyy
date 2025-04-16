@@ -175,7 +175,6 @@ def add_vars(sample, data=False):
 
     # hash #
     sample['hash'] = np.arange(ak.num(sample['pt'], axis=0))  # Used to re-order the ttH killer output to match the input files
-    print(f"hash worked = {np.shape(np.unique(sample['hash'])) == np.shape(sample['hash'])}")
 
     # max non-bjet btag score -> sets lower limit for resampling #
     sample['max_nonbjet_btag'] = max_nonbjet_btag(sample)
@@ -207,8 +206,8 @@ def slim_parquets(sample):
 
 def main():
     sim_dir_lists = {
-        # os.path.join(lpc_fileprefix, "Run3_2022", "sim", "preEE", ""): None,
-        # os.path.join(lpc_fileprefix, "Run3_2022", "sim", "postEE", ""): None,
+        os.path.join(lpc_fileprefix, "Run3_2022", "sim", "preEE", ""): None,
+        os.path.join(lpc_fileprefix, "Run3_2022", "sim", "postEE", ""): None,
         os.path.join(lpc_fileprefix, "Run3_2023", "sim", "preBPix", ""): None,
         os.path.join(lpc_fileprefix, "Run3_2023", "sim", "postBPix", ""): None,
     }
@@ -346,12 +345,12 @@ def main():
 
         for dir_name in dir_list:
 
-            if (
-                re.search('preBPix', dir_name) is not None
-                and re.search('GGJets', dir_name) is not None
-            ): continue
-
             sample_dirpath = os.path.join(sim_era, dir_name, "")
+
+            if (
+                re.search('preBPix', sample_dirpath) is not None
+                and re.search('GGJets', sample_dirpath) is not None
+            ): continue
 
             for sample_type in os.listdir(sample_dirpath):
 

@@ -192,18 +192,20 @@ def process_data(
         pandas_samples[sample_name] = {}
         for field in hlf_list:
             
-            if ak.to_numpy(sample[field], allow_missing=False).dtype == np.float64:
-                pandas_samples[sample_name][std_mapping[field]] = np.array(ak.to_numpy(sample[field], allow_missing=False), dtype=np.float32)
+            new_column = ak.to_numpy(sample[field], allow_missing=False)
+            if new_column.dtype == np.float64:
+                pandas_samples[sample_name][std_mapping[field]] = np.array(new_column, dtype=np.float32)
             else: 
-                pandas_samples[sample_name][std_mapping[field]] = ak.to_numpy(sample[field], allow_missing=False)
+                pandas_samples[sample_name][std_mapping[field]] = copy.deepcopy(new_column)
             
         pandas_aux_samples[sample_name] = {}
         for field in hlf_aux_list:
 
-            if ak.to_numpy(sample[field], allow_missing=False).dtype == np.float64:
-                pandas_aux_samples[sample_name][std_mapping[field]] = np.array(ak.to_numpy(sample[field], allow_missing=False), dtype=np.float32)
+            new_column = ak.to_numpy(sample[field], allow_missing=False)
+            if new_column.dtype == np.float64:
+                pandas_aux_samples[sample_name][std_mapping[field]] = np.array(new_column, dtype=np.float32)
             else:
-                pandas_aux_samples[sample_name][std_mapping[field]] = ak.to_numpy(sample[field], allow_missing=False)
+                pandas_aux_samples[sample_name][std_mapping[field]] = copy.deepcopy(new_column)
                 
         # Compute bool for easy lepton-veto checks
         for old_field, new_field in [('lepton1_pt', 'lepton1_bool'), ('lepton2_pt', 'lepton2_bool')]:
