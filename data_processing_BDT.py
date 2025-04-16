@@ -188,18 +188,31 @@ def process_data(
     hlf_list.sort()
     hlf_aux_list.sort()
     for sample_name, sample in samples.items():
-        pandas_samples[sample_name] = pd.DataFrame({
-            std_mapping[field]: ak.to_numpy(sample[field], allow_missing=False) for field in hlf_list
-        })
-        pandas_aux_samples[sample_name] = {
-            std_mapping[field]: ak.to_numpy(sample[field], allow_missing=False) for field in hlf_aux_list
-        }
+
+        pandas_samples[sample_name] = {}
+        for field in hlf_list:
+            
+            if ak.to_numpy(sample[field], allow_missing=False).dtype == np.float64:
+                pandas_samples[sample_name][std_mapping[field]] = np.array(ak.to_numpy(sample[field], allow_missing=False), dtype=np.float32)
+            else: 
+                pandas_samples[sample_name][std_mapping[field]] = ak.to_numpy(sample[field], allow_missing=False)
+            
+        pandas_aux_samples[sample_name] = {}
+        for field in hlf_aux_list:
+
+            if ak.to_numpy(sample[field], allow_missing=False).dtype == np.float64:
+                pandas_aux_samples[sample_name][std_mapping[field]] = np.array(ak.to_numpy(sample[field], allow_missing=False), dtype=np.float32)
+            else:
+                pandas_aux_samples[sample_name][std_mapping[field]] = ak.to_numpy(sample[field], allow_missing=False)
+                
         # Compute bool for easy lepton-veto checks
         for old_field, new_field in [('lepton1_pt', 'lepton1_bool'), ('lepton2_pt', 'lepton2_bool')]:
             pandas_aux_samples[sample_name][new_field] = copy.deepcopy(pandas_aux_samples[sample_name][old_field] != FILL_VALUE)
             del pandas_aux_samples[sample_name][old_field]
         if 'MultiBDT_output' in high_level_aux_fields:
             pandas_aux_samples[sample_name]['MultiBDT_output'] = pandas_aux_samples[sample_name]['MultiBDT_output'][:, 0]
+        
+        pandas_samples[sample_name] = pd.DataFrame(pandas_samples[sample_name])
         pandas_aux_samples[sample_name] = pd.DataFrame(pandas_aux_samples[sample_name])
 
     if len(dont_include_vars) > 0:

@@ -19,7 +19,7 @@ vec.register_awkward()
 lpc_fileprefix = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v2/"
 FILL_VALUE = -999
 NUM_JETS = 10
-FORCE_RERUN = False
+FORCE_RERUN = True
 
 
 def add_vars(sample, data=False):
@@ -174,15 +174,8 @@ def add_vars(sample, data=False):
     )
 
     # hash #
-    hash_arr = np.zeros_like(ak.to_numpy(sample['pt']))
-    for event_idx in range(len(sample['pt'])):
-        hash_arr[event_idx] = hash(
-            str(sample['event'][event_idx])
-            +str(sample['lumi'][event_idx])
-            +str(sample['run'][event_idx])
-            +str(sample['pt'][event_idx])
-        )
-    sample['hash'] = hash_arr  # Used to re-order the ttH killer output to match the input files
+    sample['hash'] = np.arange(ak.num(sample['pt'], axis=0))  # Used to re-order the ttH killer output to match the input files
+    print(f"hash worked = {np.shape(np.unique(sample['hash'])) == np.shape(sample['hash'])}")
 
     # max non-bjet btag score -> sets lower limit for resampling #
     sample['max_nonbjet_btag'] = max_nonbjet_btag(sample)
@@ -195,7 +188,10 @@ def get_merged_filepath(unmerged_filepath):
         + unmerged_filepath[unmerged_filepath.rfind("Run3_202")+len("Run3_202x"):],
         ""
     )
-    if re.search("nominal", merged_filepath) is not None:
+    if (
+        re.search("nominal", merged_filepath) is not None
+        and re.search("data", merged_filepath) is not None
+    ):
         merged_filepath = merged_filepath[:merged_filepath.find('nominal')]
     
     return merged_filepath
@@ -211,14 +207,14 @@ def slim_parquets(sample):
 
 def main():
     sim_dir_lists = {
-        os.path.join(lpc_fileprefix, "Run3_2022", "sim", "preEE", ""): None,
-        os.path.join(lpc_fileprefix, "Run3_2022", "sim", "postEE", ""): None,
+        # os.path.join(lpc_fileprefix, "Run3_2022", "sim", "preEE", ""): None,
+        # os.path.join(lpc_fileprefix, "Run3_2022", "sim", "postEE", ""): None,
         os.path.join(lpc_fileprefix, "Run3_2023", "sim", "preBPix", ""): None,
         os.path.join(lpc_fileprefix, "Run3_2023", "sim", "postBPix", ""): None,
     }
     data_dir_lists = {
-        # os.path.join(lpc_fileprefix, "Run3_2022", "data", ""): None,
-        # os.path.join(lpc_fileprefix, "Run3_2023", "data", ""): None,
+        os.path.join(lpc_fileprefix, "Run3_2022", "data", ""): None,
+        os.path.join(lpc_fileprefix, "Run3_2023", "data", ""): None,
         os.path.join(lpc_fileprefix, "Run3_2024", "data", ""): None,
     }
     
@@ -346,57 +342,62 @@ def main():
         
 
     # Perform the variable calculation and merging
-    # for sim_era, dir_list in sim_dir_lists.items():
+    for sim_era, dir_list in sim_dir_lists.items():
 
-    #     for dir_name in dir_list:
+        for dir_name in dir_list:
 
-    #         sample_dirpath = os.path.join(sim_era, dir_name, "")
+            if (
+                re.search('preBPix', dir_name) is not None
+                and re.search('GGJets', dir_name) is not None
+            ): continue
 
-    #         for sample_type in os.listdir(sample_dirpath):
+            sample_dirpath = os.path.join(sim_era, dir_name, "")
 
-    #             sample_type_dirpath = os.path.join(sample_dirpath, sample_type, "")
+            for sample_type in os.listdir(sample_dirpath):
 
-    #             # Load all the parquets of a single sample into an ak array
-    #             print(sim_era[sim_era[:-1].rfind('/')+1:-1]+': '+dir_name)
-    #             sample_list = [ak.from_parquet(file) for file in glob.glob(os.path.join(sample_type_dirpath, '*.parquet'))]
-    #             if len(sample_list) < 1:
-    #                 continue
-    #             sample = ak.concatenate(sample_list)
+                sample_type_dirpath = os.path.join(sample_dirpath, sample_type, "")
 
-    #             if 'weight_nominal' not in sample.fields and dir_name != 'DDQCDGJets':
-    #                 # Compute sum of gen weights
-    #                 sample['sumGenWeights'] = sum(
-    #                     float(pq.read_table(file).schema.metadata[b'sum_genw_presel']) for file in glob.glob(
-    #                         os.path.join(sample_type_dirpath, '*.parquet')
-    #                     )
-    #                 )
-    #                 # Rescale weights by sum of genweights
-    #                 sample['weight_nominal'] = sample['weight']
-    #                 syst_weight_fields = [field for field in sample.fields if (("weight_" in field) and ("Up" in field or "Down" in field))]
-    #                 for weight_field in ["weight"] + syst_weight_fields:
-    #                     sample[weight_field] = sample[weight_field] / sample['sumGenWeights']
+                # Load all the parquets of a single sample into an ak array
+                print(sim_era[sim_era[:-1].rfind('/')+1:-1]+': '+dir_name)
+                sample_list = [ak.from_parquet(file) for file in glob.glob(os.path.join(sample_type_dirpath, '*.parquet'))]
+                if len(sample_list) < 1:
+                    continue
+                sample = ak.concatenate(sample_list)
 
-    #             # Slim parquets by removing Res fields (for now)
-    #             slim_parquets(sample)
+                if 'weight_nominal' not in sample.fields and dir_name != 'DDQCDGJets':
+                    # Compute sum of gen weights
+                    sample['sumGenWeights'] = sum(
+                        float(pq.read_table(file).schema.metadata[b'sum_genw_presel']) for file in glob.glob(
+                            os.path.join(sample_type_dirpath, '*.parquet')
+                        )
+                    )
+                    # Rescale weights by sum of genweights
+                    sample['weight_nominal'] = sample['weight']
+                    syst_weight_fields = [field for field in sample.fields if (("weight_" in field) and ("Up" in field or "Down" in field))]
+                    for weight_field in ["weight"] + syst_weight_fields:
+                        sample[weight_field] = sample[weight_field] / sample['sumGenWeights']
 
-    #             # Add useful parquet meta-info
-    #             sample['sample_name'] = dir_name if dir_name not in sample_name_map else sample_name_map[dir_name]
-    #             sample['sample_era'] = sim_era[sim_era[:-1].rfind('/')+1:-1]
-    #             sample['eventWeight'] = sample['weight'] * luminosities[sim_era] * cross_sections[dir_name]
+                # Slim parquets by removing Res fields (for now)
+                slim_parquets(sample)
 
-    #             # Add necessary extra variables
-    #             add_vars(sample)
+                # Add useful parquet meta-info
+                sample['sample_name'] = dir_name if dir_name not in sample_name_map else sample_name_map[dir_name]
+                sample['sample_era'] = sim_era[sim_era[:-1].rfind('/')+1:-1]
+                sample['eventWeight'] = sample['weight'] * luminosities[sim_era] * cross_sections[dir_name]
+
+                # Add necessary extra variables
+                add_vars(sample)
         
-    #             # Save out merged parquet
-    #             destdir = get_merged_filepath(sample_type_dirpath)
-    #             if not os.path.exists(destdir):
-    #                 os.makedirs(destdir)
-    #             filepath = os.path.join(destdir, dir_name+'_merged.parquet')
-    #             merged_parquet = ak.to_parquet(sample, filepath)
+                # Save out merged parquet
+                destdir = get_merged_filepath(sample_type_dirpath)
+                if not os.path.exists(destdir):
+                    os.makedirs(destdir)
+                filepath = os.path.join(destdir, dir_name+'_merged.parquet')
+                merged_parquet = ak.to_parquet(sample, filepath)
                 
-    #             # Delete sample for memory reasons
-    #             del sample
-    #             print('======================== \n', destdir)
+                # Delete sample for memory reasons
+                del sample
+                print('======================== \n', destdir)
 
     for data_era, dir_list in data_dir_lists.items():
 
