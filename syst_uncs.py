@@ -203,8 +203,8 @@ def plot_ratio(ratio, mpl_ax, hist_axis, numer_err=None, denom_err=None, central
         arr[np.isinf(arr)] = np.nan
 
     mpl_ax.set_ylim(0., 2.5)
-    # if np.min(ratio - numer_err) > 0.8 and np.max(ratio + numer_err) < 1.2:
-    #     mpl_ax.set_ylim(0.8, 1.2)
+    if np.min(ratio - numer_err) > 0.8 and np.max(ratio + numer_err) < 1.2:
+        mpl_ax.set_ylim(0.8, 1.2)
     mpl_ax.axhline(
         central_value, color="black", linestyle="solid", lw=1.
     )
