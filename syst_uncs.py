@@ -19,14 +19,16 @@ cmap_petroff10 = ["#3f90da", "#ffa90e", "#bd1f01", "#94a4a2", "#832db6", "#a96b5
 plt.rcParams.update({"axes.prop_cycle": cycler("color", cmap_petroff10)})
 
 lpc_fileprefix = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v2/"
-LPC_FILEPREFIX_22 = os.path.join(lpc_fileprefix, 'Run3_2022_merged', 'sim', '')
-LPC_FILEPREFIX_23 = os.path.join(lpc_fileprefix, 'Run3_2023_merged', 'sim', '')
+LPC_FILEPREFIX_22 = os.path.join(lpc_fileprefix, 'Run3_2022_merged_MultiBDT_output_mvaIDCorr_22_23', 'sim', '')
+LPC_FILEPREFIX_23 = os.path.join(lpc_fileprefix, 'Run3_2023_merged_MultiBDT_output_mvaIDCorr_22_23', 'sim', '')
 
 DESTDIR = 'syst_unc_plots'
 if not os.path.exists(DESTDIR):
     os.makedirs(DESTDIR)
 
 APPLY_WEIGHTS = True
+EVAL_CATEGORIES = True
+EVAL_METHOD = '2D'
 MC_DATA_MASK = 'MC_Data_mask'
 FILL_VALUE = -999
 MC_NAMES_PRETTY = {
@@ -67,11 +69,20 @@ VARIABLES = {
     # 'lead_mvaID_run3': hist.axis.Regular(100, -1., 1, name='var', label=r'lead $\gamma$ MVA ID', growth=False, underflow=False, overflow=False), 
     # 'sublead_mvaID_run3': hist.axis.Regular(100, -1., 1, name='var', label=r'sublead $\gamma$ MVA ID', growth=False, underflow=False, overflow=False), 
     # # dijet variables
-    # 'dijet_PNetRegMass': hist.axis.Regular(24, 70., 190., name='var', label=r'$M_{jj}$ [GeV]', growth=False, underflow=False, overflow=False)
+    'dijet_PNetRegMass': hist.axis.Regular(24, 70., 190., name='var', label=r'$M_{jj}$ [GeV]', growth=False, underflow=False, overflow=False),
     'mass': hist.axis.Regular(20, 115., 135., name='var', label=r'$M_{\gamma\gamma}$ [GeV]', growth=False, underflow=False, overflow=False)
 }
 EXTRA_VARIABLES = {
-    'eventWeight'
+    'eventWeight', 'MC_Data_mask', 'MultiBDT_output'
+}
+
+OPTIMIZED_CUTS = {
+    '1D': [0.9977, 0.9946, 0.9874],
+    '2D': [
+        [0.987, 0.9982],
+        [0.92, 0.994],
+        [0.92, 0.9864],
+    ]
 }
 
 def sideband_cuts(sample):
@@ -158,14 +169,16 @@ def generate_hists(pq_dict: dict, variable: str, axis):
     syst_hists = {}
     for ak_name, ak_arr in pq_dict.items():
 
+        mask = ak_arr['MC_Data_mask']
+
         if APPLY_WEIGHTS:
             syst_hists[ak_name] = hist.Hist(axis, storage='weight').fill(
-                var=ak_arr[variable],
-                weight=ak_arr['eventWeight'],
+                var=ak_arr[variable][mask],
+                weight=ak_arr['eventWeight'][mask],
             )
         else:
             syst_hists[ak_name] = hist.Hist(axis).fill(
-                var=ak_arr[variable]
+                var=ak_arr[variable][mask]
             )
 
     # Generate ratio dict
@@ -243,6 +256,57 @@ def compute_uncertainty(syst_hists: dict, syst_name):
 
     return float(diff_integral / nominal_integral)
 
+def get_ttH_score(multibdt_output):
+    return multibdt_output[0] / (multibdt_output[0] + multibdt_output[1])
+
+def get_QCD_score(multibdt_output):
+    return multibdt_output[0] / (multibdt_output[0] + multibdt_output[2] + multibdt_output[3])
+
+def cut_ak_dict(ak_dict: dict, index: int):
+    return_ak_dict = copy.deepcopy(ak_dict)
+
+    if EVAL_METHOD == '1D':
+
+        lower_cut_value = OPTIMIZED_CUTS[EVAL_METHOD][index]
+        if index > 0:
+            upper_cut_value = OPTIMIZED_CUTS[EVAL_METHOD][index - 1]
+        else:
+            upper_cut_value = 1.0
+        
+        for ak_name in return_ak_dict.keys():
+            mask = (
+                return_ak_dict[ak_name]['MultiBDT_output'] > lower_cut_value
+            ) & (
+                return_ak_dict[ak_name]['MultiBDT_output'] <= upper_cut_value
+            )
+            return_ak_dict[ak_name] = return_ak_dict[ak_name][mask]
+
+        return return_ak_dict
+    
+    elif EVAL_METHOD == '2D':
+
+        lower_ttH_cut_value = OPTIMIZED_CUTS[EVAL_METHOD][index][0]
+        lower_QCD_cut_value = OPTIMIZED_CUTS[EVAL_METHOD][index][1]
+        if index > 0:
+            upper_QCD_cut_value = OPTIMIZED_CUTS[EVAL_METHOD][index - 1][1]
+        else:
+            upper_QCD_cut_value = 1.
+        
+        for ak_name in return_ak_dict.keys():
+            mask = (
+                get_ttH_score(return_ak_dict[ak_name]['MultiBDT_output']) > lower_ttH_cut_value
+            ) & (
+                get_QCD_score(return_ak_dict[ak_name]['MultiBDT_output']) > lower_QCD_cut_value
+            ) & (
+                get_QCD_score(return_ak_dict[ak_name]['MultiBDT_output']) <= upper_QCD_cut_value
+            )
+            return_ak_dict[ak_name] = return_ak_dict[ak_name][mask]
+
+        return return_ak_dict
+    
+    else:
+        raise Exception(f"Method {EVAL_METHOD} not implemented yet.")
+
 def plot(
     variable: str, syst_hists: dict, ratio_dict: dict, 
     year='2022', era='postEE', lumi=0.0, sample_name='signal',
@@ -307,6 +371,8 @@ def main():
     # MC_pqs = make_mc_dict(mc_dir_lists)
     MC_pqs = {}
     uncertainty_value = {}
+    MC_pqs_merged = {}
+    uncertainty_value_merged = {}
     
     for data_era, dir_list in mc_dir_lists.items():
         cut_era = data_era[data_era[:-1].rfind('/')+1:-1]
@@ -322,6 +388,9 @@ def main():
                 continue
             if len(os.listdir(os.path.join(data_era, dir_name))) == 1:
                 print(f'{dir_name} does not have variations computed.')
+                continue
+            if re.search('H', dir_name.upper()) is None:
+                print(f'{dir_name} is non-resonant sample. No systematics will be computed as the non-resonant comes from data.')
                 continue
             print('======================== \n', std_dirname+" started")
             MC_pqs[data_era][std_dirname] = {}
@@ -366,36 +435,108 @@ def main():
                     uncertainty_value[data_era][std_dirname][syst_name][variable] = compute_uncertainty(syst_hists, syst_name)
 
             print('======================== \n', std_dirname+" finished")
+        
+        for std_dirname, dir_systs in MC_pqs[data_era].items():
+            if std_dirname not in MC_pqs_merged:
+                MC_pqs_merged[std_dirname] = {}
+                uncertainty_value_merged[std_dirname] = {}
+
+            for syst_name, syst_ak_dict in dir_systs.items():
+                if syst_name not in MC_pqs_merged[std_dirname]:
+                    MC_pqs_merged[std_dirname][syst_name] = copy.deepcopy(syst_ak_dict)
+                    uncertainty_value_merged[std_dirname][syst_name] = {}
+                else:
+                    for syst_ak_name, syst_ak in syst_ak_dict.items():
+                        MC_pqs_merged[std_dirname][syst_name][syst_ak_name] = concatenate_records(
+                            MC_pqs_merged[std_dirname][syst_name][syst_ak_name], syst_ak
+                        )
+
+    for std_dirname, dir_systs in MC_pqs_merged.items():
+
+        for syst_name, syst_ak_dict in dir_systs.items():
+
+            for variable, axis in VARIABLES.items():
+                syst_hists, ratio_hists = generate_hists(syst_ak_dict, variable, axis)
+                plot_dirpath = os.path.join(std_dirname, '')
+                plot(
+                    variable, syst_hists, ratio_hists, 
+                    era='', year='2022+2023', lumi=LUMINOSITIES['total_lumi'], 
+                    sample_name=MC_NAMES_PRETTY[std_dirname], systname=syst_name,
+                    rel_dirpath=plot_dirpath
+                )
+                uncertainty_value_merged[std_dirname][syst_name][variable] = compute_uncertainty(syst_hists, syst_name)
 
     with open(os.path.join(DESTDIR, "uncertainties.json"), "w") as f:
         json.dump(uncertainty_value, f)
+    with open(os.path.join(DESTDIR, "uncertainties_merged.json"), "w") as f:
+        json.dump(uncertainty_value_merged, f)
 
-    # for std_dirname, dir_systs in MC_pqs[data_era].items():
+    if EVAL_CATEGORIES:
 
-    #     for syst_name, syst_aks in dir_systs.items():
+        uncertainty_value_cat = {}
+        uncertainty_value_cat_merged = {}
 
-    #         MC_pqs[data_era][std_dirname][syst_name] = {
-    #             "nominal": slimmed_parquet(nominal_sample),
-    #             syst_name+"_up": slimmed_parquet(syst_up_sample),
-    #             syst_name+"_down": slimmed_parquet(syst_down_sample)
-    #         }
- 
-    #         for data_era in 
-    #         cross_era_dict = {
+        for cat_idx, cat in enumerate(OPTIMIZED_CUTS[EVAL_METHOD]):
 
-    #         }
+            # Unmerged era uncertainties
+            uncertainty_value_cat[cat_idx] = {}
 
-    #         # Ploting over variables for MC and Data
-    #         for variable, axis in VARIABLES.items():
-    #             syst_hists, ratio_hists = generate_hists(MC_pqs[data_era][std_dirname][syst_name], variable, axis)
-    #             plot_dirpath = os.path.join(year, cut_era, std_dirname, '')
-    #             plot(
-    #                 variable, syst_hists, ratio_hists, 
-    #                 era=cut_era, year=year, lumi=LUMINOSITIES[data_era], 
-    #                 sample_name=MC_NAMES_PRETTY[std_dirname], systname=syst_name,
-    #                 rel_dirpath=plot_dirpath
-    #             )
-            
+            for data_era, data_era_dict in MC_pqs.items():
+
+                cut_era = data_era[data_era[:-1].rfind('/')+1:-1]
+                year = data_era[data_era.find('Run3_202')+len('Run3_'):data_era.find('Run3_202')+len('Run3_202x')]
+                uncertainty_value_cat[cat_idx][data_era] = {}
+
+                for std_dirname, dir_systs in data_era_dict.items():
+
+                    uncertainty_value_cat[cat_idx][data_era][std_dirname] = {}
+
+                    for syst_name, syst_ak_dict in dir_systs.items():
+
+                        uncertainty_value_cat[cat_idx][data_era][std_dirname][syst_name] = {}
+                        
+                        cut_syst_ak_dict = cut_ak_dict(syst_ak_dict, cat_idx)
+
+                        for variable, axis in VARIABLES.items():
+
+                            syst_hists, ratio_hists = generate_hists(cut_syst_ak_dict, variable, axis)
+                            plot_dirpath = os.path.join(f'Cat{cat_idx}', year, cut_era, std_dirname, '')
+
+                            plot(
+                                variable, syst_hists, ratio_hists, 
+                                era=cut_era, year=year, lumi=LUMINOSITIES[data_era], 
+                                sample_name=MC_NAMES_PRETTY[std_dirname], systname=syst_name,
+                                rel_dirpath=plot_dirpath
+                            )
+
+                            uncertainty_value_cat[cat_idx][data_era][std_dirname][syst_name][variable] = compute_uncertainty(syst_hists, syst_name)
+
+            # Merged era uncertainties
+            uncertainty_value_cat_merged[cat_idx] = {}
+
+            for std_dirname, dir_systs in MC_pqs_merged.items():
+
+                uncertainty_value_cat_merged[cat_idx][std_dirname] = {}
+
+                for syst_name, syst_ak_dict in dir_systs.items():
+
+                    uncertainty_value_cat_merged[cat_idx][std_dirname][syst_name] = {}
+
+                    cut_syst_ak_dict = cut_ak_dict(syst_ak_dict, cat_idx)
+
+                    for variable, axis in VARIABLES.items():
+                        syst_hists, ratio_hists = generate_hists(cut_syst_ak_dict, variable, axis)
+                        plot_dirpath = os.path.join(f'Cat{cat_idx}', std_dirname, '')
+
+                        plot(
+                            variable, syst_hists, ratio_hists, 
+                            era='', year='2022+2023', lumi=LUMINOSITIES['total_lumi'], 
+                            sample_name=MC_NAMES_PRETTY[std_dirname], systname=syst_name,
+                            rel_dirpath=plot_dirpath
+                        )
+
+                        uncertainty_value_cat_merged[cat_idx][std_dirname][syst_name][variable] = compute_uncertainty(syst_hists, syst_name)
+
 
 if __name__ == '__main__':
     main()
