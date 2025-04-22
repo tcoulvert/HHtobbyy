@@ -154,9 +154,9 @@ def sideband_cuts(sample):
     Builds the event_mask used to do data-mc comparison in a sideband.
     """
     # Require diphoton and dijet exist (required in preselection, and thus is all True)
-    for field in sample.fields:
-        print(field)
-        print('='*60)
+    # for field in sample.fields:
+    #     print(field)
+    #     print('='*60)
     event_mask = (
         sample['nonRes_has_two_btagged_jets'] 
         & sample['is_nonRes']
@@ -168,9 +168,9 @@ def sideband_cuts(sample):
         ) & (  # fatjet cuts
             (sample['fatjet1_pt'] > 250)
             & (
-                (sample['fatjet1_mass'] > 100)
+                (sample['fatjet1_mass'] > 100)  # fatjet1_msoftdrop instead?
                 & (sample['fatjet1_mass'] < 160)
-            ) & (sample['fatjet1_PNetXbb'] > 0.8)
+            ) & (sample['fatjet1_particleNet_XbbVsQCD'] > 0.8)
         ) & (  # good photon cuts (for boosted regime)
             (sample['lead_mvaID'] > 0.)
             & (sample['sublead_mvaID'] > 0.)
