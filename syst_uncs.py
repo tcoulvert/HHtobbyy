@@ -61,6 +61,10 @@ LUMINOSITIES['total_lumi'] = sum(LUMINOSITIES.values())
 # Dictionary of variables
 VARIABLES = {
     # key: hist.axis axes for plotting #
+    # jet variables #
+    'nonRes_lead_bjet_pt': hist.axis.Regular(40, 20., 250, name='var', label=r'lead bjet $p_T$ [GeV]', growth=False, underflow=False, overflow=False),
+    'nonRes_sublead_bjet_pt': hist.axis.Regular(40, 20., 250, name='var', label=r'sublead bjet $p_T$ [GeV]', growth=False, underflow=False, overflow=False),
+    
     # dijet variables #
     'dijet_PNetRegMass': hist.axis.Regular(24, 70., 190., name='var', label=r'$M_{jj}$ [GeV]', growth=False, underflow=False, overflow=False),
     
@@ -251,9 +255,13 @@ def compute_uncertainty(syst_hists: dict, syst_name):
     up_integral = np.sum(syst_hists[syst_name+"_up"].values())
     down_integral = np.sum(syst_hists[syst_name+"_down"].values())
 
-    diff_integral = np.abs(up_integral - down_integral)
+    up_percent_diff = (up_integral - nominal_integral) / nominal_integral
+    down_percent_diff = (down_integral - nominal_integral) / nominal_integral
 
-    return float(diff_integral / nominal_integral)
+    return {
+        'up_percent_diff': float(up_percent_diff),
+        'down_percent_diff': float(down_percent_diff),
+    }
 
 def get_ttH_score(multibdt_output):
     return multibdt_output[:, 0] / (multibdt_output[:, 0] + multibdt_output[:, 1])

@@ -131,14 +131,9 @@ VARIABLES = {
     # 'MultiBDT_output': hist.axis.Regular(100, 0., 1., name='var', label=r'Multiclass BDT output', growth=False, underflow=False, overflow=False), 
 }
 BLINDED_VARIABLES = {
-    # dijet variables
-    'dijet_PNetRegMass': (
-        hist.axis.Regular(55, 70., 180., name='var', label=r'$M_{jj}$ [GeV]', growth=False, underflow=False, overflow=False),
-        [100, 150]
-    ),
     # diphoton variables
     'mass': (
-        hist.axis.Regular(55, 70., 180., name='var', label=r'$M_{\gamma\gamma}$ [GeV]', growth=False, underflow=False, overflow=False),
+        hist.axis.Regular(55, 80., 180., name='var', label=r'$M_{\gamma\gamma}$ [GeV]', growth=False, underflow=False, overflow=False),
         [115, 135]
     )
 }
@@ -159,14 +154,14 @@ def sideband_cuts(sample):
         & sample['is_nonRes']
         & (
             sample['fiducialGeometricFlag'] if 'fiducialGeometricFlag' in sample.fields else sample['pass_fiducial_geometric']
-        ) & (  # blinding window
-            (sample['mass'] < 115)
-            | (sample['mass'] > 135)
+        # ) & (  # blinding window
+        #     (sample['mass'] < 115)
+        #     | (sample['mass'] > 135)
         ) & (  # fatjet cuts
             (sample['fatjet1_pt'] > 250)
             & (
-                (sample['fatjet1_mass'] > 100)  # fatjet1_msoftdrop instead?
-                & (sample['fatjet1_mass'] < 160)
+                (sample['fatjet1_msoftdrop'] > 100)
+                & (sample['fatjet1_msoftdrop'] < 160)
             ) & (sample['fatjet1_particleNet_XbbVsQCD'] > 0.8)
         ) & (  # good photon cuts (for boosted regime)
             (sample['lead_mvaID'] > 0.)
@@ -317,8 +312,8 @@ def plot(
     destdir = os.path.join(DESTDIR, rel_dirpath, '')
     if not os.path.exists(destdir):
         os.makedirs(destdir)
-    plt.savefig(f'{destdir}1dhist_{variable}_{hist_names[0]}{"_"+hist_names[-1] if len(hist_names) > 1 else ""}_comparison.pdf')
-    plt.savefig(f'{destdir}1dhist_{variable}_{hist_names[0]}{"_"+hist_names[-1] if len(hist_names) > 1 else ""}_comparison.png')
+    plt.savefig(f'{destdir}1dhist_{variable}_{hist_names[0]}{"_"+hist_names[-1] if len(hist_names) > 1 else ""}.pdf')
+    plt.savefig(f'{destdir}1dhist_{variable}_{hist_names[0]}{"_"+hist_names[-1] if len(hist_names) > 1 else ""}.png')
     plt.close()
     
 def main(sample_dirs, density=False):
@@ -421,5 +416,13 @@ if __name__ == '__main__':
             os.path.join(LPC_FILEPREFIX_24[:-len('sim/')], "data", ""): None
         },
     }
+    main(sample_dirs, density=False)
 
+    sample_dirs = {
+        'MC2023-24': {
+            LPC_FILEPREFIX_22: None,
+            LPC_FILEPREFIX_23: None
+        },
+    }
+    ## ADD FEATURE TO MAIN TO TOGGLE CONCATENATION AND ALLOW FOR PLOTTING PER SAMPLE
     main(sample_dirs, density=False)
