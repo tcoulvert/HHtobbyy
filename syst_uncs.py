@@ -345,8 +345,7 @@ def plot(
     # Plot x_axis label properly
     axs[0].set_xlabel('')
     axs[1].set_xlabel(sample_name+'  '+syst_hists["nominal"].axes.label[0])
-    # axs[0].set_yscale('log')
-    axs[0].set_yscale('linear')
+    axs[0].set_yscale('log') if variable == 'MultiBDT_output' else axs[0].set_yscale('linear')
     # Save out the plot
     destdir = os.path.join(DESTDIR, rel_dirpath, '')
     if not os.path.exists(destdir):
