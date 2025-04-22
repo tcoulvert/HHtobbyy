@@ -154,9 +154,6 @@ def sideband_cuts(sample):
     Builds the event_mask used to do data-mc comparison in a sideband.
     """
     # Require diphoton and dijet exist (required in preselection, and thus is all True)
-    # for field in sample.fields:
-    #     print(field)
-    #     print('='*60)
     event_mask = (
         sample['nonRes_has_two_btagged_jets'] 
         & sample['is_nonRes']
@@ -281,7 +278,7 @@ def generate_hists(pq_dict: dict, variable: str, axis, density=False, blind_edge
     return hists
 
 def plot(
-    variable: str, hists: dict, ratio_dict: dict, 
+    variable: str, hists: dict, 
     year='2022', era='postEE', lumi=0.0, sample_name='signal',
     rel_dirpath='', histtypes=None, density=False
 ):
@@ -299,7 +296,8 @@ def plot(
         histtypes = ["step" for _ in range(len(hists))]
     for idx, hist_name in enumerate(hist_names):
         hep.histplot(
-            hists[hist_name], label=hist_name, yerr=ratio_dict[f"{'denom' if idx == 0 else 'numer'}_err"],
+            hists[hist_name], label=hist_name, 
+            yerr=hists[hist_name].variances() if (APPLY_WEIGHTS and re.search('mc', hist_name.lower()) is not None) else True,
             ax=axs[0], lw=linewidth, histtype=histtypes[idx], alpha=0.8,
             density=density
         )
@@ -319,8 +317,8 @@ def plot(
     destdir = os.path.join(DESTDIR, rel_dirpath, '')
     if not os.path.exists(destdir):
         os.makedirs(destdir)
-    plt.savefig(f'{destdir}1dhist_{variable}_{hist_names[0]}_{hist_names[1]}_comparison.pdf')
-    plt.savefig(f'{destdir}1dhist_{variable}_{hist_names[0]}_{hist_names[1]}_comparison.png')
+    plt.savefig(f'{destdir}1dhist_{variable}_{hist_names[0]}{"_"+hist_names[-1] if len(hist_names) > 1 else ""}_comparison.pdf')
+    plt.savefig(f'{destdir}1dhist_{variable}_{hist_names[0]}{"_"+hist_names[-1] if len(hist_names) > 1 else ""}_comparison.png')
     plt.close()
     
 def main(sample_dirs, density=False):
@@ -391,25 +389,25 @@ def main(sample_dirs, density=False):
 
     # Ploting over variables for MC and Data
     for variable, axis in VARIABLES.items():
-        hists, ratio_hist = generate_hists(
+        hists = generate_hists(
             concat_samples, variable, axis,
             density=density
         )
         plot(
-            variable, hists, ratio_hist,
+            variable, hists, 
             year='2022-24', era="", lumi=LUMINOSITIES['total_lumi'],
             sample_name='data', density=density
         )
 
     # # Ploting over variables for MC and Data
     for variable, (axis, blind_edges) in BLINDED_VARIABLES.items():
-        hists, ratio_hist = generate_hists(
+        hists = generate_hists(
             concat_samples, variable, axis,
             blind_edges=blind_edges,
             density=density
         )
         plot(
-            variable, hists, ratio_hist,
+            variable, hists, 
             year='2022-24', era="", lumi=LUMINOSITIES['total_lumi'],
             sample_name='data', density=density
         )
@@ -424,4 +422,4 @@ if __name__ == '__main__':
         },
     }
 
-    main(sample_dirs, density=True)
+    main(sample_dirs, density=False)
