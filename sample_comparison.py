@@ -19,9 +19,12 @@ cmap_petroff10 = ["#3f90da", "#ffa90e", "#bd1f01", "#94a4a2", "#832db6", "#a96b5
 plt.rcParams.update({"axes.prop_cycle": cycler("color", cmap_petroff10)})
 
 lpc_fileprefix = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v2/"
-LPC_FILEPREFIX_22 = os.path.join(lpc_fileprefix, 'Run3_2022_merged', 'sim', '')
-LPC_FILEPREFIX_23 = os.path.join(lpc_fileprefix, 'Run3_2023_merged', 'sim', '')
-LPC_FILEPREFIX_24 = os.path.join(lpc_fileprefix, 'Run3_2024_merged', 'sim', '')
+# lpc_filegroup = lambda s: f'Run3_{s}_merged'
+lpc_filegroup = lambda s: f'Run3_{s}_merged_MultiBDT_output_mvaIDCorr_22_23'
+LPC_FILEPREFIX_22 = os.path.join(lpc_fileprefix, lpc_filegroup('2022'), 'sim', '')
+LPC_FILEPREFIX_23 = os.path.join(lpc_fileprefix, lpc_filegroup('2023'), 'sim', '')
+LPC_FILEPREFIX_24 = os.path.join(lpc_fileprefix, lpc_filegroup('2024'), 'sim', '')
+END_FILEPATH = '*output.parquet' if re.search('MultiBDT_output', LPC_FILEPREFIX_22) is not None else '*merged.parquet'
 
 DESTDIR = '2023_2024_data_comparison'
 if not os.path.exists(DESTDIR):
@@ -123,6 +126,9 @@ VARIABLES = {
     'DeltaEta_jj': hist.axis.Regular(20, 0., 10., name='var', label=r'$\Delta\eta (j_1,j_2)$', growth=False, underflow=False, overflow=False),
     'isr_jet_RegPt': hist.axis.Regular(100, 0., 200., name='var', label=r'ISR jet $p_T$ [GeV]', growth=False, underflow=False, overflow=False),
     'DeltaPhi_isr_jet_z': hist.axis.Regular(20, -3.2, 3.2, name='var', label=r'$\Delta\phi (j_{ISR},jj)$', growth=False, underflow=False, overflow=False),
+
+    # BDT output #
+    'MultiBDT_output': hist.axis.Regular(100, 0., 1., name='var', label=r'Multiclass BDT output', growth=False, underflow=False, overflow=False), 
 }
 BLINDED_VARIABLES = {
     # dijet variables
@@ -242,22 +248,26 @@ def generate_hists(pq_dict: dict, variable: str, axis, density=False, blind_edge
     # Generate syst hists and ratio hists
     hists = {}
     for ak_name, ak_arr in pq_dict.items():
+        ak_hist = ak_arr[:, 0] if 'MultiBDT_output' in VARIABLES else ak_arr
 
         if blind_edges is not None:
             mask = (
-                (ak_arr[variable] < blind_edges[0]) | (ak_arr[variable] > blind_edges[1])
+                (
+                    (ak_hist[variable] < blind_edges[0]) 
+                    | (ak_hist[variable] > blind_edges[1])
+                ) & (ak_hist[MC_DATA_MASK])
             )
         else:
-            mask = ak_arr['MC_Data_mask']
+            mask = ak_hist[MC_DATA_MASK]
 
         if re.search('mc', ak_name.lower()) and APPLY_WEIGHTS:
             hists[ak_name] = hist.Hist(axis, storage='weight').fill(
-                var=ak_arr[variable][mask],
-                weight=ak_arr['eventWeight'][mask],
+                var=ak_hist[variable][mask],
+                weight=ak_hist['eventWeight'][mask],
             )
         else:
             hists[ak_name] = hist.Hist(axis).fill(
-                var=ak_arr[variable][mask]
+                var=ak_hist[variable][mask]
             )
 
     # Generate ratio dict
@@ -374,8 +384,7 @@ def plot(
     # Plot x_axis label properly
     axs[0].set_xlabel('')
     axs[1].set_xlabel(sample_name+'  '+hists[hist_names[0]].axes.label[0])
-    # axs[0].set_yscale('log')
-    axs[0].set_yscale('linear')
+    axs[0].set_yscale('log') if variable == 'MultiBDT_output' else axs[0].set_yscale('linear')
     # Save out the plot
     destdir = os.path.join(DESTDIR, rel_dirpath, '')
     if not os.path.exists(destdir):
@@ -418,10 +427,10 @@ def main(sample_dirs, density=False):
                         print(f'{sample_name} does not have variations computed.')
                         continue
 
-                    sample_dirpath = os.path.join(sample_era, sample_name, 'nominal', '*merged.parquet')
+                    sample_dirpath = os.path.join(sample_era, sample_name, 'nominal', END_FILEPATH)
                 else: 
                     std_samplename = sample_name
-                    sample_dirpath = os.path.join(sample_era, sample_name, '*merged.parquet')
+                    sample_dirpath = os.path.join(sample_era, sample_name, END_FILEPATH)
                 # print('======================== \n', std_samplename+" started")
 
                 sample = ak.from_parquet(glob.glob(sample_dirpath)[0])

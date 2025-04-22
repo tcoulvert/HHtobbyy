@@ -19,8 +19,11 @@ cmap_petroff10 = ["#3f90da", "#ffa90e", "#bd1f01", "#94a4a2", "#832db6", "#a96b5
 plt.rcParams.update({"axes.prop_cycle": cycler("color", cmap_petroff10)})
 
 lpc_fileprefix = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v2/"
-LPC_FILEPREFIX_22 = os.path.join(lpc_fileprefix, 'Run3_2022_merged_MultiBDT_output_mvaIDCorr_22_23', 'sim', '')
-LPC_FILEPREFIX_23 = os.path.join(lpc_fileprefix, 'Run3_2023_merged_MultiBDT_output_mvaIDCorr_22_23', 'sim', '')
+# lpc_filegroup = lambda s: f'Run3_{s}_merged'
+lpc_filegroup = lambda s: f'Run3_{s}_merged_MultiBDT_output_mvaIDCorr_22_23'
+LPC_FILEPREFIX_22 = os.path.join(lpc_fileprefix, lpc_filegroup('2022'), 'sim', '')
+LPC_FILEPREFIX_23 = os.path.join(lpc_fileprefix, lpc_filegroup('2023'), 'sim', '')
+LPC_FILEPREFIX_24 = os.path.join(lpc_fileprefix, lpc_filegroup('2024'), 'sim', '')
 END_FILEPATH = '*output.parquet' if re.search('MultiBDT_output', LPC_FILEPREFIX_22) is not None else '*merged.parquet'
 
 DESTDIR = 'syst_unc_plots'
@@ -58,23 +61,17 @@ LUMINOSITIES['total_lumi'] = sum(LUMINOSITIES.values())
 # Dictionary of variables
 VARIABLES = {
     # key: hist.axis axes for plotting #
-    # # MET variables
-    # 'puppiMET_sumEt': hist.axis.Regular(40, 150., 2000, name='var', label=r'puppiMET $\Sigma E_T$ [GeV]', growth=False, underflow=False, overflow=False), 
-    # # jet-photon variables
-    # 'nonRes_DeltaR_jg_min': hist.axis.Regular(30, 0, 5, name='var', label=r'min$(\Delta R(jet, \gamma))$', growth=False, underflow=False, overflow=False), 
-    # # jet variables
-    # 'n_jets': hist.axis.Integer(0, 10, name='var', label=r'$n_{jets}$', growth=False, underflow=False, overflow=False), 
-    # # ATLAS variables #
-    # 'RegPt_balance': hist.axis.Regular(100, 0., 2., name='var', label=r'$HH p_{T} / (\gamma1 p_{T} + \gamma2 p_{T} + j1 p_{T} + j2 p_{T})$', growth=False, underflow=False, overflow=False), 
-    # # photon variables
-    # 'lead_mvaID_run3': hist.axis.Regular(100, -1., 1, name='var', label=r'lead $\gamma$ MVA ID', growth=False, underflow=False, overflow=False), 
-    # 'sublead_mvaID_run3': hist.axis.Regular(100, -1., 1, name='var', label=r'sublead $\gamma$ MVA ID', growth=False, underflow=False, overflow=False), 
-    # # dijet variables
+    # dijet variables #
     'dijet_PNetRegMass': hist.axis.Regular(24, 70., 190., name='var', label=r'$M_{jj}$ [GeV]', growth=False, underflow=False, overflow=False),
-    'mass': hist.axis.Regular(40, 115., 135., name='var', label=r'$M_{\gamma\gamma}$ [GeV]', growth=False, underflow=False, overflow=False)
+    
+    # diphoton variables #
+    'mass': hist.axis.Regular(40, 115., 135., name='var', label=r'$M_{\gamma\gamma}$ [GeV]', growth=False, underflow=False, overflow=False),
+    
+    # BDT output #
+    'MultiBDT_output': hist.axis.Regular(100, 0., 1., name='var', label=r'Multiclass BDT output', growth=False, underflow=False, overflow=False),
 }
 EXTRA_VARIABLES = {
-    'eventWeight', 'MC_Data_mask', 'MultiBDT_output'
+    'eventWeight', MC_DATA_MASK, 'MultiBDT_output'
 }
 
 OPTIMIZED_CUTS = {
@@ -169,17 +166,18 @@ def generate_hists(pq_dict: dict, variable: str, axis):
     # Generate syst hists and ratio hists
     syst_hists = {}
     for ak_name, ak_arr in pq_dict.items():
+        ak_hist = ak_arr[:, 0] if 'MultiBDT_output' in VARIABLES else ak_arr
 
-        mask = ak_arr['MC_Data_mask']
+        mask = ak_hist[MC_DATA_MASK]
 
         if APPLY_WEIGHTS:
             syst_hists[ak_name] = hist.Hist(axis, storage='weight').fill(
-                var=ak.to_numpy(ak_arr[variable][mask])[:, 0],
-                weight=ak.to_numpy(ak_arr['eventWeight'][mask])[:, 0],
+                var=ak_hist[variable][mask],
+                weight=ak_hist['eventWeight'][mask],
             )
         else:
             syst_hists[ak_name] = hist.Hist(axis).fill(
-                var=ak.to_numpy(ak_arr[variable][mask])[:, 0]
+                var=ak_hist[variable][mask]
             )
 
     # Generate ratio dict
