@@ -19,7 +19,7 @@ vec.register_awkward()
 lpc_fileprefix = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v2/"
 FILL_VALUE = -999
 NUM_JETS = 10
-FORCE_RERUN = True
+FORCE_RERUN = False
 
 
 def add_vars(sample, data=False):
@@ -208,13 +208,13 @@ def main():
     sim_dir_lists = {
         os.path.join(lpc_fileprefix, "Run3_2022", "sim", "preEE", ""): None,
         os.path.join(lpc_fileprefix, "Run3_2022", "sim", "postEE", ""): None,
-        os.path.join(lpc_fileprefix, "Run3_2023", "sim", "preBPix", ""): None,
-        os.path.join(lpc_fileprefix, "Run3_2023", "sim", "postBPix", ""): None,
+        # os.path.join(lpc_fileprefix, "Run3_2023", "sim", "preBPix", ""): None,
+        # os.path.join(lpc_fileprefix, "Run3_2023", "sim", "postBPix", ""): None,
     }
     data_dir_lists = {
-        os.path.join(lpc_fileprefix, "Run3_2022", "data", ""): None,
-        os.path.join(lpc_fileprefix, "Run3_2023", "data", ""): None,
-        os.path.join(lpc_fileprefix, "Run3_2024", "data", ""): None,
+        # os.path.join(lpc_fileprefix, "Run3_2022", "data", ""): None,
+        # os.path.join(lpc_fileprefix, "Run3_2023", "data", ""): None,
+        # os.path.join(lpc_fileprefix, "Run3_2024", "data", ""): None,
     }
     
     # MC Era: total era luminosity [fb^-1] #
@@ -233,16 +233,21 @@ def main():
     # Name: cross section [fb] @ sqrrt{s}=13.6 TeV & m_H=125.09 GeV #
     #   -> Do we not need to care about other HH processes? https://arxiv.org/pdf/1910.00012.pdf
     cross_sections = {
+        # signal #
         # https://twiki.cern.ch/twiki/bin/view/LHCPhysics/LHCHWGHH?redirectedfrom=LHCPhysics.LHCHXSWGHH#Current_recommendations_for_HH_c
         'GluGluToHH': 34.43*0.0026,
         'GluGlutoHHto2B2G_kl_1p00_kt_1p00_c2_0p00': 34.43*0.0026,
         'GluGlutoHHto2B2G_kl-1p00_kt-1p00_c2-0p00': 34.43*0.0026,
+
+        # non-resonant background #
         # https://xsdb-temp.app.cern.ch/xsdb/?columns=37748736&currentPage=0&pageSize=10&searchQuery=DAS%3DGG-Box-3Jets_MGG-80_13p6TeV_sherpa
         'GGJets': 88750, 
         # https://xsdb-temp.app.cern.ch/xsdb/?columns=37748736&currentPage=0&pageSize=10&searchQuery=DAS%3DGJet_PT-20to40_DoubleEMEnriched_MGG-80_TuneCP5_13p6TeV_pythia8
         'GJetPt20To40': 242500, 
         # https://xsdb-temp.app.cern.ch/xsdb/?columns=37748736&currentPage=0&pageSize=10&searchQuery=DAS%3DGJet_PT-40_DoubleEMEnriched_MGG-80_TuneCP5_13p6TeV_pythia8
         'GJetPt40': 919100, 
+
+        # resonant background #
         # https://twiki.cern.ch/twiki/bin/view/LHCPhysics/CERNYellowReportPageAt13TeV#gluon_gluon_Fusion_Process
         'GluGluHToGG': 48520*0.00228,
         'GluGluHToGG_M_125': 48520*0.00228,
@@ -263,15 +268,22 @@ def main():
         # https://twiki.cern.ch/twiki/bin/view/LHCPhysics/CERNYellowReportPageAt13TeV#bbH_Process
         'BBHto2G_M_125': 526.5*0.00228,
         'bbHtoGG': 526.5*0.00228,
+
+        # kappa lambda scane signal samples #
+        'GluGlutoHHto2B2G_kl_0p00_kt_1p00_c2_0p00': 34.43*0.0026,
+        'GluGlutoHHto2B2G_kl_5p00_kt_1p00_c2_0p00': 34.43*0.0026,
+
+        # extra VH samples (produced by Irene) #
         # https://twiki.cern.ch/twiki/bin/view/LHCPhysics/CERNYellowReportPageAt13TeV#ppZH_Total_Cross_Section_with_ap +  https://pdg.lbl.gov/2018/listings/rpp2018-list-z-boson.pdf
         'ZH_Hto2G_Zto2Q_M-125': 882.4*0.00228*0.69911,
         # https://twiki.cern.ch/twiki/bin/view/LHCPhysics/CERNYellowReportPageAt13TeV#ppWH_Total_Cross_Section_with_ap +  https://pdg.lbl.gov/2022/listings/rpp2022-list-w-boson.pdf
         'WminusH_Hto2G_Wto2Q_M-125': 1369*0.00228*0.6741,
         # https://twiki.cern.ch/twiki/bin/view/LHCPhysics/CERNYellowReportPageAt13TeV#ppWH_Total_Cross_Section_with_ap +  https://pdg.lbl.gov/2022/listings/rpp2022-list-w-boson.pdf
         'WplusH_Hto2G_Wto2Q_M-125': 1369*0.00228*0.6741,
-        # Other potential samples
+        
+        # Other potential background samples
         'DDQCDGJets': 1,
-        'TTGG': 1
+        'TTGG': 1,
     }
     sample_name_map = {
         'GluGlutoHHto2B2G_kl_1p00_kt_1p00_c2_0p00': 'GluGluToHH', 
