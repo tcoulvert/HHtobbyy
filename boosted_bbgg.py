@@ -150,18 +150,14 @@ def sideband_cuts(sample):
     """
     # Require diphoton and dijet exist (required in preselection, and thus is all True)
     event_mask = (
-        sample['nonRes_has_two_btagged_jets'] 
-        & sample['is_nonRes']
+        sample['is_Res']
         & (
             sample['fiducialGeometricFlag'] if 'fiducialGeometricFlag' in sample.fields else sample['pass_fiducial_geometric']
-        # ) & (  # blinding window
-        #     (sample['mass'] < 115)
-        #     | (sample['mass'] > 135)
         ) & (  # fatjet cuts
             (sample['fatjet1_pt'] > 250)
             & (
-                (sample['fatjet1_msoftdrop'] > 100)
-                & (sample['fatjet1_msoftdrop'] < 160)
+                (sample['fatjet1_mass'] > 100)  # fatjet1_msoftdrop
+                & (sample['fatjet1_mass'] < 160)
             ) & (sample['fatjet1_particleNet_XbbVsQCD'] > 0.8)
         ) & (  # good photon cuts (for boosted regime)
             (sample['lead_mvaID'] > 0.)
@@ -274,7 +270,7 @@ def generate_hists(pq_dict: dict, variable: str, axis, density=False, blind_edge
 
 def plot(
     variable: str, hists: dict, 
-    year='2022', era='postEE', lumi=0.0, sample_name='signal',
+    year='2022', era='postEE', lumi=0.0,
     rel_dirpath='', histtypes=None, density=False
 ):
     """
@@ -306,7 +302,7 @@ def plot(
     fig.subplots_adjust(hspace=0.05)
     # Plot x_axis label properly
     axs[0].set_xlabel('')
-    axs[1].set_xlabel(sample_name+'  '+hists[hist_names[0]].axes.label[0])
+    axs[1].set_xlabel(hist_names[0]+'  '+hists[hist_names[0]].axes.label[0])
     axs[0].set_yscale('log') if variable == 'MultiBDT_output' else axs[0].set_yscale('linear')
     # Save out the plot
     destdir = os.path.join(DESTDIR, rel_dirpath, '')
@@ -316,7 +312,12 @@ def plot(
     plt.savefig(f'{destdir}1dhist_{variable}_{hist_names[0]}{"_"+hist_names[-1] if len(hist_names) > 1 else ""}.png')
     plt.close()
     
-def main(sample_dirs, density=False):
+def main(
+    sample_dirs, 
+    year='2022', era='preEE', std_sample_name='GluGluToHH',
+    lumi=LUMINOSITIES[os.path.join(LPC_FILEPREFIX_22, "preEE", "")],
+    density=False
+):
     """
     Performs the sample comparison.
     """
@@ -335,21 +336,11 @@ def main(sample_dirs, density=False):
         sample_pqs[dir_name] = {}
 
         for sample_era, sample_list in dir_dict.items():
-            cut_era = sample_era[sample_era[:-1].rfind('/')+1:-1]
-            year = sample_era[sample_era.find('Run3_202')+len('Run3_'):sample_era.find('Run3_202')+len('Run3_202x')]
-            print('======================== \n', year+''+cut_era+" started")
+            print('======================== \n', year+''+era+" started")
             sample_pqs[dir_name][sample_era] = []
 
             for sample_name in sample_list:
                 if re.search('mc', dir_name.lower()) is not None:
-                    std_samplename = find_dirname(sample_name)
-                    if std_samplename is None:
-                        print(f'{sample_name} not in samples selected for this computation.')
-                        continue
-                    if len(os.listdir(os.path.join(sample_era, sample_name))) == 1:
-                        print(f'{sample_name} does not have variations computed.')
-                        continue
-
                     sample_dirpath = os.path.join(sample_era, sample_name, 'nominal', END_FILEPATH)
                 else: 
                     std_samplename = sample_name
@@ -368,7 +359,7 @@ def main(sample_dirs, density=False):
                 del sample
                 print('======================== \n', std_samplename+" finished")
 
-            print('======================== \n', year+''+cut_era+" finished")
+            print('======================== \n', year+''+era+" finished")
 
     # Concatenate the samples for comparison
     concat_samples = {}
@@ -376,11 +367,14 @@ def main(sample_dirs, density=False):
         concat_samples[dir_name] = None
 
         for sample_era, sample_list in dir_dict.items():
+
             for sample in sample_list:
+
                 if concat_samples[dir_name] is None:
                     concat_samples[dir_name] = copy.deepcopy(sample)
                 else:
                     concat_samples[dir_name] = concatenate_records(concat_samples[dir_name], sample)
+
 
     # Ploting over variables for MC and Data
     for variable, axis in VARIABLES.items():
@@ -390,8 +384,8 @@ def main(sample_dirs, density=False):
         )
         plot(
             variable, hists, 
-            year='2022-24', era="", lumi=LUMINOSITIES['total_lumi'],
-            sample_name='data', density=density
+            year=year, era=era, lumi=lumi, 
+            density=density
         )
 
     # # Ploting over variables for MC and Data
@@ -403,26 +397,48 @@ def main(sample_dirs, density=False):
         )
         plot(
             variable, hists, 
-            year='2022-24', era="", lumi=LUMINOSITIES['total_lumi'],
-            sample_name='data', density=density
+            year=year, era=era, lumi=lumi, 
+            density=density
         )
             
 
 if __name__ == '__main__':
-    sample_dirs = {
-        'Data': {
-            os.path.join(LPC_FILEPREFIX_22[:-len('sim/')], "data", ""): None,
-            os.path.join(LPC_FILEPREFIX_23[:-len('sim/')], "data", ""): None,
-            os.path.join(LPC_FILEPREFIX_24[:-len('sim/')], "data", ""): None
-        },
-    }
-    main(sample_dirs, density=False)
+    # sample_dirs = {
+    #     'Data': {
+    #         os.path.join(LPC_FILEPREFIX_22[:-len('sim/')], "data", ""): None,
+    #         os.path.join(LPC_FILEPREFIX_23[:-len('sim/')], "data", ""): None,
+    #         os.path.join(LPC_FILEPREFIX_24[:-len('sim/')], "data", ""): None
+    #     },
+    # }
+    # main(
+    #     sample_dirs, 
+    #     year='2022-24', era='', lumi=LUMINOSITIES['total_lumi'], 
+    #     std_samplename='Data',
+    #     density=False
+    # )
 
-    sample_dirs = {
-        'MC2023-24': {
-            LPC_FILEPREFIX_22: None,
-            LPC_FILEPREFIX_23: None
-        },
-    }
-    ## ADD FEATURE TO MAIN TO TOGGLE CONCATENATION AND ALLOW FOR PLOTTING PER SAMPLE
-    main(sample_dirs, density=False)
+    for era_name, lumi in LUMINOSITIES.items():
+        if era_name == 'total_lumi': continue
+
+        era = era_name[era_name[:-1].rfind('/')+1:-1]
+        year = era_name[era_name.find('Run3_202')+len('Run3_'):era_name.find('Run3_202')+len('Run3_202x')]
+
+        for sample_name in os.listdir(era_name):
+
+            std_samplename = find_dirname(sample_name)
+            if std_samplename is None:
+                print(f'{sample_name} not in samples selected for this computation.')
+                continue
+            sample_filepath = os.path.join(era_name, sample_name)
+
+            sample_dirs = {
+                f'MC-{year}{era}-{std_samplename}': {
+                    sample_filepath: None,
+                },
+            }
+            main(
+                sample_dirs, 
+                year=year, era=era, lumi=lumi, 
+                std_samplename=std_samplename,
+                density=False
+            )

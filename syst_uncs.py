@@ -93,8 +93,7 @@ def sideband_cuts(sample):
     """
     # Require diphoton and dijet exist (required in preselection, and thus is all True)
     event_mask = (
-        sample['nonRes_has_two_btagged_jets'] 
-        & sample['is_nonRes']
+        sample['is_nonRes']
         & sample['fiducialGeometricFlag']
     )
     sample[MC_DATA_MASK] = event_mask
@@ -218,7 +217,7 @@ def plot_ratio(ratio, mpl_ax, hist_axis, numer_err=None, denom_err=None, central
         arr[arr == 0] = np.nan
         arr[np.isinf(arr)] = np.nan
 
-    mpl_ax.set_ylim(0.8, 1.25)
+    mpl_ax.set_ylim(0.8, 1.2)
     # if np.min(ratio - numer_err) > 0.8 and np.max(ratio + numer_err) < 1.2:
     #     mpl_ax.set_ylim(0.8, 1.2)
     mpl_ax.axhline(
@@ -408,7 +407,16 @@ def main():
             nominal_sample = ak.from_parquet(glob.glob(nominal_dirpath)[0])
             sideband_cuts(nominal_sample)
 
-            for syst_name in ['Et_dependent_ScaleEB', 'Et_dependent_ScaleEE', 'Et_dependent_Smearing', 'jec_syst_Total', 'jer_syst']:
+            for weight_syst_name in [  # Up and Down
+                'ElectronVetoSF', 'PreselSF', 'TriggerSF',
+                
+            ]:
+                print('======================== \n', weight_syst_name+" started")
+
+            for syst_name in [  # _up and _down
+                'Et_dependent_ScaleEB', 'Et_dependent_ScaleEE', 'Et_dependent_Smearing', 
+                'jec_syst_Total', 'jer_syst'
+            ]:
             # for syst_name in ['Et_dependent_Smearing']:
                 print('======================== \n', syst_name+" started")
 

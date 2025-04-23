@@ -19,7 +19,7 @@ vec.register_awkward()
 lpc_fileprefix = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v2/"
 FILL_VALUE = -999
 NUM_JETS = 10
-FORCE_RERUN = False
+FORCE_RERUN = True
 
 
 def add_vars(sample, data=False):
@@ -207,7 +207,7 @@ def slim_parquets(sample):
 def main():
     sim_dir_lists = {
         os.path.join(lpc_fileprefix, "Run3_2022", "sim", "preEE", ""): None,
-        os.path.join(lpc_fileprefix, "Run3_2022", "sim", "postEE", ""): None,
+        # os.path.join(lpc_fileprefix, "Run3_2022", "sim", "postEE", ""): None,
         # os.path.join(lpc_fileprefix, "Run3_2023", "sim", "preBPix", ""): None,
         # os.path.join(lpc_fileprefix, "Run3_2023", "sim", "postBPix", ""): None,
     }
@@ -238,6 +238,7 @@ def main():
         'GluGluToHH': 34.43*0.0026,
         'GluGlutoHHto2B2G_kl_1p00_kt_1p00_c2_0p00': 34.43*0.0026,
         'GluGlutoHHto2B2G_kl-1p00_kt-1p00_c2-0p00': 34.43*0.0026,
+        
 
         # non-resonant background #
         # https://xsdb-temp.app.cern.ch/xsdb/?columns=37748736&currentPage=0&pageSize=10&searchQuery=DAS%3DGG-Box-3Jets_MGG-80_13p6TeV_sherpa
@@ -360,8 +361,7 @@ def main():
             sample_dirpath = os.path.join(sim_era, dir_name, "")
 
             if (
-                re.search('preBPix', sample_dirpath) is not None
-                and re.search('GGJets', sample_dirpath) is not None
+                re.search('GluGlutoHHto2B2G_kl_0p00_kt_1p00_c2_0p00', sample_dirpath) is None
             ): continue
 
             for sample_type in os.listdir(sample_dirpath):
@@ -370,17 +370,24 @@ def main():
 
                 # Load all the parquets of a single sample into an ak array
                 print(sim_era[sim_era[:-1].rfind('/')+1:-1]+': '+dir_name)
-                sample_list = [ak.from_parquet(file) for file in glob.glob(os.path.join(sample_type_dirpath, '*.parquet'))]
+                sample_filepath_list = glob.glob(os.path.join(sample_type_dirpath, '*.parquet'))
+                sample_list = [ak.from_parquet(file) for file in sample_filepath_list]
                 if len(sample_list) < 1:
                     continue
                 sample = ak.concatenate(sample_list)
 
+                for field in sample.fields:
+                    print(field)
+                    print('='*60)
+                
+                continue
+
                 if 'weight_nominal' not in sample.fields and dir_name != 'DDQCDGJets':
                     # Compute sum of gen weights
                     sample['sumGenWeights'] = sum(
-                        float(pq.read_table(file).schema.metadata[b'sum_genw_presel']) for file in glob.glob(
-                            os.path.join(sample_type_dirpath, '*.parquet')
-                        )
+                        float(
+                            pq.read_table(sample_filepath).schema.metadata[b'sum_genw_presel']
+                        ) for sample_filepath in sample_filepath_list
                     )
                     # Rescale weights by sum of genweights
                     sample['weight_nominal'] = sample['weight']
