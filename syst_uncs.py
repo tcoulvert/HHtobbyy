@@ -298,6 +298,7 @@ def compute_uncertainty(syst_hists: dict, syst_name):
     return {
         'up_percent_diff': float(up_percent_diff),
         'down_percent_diff': float(down_percent_diff),
+        'avg_percent_diff': float( (up_percent_diff + down_percent_diff) / 2 )
     }
 
 def get_ttH_score(multibdt_output):
