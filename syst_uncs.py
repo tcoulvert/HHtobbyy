@@ -202,7 +202,7 @@ def concatenate_records(base_sample, added_sample):
         }
     )
 
-def generate_hists(pq_dict: dict, variable: str, axis):
+def generate_hists(pq_dict: dict, variable: str, axis, weight=APPLY_WEIGHTS):
     # https://indico.cern.ch/event/1433936/ #
     # Generate syst hists and ratio hists
     syst_hists = {}
@@ -211,7 +211,7 @@ def generate_hists(pq_dict: dict, variable: str, axis):
 
         mask = ak_hist[MC_DATA_MASK]
 
-        if APPLY_WEIGHTS:
+        if weight:
             syst_hists[ak_name] = hist.Hist(axis, storage='weight').fill(
                 var=ak_hist[variable][mask],
                 weight=ak_hist['eventWeight'][mask],
@@ -237,8 +237,8 @@ def generate_hists(pq_dict: dict, variable: str, axis):
             ratio_dict[f'{ratio_type}_ratio_values'] = numer_values / denom_values
             ratio_dict[f'{ratio_type}_ratio_err'] = ratio_error(
                 numer_values, denom_values, 
-                ak_hist.variances() if APPLY_WEIGHTS is True else np.sqrt(numer_values),
-                syst_hists["nominal"].variances() if APPLY_WEIGHTS is True else np.sqrt(denom_values)
+                ak_hist.variances() if weight else np.sqrt(numer_values),
+                syst_hists["nominal"].variances() if weight else np.sqrt(denom_values)
             )
 
     return syst_hists, ratio_dict
@@ -355,7 +355,7 @@ def cut_ak_dict(ak_dict: dict, index: int):
 def plot(
     variable: str, syst_hists: dict, ratio_dict: dict, 
     year='2022', era='postEE', lumi=0.0, sample_name='signal',
-    systname='smear', rel_dirpath=''
+    systname='smear', rel_dirpath='', weight=APPLY_WEIGHTS
 ):
     """
     Plots and saves out the data-MC comparison histogram
@@ -368,7 +368,7 @@ def plot(
     for syst_name, syst_hist in syst_hists.items():
         hep.histplot(
             syst_hist, label=syst_name, 
-            yerr=syst_hist.variances() if APPLY_WEIGHTS else True,
+            yerr=syst_hist.variances() if weight else True,
             ax=axs[0], lw=linewidth, histtype="step", alpha=0.8
         )
     
@@ -395,8 +395,8 @@ def plot(
     destdir = os.path.join(DESTDIR, rel_dirpath, '')
     if not os.path.exists(destdir):
         os.makedirs(destdir)
-    plt.savefig(f'{destdir}1dhist_{variable}_{systname}_up_down_variation{"_weighted" if APPLY_WEIGHTS else ""}.pdf')
-    plt.savefig(f'{destdir}1dhist_{variable}_{systname}_up_down_variation{"_weighted" if APPLY_WEIGHTS else ""}.png')
+    plt.savefig(f'{destdir}1dhist_{variable}_{systname}_up_down_variation{"_weighted" if weight else ""}.pdf')
+    plt.savefig(f'{destdir}1dhist_{variable}_{systname}_up_down_variation{"_weighted" if weight else ""}.png')
     plt.close()
     
 def main():
@@ -457,34 +457,29 @@ def main():
 
                 MC_pqs[cut_era][std_dirname][weight_syst_name] = {
                     "nominal": slimmed_parquet(nominal_sample),
-                    weight_syst_name+"Up": slimmed_parquet(syst_up_sample),
-                    weight_syst_name+"Down": slimmed_parquet(syst_down_sample)
+                    weight_syst_name+"_up": slimmed_parquet(syst_up_sample),
+                    weight_syst_name+"_down": slimmed_parquet(syst_down_sample)
                 }
 
                 del syst_up_sample, syst_down_sample
                 print('======================== \n', weight_syst_name+" finished")
-
-                unapply_weight_flag = False
-                if not APPLY_WEIGHTS:
-                    APPLY_WEIGHTS = True
-                    unapply_weight_flag = True
                     
                 # Ploting over variables for MC and Data
                 for variable, axis in VARIABLES.items():
-                    syst_hists, ratio_hists = generate_hists(MC_pqs[cut_era][std_dirname][weight_syst_name], variable, axis)
+                    syst_hists, ratio_hists = generate_hists(
+                        MC_pqs[cut_era][std_dirname][weight_syst_name], variable, axis,
+                        weight=True
+                    )
                     plot_dirpath = os.path.join(year, cut_era, std_dirname, '')
                     plot(
                         variable, syst_hists, ratio_hists, 
                         era=cut_era, year=year, lumi=LUMINOSITIES[data_era], 
                         sample_name=MC_NAMES_PRETTY[std_dirname], systname=weight_syst_name,
-                        rel_dirpath=plot_dirpath
+                        rel_dirpath=plot_dirpath, weight=True
                     )
 
                     if variable == 'mass':
                         uncertainty_value[cut_era][std_dirname][weight_syst_name] = compute_uncertainty(syst_hists, weight_syst_name)
-
-                if unapply_weight_flag:
-                    APPLY_WEIGHTS = False
 
             for syst_name in VARIATION_SYSTS:
                 print('======================== \n', syst_name+" started")
@@ -508,7 +503,9 @@ def main():
 
                 # Ploting over variables for MC and Data
                 for variable, axis in VARIABLES.items():
-                    syst_hists, ratio_hists = generate_hists(MC_pqs[cut_era][std_dirname][syst_name], variable, axis)
+                    syst_hists, ratio_hists = generate_hists(
+                        MC_pqs[cut_era][std_dirname][syst_name], variable, axis
+                    )
                     plot_dirpath = os.path.join(year, cut_era, std_dirname, '')
                     plot(
                         variable, syst_hists, ratio_hists, 
@@ -540,25 +537,22 @@ def main():
 
         for syst_name, syst_ak_dict in dir_systs.items():
 
-            unapply_weight_flag = False
-            if syst_name in WEIGHT_SYSTS and not APPLY_WEIGHTS:
-                APPLY_WEIGHTS = True
-
             for variable, axis in VARIABLES.items():
-                syst_hists, ratio_hists = generate_hists(syst_ak_dict, variable, axis)
+                syst_hists, ratio_hists = generate_hists(
+                    syst_ak_dict, variable, axis,
+                    weight=True if syst_name in WEIGHT_SYSTS else APPLY_WEIGHTS
+                )
                 plot_dirpath = os.path.join(std_dirname, '')
                 plot(
                     variable, syst_hists, ratio_hists, 
                     era='', year='2022+2023', lumi=LUMINOSITIES['total_lumi'], 
                     sample_name=MC_NAMES_PRETTY[std_dirname], systname=syst_name,
-                    rel_dirpath=plot_dirpath
+                    rel_dirpath=plot_dirpath, 
+                    weight=True if syst_name in WEIGHT_SYSTS else APPLY_WEIGHTS
                 )
 
                 if variable == 'mass':
                     uncertainty_value_merged[std_dirname][syst_name] = compute_uncertainty(syst_hists, syst_name)
-            
-            if unapply_weight_flag:
-                APPLY_WEIGHTS = False
 
     with open(os.path.join(DESTDIR, "uncertainties.json"), "w") as f:
         json.dump(uncertainty_value, f)
@@ -588,30 +582,27 @@ def main():
                     uncertainty_value_cat[cat_idx][cut_era][std_dirname] = {}
 
                     for syst_name, syst_ak_dict in dir_systs.items():
-
-                        unapply_weight_flag = False
-                        if syst_name in WEIGHT_SYSTS and not APPLY_WEIGHTS:
-                            APPLY_WEIGHTS = True
                         
                         cut_syst_ak_dict = cut_ak_dict(syst_ak_dict, cat_idx)
 
                         for variable, axis in VARIABLES.items():
 
-                            syst_hists, ratio_hists = generate_hists(cut_syst_ak_dict, variable, axis)
+                            syst_hists, ratio_hists = generate_hists(
+                                cut_syst_ak_dict, variable, axis,
+                                weight=True if syst_name in WEIGHT_SYSTS else APPLY_WEIGHTS
+                            )
                             plot_dirpath = os.path.join(f'Cat{cat_idx}', year, cut_era, std_dirname, '')
 
                             plot(
                                 variable, syst_hists, ratio_hists, 
                                 era=cut_era, year=year, lumi=LUMINOSITIES[data_era], 
                                 sample_name=MC_NAMES_PRETTY[std_dirname], systname=syst_name,
-                                rel_dirpath=plot_dirpath
+                                rel_dirpath=plot_dirpath,
+                                weight=True if syst_name in WEIGHT_SYSTS else APPLY_WEIGHTS
                             )
 
                             if variable == 'mass':
                                 uncertainty_value_cat[cat_idx][cut_era][std_dirname][syst_name] = compute_uncertainty(syst_hists, syst_name)
-
-                        if unapply_weight_flag:
-                            APPLY_WEIGHTS = False
 
             # Merged era uncertainties
             uncertainty_value_cat_merged[cat_idx] = {}
@@ -622,28 +613,25 @@ def main():
 
                 for syst_name, syst_ak_dict in dir_systs.items():
 
-                    unapply_weight_flag = False
-                    if syst_name in WEIGHT_SYSTS and not APPLY_WEIGHTS:
-                        APPLY_WEIGHTS = True
-
                     cut_syst_ak_dict = cut_ak_dict(syst_ak_dict, cat_idx)
 
                     for variable, axis in VARIABLES.items():
-                        syst_hists, ratio_hists = generate_hists(cut_syst_ak_dict, variable, axis)
+                        syst_hists, ratio_hists = generate_hists(
+                            cut_syst_ak_dict, variable, axis,
+                            weight=True if syst_name in WEIGHT_SYSTS else APPLY_WEIGHTS
+                        )
                         plot_dirpath = os.path.join(f'Cat{cat_idx}', std_dirname, '')
 
                         plot(
                             variable, syst_hists, ratio_hists, 
                             era='', year='2022+2023', lumi=LUMINOSITIES['total_lumi'], 
                             sample_name=MC_NAMES_PRETTY[std_dirname], systname=syst_name,
-                            rel_dirpath=plot_dirpath
+                            rel_dirpath=plot_dirpath,
+                            weight=True if syst_name in WEIGHT_SYSTS else APPLY_WEIGHTS
                         )
 
                         if variable == 'mass':
                             uncertainty_value_cat_merged[cat_idx][std_dirname][syst_name] = compute_uncertainty(syst_hists, syst_name)
-
-                    if unapply_weight_flag:
-                        APPLY_WEIGHTS = False
 
         with open(os.path.join(DESTDIR, "uncertainties_cat.json"), "w") as f:
             json.dump(uncertainty_value_cat, f)
