@@ -376,12 +376,6 @@ def main():
                     continue
                 sample = ak.concatenate(sample_list)
 
-                for field in sample.fields:
-                    print(field)
-                    print('='*60)
-                
-                continue
-
                 if 'weight_nominal' not in sample.fields and dir_name != 'DDQCDGJets':
                     # Compute sum of gen weights
                     sample['sumGenWeights'] = sum(

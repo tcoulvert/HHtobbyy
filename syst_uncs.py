@@ -87,6 +87,44 @@ OPTIMIZED_CUTS = {
     ]
 }
 
+XS = {
+        # signal #
+        # https://twiki.cern.ch/twiki/bin/view/LHCPhysics/LHCHWGHH?redirectedfrom=LHCPhysics.LHCHXSWGHH#Current_recommendations_for_HH_c
+        'GluGluToHH': 34.43*0.0026,
+        
+        # resonant background #
+        # https://twiki.cern.ch/twiki/bin/view/LHCPhysics/CERNYellowReportPageAt13TeV#gluon_gluon_Fusion_Process
+        'GluGluHToGG': 48520*0.00228,
+
+        # https://twiki.cern.ch/twiki/bin/view/LHCPhysics/CERNYellowReportPageAt13TeV#ttH_Process
+        'ttHToGG': 506.5*0.00228,
+        
+        # https://twiki.cern.ch/twiki/bin/view/LHCPhysics/CERNYellowReportPageAt13TeV#VBF_Process
+        'VBFHToGG': 3779*0.00228,
+
+        # https://twiki.cern.ch/twiki/bin/view/LHCPhysics/CERNYellowReportPageAt13TeV#WH_Process + https://twiki.cern.ch/twiki/bin/view/LHCPhysics/CERNYellowReportPageAt13TeV#ZH_Process
+        'VHToGG': (1369 + 882.4)*0.00228,
+        
+        # https://twiki.cern.ch/twiki/bin/view/LHCPhysics/CERNYellowReportPageAt13TeV#bbH_Process
+        'bbHToGG': 526.5*0.00228,
+}
+
+WEIGHT_SYSTS = [  # Up and Down
+    'ElectronVetoSF', 'PreselSF', 'TriggerSF',
+    'bTagSF_sys_lf', 
+    'bTagSF_sys_lfstats1', 'bTagSF_sys_lfstats2',
+    'bTagSF_sys_cferr1', 'bTagSF_sys_cferr2', 
+    'bTagSF_sys_hf', 
+    'bTagSF_sys_hfstats1', 'bTagSF_sys_hfstats2',
+    'bTagSF_sys_jes', 
+]
+
+VARIATION_SYSTS = [  # _up and _down
+    'Et_dependent_ScaleEB', 'Et_dependent_ScaleEE', 
+    'Et_dependent_Smearing', 
+    'jec_syst_Total', 'jer_syst'
+]
+
 def sideband_cuts(sample):
     """
     Builds the event_mask used to do data-mc comparison in a sideband.
@@ -115,11 +153,11 @@ def find_dirname(dir_name):
         'GluGluToHH': 'GluGluToHH',
         'GluGlutoHHto2B2G_kl_1p00_kt_1p00_c2_0p00': 'GluGluToHH',
         'GluGlutoHHto2B2G_kl-1p00_kt-1p00_c2-0p00': 'GluGluToHH',
-        # prompt-prompt non-resonant
-        'GGJets': 'GGJets', 
-        # prompt-fake non-resonant
-        'GJetPt20To40': 'GJetPt20To40', 
-        'GJetPt40': 'GJetPt40', 
+        # # prompt-prompt non-resonant
+        # 'GGJets': 'GGJets', 
+        # # prompt-fake non-resonant
+        # 'GJetPt20To40': 'GJetPt20To40', 
+        # 'GJetPt40': 'GJetPt40', 
         # ggf H
         'GluGluHToGG': 'GluGluHToGG',
         'GluGluHToGG_M_125': 'GluGluHToGG',
@@ -357,8 +395,8 @@ def plot(
     destdir = os.path.join(DESTDIR, rel_dirpath, '')
     if not os.path.exists(destdir):
         os.makedirs(destdir)
-    plt.savefig(f'{destdir}1dhist_{variable}_{systname}_up_down_variation.pdf')
-    plt.savefig(f'{destdir}1dhist_{variable}_{systname}_up_down_variation.png')
+    plt.savefig(f'{destdir}1dhist_{variable}_{systname}_up_down_variation{"_weighted" if APPLY_WEIGHTS else ""}.pdf')
+    plt.savefig(f'{destdir}1dhist_{variable}_{systname}_up_down_variation{"_weighted" if APPLY_WEIGHTS else ""}.png')
     plt.close()
     
 def main():
@@ -407,17 +445,48 @@ def main():
             nominal_sample = ak.from_parquet(glob.glob(nominal_dirpath)[0])
             sideband_cuts(nominal_sample)
 
-            for weight_syst_name in [  # Up and Down
-                'ElectronVetoSF', 'PreselSF', 'TriggerSF',
-                
-            ]:
+            for weight_syst_name in WEIGHT_SYSTS:
                 print('======================== \n', weight_syst_name+" started")
 
-            for syst_name in [  # _up and _down
-                'Et_dependent_ScaleEB', 'Et_dependent_ScaleEE', 'Et_dependent_Smearing', 
-                'jec_syst_Total', 'jer_syst'
-            ]:
-            # for syst_name in ['Et_dependent_Smearing']:
+                crosssec_x_lumi =  XS[std_dirname] * LUMINOSITIES[data_era]
+
+                syst_up_sample = copy.deepcopy(nominal_sample)
+                syst_up_sample['eventWeight'] = syst_up_sample[f'weight_{weight_syst_name}Up'] * crosssec_x_lumi
+                syst_down_sample = copy.deepcopy(nominal_sample)
+                syst_down_sample['eventWeight'] = syst_up_sample[f'weight_{weight_syst_name}Down'] * crosssec_x_lumi
+
+                MC_pqs[cut_era][std_dirname][weight_syst_name] = {
+                    "nominal": slimmed_parquet(nominal_sample),
+                    weight_syst_name+"Up": slimmed_parquet(syst_up_sample),
+                    weight_syst_name+"Down": slimmed_parquet(syst_down_sample)
+                }
+
+                del syst_up_sample, syst_down_sample
+                print('======================== \n', weight_syst_name+" finished")
+
+                unapply_weight_flag = False
+                if not APPLY_WEIGHTS:
+                    APPLY_WEIGHTS = True
+                    unapply_weight_flag = True
+                    
+                # Ploting over variables for MC and Data
+                for variable, axis in VARIABLES.items():
+                    syst_hists, ratio_hists = generate_hists(MC_pqs[cut_era][std_dirname][weight_syst_name], variable, axis)
+                    plot_dirpath = os.path.join(year, cut_era, std_dirname, '')
+                    plot(
+                        variable, syst_hists, ratio_hists, 
+                        era=cut_era, year=year, lumi=LUMINOSITIES[data_era], 
+                        sample_name=MC_NAMES_PRETTY[std_dirname], systname=weight_syst_name,
+                        rel_dirpath=plot_dirpath
+                    )
+
+                    if variable == 'mass':
+                        uncertainty_value[cut_era][std_dirname][weight_syst_name] = compute_uncertainty(syst_hists, weight_syst_name)
+
+                if unapply_weight_flag:
+                    APPLY_WEIGHTS = False
+
+            for syst_name in VARIATION_SYSTS:
                 print('======================== \n', syst_name+" started")
 
                 syst_up_dirpath = os.path.join(data_era, dir_name, syst_name+'_up', END_FILEPATH)
@@ -471,6 +540,10 @@ def main():
 
         for syst_name, syst_ak_dict in dir_systs.items():
 
+            unapply_weight_flag = False
+            if syst_name in WEIGHT_SYSTS and not APPLY_WEIGHTS:
+                APPLY_WEIGHTS = True
+
             for variable, axis in VARIABLES.items():
                 syst_hists, ratio_hists = generate_hists(syst_ak_dict, variable, axis)
                 plot_dirpath = os.path.join(std_dirname, '')
@@ -483,6 +556,9 @@ def main():
 
                 if variable == 'mass':
                     uncertainty_value_merged[std_dirname][syst_name] = compute_uncertainty(syst_hists, syst_name)
+            
+            if unapply_weight_flag:
+                APPLY_WEIGHTS = False
 
     with open(os.path.join(DESTDIR, "uncertainties.json"), "w") as f:
         json.dump(uncertainty_value, f)
@@ -512,6 +588,10 @@ def main():
                     uncertainty_value_cat[cat_idx][cut_era][std_dirname] = {}
 
                     for syst_name, syst_ak_dict in dir_systs.items():
+
+                        unapply_weight_flag = False
+                        if syst_name in WEIGHT_SYSTS and not APPLY_WEIGHTS:
+                            APPLY_WEIGHTS = True
                         
                         cut_syst_ak_dict = cut_ak_dict(syst_ak_dict, cat_idx)
 
@@ -530,6 +610,9 @@ def main():
                             if variable == 'mass':
                                 uncertainty_value_cat[cat_idx][cut_era][std_dirname][syst_name] = compute_uncertainty(syst_hists, syst_name)
 
+                        if unapply_weight_flag:
+                            APPLY_WEIGHTS = False
+
             # Merged era uncertainties
             uncertainty_value_cat_merged[cat_idx] = {}
 
@@ -538,6 +621,10 @@ def main():
                 uncertainty_value_cat_merged[cat_idx][std_dirname] = {}
 
                 for syst_name, syst_ak_dict in dir_systs.items():
+
+                    unapply_weight_flag = False
+                    if syst_name in WEIGHT_SYSTS and not APPLY_WEIGHTS:
+                        APPLY_WEIGHTS = True
 
                     cut_syst_ak_dict = cut_ak_dict(syst_ak_dict, cat_idx)
 
@@ -554,6 +641,9 @@ def main():
 
                         if variable == 'mass':
                             uncertainty_value_cat_merged[cat_idx][std_dirname][syst_name] = compute_uncertainty(syst_hists, syst_name)
+
+                    if unapply_weight_flag:
+                        APPLY_WEIGHTS = False
 
         with open(os.path.join(DESTDIR, "uncertainties_cat.json"), "w") as f:
             json.dump(uncertainty_value_cat, f)
