@@ -29,6 +29,7 @@ END_FILEPATH = '*output.parquet' if re.search('MultiBDT_output', LPC_FILEPREFIX_
 DESTDIR = 'syst_unc_plots'
 if not os.path.exists(DESTDIR):
     os.makedirs(DESTDIR)
+FORCE_RERUN = False
 
 APPLY_WEIGHTS = False
 EVAL_CATEGORIES = True
@@ -48,6 +49,7 @@ MC_NAMES_PRETTY = {
     "bbHToGG": r"$b\bar{b}H\rightarrow\gamma\gamma$",
     # signal
     "GluGluToHH": r"ggF $HH\rightarrow bb\gamma\gamma$",
+    "VBFToHH": r"VBF $HH\rightarrow bb\gamma\gamma$",
 }
 LUMINOSITIES = {
     os.path.join(LPC_FILEPREFIX_22, "preEE", ""): 7.9804,
@@ -107,6 +109,9 @@ XS = {
         
         # https://twiki.cern.ch/twiki/bin/view/LHCPhysics/CERNYellowReportPageAt13TeV#bbH_Process
         'bbHToGG': 526.5*0.00228,
+
+        # https://twiki.cern.ch/twiki/bin/view/LHCPhysics/LHCHWGHH?redirectedfrom=LHCPhysics.LHCHXSWGHH#Current_recommendations_for_di_H
+        'VBFToHH': 1.870*0.0026
 }
 
 WEIGHT_SYSTS = [  # Up and Down
@@ -150,34 +155,36 @@ def get_mc_dir_lists(dir_lists: dict):
 def find_dirname(dir_name):
     sample_name_map = {
         # ggf HH (signal)
-        'GluGluToHH': 'GluGluToHH',
-        'GluGlutoHHto2B2G_kl_1p00_kt_1p00_c2_0p00': 'GluGluToHH',
-        'GluGlutoHHto2B2G_kl-1p00_kt-1p00_c2-0p00': 'GluGluToHH',
-        # # prompt-prompt non-resonant
-        # 'GGJets': 'GGJets', 
-        # # prompt-fake non-resonant
-        # 'GJetPt20To40': 'GJetPt20To40', 
-        # 'GJetPt40': 'GJetPt40', 
-        # ggf H
-        'GluGluHToGG': 'GluGluHToGG',
-        'GluGluHToGG_M_125': 'GluGluHToGG',
-        'GluGluHtoGG': 'GluGluHToGG',
-        # ttH
-        'ttHToGG': 'ttHToGG',
-        'ttHtoGG_M_125': 'ttHToGG',
-        'ttHtoGG': 'ttHToGG',
-        # vbf H
-        'VBFHToGG': 'VBFHToGG',
-        'VBFHToGG_M_125': 'VBFHToGG',
-        'VBFHtoGG': 'VBFHToGG',
-        # VH
-        'VHToGG': 'VHToGG',
-        'VHtoGG_M_125': 'VHToGG',
-        'VHtoGG': 'VHToGG',
-        'VHtoGG_M-125': 'VHToGG',
-        # bbH
-        'BBHto2G_M_125': 'bbHToGG',
-        'bbHtoGG': 'bbHToGG',
+        # 'GluGluToHH': 'GluGluToHH',
+        # 'GluGlutoHHto2B2G_kl_1p00_kt_1p00_c2_0p00': 'GluGluToHH',
+        # 'GluGlutoHHto2B2G_kl-1p00_kt-1p00_c2-0p00': 'GluGluToHH',
+        # # # prompt-prompt non-resonant
+        # # 'GGJets': 'GGJets', 
+        # # # prompt-fake non-resonant
+        # # 'GJetPt20To40': 'GJetPt20To40', 
+        # # 'GJetPt40': 'GJetPt40', 
+        # # ggf H
+        # 'GluGluHToGG': 'GluGluHToGG',
+        # 'GluGluHToGG_M_125': 'GluGluHToGG',
+        # 'GluGluHtoGG': 'GluGluHToGG',
+        # # ttH
+        # 'ttHToGG': 'ttHToGG',
+        # 'ttHtoGG_M_125': 'ttHToGG',
+        # 'ttHtoGG': 'ttHToGG',
+        # # vbf H
+        # 'VBFHToGG': 'VBFHToGG',
+        # 'VBFHToGG_M_125': 'VBFHToGG',
+        # 'VBFHtoGG': 'VBFHToGG',
+        # # VH
+        # 'VHToGG': 'VHToGG',
+        # 'VHtoGG_M_125': 'VHToGG',
+        # 'VHtoGG': 'VHToGG',
+        # 'VHtoGG_M-125': 'VHToGG',
+        # # bbH
+        # 'BBHto2G_M_125': 'bbHToGG',
+        # 'bbHtoGG': 'bbHToGG',
+        # vbf HH
+        'VBFHHto2B2G_CV_1_C2V_1_C3_1': 'VBFToHH'
     }
     if dir_name in sample_name_map:
         return sample_name_map[dir_name]
@@ -555,8 +562,57 @@ def main():
                 if variable == 'mass':
                     uncertainty_value_merged[std_dirname][syst_name] = compute_uncertainty(syst_hists, syst_name)
 
+    if not FORCE_RERUN and os.path.esists(os.path.join(DESTDIR, "uncertainties.json")):
+        new_unc = copy.deepcopy(uncertainty_value)
+        uncertainty_value = json.load(os.path.esists(os.path.join(DESTDIR, "uncertainties.json")))
+
+        for era in new_unc.keys():
+
+            if era not in uncertainty_value:
+                uncertainty_value[era] = copy.deepcopy(new_unc[era])
+                continue
+
+            for dirname in new_unc[era].keys():
+
+                if dirname not in uncertainty_value[era]:
+                    uncertainty_value[era][dirname] = copy.deepcopy(new_unc[era][dirname])
+                    continue
+
+                for systname in new_unc[era][dirname].keys():
+
+                    if systname not in uncertainty_value[era][dirname]:
+                        uncertainty_value[era][dirname][systname] = copy.deepcopy(new_unc[era][dirname][systname])
+                        continue
+
+                    for varname in new_unc[era][dirname][systname].keys():
+
+                        if varname not in uncertainty_value[era][dirname][systname]:
+                            uncertainty_value[era][dirname][systname][varname] = copy.deepcopy(new_unc[era][dirname][systname][varname])
+                            continue  
     with open(os.path.join(DESTDIR, "uncertainties.json"), "w") as f:
         json.dump(uncertainty_value, f)
+
+    if not FORCE_RERUN and os.path.esists(os.path.join(DESTDIR, "uncertainties_merged.json")):
+        new_unc = copy.deepcopy(uncertainty_value)
+        uncertainty_value_merged = json.load(os.path.esists(os.path.join(DESTDIR, "uncertainties_merged.json")))
+
+        for dirname in new_unc.keys():
+
+            if dirname not in uncertainty_value_merged:
+                uncertainty_value_merged[dirname] = copy.deepcopy(new_unc[dirname])
+                continue
+
+            for systname in new_unc[dirname].keys():
+
+                if systname not in uncertainty_value_merged[dirname]:
+                    uncertainty_value_merged[dirname][systname] = copy.deepcopy(new_unc[dirname][systname])
+                    continue
+
+                for varname in new_unc[dirname][systname].keys():
+
+                    if varname not in uncertainty_value_merged[dirname][systname]:
+                        uncertainty_value_merged[dirname][systname][varname] = copy.deepcopy(new_unc[dirname][systname][varname])
+                        continue       
     with open(os.path.join(DESTDIR, "uncertainties_merged.json"), "w") as f:
         json.dump(uncertainty_value_merged, f)
 
@@ -634,8 +690,69 @@ def main():
                         if variable == 'mass':
                             uncertainty_value_cat_merged[cat_idx][std_dirname][syst_name] = compute_uncertainty(syst_hists, syst_name)
 
+        if not FORCE_RERUN and os.path.esists(os.path.join(DESTDIR, "uncertainties_cat.json")):
+            new_unc = copy.deepcopy(uncertainty_value)
+            uncertainty_value_cat = json.load(os.path.esists(os.path.join(DESTDIR, "uncertainties_cat.json")))
+
+            for cat in new_unc.keys():
+
+                if cat not in uncertainty_value_cat:
+                    uncertainty_value_cat[cat] = copy.deepcopy(new_unc[cat])
+                    continue
+                
+                for era in new_unc[cat].keys():
+
+                    if era not in uncertainty_value_cat[cat]:
+                        uncertainty_value_cat[cat][era] = copy.deepcopy(new_unc[cat][era])
+                        continue
+
+                    for dirname in new_unc[cat][era].keys():
+
+                        if dirname not in uncertainty_value_cat[cat][era]:
+                            uncertainty_value_cat[cat][era][dirname] = copy.deepcopy(new_unc[cat][era][dirname])
+                            continue
+
+                        for systname in new_unc[cat][era][dirname].keys():
+
+                            if systname not in uncertainty_value_cat[cat][era][dirname]:
+                                uncertainty_value_cat[cat][era][dirname][systname] = copy.deepcopy(new_unc[cat][era][dirname][systname])
+                                continue
+
+                            for varname in new_unc[cat][era][dirname][systname].keys():
+
+                                if varname not in uncertainty_value_cat[cat][era][dirname][systname]:
+                                    uncertainty_value_cat[cat][era][dirname][systname][varname] = copy.deepcopy(new_unc[cat][era][dirname][systname][varname])
+                                    continue  
         with open(os.path.join(DESTDIR, "uncertainties_cat.json"), "w") as f:
             json.dump(uncertainty_value_cat, f)
+
+        if not FORCE_RERUN and os.path.esists(os.path.join(DESTDIR, "uncertainties_cat_merged.json")):
+            new_unc = copy.deepcopy(uncertainty_value)
+            uncertainty_value_cat_merged = json.load(os.path.esists(os.path.join(DESTDIR, "uncertainties_cat_merged.json")))
+
+            for cat in new_unc.keys():
+
+                if cat not in uncertainty_value_cat_merged:
+                    uncertainty_value_cat_merged[cat] = copy.deepcopy(new_unc[cat])
+                    continue
+
+                for dirname in new_unc[cat].keys():
+
+                    if dirname not in uncertainty_value_cat_merged[cat]:
+                        uncertainty_value_cat_merged[cat][dirname] = copy.deepcopy(new_unc[cat][dirname])
+                        continue
+
+                    for systname in new_unc[cat][dirname].keys():
+
+                        if systname not in uncertainty_value_cat_merged[cat][dirname]:
+                            uncertainty_value_cat_merged[cat][dirname][systname] = copy.deepcopy(new_unc[cat][dirname][systname])
+                            continue
+
+                        for varname in new_unc[cat][dirname][systname].keys():
+
+                            if varname not in uncertainty_value_cat_merged[cat][dirname][systname]:
+                                uncertainty_value_cat_merged[cat][dirname][systname][varname] = copy.deepcopy(new_unc[cat][dirname][systname][varname])
+                                continue       
         with open(os.path.join(DESTDIR, "uncertainties_cat_merged.json"), "w") as f:
             json.dump(uncertainty_value_cat_merged, f)
 
