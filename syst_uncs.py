@@ -562,55 +562,45 @@ def main():
                 if variable == 'mass':
                     uncertainty_value_merged[std_dirname][syst_name] = compute_uncertainty(syst_hists, syst_name)
 
-    if not FORCE_RERUN and os.path.esists(os.path.join(DESTDIR, "uncertainties.json")):
+    if not FORCE_RERUN and os.path.exists(os.path.join(DESTDIR, "uncertainties.json")):
         new_unc = copy.deepcopy(uncertainty_value)
-        uncertainty_value = json.load(os.path.esists(os.path.join(DESTDIR, "uncertainties.json")))
+        uncertainty_value = json.load(open(os.path.join(DESTDIR, "uncertainties.json")))
 
         for era in new_unc.keys():
-
-            if era not in uncertainty_value:
-                uncertainty_value[era] = copy.deepcopy(new_unc[era])
-                continue
-
             for dirname in new_unc[era].keys():
-
-                if dirname not in uncertainty_value[era]:
-                    uncertainty_value[era][dirname] = copy.deepcopy(new_unc[era][dirname])
-                    continue
-
                 for systname in new_unc[era][dirname].keys():
-
-                    if systname not in uncertainty_value[era][dirname]:
-                        uncertainty_value[era][dirname][systname] = copy.deepcopy(new_unc[era][dirname][systname])
-                        continue
-
                     for varname in new_unc[era][dirname][systname].keys():
 
-                        if varname not in uncertainty_value[era][dirname][systname]:
+                        if era not in uncertainty_value:
+                            uncertainty_value[era] = copy.deepcopy(new_unc[era])
+                            continue
+                        elif dirname not in uncertainty_value[era]:
+                            uncertainty_value[era][dirname] = copy.deepcopy(new_unc[era][dirname])
+                            continue
+                        elif systname not in uncertainty_value[era][dirname]:
+                            uncertainty_value[era][dirname][systname] = copy.deepcopy(new_unc[era][dirname][systname])
+                            continue
+                        elif varname not in uncertainty_value[era][dirname][systname]:
                             uncertainty_value[era][dirname][systname][varname] = copy.deepcopy(new_unc[era][dirname][systname][varname])
                             continue  
     with open(os.path.join(DESTDIR, "uncertainties.json"), "w") as f:
         json.dump(uncertainty_value, f)
 
-    if not FORCE_RERUN and os.path.esists(os.path.join(DESTDIR, "uncertainties_merged.json")):
-        new_unc = copy.deepcopy(uncertainty_value)
-        uncertainty_value_merged = json.load(os.path.esists(os.path.join(DESTDIR, "uncertainties_merged.json")))
+    if not FORCE_RERUN and os.path.exists(os.path.join(DESTDIR, "uncertainties_merged.json")):
+        new_unc = copy.deepcopy(uncertainty_value_merged)
+        uncertainty_value_merged = json.load(open(os.path.join(DESTDIR, "uncertainties_merged.json")))
 
         for dirname in new_unc.keys():
-
-            if dirname not in uncertainty_value_merged:
-                uncertainty_value_merged[dirname] = copy.deepcopy(new_unc[dirname])
-                continue
-
             for systname in new_unc[dirname].keys():
-
-                if systname not in uncertainty_value_merged[dirname]:
-                    uncertainty_value_merged[dirname][systname] = copy.deepcopy(new_unc[dirname][systname])
-                    continue
-
                 for varname in new_unc[dirname][systname].keys():
 
-                    if varname not in uncertainty_value_merged[dirname][systname]:
+                    if dirname not in uncertainty_value_merged:
+                        uncertainty_value_merged[dirname] = copy.deepcopy(new_unc[dirname])
+                        continue
+                    elif systname not in uncertainty_value_merged[dirname]:
+                        uncertainty_value_merged[dirname][systname] = copy.deepcopy(new_unc[dirname][systname])
+                        continue
+                    elif varname not in uncertainty_value_merged[dirname][systname]:
                         uncertainty_value_merged[dirname][systname][varname] = copy.deepcopy(new_unc[dirname][systname][varname])
                         continue       
     with open(os.path.join(DESTDIR, "uncertainties_merged.json"), "w") as f:
@@ -690,67 +680,53 @@ def main():
                         if variable == 'mass':
                             uncertainty_value_cat_merged[cat_idx][std_dirname][syst_name] = compute_uncertainty(syst_hists, syst_name)
 
-        if not FORCE_RERUN and os.path.esists(os.path.join(DESTDIR, "uncertainties_cat.json")):
-            new_unc = copy.deepcopy(uncertainty_value)
-            uncertainty_value_cat = json.load(os.path.esists(os.path.join(DESTDIR, "uncertainties_cat.json")))
+        if not FORCE_RERUN and os.path.exists(os.path.join(DESTDIR, "uncertainties_cat.json")):
+            new_unc = copy.deepcopy(uncertainty_value_cat)
+            uncertainty_value_cat = json.load(open(os.path.join(DESTDIR, "uncertainties_cat.json")))
 
             for cat in new_unc.keys():
-
-                if cat not in uncertainty_value_cat:
-                    uncertainty_value_cat[cat] = copy.deepcopy(new_unc[cat])
-                    continue
-                
                 for era in new_unc[cat].keys():
-
-                    if era not in uncertainty_value_cat[cat]:
-                        uncertainty_value_cat[cat][era] = copy.deepcopy(new_unc[cat][era])
-                        continue
-
                     for dirname in new_unc[cat][era].keys():
-
-                        if dirname not in uncertainty_value_cat[cat][era]:
-                            uncertainty_value_cat[cat][era][dirname] = copy.deepcopy(new_unc[cat][era][dirname])
-                            continue
-
                         for systname in new_unc[cat][era][dirname].keys():
-
-                            if systname not in uncertainty_value_cat[cat][era][dirname]:
-                                uncertainty_value_cat[cat][era][dirname][systname] = copy.deepcopy(new_unc[cat][era][dirname][systname])
-                                continue
-
                             for varname in new_unc[cat][era][dirname][systname].keys():
 
-                                if varname not in uncertainty_value_cat[cat][era][dirname][systname]:
+                                if cat not in uncertainty_value_cat:
+                                    uncertainty_value_cat[cat] = copy.deepcopy(new_unc[cat])
+                                    continue
+                                elif era not in uncertainty_value_cat[cat]:
+                                    uncertainty_value_cat[cat][era] = copy.deepcopy(new_unc[cat][era])
+                                    continue
+                                elif dirname not in uncertainty_value_cat[cat][era]:
+                                    uncertainty_value_cat[cat][era][dirname] = copy.deepcopy(new_unc[cat][era][dirname])
+                                    continue
+                                elif systname not in uncertainty_value_cat[cat][era][dirname]:
+                                    uncertainty_value_cat[cat][era][dirname][systname] = copy.deepcopy(new_unc[cat][era][dirname][systname])
+                                    continue
+                                elif varname not in uncertainty_value_cat[cat][era][dirname][systname]:
                                     uncertainty_value_cat[cat][era][dirname][systname][varname] = copy.deepcopy(new_unc[cat][era][dirname][systname][varname])
                                     continue  
         with open(os.path.join(DESTDIR, "uncertainties_cat.json"), "w") as f:
             json.dump(uncertainty_value_cat, f)
 
-        if not FORCE_RERUN and os.path.esists(os.path.join(DESTDIR, "uncertainties_cat_merged.json")):
-            new_unc = copy.deepcopy(uncertainty_value)
-            uncertainty_value_cat_merged = json.load(os.path.esists(os.path.join(DESTDIR, "uncertainties_cat_merged.json")))
+        if not FORCE_RERUN and os.path.exists(os.path.join(DESTDIR, "uncertainties_cat_merged.json")):
+            new_unc = copy.deepcopy(uncertainty_value_cat_merged)
+            uncertainty_value_cat_merged = json.load(open(os.path.join(DESTDIR, "uncertainties_cat_merged.json")))
 
             for cat in new_unc.keys():
-
-                if cat not in uncertainty_value_cat_merged:
-                    uncertainty_value_cat_merged[cat] = copy.deepcopy(new_unc[cat])
-                    continue
-
                 for dirname in new_unc[cat].keys():
-
-                    if dirname not in uncertainty_value_cat_merged[cat]:
-                        uncertainty_value_cat_merged[cat][dirname] = copy.deepcopy(new_unc[cat][dirname])
-                        continue
-
                     for systname in new_unc[cat][dirname].keys():
-
-                        if systname not in uncertainty_value_cat_merged[cat][dirname]:
-                            uncertainty_value_cat_merged[cat][dirname][systname] = copy.deepcopy(new_unc[cat][dirname][systname])
-                            continue
-
                         for varname in new_unc[cat][dirname][systname].keys():
 
-                            if varname not in uncertainty_value_cat_merged[cat][dirname][systname]:
+                            if cat not in uncertainty_value_cat_merged:
+                                uncertainty_value_cat_merged[cat] = copy.deepcopy(new_unc[cat])
+                                continue
+                            elif dirname not in uncertainty_value_cat_merged[cat]:
+                                uncertainty_value_cat_merged[cat][dirname] = copy.deepcopy(new_unc[cat][dirname])
+                                continue
+                            elif systname not in uncertainty_value_cat_merged[cat][dirname]:
+                                uncertainty_value_cat_merged[cat][dirname][systname] = copy.deepcopy(new_unc[cat][dirname][systname])
+                                continue
+                            elif varname not in uncertainty_value_cat_merged[cat][dirname][systname]:
                                 uncertainty_value_cat_merged[cat][dirname][systname][varname] = copy.deepcopy(new_unc[cat][dirname][systname][varname])
                                 continue       
         with open(os.path.join(DESTDIR, "uncertainties_cat_merged.json"), "w") as f:
