@@ -19,7 +19,7 @@ vec.register_awkward()
 lpc_fileprefix = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v2/"
 FILL_VALUE = -999
 NUM_JETS = 10
-FORCE_RERUN = True
+FORCE_RERUN = False
 
 
 def add_vars(sample, data=False):
@@ -207,9 +207,9 @@ def slim_parquets(sample):
 def main():
     sim_dir_lists = {
         os.path.join(lpc_fileprefix, "Run3_2022", "sim", "preEE", ""): None,
-        # os.path.join(lpc_fileprefix, "Run3_2022", "sim", "postEE", ""): None,
-        # os.path.join(lpc_fileprefix, "Run3_2023", "sim", "preBPix", ""): None,
-        # os.path.join(lpc_fileprefix, "Run3_2023", "sim", "postBPix", ""): None,
+        os.path.join(lpc_fileprefix, "Run3_2022", "sim", "postEE", ""): None,
+        os.path.join(lpc_fileprefix, "Run3_2023", "sim", "preBPix", ""): None,
+        os.path.join(lpc_fileprefix, "Run3_2023", "sim", "postBPix", ""): None,
     }
     data_dir_lists = {
         # os.path.join(lpc_fileprefix, "Run3_2022", "data", ""): None,
@@ -238,7 +238,9 @@ def main():
         'GluGluToHH': 34.43*0.0026,
         'GluGlutoHHto2B2G_kl_1p00_kt_1p00_c2_0p00': 34.43*0.0026,
         'GluGlutoHHto2B2G_kl-1p00_kt-1p00_c2-0p00': 34.43*0.0026,
-        
+
+        # https://twiki.cern.ch/twiki/bin/view/LHCPhysics/LHCHWGHH?redirectedfrom=LHCPhysics.LHCHXSWGHH#Current_recommendations_for_di_H
+        'VBFHHto2B2G_CV_1_C2V_1_C3_1': 1.870*0.0026,
 
         # non-resonant background #
         # https://xsdb-temp.app.cern.ch/xsdb/?columns=37748736&currentPage=0&pageSize=10&searchQuery=DAS%3DGG-Box-3Jets_MGG-80_13p6TeV_sherpa
@@ -302,7 +304,8 @@ def main():
         'bbHtoGG': 'bbHToGG',
         'ZH_Hto2G_Zto2Q_M-125': 'ZHToQQGG', 
         'WminusH_Hto2G_Wto2Q_M-125': 'W-HToQQGG', 
-        'WplusH_Hto2G_Wto2Q_M-125': 'W+HToQQGG'
+        'WplusH_Hto2G_Wto2Q_M-125': 'W+HToQQGG',
+        'VBFHHto2B2G_CV_1_C2V_1_C3_1': 'VBFToHH',
     }
     
     # Pull MC sample dir_list
@@ -359,10 +362,6 @@ def main():
         for dir_name in dir_list:
 
             sample_dirpath = os.path.join(sim_era, dir_name, "")
-
-            if (
-                re.search('GluGlutoHHto2B2G_kl_0p00_kt_1p00_c2_0p00', sample_dirpath) is None
-            ): continue
 
             for sample_type in os.listdir(sample_dirpath):
 

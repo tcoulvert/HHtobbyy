@@ -44,6 +44,11 @@ def process_data(
                 samples[sample_name]['fiducialGeometricFlag'] if 'fiducialGeometricFlag' in samples[sample_name].fields else samples[sample_name]['pass_fiducial_geometric']
             )
         ]
+        # if re.search('HH', sample_name) is not None:
+        #     vbf_mask = (samples[sample_name]['sample_name'] == 'VBFToHH')
+        #     samples[sample_name]['eventWeight'] = ak.where(
+        #         vbf_mask, 1.757*samples[sample_name]['eventWeight'], samples[sample_name]['eventWeight']
+        #     )
 
     # Rescale factor for sig and bkg samples
     if len(filepaths_dict) > 1:
@@ -66,12 +71,12 @@ def process_data(
     dont_include_vars = []
     high_level_fields = {
         # MET variables
-        # 'puppiMET_sumEt', 
+        'puppiMET_sumEt',  #heft
         'puppiMET_pt',
 
         # jet vars
         'nonRes_DeltaPhi_j1MET', 'nonRes_DeltaPhi_j2MET', 
-        # 'nonRes_DeltaR_jg_min', 
+        'nonRes_DeltaR_jg_min',  #heft
         'n_jets', 'nonRes_chi_t0', 'nonRes_chi_t1',
 
         # lepton vars
@@ -82,23 +87,23 @@ def process_data(
         'nonRes_CosThetaStar_CS', 'nonRes_CosThetaStar_jj', 'nonRes_CosThetaStar_gg',
 
         # dijet vars
-        # 'dijet_PNetRegMass', 'dijet_PNetRegPt',
+        'dijet_PNetRegMass', 'dijet_PNetRegPt',  #heft
 
         # bjet vars
-        # 'lead_bjet_PNetRegPt',
+        'lead_bjet_PNetRegPt', #heft
         'nonRes_lead_bjet_eta', # eta
         'nonRes_lead_bjet_btagPNetB', # btag scores
-        # 'lead_bjet_sigmapT_over_RegPt',
-        # 'lead_bjet_RegPt_over_Mjj',
+        'lead_bjet_sigmapT_over_RegPt', #heft
+        'lead_bjet_RegPt_over_Mjj', #heft
         # --------
-        # 'sublead_bjet_PNetRegPt',
+        'sublead_bjet_PNetRegPt', #heft
         'nonRes_sublead_bjet_eta', 
         'nonRes_sublead_bjet_btagPNetB',
-        # 'sublead_bjet_sigmapT_over_RegPt',
-        # 'sublead_bjet_RegPt_over_Mjj',
+        'sublead_bjet_sigmapT_over_RegPt', #heft
+        'sublead_bjet_RegPt_over_Mjj', #heft
 
         # diphoton vars
-        # 'pt', 
+        'pt',  #heft
         'eta',
 
         # Photon vars
@@ -110,8 +115,8 @@ def process_data(
 
         # ZH vars
         'DeltaPhi_jj', 
-        # 'DeltaEta_jj',
-        # 'isr_jet_RegPt', 
+        'DeltaEta_jj', #heft
+        'isr_jet_RegPt',  #heft
         'DeltaPhi_isr_jet_z',
     }
     std_mapping = {
