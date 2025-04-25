@@ -29,7 +29,7 @@ END_FILEPATH = '*output.parquet' if re.search('MultiBDT_output', LPC_FILEPREFIX_
 DESTDIR = 'syst_unc_plots'
 if not os.path.exists(DESTDIR):
     os.makedirs(DESTDIR)
-FORCE_RERUN = False
+FORCE_RERUN = True
 
 APPLY_WEIGHTS = False
 EVAL_CATEGORIES = True
@@ -115,7 +115,7 @@ XS = {
 }
 
 WEIGHT_SYSTS = [  # Up and Down
-    'ElectronVetoSF', 'PreselSF', 'TriggerSF',
+    'ElectronVetoSF', 'PreselSF', 'TriggerSF', 'Pileup'
     'bTagSF_sys_lf', 
     'bTagSF_sys_lfstats1', 'bTagSF_sys_lfstats2',
     'bTagSF_sys_cferr1', 'bTagSF_sys_cferr2', 
@@ -155,34 +155,34 @@ def get_mc_dir_lists(dir_lists: dict):
 def find_dirname(dir_name):
     sample_name_map = {
         # ggf HH (signal)
-        # 'GluGluToHH': 'GluGluToHH',
-        # 'GluGlutoHHto2B2G_kl_1p00_kt_1p00_c2_0p00': 'GluGluToHH',
-        # 'GluGlutoHHto2B2G_kl-1p00_kt-1p00_c2-0p00': 'GluGluToHH',
-        # # # prompt-prompt non-resonant
-        # # 'GGJets': 'GGJets', 
-        # # # prompt-fake non-resonant
-        # # 'GJetPt20To40': 'GJetPt20To40', 
-        # # 'GJetPt40': 'GJetPt40', 
-        # # ggf H
-        # 'GluGluHToGG': 'GluGluHToGG',
-        # 'GluGluHToGG_M_125': 'GluGluHToGG',
-        # 'GluGluHtoGG': 'GluGluHToGG',
-        # # ttH
-        # 'ttHToGG': 'ttHToGG',
-        # 'ttHtoGG_M_125': 'ttHToGG',
-        # 'ttHtoGG': 'ttHToGG',
-        # # vbf H
-        # 'VBFHToGG': 'VBFHToGG',
-        # 'VBFHToGG_M_125': 'VBFHToGG',
-        # 'VBFHtoGG': 'VBFHToGG',
-        # # VH
-        # 'VHToGG': 'VHToGG',
-        # 'VHtoGG_M_125': 'VHToGG',
-        # 'VHtoGG': 'VHToGG',
-        # 'VHtoGG_M-125': 'VHToGG',
-        # # bbH
-        # 'BBHto2G_M_125': 'bbHToGG',
-        # 'bbHtoGG': 'bbHToGG',
+        'GluGluToHH': 'GluGluToHH',
+        'GluGlutoHHto2B2G_kl_1p00_kt_1p00_c2_0p00': 'GluGluToHH',
+        'GluGlutoHHto2B2G_kl-1p00_kt-1p00_c2-0p00': 'GluGluToHH',
+        # # prompt-prompt non-resonant
+        # 'GGJets': 'GGJets', 
+        # # prompt-fake non-resonant
+        # 'GJetPt20To40': 'GJetPt20To40', 
+        # 'GJetPt40': 'GJetPt40', 
+        # ggf H
+        'GluGluHToGG': 'GluGluHToGG',
+        'GluGluHToGG_M_125': 'GluGluHToGG',
+        'GluGluHtoGG': 'GluGluHToGG',
+        # ttH
+        'ttHToGG': 'ttHToGG',
+        'ttHtoGG_M_125': 'ttHToGG',
+        'ttHtoGG': 'ttHToGG',
+        # vbf H
+        'VBFHToGG': 'VBFHToGG',
+        'VBFHToGG_M_125': 'VBFHToGG',
+        'VBFHtoGG': 'VBFHToGG',
+        # VH
+        'VHToGG': 'VHToGG',
+        'VHtoGG_M_125': 'VHToGG',
+        'VHtoGG': 'VHToGG',
+        'VHtoGG_M-125': 'VHToGG',
+        # bbH
+        'BBHto2G_M_125': 'bbHToGG',
+        'bbHtoGG': 'bbHToGG',
         # vbf HH
         'VBFHHto2B2G_CV_1_C2V_1_C3_1': 'VBFToHH'
     }
@@ -452,6 +452,12 @@ def main():
             nominal_dirpath = os.path.join(data_era, dir_name, 'nominal', END_FILEPATH)
             nominal_sample = ak.from_parquet(glob.glob(nominal_dirpath)[0])
             sideband_cuts(nominal_sample)
+
+            for field in nominal_sample.fields:
+                if re.search('weight', field) is not None:
+                    print(field)
+                    print('='*60)
+            return None
 
             for weight_syst_name in WEIGHT_SYSTS:
                 print('======================== \n', weight_syst_name+" started")
