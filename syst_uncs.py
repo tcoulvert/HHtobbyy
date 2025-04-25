@@ -305,7 +305,7 @@ def compute_uncertainty(syst_hists: dict, syst_name):
     return {
         'up_percent_diff': float(up_percent_diff),
         'down_percent_diff': float(down_percent_diff),
-        'avg_percent_diff': float( (up_percent_diff + down_percent_diff) / 2 )
+        'avg_percent_diff': float( (np.abs(up_percent_diff) + np.abs(down_percent_diff)) / 2 )
     }
 
 def get_ttH_score(multibdt_output):
@@ -452,12 +452,6 @@ def main():
             nominal_dirpath = os.path.join(data_era, dir_name, 'nominal', END_FILEPATH)
             nominal_sample = ak.from_parquet(glob.glob(nominal_dirpath)[0])
             sideband_cuts(nominal_sample)
-
-            for field in nominal_sample.fields:
-                if re.search('weight', field) is not None:
-                    print(field)
-                    print('='*60)
-            return None
 
             for weight_syst_name in WEIGHT_SYSTS:
                 print('======================== \n', weight_syst_name+" started")

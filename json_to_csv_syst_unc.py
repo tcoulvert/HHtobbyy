@@ -21,10 +21,6 @@ samples = list(merged_category_uncs[categories[0]].keys())
 samples.sort()
 systematics = list(merged_category_uncs[categories[0]][samples[0]].keys())
 systematics.sort()
-# remove shape systematics
-# systematics.remove('Et_dependent_ScaleEB')
-# systematics.remove('Et_dependent_ScaleEE')
-# systematics.remove('Et_dependent_Smearing')
 # remove unnecassary btag systematics
 systematics.remove('bTagSF_sys_jes')
 systematics.remove('bTagSF_sys_cferr1')
@@ -42,63 +38,42 @@ unmerged_eras = list(category_uncs[categories[0]].keys())
 unmerged_eras.sort()
 unmerged_systematics = ['bTagSF_sys_lfstats1', 'bTagSF_sys_lfstats2', 'bTagSF_sys_hfstats1', 'bTagSF_sys_hfstats2']
 unmerged_systematics.sort()
-extra_systematics = [
-    era+'_'+unmrg_syst for unmrg_syst in unmerged_systematics for era in unmerged_eras
-]
+extra_systematics = []
+for era in unmerged_eras:
+    for unmrg_syst in unmerged_systematics:
+        extra_systematics.append(era+'_'+unmrg_syst)
 
 with open('syst_unc_plots/uncertainties_cat_merged.csv', 'w', newline='') as csvfile:
     csvwriter = csv.writer(csvfile)
 
-    # build the header object
-    header = ['sample']
-    for category in categories:
-        for systematic in systematics+extra_systematics:
-            for variation in variations:
-                header.append(f'cat{category}_{systematic}_{variation}')
-            # header.append(f'cat{category}_{systematic}_avg')
-    csvwriter.writerow(header)
-
     # build the dict for storing the rows as they will be input to the csv
+    header = ['sample']
     csv_rows_dict = {
         sample: [sample] for sample in samples
     }
-    for category in categories:
-        category_dict = merged_category_uncs[category]
-
-        for sample in samples:
-            sample_dict = category_dict[sample]
-
-            for systematic in systematics:
-                systematic_dict = sample_dict[systematic]
-
+    for i, sample in enumerate(samples):
+        for category in categories:
+            for systematic in systematics+extra_systematics:
                 for variation in variations:
-                    csv_rows_dict[sample].append(
-                        systematic_dict[variation + variation_postfix]
-                    )
-                # csv_rows_dict[sample].append(
-                #     systematic_dict['avg' + variation_postfix]
-                # )
-        
-        for era in unmerged_eras:
-            era_dict = category_uncs[category][era]
+                    if i == 0:  # write header simulataneously with first sample
+                        header.append(f'cat{category}_{systematic}_{variation}')
 
-            for sample in samples:
-                if era == 'postEE' and sample == 'VBFToHH':
-                    csv_rows_dict[sample].extend(
-                        [None]*len(unmerged_systematics)*len(variations)
-                    )
-                    continue
-                sample_dict = era_dict[sample]
-
-                for systematic in unmerged_systematics:
-                    systematic_dict = sample_dict[systematic]
-
-                    for variation in variations:
+                    if systematic in extra_systematics:
+                        era, syst = systematic.split('_', 1)[0], systematic.split('_', 1)[1]
+                        if era == 'postEE' and sample == 'VBFToHH':
+                            csv_rows_dict[sample].append(None)
+                            continue
                         csv_rows_dict[sample].append(
-                            systematic_dict[variation + variation_postfix]
+                            category_uncs[category][era][sample][syst][variation + variation_postfix]
+                        )
+                        
+                    else:
+                        csv_rows_dict[sample].append(
+                            merged_category_uncs[category][sample][systematic][variation + variation_postfix]
                         )
 
     # write the rows
+    csvwriter.writerow(header)
     for sample in samples:
         csvwriter.writerow(csv_rows_dict[sample])
 
@@ -121,7 +96,7 @@ averaged_merged_df = pd.DataFrame(
 )
 
 for syst_type in averaged_merged_columns:
-    syst_sub_df = df.loc[:, [col for col in df.columns if re.search(syst_type, col) is not None]]
+    syst_sub_df = df.loc[:, [col for col in df.columns if re.search(syst_type+'_', col) is not None]]
 
     for idx, sample in enumerate(samples):
         sample_up = syst_sub_df.loc[idx, [col for col in syst_sub_df.columns if re.search('up', col) is not None]].to_numpy()
@@ -139,22 +114,22 @@ for syst_type in averaged_merged_columns:
                     + np.abs(sample_down[i])
                 )
 
-        merge_bool = (
-            np.all(avg_sample) < small_pct
-        ) or (
-            np.all([
-                [
-                    (
-                        (avg_sample[i] / avg_sample[j]) > close_ratio 
-                        and (avg_sample[i] / avg_sample[j]) < 1+close_ratio
-                    ) for j in range(i+1, len(avg_sample))
-                ] 
-                for i in range(len(avg_sample))
-            ])
-        )
+        # merge_bool = (
+        #     np.all(avg_sample) < small_pct
+        # ) or (
+        #     np.all([
+        #         [
+        #             (
+        #                 (avg_sample[i] / avg_sample[j]) > close_ratio 
+        #                 and (avg_sample[i] / avg_sample[j]) < 1+close_ratio
+        #             ) for j in range(i+1, len(avg_sample))
+        #         ] 
+        #         for i in range(len(avg_sample))
+        #     ])
+        # )
 
-        averaged_merged_df.loc[idx, syst_type] = np.mean(avg_sample)
-        averaged_df.loc[idx, [col for col in averaged_df.columns if re.search(syst_type, col) is not None]] = avg_sample
+        averaged_merged_df.loc[idx, syst_type] = np.mean([np.abs(sample_up), np.abs(sample_down)])
+        averaged_df.loc[idx, [col for col in averaged_df.columns if syst_type == col[len('catX_'):]]] = avg_sample
 
 averaged_df.insert(0, 'sample', df.loc[:, 'sample'])
 averaged_merged_df.insert(0, 'sample', df.loc[:, 'sample'])
