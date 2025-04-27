@@ -26,7 +26,7 @@ LPC_FILEPREFIX_23 = os.path.join(lpc_fileprefix, lpc_filegroup('2023'), 'sim', '
 LPC_FILEPREFIX_24 = os.path.join(lpc_fileprefix, lpc_filegroup('2024'), 'sim', '')
 END_FILEPATH = '*output.parquet' if re.search('MultiBDT_output', LPC_FILEPREFIX_22) is not None else '*merged.parquet'
 
-DESTDIR = 'boosted_HHbbgg_plots'
+DESTDIR = 'sample_check_plots'
 if not os.path.exists(DESTDIR):
     os.makedirs(DESTDIR)
 
@@ -150,22 +150,152 @@ def sideband_cuts(sample):
     """
     # Require diphoton and dijet exist (required in preselection, and thus is all True)
     event_mask = (
-        # sample['is_Res']
         sample['is_nonRes']
         & (
             sample['fiducialGeometricFlag'] if 'fiducialGeometricFlag' in sample.fields else sample['pass_fiducial_geometric']
-        ) & (  # fatjet cuts
-            (sample['fatjet1_pt'] > 250)
-            & (
-                (sample['fatjet1_mass'] > 100)  # fatjet1_msoftdrop
-                & (sample['fatjet1_mass'] < 160)
-            ) & (sample['fatjet1_particleNet_XbbVsQCD'] > 0.8)
-        ) & (  # good photon cuts (for boosted regime)
-            (sample['lead_mvaID'] > 0.)
-            & (sample['sublead_mvaID'] > 0.)
         )
     )
     sample[MC_DATA_MASK] = event_mask
+
+def check_variables(sample, only_bare=False):
+    """
+    Checks the variables desired and prints out info 
+    -> (just a place holder to make the code clean)
+    """
+    jer_dict = {
+        # -5.191 < eta < -3.139
+        (-5.191, -3.139): {
+            # 10 < jet pt [GeV] < 121
+            (10, 121): [1.124, 0.990, 1.258],  # [SF, SF_down, SF_up]
+            (121, 140): [1.124, 0.990, 1.258],
+            (150, 191): [1.184, 1.100, 1.268],
+            (249, 272): [1.261, 1.173, 1.348],
+        },
+        (-3.139, -2.964): {
+            (10, 121): [1.206, 1.088, 1.323],
+            (121, 140): [1.206, 1.088, 1.323],
+            (150, 192): [1.242, 1.161, 1.323],
+            (249, 272): [1.260, 1.193, 1.328],
+        },
+        (-2.500, -2.322): {
+            (10, 128): [1.160, 1.094, 1.225],
+            (128, 145): [1.160, 1.094, 1.225],
+            (177, 195): [1.160, 1.100, 1.220],
+            (246, 283): [1.160, 1.106, 1.215],
+        },
+        (-1.740, -1.566): {
+            (10, 128): [1.203, 1.154, 1.252],
+            (128, 145): [1.203, 1.154, 1.252],
+            (177, 195): [1.204, 1.163, 1.245],
+            (246, 284): [1.211, 1.179, 1.242],
+        },
+        (-1.305, -1.044): {
+            (10, 128): [1.055, 1.033, 1.077],
+            (128, 145): [1.055, 1.033, 1.077],
+            (177, 195): [1.044, 1.025, 1.063],
+            (246, 284): [1.034, 1.018, 1.050],
+        },
+        (-0.783, -0.522): {
+            (10, 128): [1.109, 1.094, 1.124],
+            (128, 145): [1.109, 1.094, 1.124],
+            (177, 195): [1.096, 1.083, 1.109],
+            (246, 284): [1.083, 1.072, 1.094],
+        },
+        (-0.261, -0.000): {
+            (10, 128): [1.128, 1.110, 1.146],
+            (128, 145): [1.128, 1.110, 1.146],
+            (177, 195): [1.114, 1.098, 1.130],
+            (246, 284): [1.100, 1.086, 1.113],
+        },
+        (0.000, 0.261): {
+            (10, 128): [1.128, 1.110, 1.146],
+            (128, 145): [1.128, 1.110, 1.146],
+            (177, 195): [1.114, 1.098, 1.130],
+            (246, 284): [1.100, 1.086, 1.113],
+        },
+        (0.522, 0.783): {
+            (10, 128): [1.109, 1.094, 1.124],
+            (128, 145): [1.109, 1.094, 1.124],
+            (177, 195): [1.096, 1.083, 1.109],
+            (246, 284): [1.083, 1.072, 1.094],
+        },
+        (1.044, 1.305): {
+            (10, 128): [1.055, 1.033, 1.077],
+            (128, 145): [1.055, 1.033, 1.077],
+            (177, 195): [1.044, 1.025, 1.063],
+            (246, 284): [1.034, 1.018, 1.050],
+        },
+        (1.566, 1.740): {
+            (10, 128): [1.203, 1.154, 1.252],
+            (128, 145): [1.203, 1.154, 1.252],
+            (177, 195): [1.204, 1.163, 1.245],
+            (246, 284): [1.211, 1.179, 1.242],
+        },
+        (2.322, 2.500): {
+            (10, 128): [1.160, 1.094, 1.225],
+            (128, 145): [1.160, 1.094, 1.225],
+            (177, 195): [1.160, 1.100, 1.220],
+            (246, 283): [1.160, 1.106, 1.215],
+        },
+        (2.964, 3.139): {
+            (10, 121): [1.206, 1.088, 1.323],
+            (121, 140): [1.206, 1.088, 1.323],
+            (150, 192): [1.242, 1.161, 1.323],
+            (249, 272): [1.260, 1.193, 1.328],
+        },
+        (3.139, 5.191): {
+            (10, 121): [1.124, 0.990, 1.258],
+            (121, 140): [1.124, 0.990, 1.258],
+            (150, 191): [1.184, 1.100, 1.268],
+            (249, 272): [1.261, 1.173, 1.348],
+        },
+    }
+
+    for eta_range in jer_dict.keys():
+        for pt_range in jer_dict[eta_range].keys():
+            selected_jet_pt, selected_eventid = None, None
+            for jet_idx in range(1, 11):
+                mask = (
+                    (sample[f"jet{jet_idx}_eta"] >= eta_range[0])
+                    & (sample[f"jet{jet_idx}_eta"] < eta_range[1])
+                    &(sample[f"jet{jet_idx}_pt"] >= pt_range[0])
+                    & (sample[f"jet{jet_idx}_pt"] < pt_range[1])
+                )
+                if ak.count_nonzero(mask) > 0:
+                    selected_jet_pt = sample[f"jet{jet_idx}_pt"][mask][0]
+                    selected_eventid = sample["event"][mask][0]
+                    break
+            if selected_jet_pt is None:
+                print(f"Could not find suitable jet for eta range {eta_range} and pt range {pt_range}")
+                print('='*60)
+                continue
+            print(f"eta range {eta_range}, pt range {pt_range}")
+            print('-'*60)
+            print(f"eventID = {selected_eventid}")
+            print(f"jer NOM jet pt = {selected_jet_pt:.5f}")
+            if not only_bare:
+                # def smear_pt(jet_pt, smear_ftr):
+                #     while True:
+                #         rand_sample = np.random.normal(
+                #             loc=jet_pt, scale=jet_pt * np.sqrt(np.abs((smear_ftr**2) - 1)),
+                #             # size=100
+                #         )
+                #         if (
+                #             rand_sample > jet_pt - (jet_pt * np.sqrt(np.abs((smear_ftr**2) - 1)))
+                #             and rand_sample < jet_pt + (jet_pt * np.sqrt(np.abs((smear_ftr**2) - 1)))
+                #         ): return rand_sample
+                # # print(f"jer NOM jet pt = {smear_pt(selected_jet_pt, jer_dict[eta_range][pt_range][0]):.5f}")
+                # print(f"jer UP jet pt = {smear_pt(selected_jet_pt, jer_dict[eta_range][pt_range][2]):.5f}")
+                # print(f"jer DOWN jet pt = {smear_pt(selected_jet_pt, jer_dict[eta_range][pt_range][1]):.5f}")
+                def smear_pt_bounds(jet_pt, smear_ftr):
+                    return (
+                        jet_pt - (jet_pt * np.sqrt(np.abs((smear_ftr**2) - 1))),
+                        jet_pt + (jet_pt * np.sqrt(np.abs((smear_ftr**2) - 1)))
+                    )
+                print(f"jer NOM jet pt 1sigma bounds = {smear_pt_bounds(selected_jet_pt, jer_dict[eta_range][pt_range][0])}")
+                print(f"jer UP jet pt 1sigma bounds = {smear_pt_bounds(selected_jet_pt, jer_dict[eta_range][pt_range][2])}")
+                print(f"jer DOWN jet pt 1sigma bounds = {smear_pt_bounds(selected_jet_pt, jer_dict[eta_range][pt_range][1])}")
+            print('='*60)
 
 def get_mc_dir_lists(dir_lists: dict):
     """
@@ -191,31 +321,31 @@ def find_dirname(dir_name):
         'GluGluToHH': 'GluGluToHH',
         'GluGlutoHHto2B2G_kl_1p00_kt_1p00_c2_0p00': 'GluGluToHH',
         'GluGlutoHHto2B2G_kl-1p00_kt-1p00_c2-0p00': 'GluGluToHH',
-        # prompt-prompt non-resonant
-        'GGJets': 'GGJets', 
-        # prompt-fake non-resonant
-        'GJetPt20To40': 'GJetPt20To40', 
-        'GJetPt40': 'GJetPt40', 
-        # ggf H
-        'GluGluHToGG': 'GluGluHToGG',
-        'GluGluHToGG_M_125': 'GluGluHToGG',
-        'GluGluHtoGG': 'GluGluHToGG',
-        # ttH
-        'ttHToGG': 'ttHToGG',
-        'ttHtoGG_M_125': 'ttHToGG',
-        'ttHtoGG': 'ttHToGG',
-        # vbf H
-        'VBFHToGG': 'VBFHToGG',
-        'VBFHToGG_M_125': 'VBFHToGG',
-        'VBFHtoGG': 'VBFHToGG',
-        # VH
-        'VHToGG': 'VHToGG',
-        'VHtoGG_M_125': 'VHToGG',
-        'VHtoGG': 'VHToGG',
-        'VHtoGG_M-125': 'VHToGG',
-        # bbH
-        'BBHto2G_M_125': 'bbHToGG',
-        'bbHtoGG': 'bbHToGG',
+        # # prompt-prompt non-resonant
+        # 'GGJets': 'GGJets', 
+        # # prompt-fake non-resonant
+        # 'GJetPt20To40': 'GJetPt20To40', 
+        # 'GJetPt40': 'GJetPt40', 
+        # # ggf H
+        # 'GluGluHToGG': 'GluGluHToGG',
+        # 'GluGluHToGG_M_125': 'GluGluHToGG',
+        # 'GluGluHtoGG': 'GluGluHToGG',
+        # # ttH
+        # 'ttHToGG': 'ttHToGG',
+        # 'ttHtoGG_M_125': 'ttHToGG',
+        # 'ttHtoGG': 'ttHToGG',
+        # # vbf H
+        # 'VBFHToGG': 'VBFHToGG',
+        # 'VBFHToGG_M_125': 'VBFHToGG',
+        # 'VBFHtoGG': 'VBFHToGG',
+        # # VH
+        # 'VHToGG': 'VHToGG',
+        # 'VHtoGG_M_125': 'VHToGG',
+        # 'VHtoGG': 'VHToGG',
+        # 'VHtoGG_M-125': 'VHToGG',
+        # # bbH
+        # 'BBHto2G_M_125': 'bbHToGG',
+        # 'bbHtoGG': 'bbHToGG',
     }
     if dir_name in sample_name_map:
         return sample_name_map[dir_name]
@@ -315,7 +445,7 @@ def plot(
     
 def main(
     sample_dirs, 
-    year='2022', era='preEE', std_sample_name='GluGluToHH',
+    year='2022', era='preEE',
     lumi=LUMINOSITIES[os.path.join(LPC_FILEPREFIX_22, "preEE", "")],
     density=False
 ):
@@ -342,7 +472,17 @@ def main(
 
             for sample_name in sample_list:
                 if re.search('mc', dir_name.lower()) is not None:
+                    std_samplename = find_dirname(sample_name)
+                    if std_samplename is None:
+                        print(f'{sample_name} not in samples selected for this computation.')
+                        continue
+                    if len(os.listdir(os.path.join(sample_era, sample_name))) == 1:
+                        print(f'{sample_name} does not have variations computed.')
+                        continue
+
                     sample_dirpath = os.path.join(sample_era, sample_name, 'nominal', END_FILEPATH)
+                    sample_jerUp_dirpath = os.path.join(sample_era, sample_name, 'jer_syst_up', END_FILEPATH)
+                    sample_jerDown_dirpath = os.path.join(sample_era, sample_name, 'jer_syst_down', END_FILEPATH)
                 else: 
                     std_samplename = sample_name
                     sample_dirpath = os.path.join(sample_era, sample_name, END_FILEPATH)
@@ -350,6 +490,25 @@ def main(
 
                 sample = ak.from_parquet(glob.glob(sample_dirpath)[0])
                 sideband_cuts(sample)
+
+                check_variables(sample)
+
+                if re.search('mc', dir_name.lower()) is not None:
+                    sample_jerUp = ak.from_parquet(glob.glob(sample_jerUp_dirpath)[0])
+                    sideband_cuts(sample_jerUp)
+                    print('*'*100)
+                    print('JER up')
+                    print('*'*100)
+                    check_variables(sample_jerUp, only_bare=True)
+
+                    sample_jerDown = ak.from_parquet(glob.glob(sample_jerDown_dirpath)[0])
+                    sideband_cuts(sample_jerDown)
+                    print('*'*100)
+                    print('JER down')
+                    print('*'*100)
+                    check_variables(sample_jerDown, only_bare=True)
+
+
                 sample_pqs[dir_name][sample_era].append(
                     slimmed_parquet(
                         sample, 
@@ -404,42 +563,13 @@ def main(
             
 
 if __name__ == '__main__':
-    # sample_dirs = {
-    #     'Data': {
-    #         os.path.join(LPC_FILEPREFIX_22[:-len('sim/')], "data", ""): None,
-    #         os.path.join(LPC_FILEPREFIX_23[:-len('sim/')], "data", ""): None,
-    #         os.path.join(LPC_FILEPREFIX_24[:-len('sim/')], "data", ""): None
-    #     },
-    # }
-    # main(
-    #     sample_dirs, 
-    #     year='2022-24', era='', lumi=LUMINOSITIES['total_lumi'], 
-    #     std_samplename='Data',
-    #     density=False
-    # )
-
-    for era_name, lumi in LUMINOSITIES.items():
-        if era_name == 'total_lumi': continue
-
-        era = era_name[era_name[:-1].rfind('/')+1:-1]
-        year = era_name[era_name.find('Run3_202')+len('Run3_'):era_name.find('Run3_202')+len('Run3_202x')]
-
-        for sample_name in os.listdir(era_name):
-
-            std_samplename = find_dirname(sample_name)
-            if std_samplename is None:
-                print(f'{sample_name} not in samples selected for this computation.')
-                continue
-            sample_filepath = os.path.join(era_name, sample_name)
-
-            sample_dirs = {
-                f'MC-{year}{era}-{std_samplename}': {
-                    sample_filepath: None,
-                },
-            }
-            main(
-                sample_dirs, 
-                year=year, era=era, lumi=lumi, 
-                std_samplename=std_samplename,
-                density=False
-            )
+    sample_dirs = {
+        'MC-2022preEE': {
+            os.path.join(LPC_FILEPREFIX_22, "preEE", ""): None,
+        },
+    }
+    main(
+        sample_dirs, 
+        year='2022', era='preEE', lumi=LUMINOSITIES[os.path.join(LPC_FILEPREFIX_22, "preEE", "")], 
+        density=False
+    )

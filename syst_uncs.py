@@ -115,7 +115,7 @@ XS = {
 }
 
 WEIGHT_SYSTS = [  # Up and Down
-    'ElectronVetoSF', 'PreselSF', 'TriggerSF', 'Pileup'
+    'ElectronVetoSF', 'PreselSF', 'TriggerSF', 'Pileup',
     'bTagSF_sys_lf', 
     'bTagSF_sys_lfstats1', 'bTagSF_sys_lfstats2',
     'bTagSF_sys_cferr1', 'bTagSF_sys_cferr2', 
@@ -233,9 +233,9 @@ def generate_hists(pq_dict: dict, variable: str, axis, weight=APPLY_WEIGHTS):
     for ak_name, ak_hist in syst_hists.items():
         if ak_name == "nominal":
             continue
-        elif re.search("up", ak_name.lower()) is not None:
+        elif re.search("_up", ak_name.lower()) is not None:
             ratio_type = 'up'
-        elif re.search("down", ak_name.lower()) is not None:
+        elif re.search("_down", ak_name.lower()) is not None:
             ratio_type = 'down'
         numer_values = ak_hist.values()
         denom_values = syst_hists["nominal"].values()

@@ -83,7 +83,7 @@ close_ratio = 0.5
 
 df = pd.read_csv('syst_unc_plots/uncertainties_cat_merged.csv')
 
-averaged_columns = [col[:-len('_up')] for col in df.columns if re.search('up', col) is not None]
+averaged_columns = [col[:-len('_up')] for col in df.columns if re.search('_up', col) is not None]
 averaged_df = pd.DataFrame(
     [[0.]*len(averaged_columns)]*len(samples),
     columns=averaged_columns
@@ -99,8 +99,8 @@ for syst_type in averaged_merged_columns:
     syst_sub_df = df.loc[:, [col for col in df.columns if re.search(syst_type+'_', col) is not None]]
 
     for idx, sample in enumerate(samples):
-        sample_up = syst_sub_df.loc[idx, [col for col in syst_sub_df.columns if re.search('up', col) is not None]].to_numpy()
-        sample_down = syst_sub_df.loc[idx, [col for col in syst_sub_df.columns if re.search('down', col) is not None]].to_numpy()
+        sample_up = syst_sub_df.loc[idx, [col for col in syst_sub_df.columns if re.search('_up', col) is not None]].to_numpy()
+        sample_down = syst_sub_df.loc[idx, [col for col in syst_sub_df.columns if re.search('_down', col) is not None]].to_numpy()
         
         avg_sample = np.zeros_like(sample_up)
         for i in range(len(sample_up)):
@@ -113,20 +113,6 @@ for syst_type in averaged_merged_columns:
                     np.abs(sample_up[i])
                     + np.abs(sample_down[i])
                 )
-
-        # merge_bool = (
-        #     np.all(avg_sample) < small_pct
-        # ) or (
-        #     np.all([
-        #         [
-        #             (
-        #                 (avg_sample[i] / avg_sample[j]) > close_ratio 
-        #                 and (avg_sample[i] / avg_sample[j]) < 1+close_ratio
-        #             ) for j in range(i+1, len(avg_sample))
-        #         ] 
-        #         for i in range(len(avg_sample))
-        #     ])
-        # )
 
         averaged_merged_df.loc[idx, syst_type] = np.mean([np.abs(sample_up), np.abs(sample_down)])
         averaged_df.loc[idx, [col for col in averaged_df.columns if syst_type == col[len('catX_'):]]] = avg_sample
