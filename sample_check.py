@@ -251,51 +251,77 @@ def check_variables(sample, only_bare=False):
         },
     }
 
-    for eta_range in jer_dict.keys():
-        for pt_range in jer_dict[eta_range].keys():
-            selected_jet_pt, selected_eventid = None, None
-            for jet_idx in range(1, 11):
-                mask = (
-                    (sample[f"jet{jet_idx}_eta"] >= eta_range[0])
-                    & (sample[f"jet{jet_idx}_eta"] < eta_range[1])
-                    &(sample[f"jet{jet_idx}_pt"] >= pt_range[0])
-                    & (sample[f"jet{jet_idx}_pt"] < pt_range[1])
-                )
-                if ak.count_nonzero(mask) > 0:
-                    selected_jet_pt = sample[f"jet{jet_idx}_pt"][mask][0]
-                    selected_eventid = sample["event"][mask][0]
-                    break
-            if selected_jet_pt is None:
-                print(f"Could not find suitable jet for eta range {eta_range} and pt range {pt_range}")
-                print('='*60)
-                continue
-            print(f"eta range {eta_range}, pt range {pt_range}")
+    for field in sample.fields:
+        if re.search('jet1', field) is not None:
+            print(field)
             print('-'*60)
-            print(f"eventID = {selected_eventid}")
-            print(f"jer NOM jet pt = {selected_jet_pt:.5f}")
-            if not only_bare:
-                # def smear_pt(jet_pt, smear_ftr):
-                #     while True:
-                #         rand_sample = np.random.normal(
-                #             loc=jet_pt, scale=jet_pt * np.sqrt(np.abs((smear_ftr**2) - 1)),
-                #             # size=100
-                #         )
-                #         if (
-                #             rand_sample > jet_pt - (jet_pt * np.sqrt(np.abs((smear_ftr**2) - 1)))
-                #             and rand_sample < jet_pt + (jet_pt * np.sqrt(np.abs((smear_ftr**2) - 1)))
-                #         ): return rand_sample
-                # # print(f"jer NOM jet pt = {smear_pt(selected_jet_pt, jer_dict[eta_range][pt_range][0]):.5f}")
-                # print(f"jer UP jet pt = {smear_pt(selected_jet_pt, jer_dict[eta_range][pt_range][2]):.5f}")
-                # print(f"jer DOWN jet pt = {smear_pt(selected_jet_pt, jer_dict[eta_range][pt_range][1]):.5f}")
-                def smear_pt_bounds(jet_pt, smear_ftr):
-                    return (
-                        jet_pt - (jet_pt * np.sqrt(np.abs((smear_ftr**2) - 1))),
-                        jet_pt + (jet_pt * np.sqrt(np.abs((smear_ftr**2) - 1)))
-                    )
-                print(f"jer NOM jet pt 1sigma bounds = {smear_pt_bounds(selected_jet_pt, jer_dict[eta_range][pt_range][0])}")
-                print(f"jer UP jet pt 1sigma bounds = {smear_pt_bounds(selected_jet_pt, jer_dict[eta_range][pt_range][2])}")
-                print(f"jer DOWN jet pt 1sigma bounds = {smear_pt_bounds(selected_jet_pt, jer_dict[eta_range][pt_range][1])}")
-            print('='*60)
+
+    jet_pts = np.array(
+        [ak.to_numpy(sample[f"jet{jet_idx}_pt"], allow_missing=False)
+        for jet_idx in range(1, 11)]
+    )
+    jet_etas = np.array(
+       [ak.to_numpy(sample[f"jet{jet_idx}_eta"], allow_missing=False)
+        for jet_idx in range(1, 11)]
+    )
+    eventIDs = np.array(
+        [ak.to_numpy(sample[f"event"], allow_missing=False)
+        for jet_idx in range(1, 11)]
+    )
+    jetIdxs = np.array(
+        [jet_idx*np.ones_like(jet_pts[0])
+        for jet_idx in range(1, 11)]
+    )
+
+    # def smear_pt_fctr(jet_pt, smear_fctr, seed=21):
+    #     rng = np.random.default_rng(seed=seed)
+
+    #     norm = rng.normal(
+    #         loc=np.zeros_like(jet_pt), scale=
+    #     )
+
+    for eta_range in jer_dict.keys():
+        eta_mask = np.logical_and(jet_etas >= eta_range[0], jet_etas < eta_range[1])
+        for pt_range in jer_dict[eta_range].keys():
+            pt_mask = np.logical_and(jet_pts >= pt_range[0], jet_pts < pt_range[1])
+            
+            mask = np.logical_and(eta_mask, pt_mask)
+
+            smear_pt = lambda jet_pt, smear_fctr: np.random.normal(
+                loc=jet_pt, scale=jet_pt * np.sqrt(np.abs((smear_fctr**2) - 1)),
+            )
+            
+            # if selected_jet_pt is None:
+            #     print(f"Could not find suitable jet for eta range {eta_range} and pt range {pt_range}")
+            #     print('='*60)
+            #     continue
+            # print(f"eta range {eta_range}, pt range {pt_range}")
+            # print('-'*60)
+            # print(f"eventID = {selected_eventid}")
+            # print(f"jer NOM jet pt = {selected_jet_pt:.5f}")
+            # if not only_bare:
+            #     # def smear_pt(jet_pt, smear_ftr):
+            #     #     while True:
+            #     #         rand_sample = np.random.normal(
+            #     #             loc=jet_pt, scale=jet_pt * np.sqrt(np.abs((smear_ftr**2) - 1)),
+            #     #             # size=100
+            #     #         )
+            #     #         if (
+            #     #             rand_sample > jet_pt - (jet_pt * np.sqrt(np.abs((smear_ftr**2) - 1)))
+            #     #             and rand_sample < jet_pt + (jet_pt * np.sqrt(np.abs((smear_ftr**2) - 1)))
+            #     #         ): return rand_sample
+            #     # # print(f"jer NOM jet pt = {smear_pt(selected_jet_pt, jer_dict[eta_range][pt_range][0]):.5f}")
+            #     # print(f"jer UP jet pt = {smear_pt(selected_jet_pt, jer_dict[eta_range][pt_range][2]):.5f}")
+            #     # print(f"jer DOWN jet pt = {smear_pt(selected_jet_pt, jer_dict[eta_range][pt_range][1]):.5f}")
+            #     def smear_pt_bounds(jet_pt, smear_ftr):
+            #         return (
+            #             jet_pt - (jet_pt * np.sqrt(np.abs((smear_ftr**2) - 1))),
+            #             jet_pt + (jet_pt * np.sqrt(np.abs((smear_ftr**2) - 1)))
+            #         )
+            #     print(f"jer NOM jet pt 1sigma bounds = {smear_pt_bounds(selected_jet_pt, jer_dict[eta_range][pt_range][0])}")
+            #     print(f"jer UP jet pt 1sigma bounds = {smear_pt_bounds(selected_jet_pt, jer_dict[eta_range][pt_range][2])}")
+            #     print(f"jer DOWN jet pt 1sigma bounds = {smear_pt_bounds(selected_jet_pt, jer_dict[eta_range][pt_range][1])}")
+            # print('='*60)
 
 def get_mc_dir_lists(dir_lists: dict):
     """

@@ -204,6 +204,46 @@ def slim_parquets(sample):
         field: sample[field] for field in sample_fields
     })
 
+# function taken from HiggsDNA btagSF functions, implemented by Manos I believe...
+def correct_weights(sample, sample_filepath_list):
+    sumGenWeightsBeforePresel = 0.  # sum of gen weights before pre-selection (for proper scaling of genweights)
+    sumWeightCentral, sumWeightCentralNoBtagSF = 0., 0.  # sum of central weights before and after bTag SF (for renormalizing btag SFs)
+    sumWeightBtagSys = {
+        # correlated across years
+        'lf': 0., 'hf': 0.,
+        # uncorrelated across years
+        'lfstats1': 0., 'lfstats2': 0., 
+        'hfstats1': 0., 'hfstats2': 0.,
+        # not currently necessary for btag_sys but computed anyways just in case
+        'jes': 0., 'cferr2': 0., 'cferr1': 0.
+    }
+
+    for sample_filepath in sample_filepath_list:
+        # presel #
+        sumGenWeightsBeforePresel += float(pq.read_table(sample_filepath).schema.metadata[b'sum_genw_presel'])
+        # btag SF #
+        sumWeightCentral += float(pq.read_table(sample_filepath).schema.metadata[b'sum_weight_central'])
+        sumWeightCentralNoBtagSF += float(pq.read_table(sample_filepath).schema.metadata[b'sum_weight_central_wo_bTagSF'])
+        for btagsys in sumWeightBtagSys.keys():
+            for variation in ['Up', 'Down']:
+                sumWeightBtagSys[btagsys] += float(
+                    pq.read_table(sample_filepath).schema.metadata[bytes(f"sum_weight_bTagSF_sys_{btagsys}{variation}", encoding='utf8')]
+                )
+
+    # Rescale weights by sum of genweights
+    sample['weight_nominal'] = sample['weight']
+    syst_weight_fields = [field for field in sample.fields if (("weight_" in field) and ("Up" in field or "Down" in field))]
+    for weight_field in ["weight"] + syst_weight_fields:
+        sample[weight_field] = sample[weight_field] / sumGenWeightsBeforePresel
+
+    # Rescale bTag SF weights by preBTag SF sum to get correct normalization
+    sample['weight'] = sample['weight'] * (sumWeightCentralNoBtagSF / sumWeightCentral)
+    for btagsys in sumWeightBtagSys.keys():
+        for variation in ['Up', 'Down']:
+            sample[f"weight_bTagSF_sys_{btagsys}{variation}"] = sample[f"weight_bTagSF_sys_{btagsys}{variation}"] * (
+                sumWeightCentralNoBtagSF / sumWeightBtagSys[btagsys]
+            )
+
 def main():
     sim_dir_lists = {
         os.path.join(lpc_fileprefix, "Run3_2022", "sim", "preEE", ""): None,
@@ -285,8 +325,8 @@ def main():
         'WplusH_Hto2G_Wto2Q_M-125': 1369*0.00228*0.6741,
         
         # Other potential background samples
-        'DDQCDGJets': 1,
-        'TTGG': 1,
+        # 'DDQCDGJets': 1,
+        # 'TTGG': 1,
     }
     sample_name_map = {
         'GluGlutoHHto2B2G_kl_1p00_kt_1p00_c2_0p00': 'GluGluToHH', 
@@ -376,17 +416,7 @@ def main():
                 sample = ak.concatenate(sample_list)
 
                 if 'weight_nominal' not in sample.fields and dir_name != 'DDQCDGJets':
-                    # Compute sum of gen weights
-                    sample['sumGenWeights'] = sum(
-                        float(
-                            pq.read_table(sample_filepath).schema.metadata[b'sum_genw_presel']
-                        ) for sample_filepath in sample_filepath_list
-                    )
-                    # Rescale weights by sum of genweights
-                    sample['weight_nominal'] = sample['weight']
-                    syst_weight_fields = [field for field in sample.fields if (("weight_" in field) and ("Up" in field or "Down" in field))]
-                    for weight_field in ["weight"] + syst_weight_fields:
-                        sample[weight_field] = sample[weight_field] / sample['sumGenWeights']
+                    correct_weights(sample, sample_filepath_list)
 
                 # Slim parquets by removing Res fields (for now)
                 slim_parquets(sample)
