@@ -21,8 +21,52 @@ FILL_VALUE = -999
 NUM_JETS = 10
 FORCE_RERUN = False
 
+DATASETTYPE = {
+    'Resolved', 'Boosted'
+}
 
-def add_vars(sample, data=False):
+def add_vars(sample, datasettype):
+    if datasettype == 'Resolved':
+        return add_vars_resolved(sample)
+    elif datasettype == 'Boosted':
+        return add_vars_boosted(sample)
+    else:
+        raise NotImplementedError(f"Datasettype you requested ({datasettype}) is not implemented. We only have implemented: {DATASETTYPE.keys()}")
+
+def add_vars_boosted(sample):
+    sample['simple_boosted_PNmass'] = (
+        sample['is_Res']
+        & (
+            sample['fiducialGeometricFlag'] if 'fiducialGeometricFlag' in sample.fields else sample['pass_fiducial_geometric']
+        ) & (  # fatjet cuts
+            (sample['fatjet1_pt'] > 250)
+            & (
+                (sample['fatjet1_mass'] > 100)
+                & (sample['fatjet1_mass'] < 160)
+            ) & (sample['fatjet1_particleNet_XbbVsQCD'] > 0.8)
+        ) & (  # good photon cuts (for boosted regime)
+            (sample['lead_mvaID'] > 0.)
+            & (sample['sublead_mvaID'] > 0.)
+        )
+    )
+
+    sample['simple_boosted_SDmass'] = (
+        sample['is_Res']
+        & (
+            sample['fiducialGeometricFlag'] if 'fiducialGeometricFlag' in sample.fields else sample['pass_fiducial_geometric']
+        ) & (  # fatjet cuts
+            (sample['fatjet1_pt'] > 250)
+            & (
+                (sample['fatjet1_msoftdrop'] > 100)
+                & (sample['fatjet1_msoftdrop'] < 160)
+            ) & (sample['fatjet1_particleNet_XbbVsQCD'] > 0.8)
+        ) & (  # good photon cuts (for boosted regime)
+            (sample['lead_mvaID'] > 0.)
+            & (sample['sublead_mvaID'] > 0.)
+        )
+    )
+
+def add_vars_resolved(sample):
     
     def ak_sign(ak_array, inverse=False):
         if not inverse:
@@ -180,10 +224,10 @@ def add_vars(sample, data=False):
     sample['max_nonbjet_btag'] = max_nonbjet_btag(sample)
 
 
-def get_merged_filepath(unmerged_filepath):
+def get_merged_filepath(unmerged_filepath, datasettype):
     merged_filepath = os.path.join(
         unmerged_filepath[:unmerged_filepath.rfind("Run3_202")+len("Run3_202x")] 
-        + "_merged"
+        + f"_merged{datasettype}"
         + unmerged_filepath[unmerged_filepath.rfind("Run3_202")+len("Run3_202x"):],
         ""
     )
@@ -195,12 +239,44 @@ def get_merged_filepath(unmerged_filepath):
     
     return merged_filepath
 
-def slim_parquets(sample):
+
+def slim_parquets(sample, datasettype):
+    if datasettype == 'Resolved':
+        return slim_parquets_resolved(sample)
+    elif datasettype == 'Boosted':
+        return slim_parquets_boosted(sample)
+    else:
+        raise NotImplementedError(f"Datasettype you requested ({datasettype}) is not implemented. We only have implemented: {DATASETTYPE.keys()}")
+
+def slim_parquets_resolved(sample):
     sample_fields = [field for field in sample.fields]
     for field in sample.fields:
-        if re.match('Res', field) is not None or re.search('4mom', field) is not None:
+        if (
+            re.match('Res', field) is not None  # applies event cut on dijet mass
+            or re.search('4mom', field) is not None  # just in case 4mom fields snuck through my processing code
+            or re.search('VBF', field) is not None  # ignoring VBF category for now...
+            or re.match('fatjet', field) is not None  # we don't care about ak8 jets
+        ):
             sample_fields.remove(field)
-    sample = ak.zip({
+    return ak.zip({
+        field: sample[field] for field in sample_fields
+    })
+
+def slim_parquets_boosted(sample):
+    sample_fields = [field for field in sample.fields]
+    for field in sample.fields:
+        if (
+            re.match('nonRes', field) is not None  # applies event cut on dijet mass, but we want fatjet
+            or re.search('4mom', field) is not None  # just in case 4mom fields snuck through my processing code
+            or re.search('VBF', field) is not None  # ignoring VBF category for now...
+            or re.match('jet', field) is not None  # we don't care about ak4 jets
+            or re.search('dijet', field) is not None  # we don't want dijet, want fatjet as H->bb object
+            or re.search('DeltaR_j', field) is not None  # we don't care about ak4 jets
+            or re.search('DeltaR_b', field) is not None  # we don't care about ak4 jets
+            # or re.search('lepton', field) is not None  # we don't want leptons
+        ):
+            sample_fields.remove(field)
+    return ak.zip({
         field: sample[field] for field in sample_fields
     })
 
@@ -265,9 +341,6 @@ def main():
         os.path.join(lpc_fileprefix, "Run3_2023", "sim", "postBPix", ""): 9.451,
         os.path.join(lpc_fileprefix, "Run3_2024", "sim", "2024", ""): 109.08,
     }
-
-    # run_only_fields = {'hash'}
-
     
     
     # Name: cross section [fb] @ sqrrt{s}=13.6 TeV & m_H=125.09 GeV #
@@ -326,7 +399,7 @@ def main():
         
         # Other potential background samples
         # 'DDQCDGJets': 1,
-        # 'TTGG': 1,
+        'TTGG': 1,
     }
     sample_name_map = {
         'GluGlutoHHto2B2G_kl_1p00_kt_1p00_c2_0p00': 'GluGluToHH', 
@@ -418,27 +491,29 @@ def main():
                 if 'weight_nominal' not in sample.fields and dir_name != 'DDQCDGJets':
                     correct_weights(sample, sample_filepath_list)
 
-                # Slim parquets by removing Res fields (for now)
-                slim_parquets(sample)
+                for datasettype in DATASETTYPE:
+                    # Slim parquets by removing Res fields (for now)
+                    slim_sample = slim_parquets(sample, datasettype)
 
-                # Add useful parquet meta-info
-                sample['sample_name'] = dir_name if dir_name not in sample_name_map else sample_name_map[dir_name]
-                sample['sample_era'] = sim_era[sim_era[:-1].rfind('/')+1:-1]
-                sample['eventWeight'] = sample['weight'] * luminosities[sim_era] * cross_sections[dir_name]
+                    # Add useful parquet meta-info
+                    slim_sample['sample_name'] = dir_name if dir_name not in sample_name_map else sample_name_map[dir_name]
+                    slim_sample['sample_era'] = sim_era[sim_era[:-1].rfind('/')+1:-1]
+                    slim_sample['eventWeight'] = slim_sample['weight'] * luminosities[sim_era] * cross_sections[dir_name]
 
-                # Add necessary extra variables
-                add_vars(sample)
-        
-                # Save out merged parquet
-                destdir = get_merged_filepath(sample_type_dirpath)
-                if not os.path.exists(destdir):
-                    os.makedirs(destdir)
-                filepath = os.path.join(destdir, dir_name+'_merged.parquet')
-                merged_parquet = ak.to_parquet(sample, filepath)
+                    # Add necessary extra variables
+                    add_vars(slim_sample, datasettype)
+            
+                    # Save out merged parquet
+                    destdir = get_merged_filepath(sample_dirpath, datasettype=datasettype)
+                    if not os.path.exists(destdir):
+                        os.makedirs(destdir)
+                    filepath = os.path.join(destdir, dir_name+'_merged.parquet')
+                    merged_parquet = ak.to_parquet(slim_sample, filepath)
+                    del slim_sample
+                    print('======================== \n', destdir)
                 
                 # Delete sample for memory reasons
                 del sample
-                print('======================== \n', destdir)
 
     for data_era, dir_list in data_dir_lists.items():
 
@@ -462,26 +537,28 @@ def main():
                 continue
             sample = ak.concatenate(sample_list)
 
-            # Slim parquets by removing Res fields (for now)
-            slim_parquets(sample)
-            
-            # Add useful parquet meta-info
-            sample['sample_name'] = dir_name
-            sample['sample_era'] = data_era[data_era[:-1].rfind('/')+1:-1]
+            for datasettype in DATASETTYPE:
+                # Slim parquets by removing Res fields (for now)
+                slim_sample = slim_parquets(sample, datasettype)
 
-            # Add necessary extra variables
-            add_vars(sample, data=True)
-    
-            # Save out merged parquet
-            destdir = get_merged_filepath(sample_dirpath)
-            if not os.path.exists(destdir):
-                os.makedirs(destdir)
-            filepath = os.path.join(destdir, dir_name+'_merged.parquet')
-            merged_parquet = ak.to_parquet(sample, filepath)
+                # Add useful parquet meta-info
+                slim_sample['sample_name'] = dir_name
+                slim_sample['sample_era'] = data_era[data_era[:-1].rfind('/')+1:-1]
+
+                # Add necessary extra variables
+                add_vars(slim_sample, datasettype)
+        
+                # Save out merged parquet
+                destdir = get_merged_filepath(sample_dirpath, datasettype=datasettype)
+                if not os.path.exists(destdir):
+                    os.makedirs(destdir)
+                filepath = os.path.join(destdir, dir_name+'_merged.parquet')
+                merged_parquet = ak.to_parquet(slim_sample, filepath)
+                del slim_sample
+                print('======================== \n', destdir)
             
             # Delete sample for memory reasons
             del sample
-            print('======================== \n', destdir)
 
 
 if __name__ == '__main__':
