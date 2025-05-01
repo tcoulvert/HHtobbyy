@@ -39,7 +39,7 @@ def process_data(
                 ]
         samples[sample_name] = ak.concatenate(sample_list)
         samples[sample_name] = samples[sample_name][
-            samples[sample_name]['is_nonRes']  # eventually need to decide what to do with Res category...
+            samples[sample_name]['nonRes_has_two_btagged_jets']
             & (
                 samples[sample_name]['fiducialGeometricFlag'] if 'fiducialGeometricFlag' in samples[sample_name].fields else samples[sample_name]['pass_fiducial_geometric']
             )

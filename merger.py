@@ -253,7 +253,6 @@ def slim_parquets_resolved(sample):
     for field in sample.fields:
         if (
             re.match('Res', field) is not None  # applies event cut on dijet mass
-            or re.search('4mom', field) is not None  # just in case 4mom fields snuck through my processing code
             or re.search('VBF', field) is not None  # ignoring VBF category for now...
             or re.match('fatjet', field) is not None  # we don't care about ak8 jets
         ):
@@ -267,7 +266,6 @@ def slim_parquets_boosted(sample):
     for field in sample.fields:
         if (
             re.match('nonRes', field) is not None  # applies event cut on dijet mass, but we want fatjet
-            or re.search('4mom', field) is not None  # just in case 4mom fields snuck through my processing code
             or re.search('VBF', field) is not None  # ignoring VBF category for now...
             or re.match('jet', field) is not None  # we don't care about ak4 jets
             or re.search('dijet', field) is not None  # we don't want dijet, want fatjet as H->bb object
@@ -281,17 +279,17 @@ def slim_parquets_boosted(sample):
     })
 
 # function taken from HiggsDNA btagSF functions, implemented by Manos I believe...
-def correct_weights(sample, sample_filepath_list):
+def correct_weights(sample, sample_filepath_list, computebtag=True):
     sumGenWeightsBeforePresel = 0.  # sum of gen weights before pre-selection (for proper scaling of genweights)
     sumWeightCentral, sumWeightCentralNoBtagSF = 0., 0.  # sum of central weights before and after bTag SF (for renormalizing btag SFs)
     sumWeightBtagSys = {
         # correlated across years
-        'lf': 0., 'hf': 0.,
+        'lfUp': 0, 'lfDown': 0, 'hfUp': 0, 'hfDown': 0,
         # uncorrelated across years
-        'lfstats1': 0., 'lfstats2': 0., 
-        'hfstats1': 0., 'hfstats2': 0.,
+        'lfstats1Up': 0, 'lfstats1Down': 0, 'lfstats2Up': 0, 'lfstats2Down': 0, 
+        'hfstats1Up': 0, 'hfstats1Down': 0, 'hfstats2Up': 0, 'hfstats2Down': 0, 
         # not currently necessary for btag_sys but computed anyways just in case
-        'jes': 0., 'cferr2': 0., 'cferr1': 0.
+        'jesUp': 0, 'jesDown': 0, 'cferr1Up': 0, 'cferr1Down': 0, 'cferr2Up': 0,'cferr2Down': 0
     }
 
     for sample_filepath in sample_filepath_list:
@@ -300,11 +298,12 @@ def correct_weights(sample, sample_filepath_list):
         # btag SF #
         sumWeightCentral += float(pq.read_table(sample_filepath).schema.metadata[b'sum_weight_central'])
         sumWeightCentralNoBtagSF += float(pq.read_table(sample_filepath).schema.metadata[b'sum_weight_central_wo_bTagSF'])
-        for btagsys in sumWeightBtagSys.keys():
-            for variation in ['Up', 'Down']:
+        if computebtag:
+            for btagsys in sumWeightBtagSys.keys():
                 sumWeightBtagSys[btagsys] += float(
-                    pq.read_table(sample_filepath).schema.metadata[bytes(f"sum_weight_bTagSF_sys_{btagsys}{variation}", encoding='utf8')]
+                    pq.read_table(sample_filepath).schema.metadata[bytes(f"sum_weight_bTagSF_sys_{btagsys}", encoding='utf8')]
                 )
+
 
     # Rescale weights by sum of genweights
     sample['weight_nominal'] = sample['weight']
@@ -314,23 +313,26 @@ def correct_weights(sample, sample_filepath_list):
 
     # Rescale bTag SF weights by preBTag SF sum to get correct normalization
     sample['weight'] = sample['weight'] * (sumWeightCentralNoBtagSF / sumWeightCentral)
+    print(f"central weight correction ratio (pre-bTag SF integral / post-bTag SF integral) = {sumWeightCentralNoBtagSF / sumWeightCentral}")
     for btagsys in sumWeightBtagSys.keys():
-        for variation in ['Up', 'Down']:
-            sample[f"weight_bTagSF_sys_{btagsys}{variation}"] = sample[f"weight_bTagSF_sys_{btagsys}{variation}"] * (
+        if sumWeightBtagSys[btagsys] != 0:
+            print(f"{btagsys} weight correction ratio (pre-{btagsys} integral / post-{btagsys} integral) = {sumWeightCentralNoBtagSF / sumWeightBtagSys[btagsys]}")
+            sample[f"weight_bTagSF_sys_{btagsys}"] = sample[f"weight_bTagSF_sys_{btagsys}"] * (
                 sumWeightCentralNoBtagSF / sumWeightBtagSys[btagsys]
             )
+    
 
 def main():
     sim_dir_lists = {
-        os.path.join(lpc_fileprefix, "Run3_2022", "sim", "preEE", ""): None,
-        os.path.join(lpc_fileprefix, "Run3_2022", "sim", "postEE", ""): None,
+        # os.path.join(lpc_fileprefix, "Run3_2022", "sim", "preEE", ""): None,
+        # os.path.join(lpc_fileprefix, "Run3_2022", "sim", "postEE", ""): None,
         os.path.join(lpc_fileprefix, "Run3_2023", "sim", "preBPix", ""): None,
         os.path.join(lpc_fileprefix, "Run3_2023", "sim", "postBPix", ""): None,
     }
     data_dir_lists = {
-        # os.path.join(lpc_fileprefix, "Run3_2022", "data", ""): None,
-        # os.path.join(lpc_fileprefix, "Run3_2023", "data", ""): None,
-        # os.path.join(lpc_fileprefix, "Run3_2024", "data", ""): None,
+        os.path.join(lpc_fileprefix, "Run3_2022", "data", ""): None,
+        os.path.join(lpc_fileprefix, "Run3_2023", "data", ""): None,
+        os.path.join(lpc_fileprefix, "Run3_2024", "data", ""): None,
     }
     
     # MC Era: total era luminosity [fb^-1] #
@@ -473,15 +475,20 @@ def main():
     for sim_era, dir_list in sim_dir_lists.items():
 
         for dir_name in dir_list:
-
             sample_dirpath = os.path.join(sim_era, dir_name, "")
 
             for sample_type in os.listdir(sample_dirpath):
 
+                if (
+                    re.search('GGJets', dir_name) is not None
+                    and re.search('preBPix', sim_era) is not None
+                    and re.search('nominal', sample_type) is None
+                ): continue
+
+                print(sim_era[sim_era[:-1].rfind('/')+1:-1]+f': {dir_name} - {sample_type}')
                 sample_type_dirpath = os.path.join(sample_dirpath, sample_type, "")
 
                 # Load all the parquets of a single sample into an ak array
-                print(sim_era[sim_era[:-1].rfind('/')+1:-1]+': '+dir_name)
                 sample_filepath_list = glob.glob(os.path.join(sample_type_dirpath, '*.parquet'))
                 sample_list = [ak.from_parquet(file) for file in sample_filepath_list]
                 if len(sample_list) < 1:
@@ -489,7 +496,10 @@ def main():
                 sample = ak.concatenate(sample_list)
 
                 if 'weight_nominal' not in sample.fields and dir_name != 'DDQCDGJets':
-                    correct_weights(sample, sample_filepath_list)
+                    correct_weights(
+                        sample, sample_filepath_list, 
+                        computebtag=(sample_type=='nominal')
+                    )
 
                 for datasettype in DATASETTYPE:
                     # Slim parquets by removing Res fields (for now)
@@ -504,7 +514,7 @@ def main():
                     add_vars(slim_sample, datasettype)
             
                     # Save out merged parquet
-                    destdir = get_merged_filepath(sample_dirpath, datasettype=datasettype)
+                    destdir = get_merged_filepath(sample_type_dirpath, datasettype=datasettype)
                     if not os.path.exists(destdir):
                         os.makedirs(destdir)
                     filepath = os.path.join(destdir, dir_name+'_merged.parquet')
