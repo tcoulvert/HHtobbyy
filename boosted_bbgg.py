@@ -19,8 +19,7 @@ cmap_petroff10 = ["#3f90da", "#ffa90e", "#bd1f01", "#94a4a2", "#832db6", "#a96b5
 plt.rcParams.update({"axes.prop_cycle": cycler("color", cmap_petroff10)})
 
 lpc_fileprefix = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v2/"
-lpc_filegroup = lambda s: f'Run3_{s}_merged'
-# lpc_filegroup = lambda s: f'Run3_{s}_merged_MultiBDT_output_mvaIDCorr_22_23'
+lpc_filegroup = lambda s: f'Run3_{s}_mergedBoosted'
 LPC_FILEPREFIX_22 = os.path.join(lpc_fileprefix, lpc_filegroup('2022'), 'sim', '')
 LPC_FILEPREFIX_23 = os.path.join(lpc_fileprefix, lpc_filegroup('2023'), 'sim', '')
 LPC_FILEPREFIX_24 = os.path.join(lpc_fileprefix, lpc_filegroup('2024'), 'sim', '')
@@ -48,11 +47,11 @@ MC_NAMES_PRETTY = {
     "GluGluToHH": r"ggF $HH\rightarrow bb\gamma\gamma$",
 }
 LUMINOSITIES = {
-    os.path.join(LPC_FILEPREFIX_22, "preEE", ""): 7.9804,
-    os.path.join(LPC_FILEPREFIX_22, "postEE", ""): 26.6717,
-    os.path.join(LPC_FILEPREFIX_23, "preBPix", ""): 17.794,
-    os.path.join(LPC_FILEPREFIX_23, "postBPix", ""): 9.451,
-    os.path.join(LPC_FILEPREFIX_24, ""): 109.08,
+    "2022preEE": 7.9804,
+    "2022postEE": 26.6717,
+    "2023preBPix": 17.794,
+    "2023postBPix": 9.451,
+    "2024": 109.08,
 }
 LUMINOSITIES['total_lumi'] = sum(LUMINOSITIES.values())
 
@@ -144,14 +143,43 @@ EXTRA_DATA_VARIABLES = {
     MC_DATA_MASK
 }
 
+VARIATION_SYSTS = [  # _up and _down
+    'Et_dependent_ScaleEB', 'Et_dependent_ScaleEE', 
+    'Et_dependent_Smearing', 
+    'jec_syst_Total', 'jer_syst'
+]
+
+def get_era(filepath):
+    era = ''
+    for sub_era in ['preEE', 'postEE', 'preBPix', 'postBPix']:
+        if re.search(sub_era, filepath) is not None:
+            era = sub_era
+            break
+    year = filepath[filepath.find('Run3_202')+len('Run3_'):filepath.find('Run3_202')+len('Run3_202x')]
+
+    return year+era
+
+def get_lumi(era):
+    if era in LUMINOSITIES:
+        return LUMINOSITIES[era]
+    elif re.search('-', era) is None:
+        lumi_total = 0
+        for sub_era, sub_lumi in LUMINOSITIES.items():
+            if re.search(sub_era, era) is not None: lumi_total += sub_lumi
+    else:
+        lumi_total = 0
+        split_eras = era.split('-')
+        for split_era in split_eras:
+            for sub_era, sub_lumi in LUMINOSITIES.items():
+                if re.search(sub_era, split_era) is not None: lumi_total += sub_lumi
+
 def sideband_cuts(sample):
     """
     Builds the event_mask used to do data-mc comparison in a sideband.
     """
     # Require diphoton and dijet exist (required in preselection, and thus is all True)
     event_mask = (
-        # sample['is_Res']
-        sample['is_nonRes']
+        sample["Res_has_atleast_one_fatjet"]
         & (
             sample['fiducialGeometricFlag'] if 'fiducialGeometricFlag' in sample.fields else sample['pass_fiducial_geometric']
         ) & (  # fatjet cuts
@@ -167,6 +195,9 @@ def sideband_cuts(sample):
     )
     sample[MC_DATA_MASK] = event_mask
 
+    if 'eventWeight' in sample.fields: 
+        sample['eventWeight'] = sample['eventWeight'] * (LUMINOSITIES['total_lumi'] / (LUMINOSITIES['total_lumi'] - LUMINOSITIES['2024']))
+
 def get_mc_dir_lists(dir_lists: dict):
     """
     Builds the dictionary of lists of samples to use in comparison.
@@ -175,52 +206,23 @@ def get_mc_dir_lists(dir_lists: dict):
     
     # Pull MC sample dir_list
     for sim_era in dir_lists.keys():
-        dir_lists[sim_era] = list(os.listdir(sim_era))
+        # dir_lists[sim_era] = list(os.listdir(sim_era))
+        var = "nominal"
+        for sim_type in VARIATION_SYSTS: 
+            if re.search(sim_type, sim_era) is not None:
+                var_direction = '_up' if re.search('_up', sim_era) else '_down'
+                var = sim_type + var_direction
+                break
+        
+        dir_lists[sim_era] = glob.glob(os.path.join(sim_era, "**", var, END_FILEPATH), recursive=True)
         dir_lists[sim_era].sort()
 
 def get_data_dir_lists(dir_lists: dict):
     
     # Pull Data sample dir_list
     for data_era in dir_lists.keys():
-        dir_lists[data_era] = list(os.listdir(data_era))
+        dir_lists[data_era] = glob.glob(os.path.join(data_era, "**", END_FILEPATH), recursive=True)
         dir_lists[data_era].sort()
-
-def find_dirname(dir_name):
-    sample_name_map = {
-        # ggf HH (signal)
-        'GluGluToHH': 'GluGluToHH',
-        'GluGlutoHHto2B2G_kl_1p00_kt_1p00_c2_0p00': 'GluGluToHH',
-        'GluGlutoHHto2B2G_kl-1p00_kt-1p00_c2-0p00': 'GluGluToHH',
-        # prompt-prompt non-resonant
-        'GGJets': 'GGJets', 
-        # prompt-fake non-resonant
-        'GJetPt20To40': 'GJetPt20To40', 
-        'GJetPt40': 'GJetPt40', 
-        # ggf H
-        'GluGluHToGG': 'GluGluHToGG',
-        'GluGluHToGG_M_125': 'GluGluHToGG',
-        'GluGluHtoGG': 'GluGluHToGG',
-        # ttH
-        'ttHToGG': 'ttHToGG',
-        'ttHtoGG_M_125': 'ttHToGG',
-        'ttHtoGG': 'ttHToGG',
-        # vbf H
-        'VBFHToGG': 'VBFHToGG',
-        'VBFHToGG_M_125': 'VBFHToGG',
-        'VBFHtoGG': 'VBFHToGG',
-        # VH
-        'VHToGG': 'VHToGG',
-        'VHtoGG_M_125': 'VHToGG',
-        'VHtoGG': 'VHToGG',
-        'VHtoGG_M-125': 'VHToGG',
-        # bbH
-        'BBHto2G_M_125': 'bbHToGG',
-        'bbHtoGG': 'bbHToGG',
-    }
-    if dir_name in sample_name_map:
-        return sample_name_map[dir_name]
-    else:
-        return None
 
 def slimmed_parquet(sample, extra_variables):
     """
@@ -240,38 +242,38 @@ def concatenate_records(base_sample, added_sample):
         }
     )
 
-def generate_hists(pq_dict: dict, variable: str, axis, density=False, blind_edges=None):
+def generate_hists(
+    pq_dict: dict, variable: str, axis, blind_edges=None
+):
     # https://indico.cern.ch/event/1433936/ #
     # Generate syst hists and ratio hists
     hists = {}
     for ak_name, ak_arr in pq_dict.items():
-        ak_hist = ak_arr[:, 0] if 'MultiBDT_output' in VARIABLES else ak_arr
-
         if blind_edges is not None:
             mask = (
                 (
-                    (ak_hist[variable] < blind_edges[0]) 
-                    | (ak_hist[variable] > blind_edges[1])
-                ) & (ak_hist[MC_DATA_MASK])
+                    (ak_arr[variable] < blind_edges[0]) 
+                    | (ak_arr[variable] > blind_edges[1])
+                ) & (ak_arr[MC_DATA_MASK])
             )
         else:
-            mask = ak_hist[MC_DATA_MASK]
+            mask = ak_arr[MC_DATA_MASK]
 
         if re.search('mc', ak_name.lower()) and APPLY_WEIGHTS:
             hists[ak_name] = hist.Hist(axis, storage='weight').fill(
-                var=ak_hist[variable][mask],
-                weight=ak_hist['eventWeight'][mask],
+                var=ak_arr[variable][mask],
+                weight=ak_arr['eventWeight'][mask],
             )
         else:
             hists[ak_name] = hist.Hist(axis).fill(
-                var=ak_hist[variable][mask]
+                var=ak_arr[variable][mask]
             )
 
     return hists
 
 def plot(
     variable: str, hists: dict, 
-    year='2022', era='postEE', lumi=0.0,
+    era='2022postEE', lumi=0.0,
     rel_dirpath='', histtypes=None, density=False
 ):
     """
@@ -295,7 +297,7 @@ def plot(
         )
     
     # Plotting niceties #
-    hep.cms.lumitext(f"{year}{era} {lumi:.2f}" + r"fb$^{-1}$ (13.6 TeV)", ax=axs[0])
+    hep.cms.lumitext(f"{era} {lumi:.2f}" + r"fb$^{-1}$ (13.6 TeV)", ax=axs[0])
     hep.cms.text("Work in Progress", ax=axs[0])
     # Plot legend properly
     axs[0].legend()
@@ -303,8 +305,8 @@ def plot(
     fig.subplots_adjust(hspace=0.05)
     # Plot x_axis label properly
     axs[0].set_xlabel('')
-    axs[1].set_xlabel(hist_names[0]+'  '+hists[hist_names[0]].axes.label[0])
-    axs[0].set_yscale('log') if variable == 'MultiBDT_output' else axs[0].set_yscale('linear')
+    axs[1].set_xlabel(hists[hist_names[0]].axes.label[0])
+    axs[0].set_yscale('linear')
     # Save out the plot
     destdir = os.path.join(DESTDIR, rel_dirpath, '')
     if not os.path.exists(destdir):
@@ -312,43 +314,22 @@ def plot(
     plt.savefig(f'{destdir}1dhist_{variable}_{hist_names[0]}{"_"+hist_names[-1] if len(hist_names) > 1 else ""}.pdf')
     plt.savefig(f'{destdir}1dhist_{variable}_{hist_names[0]}{"_"+hist_names[-1] if len(hist_names) > 1 else ""}.png')
     plt.close()
-    
-def main(
-    sample_dirs, 
-    year='2022', era='preEE', std_sample_name='GluGluToHH',
-    lumi=LUMINOSITIES[os.path.join(LPC_FILEPREFIX_22, "preEE", "")],
-    density=False
-):
-    """
-    Performs the sample comparison.
-    """
 
-    for dir_name, dir_dict in sample_dirs.items():
-        if re.search('mc', dir_name.lower()) is not None:
-            get_mc_dir_lists(dir_dict)
-        elif re.search('data', dir_name.lower()) is not None:
-            get_data_dir_lists(dir_dict)
-        else:
-            raise Exception(f"Ambiguous whether dirlist {dir_name} is Data or MC, please include either word in the name (key) of the dirlist.")
-        
+def get_concat_samples(sample_dirs: dict, save=False):
     # Make parquet dicts, merged by samples and pre-slimmed (keeping only VARIABLES and EXTRA_VARIABLES)
     sample_pqs = {}
     for dir_name, dir_dict in sample_dirs.items():
+        print('======================== \n', dir_name+" started")
         sample_pqs[dir_name] = {}
 
         for sample_era, sample_list in dir_dict.items():
-            print('======================== \n', year+''+era+" started")
+            print('======================== \n', sample_era+" started")
             sample_pqs[dir_name][sample_era] = []
 
-            for sample_name in sample_list:
-                if re.search('mc', dir_name.lower()) is not None:
-                    sample_dirpath = os.path.join(sample_era, sample_name, 'nominal', END_FILEPATH)
-                else: 
-                    std_samplename = sample_name
-                    sample_dirpath = os.path.join(sample_era, sample_name, END_FILEPATH)
-                print('======================== \n', std_samplename+" started")
+            for samplefilepath in sample_list:
+                print('======================== \n', samplefilepath[:samplefilepath.rfind('.')]+" started")
 
-                sample = ak.from_parquet(glob.glob(sample_dirpath)[0])
+                sample = ak.from_parquet(samplefilepath)
                 sideband_cuts(sample)
                 sample_pqs[dir_name][sample_era].append(
                     slimmed_parquet(
@@ -357,10 +338,23 @@ def main(
                     )
                 )
 
-                del sample
-                print('======================== \n', std_samplename+" finished")
+                if save:
+                    output_pq_filepath = (
+                        samplefilepath[:samplefilepath.find('Run3_202')+len(lpc_filegroup('202x'))]
+                        + '_Cut_output_'
+                        + samplefilepath[samplefilepath.find('Run3_202')+len(lpc_filegroup('202x')):]
+                    )
+                    if not os.path.exists(output_pq_filepath[:output_pq_filepath.rfind('/')]):
+                        os.makedirs(output_pq_filepath[:output_pq_filepath.rfind('/')])
+                    ak.to_parquet(sample[MC_DATA_MASK], output_pq_filepath)
+                    print(f"======================== \nSaved out new file at:\n{output_pq_filepath}")
 
-            print('======================== \n', year+''+era+" finished")
+                del sample
+                print('======================== \n', samplefilepath[:samplefilepath.rfind('.')]+" finished")
+
+            print('======================== \n', sample_era+" finished")
+
+        print('======================== \n', dir_name+" finished")
 
     # Concatenate the samples for comparison
     concat_samples = {}
@@ -376,70 +370,143 @@ def main(
                 else:
                     concat_samples[dir_name] = concatenate_records(concat_samples[dir_name], sample)
 
+    return concat_samples
+    
+def main(
+    sample_dirs, save=False, plottype='comparison', density=False,
+    era=None, lumi=None
+):
+    """
+    Performs the sample comparison.
+    """
 
-    # Ploting over variables for MC and Data
-    for variable, axis in VARIABLES.items():
-        hists = generate_hists(
-            concat_samples, variable, axis,
-            density=density
-        )
-        plot(
-            variable, hists, 
-            year=year, era=era, lumi=lumi, 
-            density=density
-        )
+    for dir_name, dir_dict in sample_dirs.items():
+        if re.search('mc', dir_name.lower()) is not None:
+            get_mc_dir_lists(dir_dict)
+        elif re.search('data', dir_name.lower()) is not None:
+            get_data_dir_lists(dir_dict)
+        else:
+            raise Exception(f"Ambiguous whether dirlist {dir_name} is Data or MC, please include either word in the name (key) of the dirlist.")
+        
+    concat_samples = get_concat_samples(sample_dirs, save=save)
 
-    # # Ploting over variables for MC and Data
-    for variable, (axis, blind_edges) in BLINDED_VARIABLES.items():
-        hists = generate_hists(
-            concat_samples, variable, axis,
-            blind_edges=blind_edges,
-            density=density
-        )
-        plot(
-            variable, hists, 
-            year=year, era=era, lumi=lumi, 
-            density=density
-        )
+    plot_list = []
+    if plottype == 'comparison':
+        plot_list.append(concat_samples)
+    elif plottype == 'split':
+        for dir_name, dir_dict in concat_samples:
+            plot_list.append({dir_name: dir_dict})
+    elif plottype == 'Data/MC':
+        simplified_concat = {'Data': {}, 'MC': {}}
+        for dir_name, dir_dict in concat_samples:
+            if re.search('data', dir_name.lower()) is not None:
+                simplified_concat['Data'][dir_name] = dir_dict
+            else:
+                simplified_concat['MC'][dir_name] = dir_dict
+
+    for concat_dict in plot_list:
+        # Ploting over variables for MC and Data
+        for variable, axis in VARIABLES.items():
+            hists = generate_hists(
+                concat_dict, variable, axis
+            )
+            plot(
+                variable, hists, era=era, lumi=lumi, 
+                density=density, datamc=(plottype == 'Data/MC')  # need to implement
+            )
+
+        # # Ploting over variables for MC and Data
+        for variable, (axis, blind_edges) in BLINDED_VARIABLES.items():
+            hists = generate_hists(
+                concat_dict, variable, axis,
+                blind_edges=blind_edges
+            )
+            plot(
+                variable, hists, era=era, lumi=lumi, 
+                density=density, datamc=(plottype == 'Data/MC')
+            )
             
 
 if __name__ == '__main__':
-    # sample_dirs = {
-    #     'Data': {
-    #         os.path.join(LPC_FILEPREFIX_22[:-len('sim/')], "data", ""): None,
-    #         os.path.join(LPC_FILEPREFIX_23[:-len('sim/')], "data", ""): None,
-    #         os.path.join(LPC_FILEPREFIX_24[:-len('sim/')], "data", ""): None
-    #     },
-    # }
-    # main(
-    #     sample_dirs, 
-    #     year='2022-24', era='', lumi=LUMINOSITIES['total_lumi'], 
-    #     std_samplename='Data',
-    #     density=False
-    # )
+    sample_dirs = {
+        'Data-2022-24': {
+            os.path.join(LPC_FILEPREFIX_22[:-len('sim/')], "data", ""): None,
+            os.path.join(LPC_FILEPREFIX_23[:-len('sim/')], "data", ""): None,
+            os.path.join(LPC_FILEPREFIX_24[:-len('sim/')], "data", ""): None
+        },
+        'MC-2022-24-GluGluToHH': {
+            os.path.join(LPC_FILEPREFIX_22, "preEE", "GluGlutoHHto2B2G_kl_1p00_kt_1p00_c2_0p00", ""): None,
+            os.path.join(LPC_FILEPREFIX_22, "postEE", "GluGluToHH", ""): None,
+            os.path.join(LPC_FILEPREFIX_23, "preBPix", "GluGlutoHHto2B2G_kl-1p00_kt-1p00_c2-0p00", ""): None,
+            os.path.join(LPC_FILEPREFIX_23, "postBPix", "GluGlutoHHto2B2G_kl-1p00_kt-1p00_c2-0p00", ""): None,
+            # os.path.join(LPC_FILEPREFIX_24, "GluGlutoHHto2B2G_kl-1p00_kt-1p00_c2-0p00", ""): None,
+        },
+        'MC-2022-24-GluGluHToGG': {
+            os.path.join(LPC_FILEPREFIX_22, "preEE", "GluGluHToGG_M_125", ""): None,
+            os.path.join(LPC_FILEPREFIX_22, "postEE", "GluGluHToGG", ""): None,
+            os.path.join(LPC_FILEPREFIX_23, "preBPix", "GluGluHtoGG", ""): None,
+            os.path.join(LPC_FILEPREFIX_23, "postBPix", "GluGluHtoGG", ""): None,
+            # os.path.join(LPC_FILEPREFIX_24, "GluGluHtoGG", ""): None,
+        },
+        'MC-2022-24-VBFHToGG': {
+            os.path.join(LPC_FILEPREFIX_22, "preEE", "VBFHToGG_M_125", ""): None,
+            os.path.join(LPC_FILEPREFIX_22, "postEE", "VBFHToGG", ""): None,
+            os.path.join(LPC_FILEPREFIX_23, "preBPix", "VBFHtoGG", ""): None,
+            os.path.join(LPC_FILEPREFIX_23, "postBPix", "VBFHtoGG", ""): None,
+            # os.path.join(LPC_FILEPREFIX_24, "VBFHtoGG", ""): None,
+        },
+        'MC-2022-24-VHToGG': {
+            os.path.join(LPC_FILEPREFIX_22, "preEE", "VHtoGG_M_125", ""): None,
+            os.path.join(LPC_FILEPREFIX_22, "postEE", "VHtoGG_M-125", ""): None,
+            os.path.join(LPC_FILEPREFIX_23, "preBPix", "VHtoGG", ""): None,
+            os.path.join(LPC_FILEPREFIX_23, "postBPix", "VHtoGG", ""): None,
+            # os.path.join(LPC_FILEPREFIX_24, "VHtoGG", ""): None,
+        },
+        'MC-2022-24-ttHToGG': {
+            os.path.join(LPC_FILEPREFIX_22, "preEE", "ttHtoGG_M_125", ""): None,
+            os.path.join(LPC_FILEPREFIX_22, "postEE", "ttHToGG", ""): None,
+            os.path.join(LPC_FILEPREFIX_23, "preBPix", "ttHtoGG", ""): None,
+            os.path.join(LPC_FILEPREFIX_23, "postBPix", "ttHtoGG", ""): None,
+            # os.path.join(LPC_FILEPREFIX_24, "ttHtoGG", ""): None,
+        },
+        'MC-2022-24-bbHToGG': {
+            os.path.join(LPC_FILEPREFIX_22, "preEE", "BBHto2G_M_125", ""): None,
+            os.path.join(LPC_FILEPREFIX_22, "postEE", "BBHto2G_M_125", ""): None,
+            os.path.join(LPC_FILEPREFIX_23, "preBPix", "bbHtoGG", ""): None,
+            os.path.join(LPC_FILEPREFIX_23, "postBPix", "bbHtoGG", ""): None,
+            # os.path.join(LPC_FILEPREFIX_24, "bbHtoGG", ""): None,
+        },
+        'MC-2022-24-GGJets': {
+            os.path.join(LPC_FILEPREFIX_22, "preEE", "GGJets", ""): None,
+            os.path.join(LPC_FILEPREFIX_22, "postEE", "GGJets", ""): None,
+            os.path.join(LPC_FILEPREFIX_22, "preBPix", "GGJets", ""): None,
+            os.path.join(LPC_FILEPREFIX_22, "postBPix", "GGJets", ""): None,
+            # os.path.join(LPC_FILEPREFIX_24, "GGJets", ""): None,
+        },
+        'MC-2022-24-GJetPt20To40': {
+            os.path.join(LPC_FILEPREFIX_22, "preEE", "GJetPt20To40", ""): None,
+            os.path.join(LPC_FILEPREFIX_22, "postEE", "GJetPt20To40", ""): None,
+            os.path.join(LPC_FILEPREFIX_22, "preBPix", "GJetPt20To40", ""): None,
+            os.path.join(LPC_FILEPREFIX_22, "postBPix", "GJetPt20To40", ""): None,
+            # os.path.join(LPC_FILEPREFIX_24, "GJetPt20To40", ""): None,
+        },
+        'MC-2022-24-GJetPt40': {
+            os.path.join(LPC_FILEPREFIX_22, "preEE", "GJetPt40", ""): None,
+            os.path.join(LPC_FILEPREFIX_22, "postEE", "GJetPt40", ""): None,
+            os.path.join(LPC_FILEPREFIX_22, "preBPix", "GJetPt40", ""): None,
+            os.path.join(LPC_FILEPREFIX_22, "postBPix", "GJetPt40", ""): None,
+            # os.path.join(LPC_FILEPREFIX_24, "GJetPt40", ""): None,
+        },
+        # 'MC-2022-24-VBFToHH': {
+        #     os.path.join(LPC_FILEPREFIX_22, "preEE", "VBFHHto2B2G_CV_1_C2V_1_C3_1", ""): None,
+        #     # os.path.join(LPC_FILEPREFIX_22, "postEE", "VBFHHto2B2G_CV_1_C2V_1_C3_1", ""): None,
+        #     os.path.join(LPC_FILEPREFIX_23, "preBPix", "VBFHHto2B2G_CV_1_C2V_1_C3_1", ""): None,
+        #     os.path.join(LPC_FILEPREFIX_23, "postBPix", "VBFHHto2B2G_CV_1_C2V_1_C3_1", ""): None,
+        #     # os.path.join(LPC_FILEPREFIX_24, "VBFHHto2B2G_CV_1_C2V_1_C3_1", ""): None,
+        # }
+    }
 
-    for era_name, lumi in LUMINOSITIES.items():
-        if era_name == 'total_lumi': continue
-
-        era = era_name[era_name[:-1].rfind('/')+1:-1]
-        year = era_name[era_name.find('Run3_202')+len('Run3_'):era_name.find('Run3_202')+len('Run3_202x')]
-
-        for sample_name in os.listdir(era_name):
-
-            std_samplename = find_dirname(sample_name)
-            if std_samplename is None:
-                print(f'{sample_name} not in samples selected for this computation.')
-                continue
-            sample_filepath = os.path.join(era_name, sample_name)
-
-            sample_dirs = {
-                f'MC-{year}{era}-{std_samplename}': {
-                    sample_filepath: None,
-                },
-            }
-            main(
-                sample_dirs, 
-                year=year, era=era, lumi=lumi, 
-                std_samplename=std_samplename,
-                density=False
-            )
+    main(
+        sample_dirs, density=False,
+        era="2022-24", lumi=LUMINOSITIES["total_lumi"],
+    )

@@ -21,6 +21,8 @@ FILL_VALUE = -999
 NUM_JETS = 10
 FORCE_RERUN = False
 
+# xrdcp -r root://cmseos.fnal.gov//store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v2/
+
 DATASETTYPE = {
     'Resolved', 'Boosted'
 }
@@ -35,7 +37,7 @@ def add_vars(sample, datasettype):
 
 def add_vars_boosted(sample):
     sample['simple_boosted_PNmass'] = (
-        sample['is_Res']
+        sample['Res_has_atleast_one_fatjet']
         & (
             sample['fiducialGeometricFlag'] if 'fiducialGeometricFlag' in sample.fields else sample['pass_fiducial_geometric']
         ) & (  # fatjet cuts
@@ -51,7 +53,7 @@ def add_vars_boosted(sample):
     )
 
     sample['simple_boosted_SDmass'] = (
-        sample['is_Res']
+        sample['Res_has_atleast_one_fatjet']
         & (
             sample['fiducialGeometricFlag'] if 'fiducialGeometricFlag' in sample.fields else sample['pass_fiducial_geometric']
         ) & (  # fatjet cuts

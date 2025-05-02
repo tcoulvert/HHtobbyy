@@ -163,9 +163,6 @@ def sideband_cuts(sample):
         & (
             (sample['mass'] < 115)
             | (sample['mass'] > 135)
-        ) & (
-            (sample['dijet_PNetRegMass'] < 100)
-            | (sample['dijet_PNetRegMass'] > 150)
         )
     )
     sample[MC_DATA_MASK] = event_mask
