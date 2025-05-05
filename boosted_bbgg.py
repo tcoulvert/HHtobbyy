@@ -243,7 +243,7 @@ def concatenate_records(base_sample, added_sample):
     )
 
 def generate_hists(
-    pq_dict: dict, variable: str, axis, blind_edges=None
+    pq_dict: dict, variable: str, axis, blind_edges=None, density=False, ratio=False
 ):
     # https://indico.cern.ch/event/1433936/ #
     # Generate syst hists and ratio hists
@@ -271,11 +271,115 @@ def generate_hists(
 
     return hists
 
-def plot(
-    variable: str, hists: dict, 
-    era='2022postEE', lumi=0.0,
-    rel_dirpath='', histtypes=None, density=False
+def datamc_generate_hists(
+    pq_dict: dict, variable: str, axis, blind_edges=None, density=False
 ):
+    # https://indico.cern.ch/event/1433936/ #
+    # Generate syst hists and ratio hists
+    data_hist, mc_hists = None, {}
+
+    for ak_name, ak_arr in pq_dict.items():
+        if blind_edges is not None:
+            mask = (
+                (
+                    (ak_arr[variable] < blind_edges[0]) 
+                    | (ak_arr[variable] > blind_edges[1])
+                ) & (ak_arr[MC_DATA_MASK])
+            )
+        else:
+            mask = ak_arr[MC_DATA_MASK]
+
+        if re.search('mc', ak_name.lower()) is not None and APPLY_WEIGHTS:
+            mc_hists[ak_name] = hist.Hist(axis, storage='weight').fill(
+                var=ak_arr[variable][mask],
+                weight=ak_arr['eventWeight'][mask],
+            )
+        elif re.search('mc', ak_name.lower()) is not None:
+            mc_hists[ak_name] = hist.Hist(axis).fill(
+                var=ak_arr[variable][mask]
+            )
+        else:
+            data_hist = hist.Hist(axis).fill(
+                var=ak_arr[variable][mask]
+            )
+    
+    # Generate ratio dict
+    ratio_dict = {
+        'numer_values': np.sum([mc_hist.values() for mc_hist in mc_hists]),
+        'numer_err': np.sum([mc_hist.variances() for mc_hist in mc_hists]),
+        'denom_values': data_hist.values(),
+        'denom_err': np.sqrt(data_hist.values()),
+    }
+    if density:
+        ratio_dict['numer_err'] = ratio_dict['numer_err'] / np.sum(ratio_dict['numer_values'])
+        ratio_dict['denom_err'] = ratio_dict['denom_err'] / np.sum(ratio_dict['denom_values'])
+
+        ratio_dict['numer_values'] = ratio_dict['numer_values'] / np.sum(ratio_dict['numer_values'])
+        ratio_dict['denom_values'] = ratio_dict['denom_values'] / np.sum(ratio_dict['denom_values'])
+        
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        ratio_dict['ratio_values'] = ratio_dict['numer_values'] / ratio_dict['denom_values']
+        ratio_dict['ratio_err'] = ratio_error(
+            ratio_dict['numer_values'], ratio_dict['denom_values'], 
+            ratio_dict['numer_err'], ratio_dict['denom_err']
+        )
+
+    return mc_hists, data_hist, ratio_dict
+
+def plot_ratio(
+    ratio, mpl_ax, hist_axis, 
+    numer_err=None, denom_err=None, central_value=1.0, 
+    color='black', lw=2.
+):
+    """
+    Does the ratio plot (code copied from Hist.plot_ratio_array b/c they don't
+      do what we need.)
+    """
+    # Set 0 and inf to nan to hide during plotting
+    for arr in [ratio, numer_err, denom_err]:
+        if arr is None:
+            continue
+        arr[arr == 0] = np.nan
+        arr[np.isinf(arr)] = np.nan
+
+    mpl_ax.set_ylim(0., 2.5)
+    if np.min(ratio - numer_err) > 0.8 and np.max(ratio + numer_err) < 1.2:
+        mpl_ax.set_ylim(0.8, 1.2)
+    mpl_ax.axhline(
+        central_value, color="black", linestyle="solid", lw=1.
+    )
+    mpl_ax.errorbar(
+        hist_axis.centers[0], ratio, yerr=numer_err, 
+        fmt='none', lw=lw, color=color, alpha=0.8
+    )
+    mpl_ax.stairs(
+        ratio, edges=hist_axis.edges[0], fill=False, 
+        baseline=1., lw=lw, color=color, alpha=0.8
+    )
+
+    if denom_err is not None:
+        mpl_ax.bar(
+            hist_axis.centers[0], height=denom_err * 2, width=(hist_axis.centers[0][1] - hist_axis.centers[0][0]), 
+            bottom=(central_value - denom_err), color="green", alpha=0.5, hatch='//'
+        )
+
+def ratio_error(numer_values, denom_values, numer_err, denom_err):
+    ratio_err =  np.sqrt(
+        np.power(denom_values, -2) * (
+            np.power(numer_err, 2) + (
+                np.power(numer_values / denom_values, 2) * np.power(denom_err, 2)
+            )
+        )
+    )
+    return ratio_err
+
+def datamc_plot(
+    variable: str, mc_hists: dict, data_hist, ratio_dict: dict,
+    era='2022postEE', lumi=0.0,
+    rel_dirpath='', histtypes=None, density=False,
+):
+    
     """
     Plots and saves out the data-MC comparison histogram
     """
@@ -285,16 +389,25 @@ def plot(
     )
     linewidth=2.
 
-    hist_names = list(hists.keys())
-    if histtypes is None:
-        histtypes = ["step" for _ in range(len(hists))]
-    for idx, hist_name in enumerate(hist_names):
-        hep.histplot(
-            hists[hist_name], label=hist_name, 
-            yerr=hists[hist_name].variances() if (APPLY_WEIGHTS and re.search('mc', hist_name.lower()) is not None) else True,
-            ax=axs[0], lw=linewidth, histtype=histtypes[idx], alpha=0.8,
-            density=density
-        )
+    hep.histplot(
+        list(mc_hists.values()), label=list(mc_hists.keys()), 
+        yerr=np.vstack((np.tile(np.zeros_like(ratio_dict['w2']), (len(mc_hists)-1, 1)), ratio_dict['w2'])),
+        stack=True, ax=axs[0], linewidth=3, histtype="fill", sort="yield", density=density
+    )
+    
+    hep.histplot(
+        data_hist, label='Data', 
+        yerr=True,
+        ax=axs[0], lw=linewidth, histtype="errorbar", color="black",
+        density=density
+    )
+
+    plot_ratio(
+        ratio_dict['ratio_values'], axs[1], 
+        numer_err=ratio_dict['ratio_err'],
+        denom_err=None, hist_axis=data_hist.axes,
+        lw=linewidth
+    )
     
     # Plotting niceties #
     hep.cms.lumitext(f"{era} {lumi:.2f}" + r"fb$^{-1}$ (13.6 TeV)", ax=axs[0])
@@ -305,14 +418,55 @@ def plot(
     fig.subplots_adjust(hspace=0.05)
     # Plot x_axis label properly
     axs[0].set_xlabel('')
-    axs[1].set_xlabel(hists[hist_names[0]].axes.label[0])
+    axs[1].set_xlabel(data_hist.axes.label[0])
     axs[0].set_yscale('linear')
     # Save out the plot
     destdir = os.path.join(DESTDIR, rel_dirpath, '')
     if not os.path.exists(destdir):
         os.makedirs(destdir)
-    plt.savefig(f'{destdir}1dhist_{variable}_{hist_names[0]}{"_"+hist_names[-1] if len(hist_names) > 1 else ""}.pdf')
-    plt.savefig(f'{destdir}1dhist_{variable}_{hist_names[0]}{"_"+hist_names[-1] if len(hist_names) > 1 else ""}.png')
+    plt.savefig(f'{destdir}1dhist_{variable}_DataMC.pdf')
+    plt.savefig(f'{destdir}1dhist_{variable}_DataMC.png')
+    plt.close()
+
+def plot(
+    variable: str, hists: dict, 
+    era='2022postEE', lumi=0.0,
+    rel_dirpath='', histtypes=None, density=False,
+):
+    """
+    Plots and saves out the data-MC comparison histogram
+    """
+    # Initiate figure
+    fig, ax = plt.subplots()
+    linewidth=2.
+
+    hist_names = list(hists.keys())
+    if histtypes is None:
+        histtypes = {hist_name: "step" for hist_name in hist_names}
+    for hist_name in hist_names:
+        hep.histplot(
+            hists[hist_name], label=hist_name, 
+            yerr=hists[hist_name].variances() if (APPLY_WEIGHTS and re.search('mc', hist_name.lower()) is not None) else True,
+            ax=ax, lw=linewidth, histtype=histtypes[hist_names],
+            density=density
+        )
+
+    # Plotting niceties #
+    hep.cms.lumitext(f"{era} {lumi:.2f}" + r"fb$^{-1}$ (13.6 TeV)", ax=ax)
+    hep.cms.text("Work in Progress", ax=ax)
+    # Plot legend properly
+    ax.legend()
+    # Push the stack and ratio plots closer together
+    fig.subplots_adjust(hspace=0.05)
+    # Plot x_axis label properly
+    ax.set_xlabel(hists[hist_names[0]].axes.label[0])
+    ax.set_yscale('linear')
+    # Save out the plot
+    destdir = os.path.join(DESTDIR, rel_dirpath, '')
+    if not os.path.exists(destdir):
+        os.makedirs(destdir)
+    plt.savefig(f'{destdir}1dhist_{variable}_comparison.pdf')
+    plt.savefig(f'{destdir}1dhist_{variable}_comparison.png')
     plt.close()
 
 def get_concat_samples(sample_dirs: dict, save=False):
@@ -346,7 +500,9 @@ def get_concat_samples(sample_dirs: dict, save=False):
                     )
                     if not os.path.exists(output_pq_filepath[:output_pq_filepath.rfind('/')]):
                         os.makedirs(output_pq_filepath[:output_pq_filepath.rfind('/')])
-                    ak.to_parquet(sample[MC_DATA_MASK], output_pq_filepath)
+                    print(samplefilepath)
+                    print(output_pq_filepath)
+                    # ak.to_parquet(sample[MC_DATA_MASK], output_pq_filepath)
                     print(f"======================== \nSaved out new file at:\n{output_pq_filepath}")
 
                 del sample
@@ -403,28 +559,47 @@ def main(
                 simplified_concat['Data'][dir_name] = dir_dict
             else:
                 simplified_concat['MC'][dir_name] = dir_dict
+        plot_list.append(simplified_concat)
 
     for concat_dict in plot_list:
         # Ploting over variables for MC and Data
         for variable, axis in VARIABLES.items():
-            hists = generate_hists(
-                concat_dict, variable, axis
-            )
-            plot(
-                variable, hists, era=era, lumi=lumi, 
-                density=density, datamc=(plottype == 'Data/MC')  # need to implement
-            )
-
-        # # Ploting over variables for MC and Data
+            if plottype == 'Data/MC':
+                mc_hists, data_hist, ratio_dict = datamc_generate_hists(
+                    concat_dict, variable, axis, density=density,
+                )
+                datamc_plot(
+                    variable, mc_hists, data_hist, ratio_dict, 
+                    era=era, lumi=lumi, density=density
+                )
+            else:
+                hists = generate_hists(
+                    concat_dict, variable, axis, density=density,
+                )
+                plot(
+                    variable, hists,
+                    era=era, lumi=lumi, density=density
+                )
+        # Ploting over variables for MC and Data
         for variable, (axis, blind_edges) in BLINDED_VARIABLES.items():
-            hists = generate_hists(
-                concat_dict, variable, axis,
-                blind_edges=blind_edges
-            )
-            plot(
-                variable, hists, era=era, lumi=lumi, 
-                density=density, datamc=(plottype == 'Data/MC')
-            )
+            if plottype == 'Data/MC':
+                mc_hists, data_hist, ratio_dict = datamc_generate_hists(
+                    concat_dict, variable, axis,
+                    blind_edges=blind_edges, density=density,
+                )
+                datamc_plot(
+                    variable, mc_hists, data_hist, ratio_dict, 
+                    era=era, lumi=lumi, density=density,
+                )
+            else:
+                hists = generate_hists(
+                    concat_dict, variable, axis,
+                    blind_edges=blind_edges, density=density,
+                )
+                plot(
+                    variable, hists, 
+                    era=era, lumi=lumi, density=density
+                )
             
 
 if __name__ == '__main__':
@@ -509,4 +684,5 @@ if __name__ == '__main__':
     main(
         sample_dirs, density=False,
         era="2022-24", lumi=LUMINOSITIES["total_lumi"],
+        plottype='Data/MC'
     )
