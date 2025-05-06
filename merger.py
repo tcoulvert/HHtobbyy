@@ -16,7 +16,8 @@ vec.register_awkward()
 # lpc_redirector = "root://cmseos.fnal.gov/"
 # lxplus_redirector = "root://eosuser.cern.ch/"
 # lxplus_fileprefix = "/eos/cms/store/group/phys_b2g/HHbbgg/HiggsDNA_parquet/v2"
-lpc_fileprefix = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v2/"
+# lpc_fileprefix = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v2/"
+lpc_fileprefix = "/eos/uscms/store/user/tsievert/HiggsDNA_parquet/v2/"
 FILL_VALUE = -999
 NUM_JETS = 10
 FORCE_RERUN = False
@@ -306,7 +307,6 @@ def correct_weights(sample, sample_filepath_list, computebtag=True):
                     pq.read_table(sample_filepath).schema.metadata[bytes(f"sum_weight_bTagSF_sys_{btagsys}", encoding='utf8')]
                 )
 
-
     # Rescale weights by sum of genweights
     sample['weight_nominal'] = sample['weight']
     syst_weight_fields = [field for field in sample.fields if (("weight_" in field) and ("Up" in field or "Down" in field))]
@@ -328,12 +328,12 @@ def main():
     sim_dir_lists = {
         # os.path.join(lpc_fileprefix, "Run3_2022", "sim", "preEE", ""): None,
         # os.path.join(lpc_fileprefix, "Run3_2022", "sim", "postEE", ""): None,
-        os.path.join(lpc_fileprefix, "Run3_2023", "sim", "preBPix", ""): None,
-        os.path.join(lpc_fileprefix, "Run3_2023", "sim", "postBPix", ""): None,
+        # os.path.join(lpc_fileprefix, "Run3_2023", "sim", "preBPix", ""): None,
+        # os.path.join(lpc_fileprefix, "Run3_2023", "sim", "postBPix", ""): None,
     }
     data_dir_lists = {
-        os.path.join(lpc_fileprefix, "Run3_2022", "data", ""): None,
-        os.path.join(lpc_fileprefix, "Run3_2023", "data", ""): None,
+        # os.path.join(lpc_fileprefix, "Run3_2022", "data", ""): None,
+        # os.path.join(lpc_fileprefix, "Run3_2023", "data", ""): None,
         os.path.join(lpc_fileprefix, "Run3_2024", "data", ""): None,
     }
     
@@ -552,6 +552,18 @@ def main():
             for datasettype in DATASETTYPE:
                 # Slim parquets by removing Res fields (for now)
                 slim_sample = slim_parquets(sample, datasettype)
+
+                wanted_fields = {
+                    'dZ', 
+                    'Diphoton30_22_R9Id_OR_IsoCaloId_AND_HE_R9Id_Mass90',  # old triggers
+                    'Diphoton30_22_R9Id_OR_IsoCaloId_AND_HE_R9Id_Mass95',
+                    'DiphotonMVA14p25_Mass90',  # new triggers
+                    'DiphotonMVA14p25_Tight_Mass90'
+                }
+                for field in wanted_fields:
+                    if field in slim_sample.fields: continue
+                    elif field not in sample.fields: continue
+                    slim_sample[field] = sample[field]
 
                 # Add useful parquet meta-info
                 slim_sample['sample_name'] = dir_name

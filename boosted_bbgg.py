@@ -58,76 +58,16 @@ LUMINOSITIES['total_lumi'] = sum(LUMINOSITIES.values())
 # Dictionary of variables
 VARIABLES = {
     # key: hist.axis axes for plotting #
-    # # MET variables
-    # 'puppiMET_sumEt': hist.axis.Regular(40, 150., 2000, name='var', label=r'puppiMET $\Sigma E_T$ [GeV]', growth=False, underflow=False, overflow=False), 
-    # 'puppiMET_pt': hist.axis.Regular(40, 20., 250, name='var', label=r'puppiMET $p_T$ [GeV]', growth=False, underflow=False, overflow=False), 
+    # fatjet variables
+    # 'fatjet1_pt': hist.axis.Regular(40, 20., 2000, name='var', label=r'lead fatjet $p_{T}$ [GeV]', growth=False, underflow=False, overflow=False),
+    # 'fatjet1_mass': hist.axis.Regular(75, 50., 200, name='var', label=r'lead fatjet mass [GeV]', growth=False, underflow=False, overflow=False),
 
-    # # jet-MET variables
-    # 'nonRes_DeltaPhi_j1MET': hist.axis.Regular(20,-3.2, 3.2, name='var', label=r'$\Delta\phi (j_1,E_T^{miss})$', growth=False, underflow=False, overflow=False), 
-    # 'nonRes_DeltaPhi_j2MET': hist.axis.Regular(20, -3.2, 3.2, name='var', label=r'$\Delta\phi (j_2,E_T^{miss})$', growth=False, underflow=False, overflow=False), 
-    # # jet-photon variables
-    # 'nonRes_DeltaR_jg_min': hist.axis.Regular(30, 0, 5, name='var', label=r'min$(\Delta R(jet, \gamma))$', growth=False, underflow=False, overflow=False), 
-    # # jet-lepton variables
-    # 'DeltaR_b1l1': hist.axis.Regular(30, 0, 5, name='var', label=r'$\Delta R(bjet_{lead}, l_{lead})$', growth=False, underflow=False, overflow=False),
+    # diphoton variables
+    'pt': hist.axis.Regular(40, 20., 2000, name='var', label=r'$\gamma\gamma$ $p_{T}$ [GeV]', growth=False, underflow=False, overflow=False),
 
-    # # bjet variables
-    # 'lead_bjet_PNetRegPt': hist.axis.Regular(40, 20., 250, name='var', label=r'lead bjet $p_T$ [GeV]', growth=False, underflow=False, overflow=False),
-    # 'nonRes_lead_bjet_eta': hist.axis.Regular(20, -5., 5., name='var', label=r'lead bjet $\eta$', growth=False, underflow=False, overflow=False),
-    # 'nonRes_lead_bjet_btagPNetB': hist.axis.Regular(50, 0., 1., name='var', label=r'$j_{lead}$ PNet btag score', growth=False, underflow=False, overflow=False), 
-    # 'lead_bjet_RegPt_over_Mjj': hist.axis.Regular(50, 0., 4., name='var', label=r'$j1 p_{T} / M_{jj}$', growth=False, underflow=False, overflow=False), 
-    # 'lead_bjet_sigmapT_over_RegPt': hist.axis.Regular(50, 0., 0.02, name='var', label=r'$j1 \sigma p_{T} / p_{T}$', growth=False, underflow=False, overflow=False), 
-    # # ----------
-    # 'sublead_bjet_PNetRegPt': hist.axis.Regular(40, 20., 250, name='var', label=r'lead bjet $p_T$ [GeV]', growth=False, underflow=False, overflow=False),
-    # 'nonRes_sublead_bjet_eta': hist.axis.Regular(20, -5., 5., name='var', label=r'lead bjet $\eta$', growth=False, underflow=False, overflow=False),
-    # 'nonRes_sublead_bjet_btagPNetB': hist.axis.Regular(50, 0., 1., name='var', label=r'$j_{lead}$ PNet btag score', growth=False, underflow=False, overflow=False), 
-    # 'sublead_bjet_RegPt_over_Mjj': hist.axis.Regular(50, 0., 2., name='var', label=r'$j2 p_{T} / M_{jj}$', growth=False, underflow=False, overflow=False),
-    # 'sublead_bjet_sigmapT_over_RegPt': hist.axis.Regular(50, 0., 0.02, name='var', label=r'$j2 \sigma p_{T} / p_{T}$', growth=False, underflow=False, overflow=False),
-
-    # # jet variables
-    # 'n_jets': hist.axis.Integer(0, 10, name='var', label=r'$n_{jets}$', growth=False, underflow=False, overflow=False), 
-    # 'nonRes_chi_t0': hist.axis.Regular(40, 0., 150, name='var', label=r'$\chi_{t0}^2$', growth=False, underflow=False, overflow=False), 
-    # 'nonRes_chi_t1': hist.axis.Regular(30, 0., 500, name='var', label=r'$\chi_{t1}^2$', growth=False, underflow=False, overflow=False), 
-
-    # # lepton variables
-    # 'lepton1_pt': hist.axis.Regular(40, 0., 200., name='var', label=r'lead lepton $p_T$ [GeV]', growth=False, underflow=False, overflow=False), 
-    # # 'lepton1_pfIsoId': hist.axis.Integer(0, 12, name='var', label=r'$l_{lead}$ PF IsoId', growth=False, underflow=False, overflow=False), 
-    # 'lepton1_pfIsoId': hist.axis.Regular(12, 0, 12, name='var', label=r'$l_{lead}$ PF IsoId', growth=False, underflow=False, overflow=False), 
-    # 'lepton1_mvaID': hist.axis.Regular(50, -1., 1., name='var', label=r'$\l_{lead}$ MVA ID', growth=False, underflow=False, overflow=False),  
-
-    # # diphoton variables
-    # 'pt': hist.axis.Regular(40, 20., 2000, name='var', label=r' $\gamma\gamma p_{T}$ [GeV]', growth=False, underflow=False, overflow=False),
-    # 'eta': hist.axis.Regular(20, -5., 5., name='var', label=r'$\gamma\gamma \eta$', growth=False, underflow=False, overflow=False), 
-
-    # # angular (cos) variables
-    # 'nonRes_CosThetaStar_CS': hist.axis.Regular(20, -1, 1, name='var', label=r'cos$(\theta_{CS})$', growth=False, underflow=False, overflow=False), 
-    # 'nonRes_CosThetaStar_jj': hist.axis.Regular(20, -1, 1, name='var', label=r'cos$(\theta_{jj})$', growth=False, underflow=False, overflow=False), 
-    # 'nonRes_CosThetaStar_gg': hist.axis.Regular(50, -1., 1., name='var', label=r'cos$(\theta_{gg})$', growth=False, underflow=False, overflow=False),
-
-    # # photon variables
-    # 'lead_mvaID': hist.axis.Regular(50, -1., 1., name='var', label=r'$\gamma_{lead}$ MVA ID', growth=False, underflow=False, overflow=False), 
-    # 'lead_sigmaE_over_E': hist.axis.Regular(50, 0., 0.06, name='var', label=r'$\gamma_1 \sigma {E} / E$', growth=False, underflow=False, overflow=False), 
-    # # ----------
-    # 'sublead_mvaID': hist.axis.Regular(50, -1., 1., name='var', label=r'$\gamma_{sublead}$ MVA ID', growth=False, underflow=False, overflow=False),
-    # 'sublead_sigmaE_over_E': hist.axis.Regular(50, 0., 0.06, name='var', label=r'$\gamma_2 \sigma {E} / E$', growth=False, underflow=False, overflow=False),
-
-    # # dijet variables
-    # 'dijet_PNetRegPt': hist.axis.Regular(100, 0., 500., name='var', label=r'jj $p_T$ [GeV]', growth=False, underflow=False, overflow=False),
-
-    # # HH variables
-    # 'HH_PNetRegPt': hist.axis.Regular(100, 0., 700., name='var', label=r'HH $p_T$ [GeV]', growth=False, underflow=False, overflow=False), 
-    # 'HH_PNetRegEta': hist.axis.Regular(50, -5., 5., name='var', label=r'HH $\eta$', growth=False, underflow=False, overflow=False),
-
-    # # ATLAS variables #
-    # 'RegPt_balance': hist.axis.Regular(100, 0., 2., name='var', label=r'$p_{T,HH} / (p_{T,\gamma1} + p_{T,\gamma2} + p_{T,j1} + p_{T,j2})$', growth=False, underflow=False, overflow=False), 
-    
-    # # VH variables #
-    # 'DeltaPhi_jj': hist.axis.Regular(20, -3.2, 3.2, name='var', label=r'$\Delta\phi (j_1,j_2)$', growth=False, underflow=False, overflow=False),
-    # 'DeltaEta_jj': hist.axis.Regular(20, 0., 10., name='var', label=r'$\Delta\eta (j_1,j_2)$', growth=False, underflow=False, overflow=False),
-    # 'isr_jet_RegPt': hist.axis.Regular(100, 0., 200., name='var', label=r'ISR jet $p_T$ [GeV]', growth=False, underflow=False, overflow=False),
-    # 'DeltaPhi_isr_jet_z': hist.axis.Regular(20, -3.2, 3.2, name='var', label=r'$\Delta\phi (j_{ISR},jj)$', growth=False, underflow=False, overflow=False),
-
-    # # BDT output #
-    # 'MultiBDT_output': hist.axis.Regular(100, 0., 1., name='var', label=r'Multiclass BDT output', growth=False, underflow=False, overflow=False), 
+    # single photon variables
+    'lead_pt': hist.axis.Regular(40, 20., 500., name='var', label=r'lead $\gamma$ $p_{T}$ [GeV]', growth=False, underflow=False, overflow=False),
+    'sublead_pt': hist.axis.Regular(40, 20., 500., name='var', label=r'sublead $\gamma$ $p_{T}$ [GeV]', growth=False, underflow=False, overflow=False)
 }
 BLINDED_VARIABLES = {
     # diphoton variables
@@ -173,7 +113,7 @@ def get_lumi(era):
             for sub_era, sub_lumi in LUMINOSITIES.items():
                 if re.search(sub_era, split_era) is not None: lumi_total += sub_lumi
 
-def sideband_cuts(sample):
+def sideband_cuts(sample, pathway=0):
     """
     Builds the event_mask used to do data-mc comparison in a sideband.
     """
@@ -191,11 +131,43 @@ def sideband_cuts(sample):
         # ) & (  # good photon cuts (for boosted regime)
         #     (sample['lead_mvaID'] > 0.)
         #     & (sample['sublead_mvaID'] > 0.)
-        ) & (sample['fatjet1_pt'] > 250)
+        # )
+        # ) & (sample['fatjet1_pt'] > 250)
+        )
     )
+
+    if pathway == 0:
+        event_mask = event_mask & (
+            (sample['Diphoton30_22_R9Id_OR_IsoCaloId_AND_HE_R9Id_Mass90'])
+            | (sample['Diphoton30_22_R9Id_OR_IsoCaloId_AND_HE_R9Id_Mass95'])
+        )
+    elif pathway == 1:
+        event_mask = event_mask & (
+            (sample['DiphotonMVA14p25_Mass90'])
+            | (sample['DiphotonMVA14p25_Tight_Mass90'])
+        )
+    elif pathway == 2:
+        event_mask = event_mask & (
+            (sample['Diphoton30_22_R9Id_OR_IsoCaloId_AND_HE_R9Id_Mass90'])
+            | (sample['Diphoton30_22_R9Id_OR_IsoCaloId_AND_HE_R9Id_Mass95'])
+        ) & ~(
+            (sample['DiphotonMVA14p25_Mass90'])
+            | (sample['DiphotonMVA14p25_Tight_Mass90'])
+        )
+    elif pathway == 3:
+        event_mask = event_mask & (
+            (sample['DiphotonMVA14p25_Mass90'])
+            | (sample['DiphotonMVA14p25_Tight_Mass90'])
+        ) & ~(
+            (sample['Diphoton30_22_R9Id_OR_IsoCaloId_AND_HE_R9Id_Mass90'])
+            | (sample['Diphoton30_22_R9Id_OR_IsoCaloId_AND_HE_R9Id_Mass95'])
+        )
+
     sample[MC_DATA_MASK] = event_mask
 
-    if 'eventWeight' in sample.fields: 
+    if 'eventWeight' in sample.fields:
+        if sample['sample_name'][0] == 'VBFToHH':
+            sample['eventWeight'] = sample['eventWeight'] * (LUMINOSITIES['total_lumi'] / (LUMINOSITIES['total_lumi'] - LUMINOSITIES['2024'] - LUMINOSITIES['2022postEE']))
         sample['eventWeight'] = sample['eventWeight'] * (LUMINOSITIES['total_lumi'] / (LUMINOSITIES['total_lumi'] - LUMINOSITIES['2024']))
 
 def get_mc_dir_lists(dir_lists: dict):
@@ -343,9 +315,7 @@ def plot_ratio(
         arr[arr == 0] = np.nan
         arr[np.isinf(arr)] = np.nan
 
-    mpl_ax.set_ylim(0., 2.5)
-    if np.min(ratio - numer_err) > 0.8 and np.max(ratio + numer_err) < 1.2:
-        mpl_ax.set_ylim(0.8, 1.2)
+    mpl_ax.set_ylim(0.25, 4.)
     mpl_ax.axhline(
         central_value, color="black", linestyle="solid", lw=1.
     )
@@ -385,13 +355,14 @@ def datamc_plot(
     """
     # Initiate figure
     fig, axs = plt.subplots(
-        2, 1, sharex=True, height_ratios=[4,1], figsize=(10, 8)
+        2, 1, sharex=True, height_ratios=[4,1], figsize=(20, 16)
     )
     linewidth=2.
 
     hep.histplot(
         list(mc_hists.values()), label=list(mc_hists.keys()), 
         yerr=np.vstack((np.tile(np.zeros_like(ratio_dict['numer_err']), (len(mc_hists)-1, 1)), ratio_dict['numer_err'])),
+        # yerr=ratio_dict['numer_err']
         stack=True, ax=axs[0], linewidth=3, histtype="fill", sort="yield", density=density
     )
     
@@ -413,7 +384,8 @@ def datamc_plot(
     hep.cms.lumitext(f"{era} {lumi:.2f}" + r"fb$^{-1}$ (13.6 TeV)", ax=axs[0])
     hep.cms.text("Work in Progress", ax=axs[0])
     # Plot legend properly
-    axs[0].legend()
+    axs[0].legend(loc='center left', bbox_to_anchor=(1, 0.5), reverse=True)
+    plt.tight_layout(rect=(0, 0.01, 1, 1))
     # Push the stack and ratio plots closer together
     fig.subplots_adjust(hspace=0.05)
     # Plot x_axis label properly
@@ -437,7 +409,7 @@ def plot(
     Plots and saves out the data-MC comparison histogram
     """
     # Initiate figure
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(20, 16))
     linewidth=2.
 
     hist_names = list(hists.keys())
@@ -447,7 +419,7 @@ def plot(
         hep.histplot(
             hists[hist_name], label=hist_name, 
             yerr=hists[hist_name].variances() if (APPLY_WEIGHTS and re.search('mc', hist_name.lower()) is not None) else True,
-            ax=ax, lw=linewidth, histtype=histtypes[hist_names],
+            ax=ax, lw=linewidth, histtype=histtypes[hist_name],
             density=density
         )
 
@@ -455,12 +427,13 @@ def plot(
     hep.cms.lumitext(f"{era} {lumi:.2f}" + r"fb$^{-1}$ (13.6 TeV)", ax=ax)
     hep.cms.text("Work in Progress", ax=ax)
     # Plot legend properly
-    ax.legend()
+    ax.legend(loc='center left', bbox_to_anchor=(1, 0.5), reverse=True)
+    plt.tight_layout(rect=(0, 0.01, 1, 1))
     # Push the stack and ratio plots closer together
     fig.subplots_adjust(hspace=0.05)
     # Plot x_axis label properly
     ax.set_xlabel(hists[hist_names[0]].axes.label[0])
-    ax.set_yscale('linear')
+    ax.set_yscale('log')
     # Save out the plot
     destdir = os.path.join(DESTDIR, rel_dirpath, '')
     if not os.path.exists(destdir):
@@ -476,6 +449,14 @@ def get_concat_samples(sample_dirs: dict, save=False):
         print('======================== \n', dir_name+" started")
         sample_pqs[dir_name] = {}
 
+        pathway = 0
+        if re.search('MVATRG', dir_name) is not None:
+            pathway = 1
+        elif re.search('R9diffTRG', dir_name) is not None:
+            pathway = 2
+        elif re.search('MVAdiffTRG', dir_name) is not None:
+            pathway = 3
+
         for sample_era, sample_list in dir_dict.items():
             print('======================== \n', sample_era+" started")
             sample_pqs[dir_name][sample_era] = []
@@ -484,7 +465,12 @@ def get_concat_samples(sample_dirs: dict, save=False):
                 print('======================== \n', samplefilepath[:samplefilepath.rfind('.')]+" started")
 
                 sample = ak.from_parquet(samplefilepath)
-                sideband_cuts(sample)
+
+                if 'DiphotonMVA14p25_Mass90' not in sample.fields: 
+                    print('no MVA trg')
+                    continue
+
+                sideband_cuts(sample, pathway=pathway)
                 sample_pqs[dir_name][sample_era].append(
                     slimmed_parquet(
                         sample, 
@@ -495,14 +481,12 @@ def get_concat_samples(sample_dirs: dict, save=False):
                 if save:
                     output_pq_filepath = (
                         samplefilepath[:samplefilepath.find('Run3_202')+len(lpc_filegroup('202x'))]
-                        + '_Cut_output_'
+                        + '_Cut_output'
                         + samplefilepath[samplefilepath.find('Run3_202')+len(lpc_filegroup('202x')):]
                     )
                     if not os.path.exists(output_pq_filepath[:output_pq_filepath.rfind('/')]):
                         os.makedirs(output_pq_filepath[:output_pq_filepath.rfind('/')])
-                    print(samplefilepath)
-                    print(output_pq_filepath)
-                    # ak.to_parquet(sample[MC_DATA_MASK], output_pq_filepath)
+                    ak.to_parquet(sample[MC_DATA_MASK], output_pq_filepath)
                     print(f"======================== \nSaved out new file at:\n{output_pq_filepath}")
 
                 del sample
@@ -664,17 +648,39 @@ if __name__ == '__main__':
             os.path.join(LPC_FILEPREFIX_22, "postBPix", "GJetPt40", ""): None,
             # os.path.join(LPC_FILEPREFIX_24, "GJetPt40", ""): None,
         },
-        # 'MC-2022-24-VBFToHH': {
-        #     os.path.join(LPC_FILEPREFIX_22, "preEE", "VBFHHto2B2G_CV_1_C2V_1_C3_1", ""): None,
-        #     # os.path.join(LPC_FILEPREFIX_22, "postEE", "VBFHHto2B2G_CV_1_C2V_1_C3_1", ""): None,
-        #     os.path.join(LPC_FILEPREFIX_23, "preBPix", "VBFHHto2B2G_CV_1_C2V_1_C3_1", ""): None,
-        #     os.path.join(LPC_FILEPREFIX_23, "postBPix", "VBFHHto2B2G_CV_1_C2V_1_C3_1", ""): None,
-        #     # os.path.join(LPC_FILEPREFIX_24, "VBFHHto2B2G_CV_1_C2V_1_C3_1", ""): None,
-        # }
+        'MC-2022-24-VBFToHH': {
+            os.path.join(LPC_FILEPREFIX_22, "preEE", "VBFHHto2B2G_CV_1_C2V_1_C3_1", ""): None,
+            # os.path.join(LPC_FILEPREFIX_22, "postEE", "VBFHHto2B2G_CV_1_C2V_1_C3_1", ""): None,
+            os.path.join(LPC_FILEPREFIX_23, "preBPix", "VBFHHto2B2G_CV_1_C2V_1_C3_1", ""): None,
+            os.path.join(LPC_FILEPREFIX_23, "postBPix", "VBFHHto2B2G_CV_1_C2V_1_C3_1", ""): None,
+            # os.path.join(LPC_FILEPREFIX_24, "VBFHHto2B2G_CV_1_C2V_1_C3_1", ""): None,
+        }
+    }
+
+    # main(
+    #     sample_dirs, density=False,
+    #     era="2022-24", lumi=LUMINOSITIES["total_lumi"],
+    #     plottype='Data/MC',
+    #     # save=True
+    # )
+
+    sample_dirs = {
+        'Data-2024-R9TRG': {
+            os.path.join(LPC_FILEPREFIX_24[:-len('sim/')], "data", ""): None
+        },
+        'Data-2024-MVATRG': {
+            os.path.join(LPC_FILEPREFIX_24[:-len('sim/')], "data", ""): None
+        },
+        'Data-2024-R9diffTRG': {
+            os.path.join(LPC_FILEPREFIX_24[:-len('sim/')], "data", ""): None
+        },
+        'Data-2024-MVAdiffTRG': {
+            os.path.join(LPC_FILEPREFIX_24[:-len('sim/')], "data", ""): None
+        },
     }
 
     main(
         sample_dirs, density=False,
-        era="2022-24", lumi=LUMINOSITIES["total_lumi"],
-        plottype='Data/MC'
+        era="2024", lumi=LUMINOSITIES["2024"],
+        # plottype='Data/MC',
     )
