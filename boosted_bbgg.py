@@ -182,16 +182,16 @@ def sideband_cuts(sample):
         sample["Res_has_atleast_one_fatjet"]
         & (
             sample['fiducialGeometricFlag'] if 'fiducialGeometricFlag' in sample.fields else sample['pass_fiducial_geometric']
-        ) & (  # fatjet cuts
-            (sample['fatjet1_pt'] > 250)
-            & (
-                (sample['fatjet1_mass'] > 100)  # fatjet1_msoftdrop
-                & (sample['fatjet1_mass'] < 160)
-            ) & (sample['fatjet1_particleNet_XbbVsQCD'] > 0.8)
-        ) & (  # good photon cuts (for boosted regime)
-            (sample['lead_mvaID'] > 0.)
-            & (sample['sublead_mvaID'] > 0.)
-        )
+        # ) & (  # fatjet cuts
+        #     (sample['fatjet1_pt'] > 250)
+        #     & (
+        #         (sample['fatjet1_mass'] > 100)  # fatjet1_msoftdrop
+        #         & (sample['fatjet1_mass'] < 160)
+        #     ) & (sample['fatjet1_particleNet_XbbVsQCD'] > 0.8)
+        # ) & (  # good photon cuts (for boosted regime)
+        #     (sample['lead_mvaID'] > 0.)
+        #     & (sample['sublead_mvaID'] > 0.)
+        ) & (sample['fatjet1_pt'] > 250)
     )
     sample[MC_DATA_MASK] = event_mask
 
@@ -305,8 +305,8 @@ def datamc_generate_hists(
     
     # Generate ratio dict
     ratio_dict = {
-        'numer_values': np.sum([mc_hist.values() for mc_hist in mc_hists]),
-        'numer_err': np.sum([mc_hist.variances() for mc_hist in mc_hists]),
+        'numer_values': np.sum([mc_hist.values() for mc_hist in mc_hists.values()]),
+        'numer_err': np.sum([mc_hist.variances() for mc_hist in mc_hists.values()]),
         'denom_values': data_hist.values(),
         'denom_err': np.sqrt(data_hist.values()),
     }
@@ -391,7 +391,7 @@ def datamc_plot(
 
     hep.histplot(
         list(mc_hists.values()), label=list(mc_hists.keys()), 
-        yerr=np.vstack((np.tile(np.zeros_like(ratio_dict['w2']), (len(mc_hists)-1, 1)), ratio_dict['w2'])),
+        yerr=np.vstack((np.tile(np.zeros_like(ratio_dict['numer_err']), (len(mc_hists)-1, 1)), ratio_dict['numer_err'])),
         stack=True, ax=axs[0], linewidth=3, histtype="fill", sort="yield", density=density
     )
     
@@ -419,7 +419,7 @@ def datamc_plot(
     # Plot x_axis label properly
     axs[0].set_xlabel('')
     axs[1].set_xlabel(data_hist.axes.label[0])
-    axs[0].set_yscale('linear')
+    axs[0].set_yscale('log')
     # Save out the plot
     destdir = os.path.join(DESTDIR, rel_dirpath, '')
     if not os.path.exists(destdir):
@@ -547,19 +547,11 @@ def main(
     concat_samples = get_concat_samples(sample_dirs, save=save)
 
     plot_list = []
-    if plottype == 'comparison':
-        plot_list.append(concat_samples)
-    elif plottype == 'split':
+    if plottype == 'split':
         for dir_name, dir_dict in concat_samples:
             plot_list.append({dir_name: dir_dict})
-    elif plottype == 'Data/MC':
-        simplified_concat = {'Data': {}, 'MC': {}}
-        for dir_name, dir_dict in concat_samples:
-            if re.search('data', dir_name.lower()) is not None:
-                simplified_concat['Data'][dir_name] = dir_dict
-            else:
-                simplified_concat['MC'][dir_name] = dir_dict
-        plot_list.append(simplified_concat)
+    else:
+        plot_list.append(concat_samples)
 
     for concat_dict in plot_list:
         # Ploting over variables for MC and Data
