@@ -77,9 +77,17 @@ BLINDED_VARIABLES = {
     )
 }
 EXTRA_MC_VARIABLES = {
-    'eventWeight', MC_DATA_MASK
+    'eventWeight', 
+    'dZ', 'mass',
+    'weight_ElectronVetoSF', 'weight_PreselSF', 'weight_TriggerSF', 'weight_Pileup',
+    'weight_bTagSF_sys_lf', 
+    'weight_bTagSF_sys_lfstats1', 'weight_bTagSF_sys_lfstats2',
+    'weight_bTagSF_sys_hf', 
+    'weight_bTagSF_sys_hfstats1', 'weight_bTagSF_sys_hfstats2',
+    MC_DATA_MASK
 }
 EXTRA_DATA_VARIABLES = {
+    'dZ', 'mass', 
     MC_DATA_MASK
 }
 
@@ -201,7 +209,7 @@ def slimmed_parquet(sample, extra_variables):
     Creates a new slim parquet.
     """
     return ak.zip(
-        {field: sample[field] for field in (set(VARIABLES.keys()) | set(BLINDED_VARIABLES.keys()) | extra_variables)}
+        {field: sample[field] for field in (set(VARIABLES.keys()) | set(BLINDED_VARIABLES.keys()) | extra_variables) & set(sample.fields)}
     )
 
 def concatenate_records(base_sample, added_sample):
@@ -657,30 +665,30 @@ if __name__ == '__main__':
         }
     }
 
-    # main(
-    #     sample_dirs, density=False,
-    #     era="2022-24", lumi=LUMINOSITIES["total_lumi"],
-    #     plottype='Data/MC',
-    #     # save=True
-    # )
-
-    sample_dirs = {
-        'Data-2024-R9TRG': {
-            os.path.join(LPC_FILEPREFIX_24[:-len('sim/')], "data", ""): None
-        },
-        'Data-2024-MVATRG': {
-            os.path.join(LPC_FILEPREFIX_24[:-len('sim/')], "data", ""): None
-        },
-        'Data-2024-R9diffTRG': {
-            os.path.join(LPC_FILEPREFIX_24[:-len('sim/')], "data", ""): None
-        },
-        'Data-2024-MVAdiffTRG': {
-            os.path.join(LPC_FILEPREFIX_24[:-len('sim/')], "data", ""): None
-        },
-    }
-
     main(
         sample_dirs, density=False,
-        era="2024", lumi=LUMINOSITIES["2024"],
-        # plottype='Data/MC',
+        era="2022-24", lumi=LUMINOSITIES["total_lumi"],
+        plottype='Data/MC',
+        # save=True
     )
+
+    # sample_dirs = {
+    #     'Data-2024-R9TRG': {
+    #         os.path.join(LPC_FILEPREFIX_24[:-len('sim/')], "data", ""): None
+    #     },
+    #     'Data-2024-MVATRG': {
+    #         os.path.join(LPC_FILEPREFIX_24[:-len('sim/')], "data", ""): None
+    #     },
+    #     'Data-2024-R9diffTRG': {
+    #         os.path.join(LPC_FILEPREFIX_24[:-len('sim/')], "data", ""): None
+    #     },
+    #     'Data-2024-MVAdiffTRG': {
+    #         os.path.join(LPC_FILEPREFIX_24[:-len('sim/')], "data", ""): None
+    #     },
+    # }
+
+    # main(
+    #     sample_dirs, density=False,
+    #     era="2024", lumi=LUMINOSITIES["2024"],
+    #     # plottype='Data/MC',
+    # )
