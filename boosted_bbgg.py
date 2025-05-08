@@ -78,7 +78,7 @@ BLINDED_VARIABLES = {
 }
 EXTRA_MC_VARIABLES = {
     'eventWeight', 
-    'dZ', 'mass',
+    'dZ', 'mass', 'HH_PNetRegMass',
     'weight_ElectronVetoSF', 'weight_PreselSF', 'weight_TriggerSF', 'weight_Pileup',
     'weight_bTagSF_sys_lf', 
     'weight_bTagSF_sys_lfstats1', 'weight_bTagSF_sys_lfstats2',
@@ -87,7 +87,7 @@ EXTRA_MC_VARIABLES = {
     MC_DATA_MASK
 }
 EXTRA_DATA_VARIABLES = {
-    'dZ', 'mass', 
+    'dZ', 'mass', 'HH_PNetRegMass',
     MC_DATA_MASK
 }
 
@@ -130,46 +130,46 @@ def sideband_cuts(sample, pathway=0):
         sample["Res_has_atleast_one_fatjet"]
         & (
             sample['fiducialGeometricFlag'] if 'fiducialGeometricFlag' in sample.fields else sample['pass_fiducial_geometric']
-        # ) & (  # fatjet cuts
-        #     (sample['fatjet1_pt'] > 250)
-        #     & (
-        #         (sample['fatjet1_mass'] > 100)  # fatjet1_msoftdrop
-        #         & (sample['fatjet1_mass'] < 160)
-        #     ) & (sample['fatjet1_particleNet_XbbVsQCD'] > 0.8)
-        # ) & (  # good photon cuts (for boosted regime)
-        #     (sample['lead_mvaID'] > 0.)
-        #     & (sample['sublead_mvaID'] > 0.)
-        # )
-        # ) & (sample['fatjet1_pt'] > 250)
+        ) & (  # fatjet cuts
+            (sample['fatjet1_pt'] > 250)
+            & (
+                (sample['fatjet1_mass'] > 100)  # fatjet1_msoftdrop
+                & (sample['fatjet1_mass'] < 160)
+            ) & (sample['fatjet1_particleNet_XbbVsQCD'] > 0.8)
+        ) & (  # good photon cuts (for boosted regime)
+            (sample['lead_mvaID'] > 0.)
+            & (sample['sublead_mvaID'] > 0.)
         )
+        # ) & (sample['fatjet1_pt'] > 250)
+        # )
     )
 
-    if pathway == 0:
-        event_mask = event_mask & (
-            (sample['Diphoton30_22_R9Id_OR_IsoCaloId_AND_HE_R9Id_Mass90'])
-            | (sample['Diphoton30_22_R9Id_OR_IsoCaloId_AND_HE_R9Id_Mass95'])
-        )
-    elif pathway == 1:
-        event_mask = event_mask & (
-            (sample['DiphotonMVA14p25_Mass90'])
-            | (sample['DiphotonMVA14p25_Tight_Mass90'])
-        )
-    elif pathway == 2:
-        event_mask = event_mask & (
-            (sample['Diphoton30_22_R9Id_OR_IsoCaloId_AND_HE_R9Id_Mass90'])
-            | (sample['Diphoton30_22_R9Id_OR_IsoCaloId_AND_HE_R9Id_Mass95'])
-        ) & ~(
-            (sample['DiphotonMVA14p25_Mass90'])
-            | (sample['DiphotonMVA14p25_Tight_Mass90'])
-        )
-    elif pathway == 3:
-        event_mask = event_mask & (
-            (sample['DiphotonMVA14p25_Mass90'])
-            | (sample['DiphotonMVA14p25_Tight_Mass90'])
-        ) & ~(
-            (sample['Diphoton30_22_R9Id_OR_IsoCaloId_AND_HE_R9Id_Mass90'])
-            | (sample['Diphoton30_22_R9Id_OR_IsoCaloId_AND_HE_R9Id_Mass95'])
-        )
+    # if pathway == 0:
+    #     event_mask = event_mask & (
+    #         (sample['Diphoton30_22_R9Id_OR_IsoCaloId_AND_HE_R9Id_Mass90'])
+    #         | (sample['Diphoton30_22_R9Id_OR_IsoCaloId_AND_HE_R9Id_Mass95'])
+    #     )
+    # elif pathway == 1:
+    #     event_mask = event_mask & (
+    #         (sample['DiphotonMVA14p25_Mass90'])
+    #         | (sample['DiphotonMVA14p25_Tight_Mass90'])
+    #     )
+    # elif pathway == 2:
+    #     event_mask = event_mask & (
+    #         (sample['Diphoton30_22_R9Id_OR_IsoCaloId_AND_HE_R9Id_Mass90'])
+    #         | (sample['Diphoton30_22_R9Id_OR_IsoCaloId_AND_HE_R9Id_Mass95'])
+    #     ) & ~(
+    #         (sample['DiphotonMVA14p25_Mass90'])
+    #         | (sample['DiphotonMVA14p25_Tight_Mass90'])
+    #     )
+    # elif pathway == 3:
+    #     event_mask = event_mask & (
+    #         (sample['DiphotonMVA14p25_Mass90'])
+    #         | (sample['DiphotonMVA14p25_Tight_Mass90'])
+    #     ) & ~(
+    #         (sample['Diphoton30_22_R9Id_OR_IsoCaloId_AND_HE_R9Id_Mass90'])
+    #         | (sample['Diphoton30_22_R9Id_OR_IsoCaloId_AND_HE_R9Id_Mass95'])
+    #     )
 
     sample[MC_DATA_MASK] = event_mask
 
@@ -355,7 +355,7 @@ def ratio_error(numer_values, denom_values, numer_err, denom_err):
 def datamc_plot(
     variable: str, mc_hists: dict, data_hist, ratio_dict: dict,
     era='2022postEE', lumi=0.0,
-    rel_dirpath='', histtypes=None, density=False,
+    rel_dirpath='', density=False,
 ):
     
     """
@@ -474,9 +474,9 @@ def get_concat_samples(sample_dirs: dict, save=False):
 
                 sample = ak.from_parquet(samplefilepath)
 
-                if 'DiphotonMVA14p25_Mass90' not in sample.fields: 
-                    print('no MVA trg')
-                    continue
+                # if 'DiphotonMVA14p25_Mass90' not in sample.fields: 
+                #     print('no MVA trg')
+                #     continue
 
                 sideband_cuts(sample, pathway=pathway)
                 sample_pqs[dir_name][sample_era].append(
@@ -494,7 +494,7 @@ def get_concat_samples(sample_dirs: dict, save=False):
                     )
                     if not os.path.exists(output_pq_filepath[:output_pq_filepath.rfind('/')]):
                         os.makedirs(output_pq_filepath[:output_pq_filepath.rfind('/')])
-                    ak.to_parquet(sample[MC_DATA_MASK], output_pq_filepath)
+                    ak.to_parquet(sample[sample[MC_DATA_MASK]], output_pq_filepath)
                     print(f"======================== \nSaved out new file at:\n{output_pq_filepath}")
 
                 del sample
@@ -669,7 +669,7 @@ if __name__ == '__main__':
         sample_dirs, density=False,
         era="2022-24", lumi=LUMINOSITIES["total_lumi"],
         plottype='Data/MC',
-        # save=True
+        save=True
     )
 
     # sample_dirs = {
