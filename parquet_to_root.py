@@ -35,7 +35,7 @@ SYST_MAP = { # _up and _down
 }
 
 SIGNAL_SAMPLES = [
-    'GluGluToHH', 'VBFHHto2B2G',
+    'GluGluToHH', 'VBFHHTo2B2G',
 ]
 SINGLEH_SAMPLES = [ 
     'GluGluHToGG', 'ttHToGG', 'VBFHToGG', 'VHToGG', 'bbHToGG',
@@ -52,12 +52,12 @@ LUMINOSITIES['total_MClumi'] = LUMINOSITIES['2022'] + LUMINOSITIES['2023']  # b/
 MC_YEARS = ['2022', '2023']
 DATA_YEARS = ['2022', '2023', '2024']
 
-NOMINAL_VARIABLES = ['CMS_hgg_mass', 'dZ', 'weight']
+NOMINAL_VARIABLES = ['CMS_hgg_mass', 'dZ', 'weight', 'eventWeight']
 for direction in ['Up', 'Down']:
     NOMINAL_VARIABLES.extend(['weight_'+corr_weight+direction for corr_weight in CORR_WEIGHT_SYSTS])
     for year in MC_YEARS:
         NOMINAL_VARIABLES.extend(['weight_'+year+'_'+uncorr_weight+direction for uncorr_weight in UNCORR_WEIGHT_SYSTS])
-SYST_VARIABLES = ['CMS_hgg_mass', 'dZ', 'weight']
+SYST_VARIABLES = ['CMS_hgg_mass', 'dZ', 'weight', 'eventWeight']
 DATA_VARIABLES = ['CMS_hgg_mass']
 
 
@@ -113,14 +113,14 @@ def main():
                 if re.match(process, key) is not None:
                     f[key] = uproot.newtree({col:'float64' for col in df.columns})
                     f[key].extend({col: df[col].to_numpy() for col in df.columns})
-                    if not np.all([re.search(syst, key) for syst in SYST_MAP.values()]):
-                        Mgg_boundaries = (122.5, 127.5)
-                        df_mask = np.logical_and(
-                            df['CMS_hgg_mass'] > Mgg_boundaries[0],
-                            df['CMS_hgg_mass'] < Mgg_boundaries[1]
-                        )
-                        yield_sum = np.sum(df.loc[df_mask, 'weight'])
-                        print(f"{process} yield within {Mgg_boundaries[0]:.1f} < Mgg < {Mgg_boundaries[1]:.1f} window: {yield_sum:.3f}")
+                    # if not np.all([re.search(syst, key) for syst in SYST_MAP.values()]):
+                    #     Mgg_boundaries = (122.5, 127.5)
+                    #     df_mask = np.logical_and(
+                    #         df['CMS_hgg_mass'] > Mgg_boundaries[0],
+                    #         df['CMS_hgg_mass'] < Mgg_boundaries[1]
+                    #     )
+                    #     yield_sum = np.sum(df.loc[df_mask, 'eventWeight'])
+                    #     print(f"{process} yield within {Mgg_boundaries[0]:.1f} < Mgg < {Mgg_boundaries[1]:.1f} window: {yield_sum:.3f}")
 
 
     # Data dataframes
