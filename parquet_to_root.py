@@ -9,7 +9,7 @@ import pandas as pd
 import uproot3 as uproot
 
 
-output_fileprefix = os.path.join(os.getcwd(), 'BoostedRootFiles')
+output_fileprefix = os.path.join(os.getcwd(), '../CombineFits/BoostedRootFiles')
 if not os.path.exists(output_fileprefix):
     os.makedirs(output_fileprefix)
 lpc_fileprefix = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v2/"
@@ -28,14 +28,15 @@ UNCORR_WEIGHT_SYSTS = [  # Up and Down
     'bTagSF_sys_lfstats1', 'bTagSF_sys_lfstats2',
     'bTagSF_sys_hfstats1', 'bTagSF_sys_hfstats2',
 ]
-SYST_MAP = { # _up and _down
-    'Et_dependent_ScaleEB': 'EBScale', 'Et_dependent_ScaleEE': 'EEScale', 
-    'Et_dependent_Smearing': 'Smearing', 
-    'jec_syst_Total': 'JEC', 'jer_syst': 'JER'
-}
+# SYST_MAP = { # _up and _down
+#     'Et_dependent_ScaleEB': 'EBScale', 'Et_dependent_ScaleEE': 'EEScale', 
+#     'Et_dependent_Smearing': 'Smearing', 
+#     'jec_syst_Total': 'JEC', 'jer_syst': 'JER'
+# }
+SYST_MAP = {}
 
 SIGNAL_SAMPLES = [
-    'GluGluToHH', 'VBFHHTo2B2G',
+    'GluGluToHH', 'VBFHH',
 ]
 SINGLEH_SAMPLES = [ 
     'GluGluHToGG', 'ttHToGG', 'VBFHToGG', 'VHToGG', 'bbHToGG',
@@ -106,7 +107,24 @@ def main():
                     else:
                         MCDFs_dict[f"{sample_name}{MC_TTree_name}{syst_name}"] = pd.concat([MCDFs_dict[f"{sample_name}{MC_TTree_name}{syst_name}"], year_df])
 
-    for process in SIGNAL_SAMPLES+SINGLEH_SAMPLES:
+    for variation in ['nominal']+list(SYST_MAP.keys()):
+        directions = [''] if variation == 'nominal' else ['_up', '_down']
+
+        for direction in directions:
+            syst_name = '' if variation == 'nominal' else '_'+SYST_MAP[variation]+direction[1:].upper()
+                
+            for sample_name in SINGLEH_SAMPLES:
+
+                if f"singleH{MC_TTree_name}{syst_name}" not in MCDFs_dict.keys():
+                    MCDFs_dict[f"singleH{MC_TTree_name}{syst_name}"] = copy.deepcopy(
+                        MCDFs_dict[f"{sample_name}{MC_TTree_name}{syst_name}"]
+                    )
+                else:
+                    MCDFs_dict[f"singleH{MC_TTree_name}{syst_name}"] = pd.concat([
+                        MCDFs_dict[f"singleH{MC_TTree_name}{syst_name}"], MCDFs_dict[f"{sample_name}{MC_TTree_name}{syst_name}"]
+                    ])
+
+    for process in SIGNAL_SAMPLES+SINGLEH_SAMPLES+['singleH']:
         print(f'writing 2223_Boosted_{process}.root')
         with uproot.recreate(os.path.join(output_fileprefix, f"2223_Boosted_{process}.root")) as f:
             for key, df in MCDFs_dict.items():
@@ -123,32 +141,32 @@ def main():
                     #     print(f"{process} yield within {Mgg_boundaries[0]:.1f} < Mgg < {Mgg_boundaries[1]:.1f} window: {yield_sum:.3f}")
 
 
-    # Data dataframes
-    Data_TTree_name = 'Data_13p6TeV_cat0'
-    DataDFs_dict = {}
-    for year in DATA_YEARS:
-        file_prefix = os.path.join(lpc_fileprefix, lpc_filegroup(year), 'data', '')
+    # # Data dataframes
+    # Data_TTree_name = 'Data_13p6TeV_cat0'
+    # DataDFs_dict = {}
+    # for year in DATA_YEARS:
+    #     file_prefix = os.path.join(lpc_fileprefix, lpc_filegroup(year), 'data', '')
 
-        sample_filepaths = glob.glob(os.path.join(file_prefix, "**", END_FILEPATH), recursive=True)
-        sample_filepaths.sort()
+    #     sample_filepaths = glob.glob(os.path.join(file_prefix, "**", END_FILEPATH), recursive=True)
+    #     sample_filepaths.sort()
 
-        if len(sample_filepaths) < 1: continue
+    #     if len(sample_filepaths) < 1: continue
 
-        year_df = pd.concat([pd.json_normalize(pd.read_parquet(sample_filepath)['']) for sample_filepath in sample_filepaths], ignore_index=True)
-        year_df['CMS_hgg_mass'] = year_df['mass']  # Add Hgg mass variable
+    #     year_df = pd.concat([pd.json_normalize(pd.read_parquet(sample_filepath)['']) for sample_filepath in sample_filepaths], ignore_index=True)
+    #     year_df['CMS_hgg_mass'] = year_df['mass']  # Add Hgg mass variable
 
-        year_df = year_df[DATA_VARIABLES]
+    #     year_df = year_df[DATA_VARIABLES]
 
-        if Data_TTree_name not in DataDFs_dict.keys():
-            DataDFs_dict[Data_TTree_name] = copy.deepcopy(year_df)
-        else:
-            DataDFs_dict[Data_TTree_name] = pd.concat([DataDFs_dict[Data_TTree_name], year_df])
+    #     if Data_TTree_name not in DataDFs_dict.keys():
+    #         DataDFs_dict[Data_TTree_name] = copy.deepcopy(year_df)
+    #     else:
+    #         DataDFs_dict[Data_TTree_name] = pd.concat([DataDFs_dict[Data_TTree_name], year_df])
 
-    print(f'writing 2223_Boosted_Data.root')
-    with uproot.recreate(os.path.join(output_fileprefix, '2223_Boosted_Data.root')) as f:
-        for key, df in DataDFs_dict.items():
-            f[key] = uproot.newtree({col:'float64' for col in df.columns})
-            f[key].extend({col: df[col].to_numpy() for col in df.columns})
+    # print(f'writing 2223_Boosted_Data.root')
+    # with uproot.recreate(os.path.join(output_fileprefix, '2223_Boosted_Data.root')) as f:
+    #     for key, df in DataDFs_dict.items():
+    #         f[key] = uproot.newtree({col:'float64' for col in df.columns})
+    #         f[key].extend({col: df[col].to_numpy() for col in df.columns})
 
 
 if __name__ == '__main__':

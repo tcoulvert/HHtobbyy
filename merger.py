@@ -16,11 +16,11 @@ vec.register_awkward()
 # lpc_redirector = "root://cmseos.fnal.gov/"
 # lxplus_redirector = "root://eosuser.cern.ch/"
 # lxplus_fileprefix = "/eos/cms/store/group/phys_b2g/HHbbgg/HiggsDNA_parquet/v2"
-# lpc_fileprefix = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v2/"
-lpc_fileprefix = "/eos/uscms/store/user/tsievert/HiggsDNA_parquet/v2/"
+lpc_fileprefix = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v2/"
+# lpc_fileprefix = "/eos/uscms/store/user/tsievert/HiggsDNA_parquet/v2/"
 FILL_VALUE = -999
 NUM_JETS = 10
-FORCE_RERUN = False
+FORCE_RERUN = True
 
 # xrdcp -r root://cmseos.fnal.gov//store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v2/
 
@@ -239,7 +239,7 @@ def get_merged_filepath(unmerged_filepath, datasettype):
         and re.search("data", merged_filepath) is not None
     ):
         merged_filepath = merged_filepath[:merged_filepath.find('nominal')]
-    
+        
     return merged_filepath
 
 
@@ -326,15 +326,15 @@ def correct_weights(sample, sample_filepath_list, computebtag=True):
 
 def main():
     sim_dir_lists = {
-        # os.path.join(lpc_fileprefix, "Run3_2022", "sim", "preEE", ""): None,
-        # os.path.join(lpc_fileprefix, "Run3_2022", "sim", "postEE", ""): None,
-        # os.path.join(lpc_fileprefix, "Run3_2023", "sim", "preBPix", ""): None,
-        # os.path.join(lpc_fileprefix, "Run3_2023", "sim", "postBPix", ""): None,
+        os.path.join(lpc_fileprefix, "Run3_2022", "sim", "preEE", ""): None,
+        os.path.join(lpc_fileprefix, "Run3_2022", "sim", "postEE", ""): None,
+        os.path.join(lpc_fileprefix, "Run3_2023", "sim", "preBPix", ""): None,
+        os.path.join(lpc_fileprefix, "Run3_2023", "sim", "postBPix", ""): None,
     }
     data_dir_lists = {
         # os.path.join(lpc_fileprefix, "Run3_2022", "data", ""): None,
         # os.path.join(lpc_fileprefix, "Run3_2023", "data", ""): None,
-        os.path.join(lpc_fileprefix, "Run3_2024", "data", ""): None,
+        # os.path.join(lpc_fileprefix, "Run3_2024", "data", ""): None,
     }
     
     # MC Era: total era luminosity [fb^-1] #
@@ -361,11 +361,11 @@ def main():
 
         # non-resonant background #
         # https://xsdb-temp.app.cern.ch/xsdb/?columns=37748736&currentPage=0&pageSize=10&searchQuery=DAS%3DGG-Box-3Jets_MGG-80_13p6TeV_sherpa
-        'GGJets': 88750, 
+        'GGJets': 88750., 
         # https://xsdb-temp.app.cern.ch/xsdb/?columns=37748736&currentPage=0&pageSize=10&searchQuery=DAS%3DGJet_PT-20to40_DoubleEMEnriched_MGG-80_TuneCP5_13p6TeV_pythia8
-        'GJetPt20To40': 242500, 
+        'GJetPt20To40': 242500., 
         # https://xsdb-temp.app.cern.ch/xsdb/?columns=37748736&currentPage=0&pageSize=10&searchQuery=DAS%3DGJet_PT-40_DoubleEMEnriched_MGG-80_TuneCP5_13p6TeV_pythia8
-        'GJetPt40': 919100, 
+        'GJetPt40': 919100., 
 
         # resonant background #
         # https://twiki.cern.ch/twiki/bin/view/LHCPhysics/CERNYellowReportPageAt13TeV#gluon_gluon_Fusion_Process
@@ -403,7 +403,13 @@ def main():
         
         # Other potential background samples
         # 'DDQCDGJets': 1,
-        'TTGG': 1,
+        'TTGG': 16.96,
+        'TTGJetPt10To100': 4216.,
+        'TTG_1Jets_PTG_10to100': 4216.,
+        'TTGJetPt100To200': 411.4,
+        'TTG_1Jets_PTG_100to200': 411.4,
+        'TTGJetPt200': 128.4,
+        'TTG_1Jets_PTG_200': 128.4,
     }
     sample_name_map = {
         'GluGlutoHHto2B2G_kl_1p00_kt_1p00_c2_0p00': 'GluGluToHH', 
@@ -423,6 +429,9 @@ def main():
         'WminusH_Hto2G_Wto2Q_M-125': 'W-HToQQGG', 
         'WplusH_Hto2G_Wto2Q_M-125': 'W+HToQQGG',
         'VBFHHto2B2G_CV_1_C2V_1_C3_1': 'VBFToHH',
+        'TTG_1Jets_PTG_10to100': 'TTGJetPt10To100',
+        'TTG_1Jets_PTG_100to200': 'TTGJetPt100To200',
+        'TTG_1Jets_PTG_200': 'TTGJetPt200',
     }
     
     # Pull MC sample dir_list
@@ -434,7 +443,9 @@ def main():
         if not FORCE_RERUN:
             try:
                 already_run_dirs_set = set(
-                    os.listdir(get_merged_filepath(sim_era))
+                    os.listdir(get_merged_filepath(sim_era, 'Resolved'))
+                ) & set(
+                    os.listdir(get_merged_filepath(sim_era, 'Boosted'))
                 )
             except:
                 FileNotFoundError
@@ -459,7 +470,9 @@ def main():
         if not FORCE_RERUN:
             try:
                 already_run_dirs_set = set(
-                    os.listdir(get_merged_filepath(data_era))
+                    os.listdir(get_merged_filepath(data_era, 'Resolved'))
+                ) & set(
+                    os.listdir(get_merged_filepath(data_era, 'Boosted'))
                 )
             except:
                 FileNotFoundError
@@ -479,13 +492,9 @@ def main():
         for dir_name in dir_list:
             sample_dirpath = os.path.join(sim_era, dir_name, "")
 
-            for sample_type in os.listdir(sample_dirpath):
+            if re.match('TTG', dir_name) is None: continue
 
-                if (
-                    re.search('GGJets', dir_name) is not None
-                    and re.search('preBPix', sim_era) is not None
-                    and re.search('nominal', sample_type) is None
-                ): continue
+            for sample_type in os.listdir(sample_dirpath):
 
                 print(sim_era[sim_era[:-1].rfind('/')+1:-1]+f': {dir_name} - {sample_type}')
                 sample_type_dirpath = os.path.join(sample_dirpath, sample_type, "")
