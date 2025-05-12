@@ -20,7 +20,7 @@ lpc_fileprefix = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parqu
 # lpc_fileprefix = "/eos/uscms/store/user/tsievert/HiggsDNA_parquet/v2/"
 FILL_VALUE = -999
 NUM_JETS = 10
-FORCE_RERUN = True
+FORCE_RERUN = False
 
 # xrdcp -r root://cmseos.fnal.gov//store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v2/
 
@@ -326,8 +326,8 @@ def correct_weights(sample, sample_filepath_list, computebtag=True):
 
 def main():
     sim_dir_lists = {
-        os.path.join(lpc_fileprefix, "Run3_2022", "sim", "preEE", ""): None,
-        os.path.join(lpc_fileprefix, "Run3_2022", "sim", "postEE", ""): None,
+        # os.path.join(lpc_fileprefix, "Run3_2022", "sim", "preEE", ""): None,
+        # os.path.join(lpc_fileprefix, "Run3_2022", "sim", "postEE", ""): None,
         os.path.join(lpc_fileprefix, "Run3_2023", "sim", "preBPix", ""): None,
         os.path.join(lpc_fileprefix, "Run3_2023", "sim", "postBPix", ""): None,
     }
@@ -391,7 +391,10 @@ def main():
 
         # kappa lambda scane signal samples #
         'GluGlutoHHto2B2G_kl_0p00_kt_1p00_c2_0p00': 34.43*0.0026,
+        'GluGlutoHHto2B2G_kl-0p00_kt-1p00_c2-0p00': 34.43*0.0026,
+        'GluGlutoHHto2B2G_kl-2p45_kt-1p00_c2-0p00': 34.43*0.0026,
         'GluGlutoHHto2B2G_kl_5p00_kt_1p00_c2_0p00': 34.43*0.0026,
+        'GluGlutoHHto2B2G_kl-5p00_kt-1p00_c2-0p00': 34.43*0.0026,
 
         # extra VH samples (produced by Irene) #
         # https://twiki.cern.ch/twiki/bin/view/LHCPhysics/CERNYellowReportPageAt13TeV#ppZH_Total_Cross_Section_with_ap +  https://pdg.lbl.gov/2018/listings/rpp2018-list-z-boson.pdf
@@ -491,8 +494,6 @@ def main():
 
         for dir_name in dir_list:
             sample_dirpath = os.path.join(sim_era, dir_name, "")
-
-            if re.match('TTG', dir_name) is None: continue
 
             for sample_type in os.listdir(sample_dirpath):
 

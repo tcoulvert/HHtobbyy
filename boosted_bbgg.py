@@ -130,17 +130,17 @@ def sideband_cuts(sample, pathway=0):
         sample["Res_has_atleast_one_fatjet"]
         & (
             sample['fiducialGeometricFlag'] if 'fiducialGeometricFlag' in sample.fields else sample['pass_fiducial_geometric']
-        # ) & (  # fatjet cuts
-        #     (sample['fatjet1_pt'] > 250)
-        #     & (
-        #         (sample['fatjet1_mass'] > 100)  # fatjet1_msoftdrop
-        #         & (sample['fatjet1_mass'] < 160)
-        #     ) & (sample['fatjet1_particleNet_XbbVsQCD'] > 0.8)
-        # ) & (  # good photon cuts (for boosted regime)
-        #     (sample['lead_mvaID'] > 0.)
-        #     & (sample['sublead_mvaID'] > 0.)
-        # )
-        ) & (sample['fatjet1_pt'] > 250)
+        ) & (  # fatjet cuts
+            (sample['fatjet1_pt'] > 250)
+            & (
+                (sample['fatjet1_mass'] > 100)  # fatjet1_msoftdrop
+                & (sample['fatjet1_mass'] < 160)
+            ) & (sample['fatjet1_particleNet_XbbVsQCD'] > 0.8)
+        ) & (  # good photon cuts (for boosted regime)
+            (sample['lead_mvaID'] > 0.)
+            & (sample['sublead_mvaID'] > 0.)
+        )
+        # ) & (sample['fatjet1_pt'] > 250)
         # )
     )
 
@@ -177,6 +177,12 @@ def sideband_cuts(sample, pathway=0):
         if sample['sample_name'][0] == 'VBFToHH':
             sample['eventWeight'] = sample['eventWeight'] * (LUMINOSITIES['total_lumi'] / (LUMINOSITIES['total_lumi'] - LUMINOSITIES['2024'] - LUMINOSITIES['2022postEE']))
         sample['eventWeight'] = sample['eventWeight'] * (LUMINOSITIES['total_lumi'] / (LUMINOSITIES['total_lumi'] - LUMINOSITIES['2024']))
+
+    if 'Diphoton30_22_R9Id_OR_IsoCaloId_AND_HE_R9Id_Mass90' in sample.fields:
+        sample[MC_DATA_MASK] = (sample[MC_DATA_MASK]) & (
+            (sample['Diphoton30_22_R9Id_OR_IsoCaloId_AND_HE_R9Id_Mass90'])  # old triggers
+            & (sample['Diphoton30_22_R9Id_OR_IsoCaloId_AND_HE_R9Id_Mass95'])
+        )
 
 def get_mc_dir_lists(dir_lists: dict):
     """

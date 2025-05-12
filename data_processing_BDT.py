@@ -42,6 +42,12 @@ def process_data(
             samples[sample_name]['nonRes_has_two_btagged_jets']
             & (
                 samples[sample_name]['fiducialGeometricFlag'] if 'fiducialGeometricFlag' in samples[sample_name].fields else samples[sample_name]['pass_fiducial_geometric']
+            ) & (
+                (
+                    samples[sample_name]['Diphoton30_22_R9Id_OR_IsoCaloId_AND_HE_R9Id_Mass90']
+                    & samples[sample_name]['Diphoton30_22_R9Id_OR_IsoCaloId_AND_HE_R9Id_Mass95']
+                ) 
+                if 'Diphoton30_22_R9Id_OR_IsoCaloId_AND_HE_R9Id_Mass90' in samples[sample_name].fields else (samples[sample_name]['mass'] > 0)
             )
         ]
         # if re.search('HH', sample_name) is not None:
