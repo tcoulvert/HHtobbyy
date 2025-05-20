@@ -77,12 +77,12 @@ def process_data(
     dont_include_vars = []
     high_level_fields = {
         # MET variables
-        'puppiMET_sumEt',  #heft
+        # 'puppiMET_sumEt',  #heft
         'puppiMET_pt',
 
         # jet vars
         'nonRes_DeltaPhi_j1MET', 'nonRes_DeltaPhi_j2MET', 
-        'nonRes_DeltaR_jg_min',  #heft
+        # 'nonRes_DeltaR_jg_min',  #heft
         'n_jets', 'nonRes_chi_t0', 'nonRes_chi_t1',
 
         # lepton vars
@@ -93,23 +93,23 @@ def process_data(
         'nonRes_CosThetaStar_CS', 'nonRes_CosThetaStar_jj', 'nonRes_CosThetaStar_gg',
 
         # dijet vars
-        'dijet_PNetRegMass', 'dijet_PNetRegPt',  #heft
+        # 'dijet_PNetRegMass', 'dijet_PNetRegPt',  #heft
 
         # bjet vars
-        'lead_bjet_PNetRegPt', #heft
+        # 'lead_bjet_PNetRegPt', #heft
         'nonRes_lead_bjet_eta', # eta
         'nonRes_lead_bjet_btagPNetB', # btag scores
-        'lead_bjet_sigmapT_over_RegPt', #heft
-        'lead_bjet_RegPt_over_Mjj', #heft
+        # 'lead_bjet_sigmapT_over_RegPt', #heft
+        # 'lead_bjet_RegPt_over_Mjj', #heft
         # --------
-        'sublead_bjet_PNetRegPt', #heft
+        # 'sublead_bjet_PNetRegPt', #heft
         'nonRes_sublead_bjet_eta', 
         'nonRes_sublead_bjet_btagPNetB',
-        'sublead_bjet_sigmapT_over_RegPt', #heft
-        'sublead_bjet_RegPt_over_Mjj', #heft
+        # 'sublead_bjet_sigmapT_over_RegPt', #heft
+        # 'sublead_bjet_RegPt_over_Mjj', #heft
 
         # diphoton vars
-        'pt',  #heft
+        # 'pt',  #heft
         'eta',
 
         # Photon vars
@@ -121,8 +121,8 @@ def process_data(
 
         # ZH vars
         'DeltaPhi_jj', 
-        'DeltaEta_jj', #heft
-        'isr_jet_RegPt',  #heft
+        # 'DeltaEta_jj', #heft
+        # 'isr_jet_RegPt',  #heft
         'DeltaPhi_isr_jet_z',
     }
     std_mapping = {

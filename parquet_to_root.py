@@ -28,12 +28,12 @@ UNCORR_WEIGHT_SYSTS = [  # Up and Down
     'bTagSF_sys_lfstats1', 'bTagSF_sys_lfstats2',
     'bTagSF_sys_hfstats1', 'bTagSF_sys_hfstats2',
 ]
-# SYST_MAP = { # _up and _down
-#     'Et_dependent_ScaleEB': 'EBScale', 'Et_dependent_ScaleEE': 'EEScale', 
-#     'Et_dependent_Smearing': 'Smearing', 
-#     'jec_syst_Total': 'JEC', 'jer_syst': 'JER'
-# }
-SYST_MAP = {}
+SYST_MAP = { # _up and _down
+    'Et_dependent_ScaleEB': 'EBScale', 'Et_dependent_ScaleEE': 'EEScale', 
+    'Et_dependent_Smearing': 'Smearing', 
+    'jec_syst_Total': 'JEC', 'jer_syst': 'JER'
+}
+# SYST_MAP = {}
 
 SIGNAL_SAMPLES = [
     'GluGluToHH', 'VBFHH',
@@ -41,6 +41,12 @@ SIGNAL_SAMPLES = [
 SINGLEH_SAMPLES = [ 
     'GluGluHToGG', 'ttHToGG', 'VBFHToGG', 'VHToGG', 'bbHToGG',
 ]
+SAMPLE_TO_PROC_MAP = {
+    'GluGluToHH': 'ggHH', 'VBFHH': 'vbfHH',
+
+    'GluGluHToGG': 'ggH', 'ttHToGG': 'ttH', 
+    'VBFHToGG': 'vbfH', 'VHToGG': 'vH', 'bbHToGG': 'bbH',
+}
 
 LUMINOSITIES = {
     "2022": 7.9804 + 26.6717,  # preEE + postEE
@@ -102,10 +108,10 @@ def main():
                     else:
                         year_df = year_df[SYST_VARIABLES]
 
-                    if f"{sample_name}{MC_TTree_name}{syst_name}" not in MCDFs_dict.keys():
-                        MCDFs_dict[f"{sample_name}{MC_TTree_name}{syst_name}"] = copy.deepcopy(year_df)
+                    if f"{SAMPLE_TO_PROC_MAP[sample_name]}{MC_TTree_name}{syst_name}" not in MCDFs_dict.keys():
+                        MCDFs_dict[f"{SAMPLE_TO_PROC_MAP[sample_name]}{MC_TTree_name}{syst_name}"] = copy.deepcopy(year_df)
                     else:
-                        MCDFs_dict[f"{sample_name}{MC_TTree_name}{syst_name}"] = pd.concat([MCDFs_dict[f"{sample_name}{MC_TTree_name}{syst_name}"], year_df])
+                        MCDFs_dict[f"{SAMPLE_TO_PROC_MAP[sample_name]}{MC_TTree_name}{syst_name}"] = pd.concat([MCDFs_dict[f"{SAMPLE_TO_PROC_MAP[sample_name]}{MC_TTree_name}{syst_name}"], year_df])
 
     for variation in ['nominal']+list(SYST_MAP.keys()):
         directions = [''] if variation == 'nominal' else ['_up', '_down']
@@ -117,11 +123,11 @@ def main():
 
                 if f"singleH{MC_TTree_name}{syst_name}" not in MCDFs_dict.keys():
                     MCDFs_dict[f"singleH{MC_TTree_name}{syst_name}"] = copy.deepcopy(
-                        MCDFs_dict[f"{sample_name}{MC_TTree_name}{syst_name}"]
+                        MCDFs_dict[f"{SAMPLE_TO_PROC_MAP[sample_name]}{MC_TTree_name}{syst_name}"]
                     )
                 else:
                     MCDFs_dict[f"singleH{MC_TTree_name}{syst_name}"] = pd.concat([
-                        MCDFs_dict[f"singleH{MC_TTree_name}{syst_name}"], MCDFs_dict[f"{sample_name}{MC_TTree_name}{syst_name}"]
+                        MCDFs_dict[f"singleH{MC_TTree_name}{syst_name}"], MCDFs_dict[f"{SAMPLE_TO_PROC_MAP[sample_name]}{MC_TTree_name}{syst_name}"]
                     ])
 
     for process in SIGNAL_SAMPLES+SINGLEH_SAMPLES+['singleH']:

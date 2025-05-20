@@ -136,12 +136,12 @@ def sideband_cuts(sample):
     """
     # Require diphoton and dijet exist (required in preselection, and thus is all True)
     event_mask = (
-        sample['is_nonRes']
+        sample['nonRes_has_two_btagged_jets']
         & sample['fiducialGeometricFlag']
     )
     sample[MC_DATA_MASK] = event_mask
 
-def get_mc_dir_lists(dir_lists: dict):
+def get_mc_dir_lists(dir_lists: dict, year=False):
     """
     Builds the dictionary of lists of samples to use in comparison.
       -> Automatically checks if the merger.py file has been run.
@@ -149,8 +149,19 @@ def get_mc_dir_lists(dir_lists: dict):
     
     # Pull MC sample dir_list
     for sim_era in dir_lists.keys():
-        dir_lists[sim_era] = list(os.listdir(sim_era))
-        dir_lists[sim_era].sort()
+        if year:
+            year_list = ['preEE, postEE'] if re.search('2022', sim_era) is not None else (
+                ['preBPix, postBPix'] if re.search('2023', sim_era) is not None else None
+            )
+            dir_lists[sim_era] = []
+            for _year_ in year_list:
+                dir_lists[sim_era].extend(
+                    list(os.listdir(os.path.join(sim_era, _year_)))
+                )
+            dir_lists[sim_era].sort()
+        else:
+            dir_lists[sim_era] = list(os.listdir(sim_era))
+            dir_lists[sim_era].sort()
 
 def find_dirname(dir_name):
     sample_name_map = {
@@ -416,6 +427,8 @@ def main():
         os.path.join(LPC_FILEPREFIX_22, "postEE", ""): None,
         os.path.join(LPC_FILEPREFIX_23, "preBPix", ""): None,
         os.path.join(LPC_FILEPREFIX_23, "postBPix", ""): None,
+        os.path.join(LPC_FILEPREFIX_22, ""): None,
+        os.path.join(LPC_FILEPREFIX_23, ""): None,
     }
     
 
@@ -478,13 +491,13 @@ def main():
                         MC_pqs[cut_era][std_dirname][weight_syst_name], variable, axis,
                         weight=True
                     )
-                    plot_dirpath = os.path.join(year, cut_era, std_dirname, '')
-                    plot(
-                        variable, syst_hists, ratio_hists, 
-                        era=cut_era, year=year, lumi=LUMINOSITIES[data_era], 
-                        sample_name=MC_NAMES_PRETTY[std_dirname], systname=weight_syst_name,
-                        rel_dirpath=plot_dirpath, weight=True
-                    )
+                    # plot_dirpath = os.path.join(year, cut_era, std_dirname, '')
+                    # plot(
+                    #     variable, syst_hists, ratio_hists, 
+                    #     era=cut_era, year=year, lumi=LUMINOSITIES[data_era], 
+                    #     sample_name=MC_NAMES_PRETTY[std_dirname], systname=weight_syst_name,
+                    #     rel_dirpath=plot_dirpath, weight=True
+                    # )
 
                     if variable == 'mass':
                         uncertainty_value[cut_era][std_dirname][weight_syst_name] = compute_uncertainty(syst_hists, weight_syst_name)
@@ -514,13 +527,13 @@ def main():
                     syst_hists, ratio_hists = generate_hists(
                         MC_pqs[cut_era][std_dirname][syst_name], variable, axis
                     )
-                    plot_dirpath = os.path.join(year, cut_era, std_dirname, '')
-                    plot(
-                        variable, syst_hists, ratio_hists, 
-                        era=cut_era, year=year, lumi=LUMINOSITIES[data_era], 
-                        sample_name=MC_NAMES_PRETTY[std_dirname], systname=syst_name,
-                        rel_dirpath=plot_dirpath
-                    )
+                    # plot_dirpath = os.path.join(year, cut_era, std_dirname, '')
+                    # plot(
+                    #     variable, syst_hists, ratio_hists, 
+                    #     era=cut_era, year=year, lumi=LUMINOSITIES[data_era], 
+                    #     sample_name=MC_NAMES_PRETTY[std_dirname], systname=syst_name,
+                    #     rel_dirpath=plot_dirpath
+                    # )
 
                     if variable == 'mass':
                         uncertainty_value[cut_era][std_dirname][syst_name] = compute_uncertainty(syst_hists, syst_name)
@@ -550,14 +563,14 @@ def main():
                     syst_ak_dict, variable, axis,
                     weight=True if syst_name in WEIGHT_SYSTS else APPLY_WEIGHTS
                 )
-                plot_dirpath = os.path.join(std_dirname, '')
-                plot(
-                    variable, syst_hists, ratio_hists, 
-                    era='', year='2022+2023', lumi=LUMINOSITIES['total_lumi'], 
-                    sample_name=MC_NAMES_PRETTY[std_dirname], systname=syst_name,
-                    rel_dirpath=plot_dirpath, 
-                    weight=True if syst_name in WEIGHT_SYSTS else APPLY_WEIGHTS
-                )
+                # plot_dirpath = os.path.join(std_dirname, '')
+                # plot(
+                #     variable, syst_hists, ratio_hists, 
+                #     era='', year='2022+2023', lumi=LUMINOSITIES['total_lumi'], 
+                #     sample_name=MC_NAMES_PRETTY[std_dirname], systname=syst_name,
+                #     rel_dirpath=plot_dirpath, 
+                #     weight=True if syst_name in WEIGHT_SYSTS else APPLY_WEIGHTS
+                # )
 
                 if variable == 'mass':
                     uncertainty_value_merged[std_dirname][syst_name] = compute_uncertainty(syst_hists, syst_name)
@@ -638,15 +651,15 @@ def main():
                                 cut_syst_ak_dict, variable, axis,
                                 weight=True if syst_name in WEIGHT_SYSTS else APPLY_WEIGHTS
                             )
-                            plot_dirpath = os.path.join(f'Cat{cat_idx}', year, cut_era, std_dirname, '')
+                            # plot_dirpath = os.path.join(f'Cat{cat_idx}', year, cut_era, std_dirname, '')
 
-                            plot(
-                                variable, syst_hists, ratio_hists, 
-                                era=cut_era, year=year, lumi=LUMINOSITIES[data_era], 
-                                sample_name=MC_NAMES_PRETTY[std_dirname], systname=syst_name,
-                                rel_dirpath=plot_dirpath,
-                                weight=True if syst_name in WEIGHT_SYSTS else APPLY_WEIGHTS
-                            )
+                            # plot(
+                            #     variable, syst_hists, ratio_hists, 
+                            #     era=cut_era, year=year, lumi=LUMINOSITIES[data_era], 
+                            #     sample_name=MC_NAMES_PRETTY[std_dirname], systname=syst_name,
+                            #     rel_dirpath=plot_dirpath,
+                            #     weight=True if syst_name in WEIGHT_SYSTS else APPLY_WEIGHTS
+                            # )
 
                             if variable == 'mass':
                                 uncertainty_value_cat[cat_idx][cut_era][std_dirname][syst_name] = compute_uncertainty(syst_hists, syst_name)

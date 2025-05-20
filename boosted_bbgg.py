@@ -184,7 +184,7 @@ def sideband_cuts(sample, pathway=0):
             & (sample['Diphoton30_22_R9Id_OR_IsoCaloId_AND_HE_R9Id_Mass95'])
         )
 
-def get_mc_dir_lists(dir_lists: dict):
+def get_mc_dir_lists(dir_lists: dict, all: bool=False):
     """
     Builds the dictionary of lists of samples to use in comparison.
       -> Automatically checks if the merger.py file has been run.
@@ -192,15 +192,17 @@ def get_mc_dir_lists(dir_lists: dict):
     
     # Pull MC sample dir_list
     for sim_era in dir_lists.keys():
-        # dir_lists[sim_era] = list(os.listdir(sim_era))
-        var = "nominal"
-        for sim_type in VARIATION_SYSTS: 
-            if re.search(sim_type, sim_era) is not None:
-                var_direction = '_up' if re.search('_up', sim_era) else '_down'
-                var = sim_type + var_direction
-                break
-        
-        dir_lists[sim_era] = glob.glob(os.path.join(sim_era, "**", var, END_FILEPATH), recursive=True)
+        if all:
+            dir_lists[sim_era] = glob.glob(os.path.join(sim_era, "**", END_FILEPATH), recursive=True)
+        else:
+            var = "nominal"
+            for sim_type in VARIATION_SYSTS: 
+                if re.search(sim_type, sim_era) is not None:
+                    var_direction = '_up' if re.search('_up', sim_era) else '_down'
+                    var = sim_type + var_direction
+                    break
+            
+            dir_lists[sim_era] = glob.glob(os.path.join(sim_era, "**", var, END_FILEPATH), recursive=True)
         dir_lists[sim_era].sort()
 
 def get_data_dir_lists(dir_lists: dict):
@@ -528,7 +530,7 @@ def get_concat_samples(sample_dirs: dict, save=False):
     
 def main(
     sample_dirs, save=False, plottype='comparison', density=False,
-    era=None, lumi=None
+    era=None, lumi=None, all=False
 ):
     """
     Performs the sample comparison.
@@ -536,7 +538,7 @@ def main(
 
     for dir_name, dir_dict in sample_dirs.items():
         if re.search('mc', dir_name.lower()) is not None:
-            get_mc_dir_lists(dir_dict)
+            get_mc_dir_lists(dir_dict, all=all)
         elif re.search('data', dir_name.lower()) is not None:
             get_data_dir_lists(dir_dict)
         else:
@@ -705,8 +707,8 @@ if __name__ == '__main__':
     main(
         sample_dirs, density=False,
         era="2022-24", lumi=LUMINOSITIES["total_lumi"],
-        plottype='Data/MC',
-        # save=True
+        plottype='Data/MC', all=True,
+        save=True
     )
 
     # sample_dirs = {
