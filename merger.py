@@ -333,8 +333,11 @@ def main():
         # os.path.join(lpc_fileprefix, "Run3_2023", "sim", "preBPix", ""): None,
         # os.path.join(lpc_fileprefix, "Run3_2023", "sim", "postBPix", ""): None,
 
-        os.path.join(lpc_fileprefix, "Run3_2022_SMEFTSingleH", "2022postEE", ""): None,
-        os.path.join(lpc_fileprefix, "Run3_2022_SMEFTSignal", "2022postEE", ""): None,
+        # os.path.join(lpc_fileprefix, "Run3_2022_SMEFTSingleH", "2022postEE", ""): None,
+        # os.path.join(lpc_fileprefix, "Run3_2022_SMEFTSignal", "2022postEE", ""): None,
+        os.path.join(lpc_fileprefix, "Run3_2022_ggHH_smeft", "2022postEE", ""): None,
+        os.path.join(lpc_fileprefix, "Run3_2022_ggH_smeft", "2022postEE", ""): None,
+        
     }
     data_dir_lists = {
         # os.path.join(lpc_fileprefix, "Run3_2022", "data", ""): None,
@@ -350,8 +353,10 @@ def main():
         os.path.join(lpc_fileprefix, "Run3_2023", "sim", "postBPix", ""): 9.451,
         os.path.join(lpc_fileprefix, "Run3_2024", "sim", "2024", ""): 109.08,
 
-        os.path.join(lpc_fileprefix, "Run3_2022_SMEFTSingleH", "2022postEE", ""): 26.6717,
-        os.path.join(lpc_fileprefix, "Run3_2022_SMEFTSignal", "2022postEE", ""): 26.6717,
+        # os.path.join(lpc_fileprefix, "Run3_2022_SMEFTSingleH", "2022postEE", ""): 26.6717,
+        # os.path.join(lpc_fileprefix, "Run3_2022_SMEFTSignal", "2022postEE", ""): 26.6717,
+        os.path.join(lpc_fileprefix, "Run3_2022_ggHH_smeft", "2022postEE", ""): 26.6717,
+        os.path.join(lpc_fileprefix, "Run3_2022_ggH_smeft", "2022postEE", ""): 26.6717,
     }
     
     

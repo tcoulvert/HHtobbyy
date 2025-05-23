@@ -46,6 +46,12 @@ SAMPLE_TO_PROC_MAP = {
 
     'GluGluHToGG': 'ggH', 'ttHToGG': 'ttH', 
     'VBFHToGG': 'vbfH', 'VHToGG': 'vH', 'bbHToGG': 'bbH',
+
+    'singleH': 'singleH',
+}
+
+SYST_VARIATION_MAP = {
+    '_up': 'Up', '_down': 'Down'
 }
 
 LUMINOSITIES = {
@@ -72,6 +78,7 @@ def main():
 
     # MC dataframes
     MC_TTree_name = '_125_13p6TeV_cat0'
+    SYST_MC_TTree_name = '01sigma'
     MCDFs_dict = {}
     for year in MC_YEARS:
         file_prefix = os.path.join(lpc_fileprefix, lpc_filegroup(year), 'sim', '')
@@ -80,7 +87,7 @@ def main():
             directions = [''] if variation == 'nominal' else ['_up', '_down']
 
             for direction in directions:
-                syst_name = '' if variation == 'nominal' else '_'+SYST_MAP[variation]+direction[1:].upper()
+                syst_name = '' if variation == 'nominal' else '_'+SYST_MAP[variation]+SYST_VARIATION_MAP[direction]+SYST_MC_TTree_name
                 year_filepaths = glob.glob(os.path.join(file_prefix, "**", variation+direction, END_FILEPATH), recursive=True)
                 
                 for sample_name in SIGNAL_SAMPLES+SINGLEH_SAMPLES:
@@ -117,7 +124,7 @@ def main():
         directions = [''] if variation == 'nominal' else ['_up', '_down']
 
         for direction in directions:
-            syst_name = '' if variation == 'nominal' else '_'+SYST_MAP[variation]+direction[1:].upper()
+            syst_name = '' if variation == 'nominal' else '_'+SYST_MAP[variation]+SYST_VARIATION_MAP[direction]+SYST_MC_TTree_name
                 
             for sample_name in SINGLEH_SAMPLES:
 
@@ -131,10 +138,10 @@ def main():
                     ])
 
     for process in SIGNAL_SAMPLES+SINGLEH_SAMPLES+['singleH']:
-        print(f'writing 2223_Boosted_{process}.root')
-        with uproot.recreate(os.path.join(output_fileprefix, f"2223_Boosted_{process}.root")) as f:
+        print(f'writing 2223_Boosted_{SAMPLE_TO_PROC_MAP[process]}.root')
+        with uproot.recreate(os.path.join(output_fileprefix, f"2223_Boosted_{SAMPLE_TO_PROC_MAP[process]}.root")) as f:
             for key, df in MCDFs_dict.items():
-                if re.match(process, key) is not None:
+                if re.match(SAMPLE_TO_PROC_MAP[process], key) is not None:
                     f[key] = uproot.newtree({col:'float64' for col in df.columns})
                     f[key].extend({col: df[col].to_numpy() for col in df.columns})
                     # if not np.all([re.search(syst, key) for syst in SYST_MAP.values()]):
