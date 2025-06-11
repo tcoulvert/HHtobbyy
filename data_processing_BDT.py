@@ -22,6 +22,9 @@ def process_data(
     # Load parquet files #
     samples = {}
     for sample_name, sample_filepaths in filepaths_dict.items():
+        # for dir_path in sample_filepaths:
+        #     print(dir_path)
+        #     print(glob.glob(dir_path))
         sample_list = [ak.from_parquet(glob.glob(dir_path)) for dir_path in sample_filepaths]
         if re.search('VH', sample_name) is not None:
             ZandWH_idxs = []
@@ -77,12 +80,12 @@ def process_data(
     dont_include_vars = []
     high_level_fields = {
         # MET variables
-        # 'puppiMET_sumEt',  #heft
+        'puppiMET_sumEt',  #heft
         'puppiMET_pt',
 
         # jet vars
         'nonRes_DeltaPhi_j1MET', 'nonRes_DeltaPhi_j2MET', 
-        # 'nonRes_DeltaR_jg_min',  #heft
+        'nonRes_DeltaR_jg_min',  #heft
         'n_jets', 'nonRes_chi_t0', 'nonRes_chi_t1',
 
         # lepton vars
@@ -93,23 +96,23 @@ def process_data(
         'nonRes_CosThetaStar_CS', 'nonRes_CosThetaStar_jj', 'nonRes_CosThetaStar_gg',
 
         # dijet vars
-        # 'dijet_PNetRegMass', 'dijet_PNetRegPt',  #heft
+        'nonRes_dijet_mass', 'nonRes_dijet_pt',  #heft
 
         # bjet vars
         # 'lead_bjet_PNetRegPt', #heft
         'nonRes_lead_bjet_eta', # eta
         'nonRes_lead_bjet_btagPNetB', # btag scores
-        # 'lead_bjet_sigmapT_over_RegPt', #heft
-        # 'lead_bjet_RegPt_over_Mjj', #heft
+        'lead_bjet_sigmapT_over_pT', #heft
+        'lead_bjet_pt_over_Mjj', #heft
         # --------
         # 'sublead_bjet_PNetRegPt', #heft
         'nonRes_sublead_bjet_eta', 
         'nonRes_sublead_bjet_btagPNetB',
-        # 'sublead_bjet_sigmapT_over_RegPt', #heft
-        # 'sublead_bjet_RegPt_over_Mjj', #heft
+        'sublead_bjet_sigmapT_over_pT', #heft
+        'sublead_bjet_pt_over_Mjj', #heft
 
         # diphoton vars
-        # 'pt',  #heft
+        'pt',  #heft
         'eta',
 
         # Photon vars
@@ -117,12 +120,12 @@ def process_data(
         'sublead_mvaID', 'sublead_sigmaE_over_E',
         
         # HH vars
-        'HH_PNetRegPt', 'HH_PNetRegEta', 'RegPt_balance',
+        'nonRes_HHbbggCandidate_pt', 'nonRes_HHbbggCandidate_eta', 'pt_balance',
 
         # ZH vars
         'DeltaPhi_jj', 
-        # 'DeltaEta_jj', #heft
-        # 'isr_jet_RegPt',  #heft
+        'DeltaEta_jj', #heft
+        'isr_jet_pt',  #heft
         'DeltaPhi_isr_jet_z',
     }
     std_mapping = {
@@ -172,20 +175,25 @@ def process_data(
         # ZH vars
         'DeltaPhi_jj': 'DeltaPhi_jj', 'DeltaEta_jj': 'DeltaEta_jj',
         'isr_jet_RegPt': 'isr_jet_pt', 'DeltaPhi_isr_jet_z': 'DeltaPhi_isr_jet_z',
+        # ------------------------
+        'isr_jet_pt': 'isr_jet_pt',
         
         # Aux fields
-        'event': 'event', 'mass': 'mass', 'HH_PNetRegMass': 'HHbbggCandidate_mass', 'HHbbggCandidate_mass': 'HHbbggCandidate_mass',
+        'event': 'event', 'mass': 'mass', 'HH_PNetRegMass': 'HHbbggCandidate_mass', 'nonRes_HHbbggCandidate_mass': 'HHbbggCandidate_mass',
         'lepton1_pt': 'lepton1_pt', 'lepton2_pt': 'lepton2_pt',
         'hash': 'hash', 'eventWeight': 'eventWeight', 'sample_name': 'sample_name', 'max_nonbjet_btag': 'max_nonbjet_btag',
         'MultiBDT_output': 'MultiBDT_output',
     }
+    # for field in samples[order[0]].fields:
+    #     print(field)
+    #     print('-'*60)
         
 
     pandas_aux_samples = {}
     high_level_aux_fields = {
         'event', # event number
-        'mass', 'dijet_PNetRegMass',  # diphoton and bb-dijet mass
-        'HH_PNetRegMass',
+        'mass', 'nonRes_dijet_mass',  # diphoton and bb-dijet mass
+        'nonRes_HHbbggCandidate_mass',
         'lepton1_pt', 'lepton2_pt',  # renamed to lepton1/2_bool in DataFrame, used to distinguish 0, 1, and 2+ lepton events
     }
     if 'hash' in samples[order[0]].fields:

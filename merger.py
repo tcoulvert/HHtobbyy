@@ -18,7 +18,7 @@ vec.register_awkward()
 # lxplus_fileprefix = "/eos/cms/store/group/phys_b2g/HHbbgg/HiggsDNA_parquet/v2"
 # lpc_fileprefix = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v2/"
 # lpc_fileprefix = "/eos/uscms/store/user/tsievert/HiggsDNA_parquet/v2/"
-lpc_fileprefix = "/eos/uscms/store/user/tsievert/HiggsDNA_parquet/v2/"
+lpc_fileprefix = "/eos/uscms/store/user/tsievert/HiggsDNA_parquet/v3/"
 FILL_VALUE = -999
 NUM_JETS = 10
 FORCE_RERUN = True
@@ -26,7 +26,7 @@ FORCE_RERUN = True
 # xrdcp -r root://cmseos.fnal.gov//store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v2/
 
 DATASETTYPE = {
-    'Resolved', # 'Boosted'
+    'Resolved', #'Boosted'
 }
 
 def add_vars(sample, datasettype):
@@ -150,7 +150,8 @@ def add_vars_resolved(sample):
     for field in ['lead', 'sublead']:
         bjet_4moms[f'{field}_bjet_4mom'] = ak.zip(
             {
-                'rho': sample[f'nonRes_{field}_bjet_pt'] * sample[f'nonRes_{field}_bjet_PNetRegPtRawCorr'] * sample[f'nonRes_{field}_bjet_PNetRegPtRawCorrNeutrino'], # rho is synonym for pt
+                'rho': sample[f'nonRes_{field}_bjet_pt'], # rho is synonym for pt
+                # 'rho': sample[f'nonRes_{field}_bjet_pt'] * (1 - sample[f'nonRes_{field}_bjet_rawFactor']) * sample[f'nonRes_{field}_bjet_PNetRegPtRawCorr'] * sample[f'nonRes_{field}_bjet_PNetRegPtRawCorrNeutrino'], # rho is synonym for pt
                 'phi': sample[f'nonRes_{field}_bjet_phi'],
                 'eta': sample[f'nonRes_{field}_bjet_eta'],
                 'tau': sample[f'nonRes_{field}_bjet_mass'], # tau is synonym for mass
@@ -159,16 +160,17 @@ def add_vars_resolved(sample):
     # Improved bjet bTag score and regressed mass #
     for field in ['lead', 'sublead']:
         # sample[f'{field}_bjet_btagRobustParTAK4B'] = robustParT(sample, bjet_type=field)
-        sample[f'{field}_bjet_PNetRegPt'] = bjet_4moms[f'{field}_bjet_4mom'].pt
+        # sample[f'{field}_bjet_PNetRegPt'] = bjet_4moms[f'{field}_bjet_4mom'].pt
         sample[f'{field}_bjet_sigmapT_over_pT'] = sample[f'nonRes_{field}_bjet_PNetRegPtRawRes'] / sample[f'nonRes_{field}_bjet_pt']
-        sample[f'{field}_bjet_sigmapT_over_RegPt'] = sample[f'nonRes_{field}_bjet_PNetRegPtRawRes'] / sample[f'{field}_bjet_PNetRegPt']
+        # sample[f'{field}_bjet_sigmapT_over_RegPt'] = sample[f'nonRes_{field}_bjet_PNetRegPtRawRes'] / sample[f'{field}_bjet_PNetRegPt']
 
     # Regressed jet kinematics #
     jet_4moms = {}
     for i in range(1, NUM_JETS+1):
         jet_4moms[f'jet{i}_4mom'] = ak.zip(
             {
-                'rho': sample[f'jet{i}_pt'] * sample[f'jet{i}_PNetRegPtRawCorr'] * sample[f'jet{i}_PNetRegPtRawCorrNeutrino'],
+                'rho': sample[f'jet{i}_pt'],
+                # 'rho': sample[f'jet{i}_pt'] * (1 - sample[f'jet{i}_rawFactor']) * sample[f'jet{i}_PNetRegPtRawCorr'] * sample[f'jet{i}_PNetRegPtRawCorrNeutrino'],
                 'phi': sample[f'jet{i}_phi'],
                 'eta': sample[f'jet{i}_eta'],
                 'tau': sample[f'jet{i}_mass'],
@@ -182,20 +184,20 @@ def add_vars_resolved(sample):
     sample['dijet_PNetRegPhi'] = dijet_4mom.phi
     sample['dijet_PNetRegMass'] = dijet_4mom.mass
 
-    # Regressed HH kinematics
-    diphoton_4mom = ak.zip(
-        {
-            'rho': sample['pt'],
-            'phi': sample['phi'],
-            'eta': sample['eta'],
-            'tau': sample['mass'],
-        }, with_name='Momentum4D'
-    )
-    HH_4mom = diphoton_4mom + dijet_4mom
-    sample['HH_PNetRegPt'] = HH_4mom.pt
-    sample['HH_PNetRegEta'] = HH_4mom.eta
-    sample['HH_PNetRegPhi'] = HH_4mom.phi
-    sample['HH_PNetRegMass'] = HH_4mom.mass
+    # # Regressed HH kinematics
+    # diphoton_4mom = ak.zip(
+    #     {
+    #         'rho': sample['pt'],
+    #         'phi': sample['phi'],
+    #         'eta': sample['eta'],
+    #         'tau': sample['mass'],
+    #     }, with_name='Momentum4D'
+    # )
+    # HH_4mom = diphoton_4mom + dijet_4mom
+    # sample['HH_PNetRegPt'] = HH_4mom.pt
+    # sample['HH_PNetRegEta'] = HH_4mom.eta
+    # sample['HH_PNetRegPhi'] = HH_4mom.phi
+    # sample['HH_PNetRegMass'] = HH_4mom.mass
 
     # Nonres BDT variables #
     for field in ['lead', 'sublead']:
@@ -203,10 +205,10 @@ def add_vars_resolved(sample):
         sample[f'{field}_sigmaE_over_E'] = sample[f'{field}_energyErr'] / (sample[f'{field}_pt'] * np.cosh(sample[f'{field}_eta']))
         # bjet variables
         sample[f'{field}_bjet_pt_over_Mjj'] = sample[f'nonRes_{field}_bjet_pt'] / sample['nonRes_dijet_mass']
-        sample[f'{field}_bjet_RegPt_over_Mjj'] = sample[f'{field}_bjet_PNetRegPt'] / sample['dijet_PNetRegMass']
+        # sample[f'{field}_bjet_RegPt_over_Mjj'] = sample[f'{field}_bjet_PNetRegPt'] / sample['dijet_PNetRegMass']
 
     # mHH variables #
-    sample['RegPt_balance'] = sample['HH_PNetRegPt'] / (sample['lead_pt'] + sample['sublead_pt'] + sample['lead_bjet_PNetRegPt'] + sample['sublead_bjet_PNetRegPt'])
+    # sample['RegPt_balance'] = sample['HH_PNetRegPt'] / (sample['lead_pt'] + sample['sublead_pt'] + sample['lead_bjet_PNetRegPt'] + sample['sublead_bjet_PNetRegPt'])
     sample['pt_balance'] = sample['nonRes_HHbbggCandidate_pt'] / (sample['lead_pt'] + sample['sublead_pt'] + sample['nonRes_lead_bjet_pt'] + sample['nonRes_sublead_bjet_pt'])
 
 
@@ -214,7 +216,7 @@ def add_vars_resolved(sample):
     sample['DeltaPhi_jj'] = deltaPhi(sample['nonRes_lead_bjet_phi'], sample['nonRes_sublead_bjet_phi'])
     sample['DeltaEta_jj'] = deltaEta(sample['nonRes_lead_bjet_eta'], sample['nonRes_sublead_bjet_eta'])
     isr_jet_4mom, isr_jet_bool = zh_isr_jet(sample, dijet_4mom, jet_4moms)
-    sample['isr_jet_RegPt'] = ak.where(isr_jet_bool, isr_jet_4mom.pt, FILL_VALUE)  # pt of isr jet
+    sample['isr_jet_pt'] = ak.where(isr_jet_bool, isr_jet_4mom.pt, FILL_VALUE)  # pt of isr jet
     sample['DeltaPhi_isr_jet_z'] = ak.where(  # phi angle between isr jet and z candidate
         isr_jet_bool,
         deltaPhi(isr_jet_4mom.phi, sample['nonRes_dijet_phi']), 
@@ -253,18 +255,20 @@ def slim_parquets(sample, datasettype):
         raise NotImplementedError(f"Datasettype you requested ({datasettype}) is not implemented. We only have implemented: {DATASETTYPE.keys()}")
 
 def slim_parquets_resolved(sample):
-    # sample_fields = [field for field in sample.fields]
-    # for field in sample.fields:
-    #     if (
-    #         re.match('Res', field) is not None  # applies event cut on dijet mass
-    #         or re.search('VBF', field) is not None  # ignoring VBF category for now...
-    #         or re.match('fatjet', field) is not None  # we don't care about ak8 jets
-    #     ):
-    #         sample_fields.remove(field)
+    sample_fields = [field for field in sample.fields]
+    sample_copy = copy.deepcopy(sample)
+    for field in sample.fields:
+        if (
+            re.match('Res', field) is not None  # applies event cut on dijet mass
+            or re.search('VBF', field) is not None  # ignoring VBF category for now...
+            or re.match('fatjet', field) is not None  # we don't care about ak8 jets
+        ):
+            sample_fields.remove(field)
+    
+    return sample
     # return ak.zip({
     #     field: sample[field] for field in sample_fields
     # })
-    return sample
 
 def slim_parquets_boosted(sample):
     sample_fields = [field for field in sample.fields]
@@ -328,15 +332,15 @@ def correct_weights(sample, sample_filepath_list, computebtag=True):
 
 def main():
     sim_dir_lists = {
-        # os.path.join(lpc_fileprefix, "Run3_2022", "sim", "preEE", ""): None,
-        # os.path.join(lpc_fileprefix, "Run3_2022", "sim", "postEE", ""): None,
-        # os.path.join(lpc_fileprefix, "Run3_2023", "sim", "preBPix", ""): None,
-        # os.path.join(lpc_fileprefix, "Run3_2023", "sim", "postBPix", ""): None,
+        os.path.join(lpc_fileprefix, "Run3_2022", "sim", "preEE", ""): None,
+        os.path.join(lpc_fileprefix, "Run3_2022", "sim", "postEE", ""): None,
+        os.path.join(lpc_fileprefix, "Run3_2023", "sim", "preBPix", ""): None,
+        os.path.join(lpc_fileprefix, "Run3_2023", "sim", "postBPix", ""): None,
 
         # os.path.join(lpc_fileprefix, "Run3_2022_SMEFTSingleH", "2022postEE", ""): None,
         # os.path.join(lpc_fileprefix, "Run3_2022_SMEFTSignal", "2022postEE", ""): None,
-        os.path.join(lpc_fileprefix, "Run3_2022_ggHH_smeft", "2022postEE", ""): None,
-        os.path.join(lpc_fileprefix, "Run3_2022_ggH_smeft", "2022postEE", ""): None,
+        # os.path.join(lpc_fileprefix, "Run3_2022_ggHH_smeft", "2022postEE", ""): None,
+        # os.path.join(lpc_fileprefix, "Run3_2022_ggH_smeft", "2022postEE", ""): None,
         
     }
     data_dir_lists = {
@@ -355,8 +359,8 @@ def main():
 
         # os.path.join(lpc_fileprefix, "Run3_2022_SMEFTSingleH", "2022postEE", ""): 26.6717,
         # os.path.join(lpc_fileprefix, "Run3_2022_SMEFTSignal", "2022postEE", ""): 26.6717,
-        os.path.join(lpc_fileprefix, "Run3_2022_ggHH_smeft", "2022postEE", ""): 26.6717,
-        os.path.join(lpc_fileprefix, "Run3_2022_ggH_smeft", "2022postEE", ""): 26.6717,
+        # os.path.join(lpc_fileprefix, "Run3_2022_ggHH_smeft", "2022postEE", ""): 26.6717,
+        # os.path.join(lpc_fileprefix, "Run3_2022_ggH_smeft", "2022postEE", ""): 26.6717,
     }
     
     
@@ -410,6 +414,7 @@ def main():
         'GluGlutoHHto2B2G_kl-5p00_kt-1p00_c2-0p00': 34.43*0.0026,
 
         # extra VH samples (produced by Irene) #
+        'ZH_sample': 882.4*0.00228*0.69911,
         # https://twiki.cern.ch/twiki/bin/view/LHCPhysics/CERNYellowReportPageAt13TeV#ppZH_Total_Cross_Section_with_ap +  https://pdg.lbl.gov/2018/listings/rpp2018-list-z-boson.pdf
         'ZH_Hto2G_Zto2Q_M-125': 882.4*0.00228*0.69911,
         # https://twiki.cern.ch/twiki/bin/view/LHCPhysics/CERNYellowReportPageAt13TeV#ppWH_Total_Cross_Section_with_ap +  https://pdg.lbl.gov/2022/listings/rpp2022-list-w-boson.pdf
@@ -521,6 +526,8 @@ def main():
 
             for sample_type in os.listdir(sample_dirpath):
 
+                if sample_type != 'nominal': continue
+
                 print(sim_era[sim_era[:-1].rfind('/')+1:-1]+f': {dir_name} - {sample_type}')
                 sample_type_dirpath = os.path.join(sample_dirpath, sample_type, "")
 
@@ -529,70 +536,70 @@ def main():
                 sample_list = [ak.from_parquet(file) for file in sample_filepath_list]
                 if len(sample_list) < 1:
                     continue
-                # sample = ak.concatenate(sample_list)
+                sample = ak.concatenate(sample_list)
 
-                # if 'weight_nominal' not in sample.fields and dir_name != 'DDQCDGJets':
-                #     correct_weights(
-                #         sample, sample_filepath_list, 
-                #         computebtag=(sample_type=='nominal')
-                #     )
+                if 'weight_nominal' not in sample.fields and dir_name != 'DDQCDGJets':
+                    correct_weights(
+                        sample, sample_filepath_list, 
+                        computebtag=(sample_type=='nominal')
+                    )
 
-                # for datasettype in DATASETTYPE:
-                #     # Slim parquets by removing Res fields (for now)
-                #     slim_sample = slim_parquets(sample, datasettype)
+                for datasettype in DATASETTYPE:
+                    # Slim parquets by removing Res fields (for now)
+                    slim_sample = slim_parquets(sample, datasettype)
 
-                #     # Add useful parquet meta-info
-                #     slim_sample['sample_name'] = dir_name if dir_name not in sample_name_map else sample_name_map[dir_name]
-                #     slim_sample['sample_era'] = sim_era[sim_era[:-1].rfind('/')+1:-1]
-                #     slim_sample['eventWeight'] = slim_sample['weight'] * luminosities[sim_era] * cross_sections[dir_name]
+                    # Add useful parquet meta-info
+                    slim_sample['sample_name'] = dir_name if dir_name not in sample_name_map else sample_name_map[dir_name]
+                    slim_sample['sample_era'] = sim_era[sim_era[:-1].rfind('/')+1:-1]
+                    slim_sample['eventWeight'] = slim_sample['weight'] * luminosities[sim_era] * cross_sections[dir_name]
 
-                #     # Add necessary extra variables
-                #     add_vars(slim_sample, datasettype)
+                    # Add necessary extra variables
+                    add_vars(slim_sample, datasettype)
             
-                #     # Save out merged parquet
-                #     destdir = get_merged_filepath(sample_type_dirpath, datasettype=datasettype)
-                #     if not os.path.exists(destdir):
-                #         os.makedirs(destdir)
-                #     filepath = os.path.join(destdir, dir_name+'_merged.parquet')
-                #     merged_parquet = ak.to_parquet(slim_sample, filepath)
-                #     del slim_sample
-                #     print('======================== \n', destdir)
-                
-                # # Delete sample for memory reasons
-                # del sample
-
-                for i, sample in enumerate(sample_list):
-
-                    if 'weight_nominal' not in sample.fields and dir_name != 'DDQCDGJets':
-                        correct_weights(
-                            sample, sample_filepath_list, 
-                            computebtag=(sample_type=='nominal')
-                        )
-
-                    for datasettype in DATASETTYPE:
-                        # Slim parquets by removing Res fields (for now)
-                        slim_sample = slim_parquets(sample, datasettype)
-
-                        # Add useful parquet meta-info
-                        slim_sample['sample_name'] = dir_name if dir_name not in sample_name_map else sample_name_map[dir_name]
-                        slim_sample['sample_era'] = sim_era[sim_era[:-1].rfind('/')+1:-1]
-                        slim_sample['eventWeight'] = slim_sample['weight'] * luminosities[sim_era] * cross_sections[dir_name]
-
-                        # Add necessary extra variables
-                        add_vars(slim_sample, datasettype)
-                
-                        # Save out merged parquet
-                        destdir = get_merged_filepath(sample_type_dirpath, datasettype=datasettype)
-                        if not os.path.exists(destdir):
-                            os.makedirs(destdir)
-                        filename = sample_filepath_list[i][sample_filepath_list[i].rfind('/')+1:sample_filepath_list[i].rfind('.')] + '_merged' + sample_filepath_list[i][sample_filepath_list[i].rfind('.'):]
-                        filepath = os.path.join(destdir, filename)
-                        merged_parquet = ak.to_parquet(slim_sample, filepath)
-                        del slim_sample
-                        print('======================== \n', filepath)
+                    # Save out merged parquet
+                    destdir = get_merged_filepath(sample_type_dirpath, datasettype=datasettype)
+                    if not os.path.exists(destdir):
+                        os.makedirs(destdir)
+                    filepath = os.path.join(destdir, dir_name+'_merged.parquet')
+                    merged_parquet = ak.to_parquet(slim_sample, filepath)
+                    del slim_sample
+                    print('======================== \n', destdir)
                 
                 # Delete sample for memory reasons
-                del sample_list
+                del sample
+
+                # for i, sample in enumerate(sample_list):
+
+                #     if 'weight_nominal' not in sample.fields and dir_name != 'DDQCDGJets':
+                #         correct_weights(
+                #             sample, sample_filepath_list, 
+                #             computebtag=(sample_type=='nominal')
+                #         )
+
+                #     for datasettype in DATASETTYPE:
+                #         # Slim parquets by removing Res fields (for now)
+                #         slim_sample = slim_parquets(sample, datasettype)
+
+                #         # Add useful parquet meta-info
+                #         slim_sample['sample_name'] = dir_name if dir_name not in sample_name_map else sample_name_map[dir_name]
+                #         slim_sample['sample_era'] = sim_era[sim_era[:-1].rfind('/')+1:-1]
+                #         slim_sample['eventWeight'] = slim_sample['weight'] * luminosities[sim_era] * cross_sections[dir_name]
+
+                #         # Add necessary extra variables
+                #         add_vars(slim_sample, datasettype)
+                
+                #         # Save out merged parquet
+                #         destdir = get_merged_filepath(sample_type_dirpath, datasettype=datasettype)
+                #         if not os.path.exists(destdir):
+                #             os.makedirs(destdir)
+                #         filename = sample_filepath_list[i][sample_filepath_list[i].rfind('/')+1:sample_filepath_list[i].rfind('.')] + '_merged' + sample_filepath_list[i][sample_filepath_list[i].rfind('.'):]
+                #         filepath = os.path.join(destdir, filename)
+                #         merged_parquet = ak.to_parquet(slim_sample, filepath)
+                #         del slim_sample
+                #         print('======================== \n', filepath)
+                
+                # # Delete sample for memory reasons
+                # del sample_list
 
     for data_era, dir_list in data_dir_lists.items():
 

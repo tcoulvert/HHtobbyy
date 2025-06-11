@@ -63,11 +63,14 @@ VARIABLES = {
     # 'fatjet1_mass': hist.axis.Regular(75, 50., 200, name='var', label=r'lead fatjet mass [GeV]', growth=False, underflow=False, overflow=False),
 
     # diphoton variables
-    'pt': hist.axis.Regular(40, 20., 2000, name='var', label=r'$\gamma\gamma$ $p_{T}$ [GeV]', growth=False, underflow=False, overflow=False),
+    # 'pt': hist.axis.Regular(40, 20., 2000, name='var', label=r'$\gamma\gamma$ $p_{T}$ [GeV]', growth=False, underflow=False, overflow=False),
 
     # single photon variables
-    'lead_pt': hist.axis.Regular(40, 20., 500., name='var', label=r'lead $\gamma$ $p_{T}$ [GeV]', growth=False, underflow=False, overflow=False),
-    'sublead_pt': hist.axis.Regular(40, 20., 500., name='var', label=r'sublead $\gamma$ $p_{T}$ [GeV]', growth=False, underflow=False, overflow=False)
+    # 'lead_pt': hist.axis.Regular(40, 20., 500., name='var', label=r'lead $\gamma$ $p_{T}$ [GeV]', growth=False, underflow=False, overflow=False),
+    # 'sublead_pt': hist.axis.Regular(40, 20., 500., name='var', label=r'sublead $\gamma$ $p_{T}$ [GeV]', growth=False, underflow=False, overflow=False),
+    # 'lead_mvaID': hist.axis.Regular(20, -1., 1., name='var', label=r'lead $\gamma$ MVA ID', growth=False, underflow=False, overflow=False),
+    # 'sublead_mvaID': hist.axis.Regular(20, -1., 1., name='var', label=r'sublead $\gamma$ MVA ID', growth=False, underflow=False, overflow=False),
+    # 'Res_CosThetaStar_gg': hist.axis.Regular(20, -1., 1., name='var', label=r'Cos($\theta_{gg}^*$)', growth=False, underflow=False, overflow=False),
 }
 BLINDED_VARIABLES = {
     # diphoton variables
@@ -174,9 +177,11 @@ def sideband_cuts(sample, pathway=0):
     sample[MC_DATA_MASK] = event_mask
 
     if 'eventWeight' in sample.fields:
+        # print(f" {sample['sample_name'][0]} | pre-rescale yield: {np.sum(sample['eventWeight'][event_mask])}")
         if sample['sample_name'][0] == 'VBFToHH':
             sample['eventWeight'] = sample['eventWeight'] * (LUMINOSITIES['total_lumi'] / (LUMINOSITIES['total_lumi'] - LUMINOSITIES['2024'] - LUMINOSITIES['2022postEE']))
         sample['eventWeight'] = sample['eventWeight'] * (LUMINOSITIES['total_lumi'] / (LUMINOSITIES['total_lumi'] - LUMINOSITIES['2024']))
+        # print(f" {sample['sample_name'][0]} | post-rescale yield: {np.sum(sample['eventWeight'][event_mask])}")
 
     if 'Diphoton30_22_R9Id_OR_IsoCaloId_AND_HE_R9Id_Mass90' in sample.fields:
         sample[MC_DATA_MASK] = (sample[MC_DATA_MASK]) & (
@@ -653,61 +658,62 @@ if __name__ == '__main__':
             # os.path.join(LPC_FILEPREFIX_24, "bbHtoGG", ""): None,
         },
         # non-resonant
-        'MC-2022-24-GGJets': {
-            os.path.join(LPC_FILEPREFIX_22, "preEE", "GGJets", ""): None,
-            os.path.join(LPC_FILEPREFIX_22, "postEE", "GGJets", ""): None,
-            os.path.join(LPC_FILEPREFIX_23, "preBPix", "GGJets", ""): None,
-            os.path.join(LPC_FILEPREFIX_23, "postBPix", "GGJets", ""): None,
-            # os.path.join(LPC_FILEPREFIX_24, "GGJets", ""): None,
-        },
-        'MC-2022-24-GJetPt20To40': {
-            os.path.join(LPC_FILEPREFIX_22, "preEE", "GJetPt20To40", ""): None,
-            os.path.join(LPC_FILEPREFIX_22, "postEE", "GJetPt20To40", ""): None,
-            os.path.join(LPC_FILEPREFIX_23, "preBPix", "GJetPt20To40", ""): None,
-            os.path.join(LPC_FILEPREFIX_23, "postBPix", "GJetPt20To40", ""): None,
-            # os.path.join(LPC_FILEPREFIX_24, "GJetPt20To40", ""): None,
-        },
-        'MC-2022-24-GJetPt40': {
-            os.path.join(LPC_FILEPREFIX_22, "preEE", "GJetPt40", ""): None,
-            os.path.join(LPC_FILEPREFIX_22, "postEE", "GJetPt40", ""): None,
-            os.path.join(LPC_FILEPREFIX_23, "preBPix", "GJetPt40", ""): None,
-            os.path.join(LPC_FILEPREFIX_23, "postBPix", "GJetPt40", ""): None,
-            # os.path.join(LPC_FILEPREFIX_24, "GJetPt40", ""): None,
-        },
-        'MC-2022-24-TTGG': {
-            os.path.join(LPC_FILEPREFIX_22, "preEE", "TTGG", ""): None,
-            os.path.join(LPC_FILEPREFIX_22, "postEE", "TTGG", ""): None,
-            os.path.join(LPC_FILEPREFIX_23, "preBPix", "TTGG", ""): None,
-            os.path.join(LPC_FILEPREFIX_23, "postBPix", "TTGG", ""): None,
-            # os.path.join(LPC_FILEPREFIX_24, "GGJets", ""): None,
-        },
-        'MC-2022-24-TTGJetPt10To100': {
-            os.path.join(LPC_FILEPREFIX_22, "preEE", "TTG_1Jets_PTG_10to100", ""): None,
-            os.path.join(LPC_FILEPREFIX_22, "postEE", "TTGJetPt10To100", ""): None,
-            os.path.join(LPC_FILEPREFIX_23, "preBPix", "TTGJetPt10To100", ""): None,
-            os.path.join(LPC_FILEPREFIX_23, "postBPix", "TTGJetPt10To100", ""): None,
-            # os.path.join(LPC_FILEPREFIX_24, "TTGJetPt10To100", ""): None,
-        },
-        'MC-2022-24-TTGJetPt100To200': {
-            os.path.join(LPC_FILEPREFIX_22, "preEE", "TTG_1Jets_PTG_100to200", ""): None,
-            os.path.join(LPC_FILEPREFIX_22, "postEE", "TTGJetPt100To200", ""): None,
-            os.path.join(LPC_FILEPREFIX_23, "preBPix", "TTGJetPt100To200", ""): None,
-            os.path.join(LPC_FILEPREFIX_23, "postBPix", "TTGJetPt100To200", ""): None,
-            # os.path.join(LPC_FILEPREFIX_24, "TTGJetPt100To200", ""): None,
-        },
-        'MC-2022-24-TTGJetPt200': {
-            os.path.join(LPC_FILEPREFIX_22, "preEE", "TTG_1Jets_PTG_200", ""): None,
-            os.path.join(LPC_FILEPREFIX_22, "postEE", "TTGJetPt200", ""): None,
-            os.path.join(LPC_FILEPREFIX_23, "preBPix", "TTGJetPt200", ""): None,
-            os.path.join(LPC_FILEPREFIX_23, "postBPix", "TTGJetPt200", ""): None,
-            # os.path.join(LPC_FILEPREFIX_24, "TTGJetPt200", ""): None,
-        },
+        # 'MC-2022-24-GGJets': {
+        #     os.path.join(LPC_FILEPREFIX_22, "preEE", "GGJets", ""): None,
+        #     os.path.join(LPC_FILEPREFIX_22, "postEE", "GGJets", ""): None,
+        #     os.path.join(LPC_FILEPREFIX_23, "preBPix", "GGJets", ""): None,
+        #     os.path.join(LPC_FILEPREFIX_23, "postBPix", "GGJets", ""): None,
+        #     # os.path.join(LPC_FILEPREFIX_24, "GGJets", ""): None,
+        # },
+        # 'MC-2022-24-GJetPt20To40': {
+        #     os.path.join(LPC_FILEPREFIX_22, "preEE", "GJetPt20To40", ""): None,
+        #     os.path.join(LPC_FILEPREFIX_22, "postEE", "GJetPt20To40", ""): None,
+        #     os.path.join(LPC_FILEPREFIX_23, "preBPix", "GJetPt20To40", ""): None,
+        #     os.path.join(LPC_FILEPREFIX_23, "postBPix", "GJetPt20To40", ""): None,
+        #     # os.path.join(LPC_FILEPREFIX_24, "GJetPt20To40", ""): None,
+        # },
+        # 'MC-2022-24-GJetPt40': {
+        #     os.path.join(LPC_FILEPREFIX_22, "preEE", "GJetPt40", ""): None,
+        #     os.path.join(LPC_FILEPREFIX_22, "postEE", "GJetPt40", ""): None,
+        #     os.path.join(LPC_FILEPREFIX_23, "preBPix", "GJetPt40", ""): None,
+        #     os.path.join(LPC_FILEPREFIX_23, "postBPix", "GJetPt40", ""): None,
+        #     # os.path.join(LPC_FILEPREFIX_24, "GJetPt40", ""): None,
+        # },
+        # 'MC-2022-24-TTGG': {
+        #     os.path.join(LPC_FILEPREFIX_22, "preEE", "TTGG", ""): None,
+        #     os.path.join(LPC_FILEPREFIX_22, "postEE", "TTGG", ""): None,
+        #     os.path.join(LPC_FILEPREFIX_23, "preBPix", "TTGG", ""): None,
+        #     os.path.join(LPC_FILEPREFIX_23, "postBPix", "TTGG", ""): None,
+        #     # os.path.join(LPC_FILEPREFIX_24, "GGJets", ""): None,
+        # },
+        # 'MC-2022-24-TTGJetPt10To100': {
+        #     os.path.join(LPC_FILEPREFIX_22, "preEE", "TTG_1Jets_PTG_10to100", ""): None,
+        #     os.path.join(LPC_FILEPREFIX_22, "postEE", "TTGJetPt10To100", ""): None,
+        #     os.path.join(LPC_FILEPREFIX_23, "preBPix", "TTGJetPt10To100", ""): None,
+        #     os.path.join(LPC_FILEPREFIX_23, "postBPix", "TTGJetPt10To100", ""): None,
+        #     # os.path.join(LPC_FILEPREFIX_24, "TTGJetPt10To100", ""): None,
+        # },
+        # 'MC-2022-24-TTGJetPt100To200': {
+        #     os.path.join(LPC_FILEPREFIX_22, "preEE", "TTG_1Jets_PTG_100to200", ""): None,
+        #     os.path.join(LPC_FILEPREFIX_22, "postEE", "TTGJetPt100To200", ""): None,
+        #     os.path.join(LPC_FILEPREFIX_23, "preBPix", "TTGJetPt100To200", ""): None,
+        #     os.path.join(LPC_FILEPREFIX_23, "postBPix", "TTGJetPt100To200", ""): None,
+        #     # os.path.join(LPC_FILEPREFIX_24, "TTGJetPt100To200", ""): None,
+        # },
+        # 'MC-2022-24-TTGJetPt200': {
+        #     os.path.join(LPC_FILEPREFIX_22, "preEE", "TTG_1Jets_PTG_200", ""): None,
+        #     os.path.join(LPC_FILEPREFIX_22, "postEE", "TTGJetPt200", ""): None,
+        #     os.path.join(LPC_FILEPREFIX_23, "preBPix", "TTGJetPt200", ""): None,
+        #     os.path.join(LPC_FILEPREFIX_23, "postBPix", "TTGJetPt200", ""): None,
+        #     # os.path.join(LPC_FILEPREFIX_24, "TTGJetPt200", ""): None,
+        # },
     }
 
     main(
         sample_dirs, density=False,
         era="2022-24", lumi=LUMINOSITIES["total_lumi"],
-        plottype='Data/MC', all=True,
+        plottype='Data/MC', 
+        all=True,
         save=True
     )
 
