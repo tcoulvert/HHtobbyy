@@ -58,6 +58,16 @@ def process_data(
         #     samples[sample_name]['eventWeight'] = ak.where(
         #         vbf_mask, 1.757*samples[sample_name]['eventWeight'], samples[sample_name]['eventWeight']
         #     )
+        # if re.search('non-res + ggFH + VBFH', sample_name) is not None:
+        #     ggf_mask = (samples[sample_name]['sample_name'] == 'GluGluHtoGG')
+        #     samples[sample_name]['eventWeight'] = ak.where(
+        #         ggf_mask, 1.15*samples[sample_name]['eventWeight'], samples[sample_name]['eventWeight']
+        #     )
+        # elif re.search('ttH + bbH', sample_name) is not None:
+        #     tth_mask = (samples[sample_name]['sample_name'] == 'ttHtoGG')
+        #     samples[sample_name]['eventWeight'] = ak.where(
+        #         tth_mask, 2.40*samples[sample_name]['eventWeight'], samples[sample_name]['eventWeight']
+        #     )
 
     # Rescale factor for sig and bkg samples
     if len(filepaths_dict) > 1:
@@ -96,20 +106,20 @@ def process_data(
         'nonRes_CosThetaStar_CS', 'nonRes_CosThetaStar_jj', 'nonRes_CosThetaStar_gg',
 
         # dijet vars
-        'nonRes_dijet_mass', 'nonRes_dijet_pt',  #heft
+        'dijet_PNetRegMass', 'dijet_PNetRegPt',  #heft
 
         # bjet vars
-        # 'lead_bjet_PNetRegPt', #heft
+        'lead_bjet_PNetRegPt', #heft
         'nonRes_lead_bjet_eta', # eta
         'nonRes_lead_bjet_btagPNetB', # btag scores
-        'lead_bjet_sigmapT_over_pT', #heft
-        'lead_bjet_pt_over_Mjj', #heft
+        'lead_bjet_sigmapT_over_RegPt', #heft
+        'lead_bjet_RegPt_over_Mjj', #heft
         # --------
-        # 'sublead_bjet_PNetRegPt', #heft
+        'sublead_bjet_PNetRegPt', #heft
         'nonRes_sublead_bjet_eta', 
         'nonRes_sublead_bjet_btagPNetB',
-        'sublead_bjet_sigmapT_over_pT', #heft
-        'sublead_bjet_pt_over_Mjj', #heft
+        'sublead_bjet_sigmapT_over_RegPt', #heft
+        'sublead_bjet_RegPt_over_Mjj', #heft
 
         # diphoton vars
         'pt',  #heft
@@ -120,14 +130,64 @@ def process_data(
         'sublead_mvaID', 'sublead_sigmaE_over_E',
         
         # HH vars
-        'nonRes_HHbbggCandidate_pt', 'nonRes_HHbbggCandidate_eta', 'pt_balance',
+        'HH_PNetRegPt', 'HH_PNetRegEta', 'RegPt_balance',
 
         # ZH vars
         'DeltaPhi_jj', 
         'DeltaEta_jj', #heft
-        'isr_jet_pt',  #heft
+        'isr_jet_RegPt',  #heft
         'DeltaPhi_isr_jet_z',
     }
+    # high_level_fields = {
+    #     # MET variables
+    #     'puppiMET_sumEt',  #heft
+    #     'puppiMET_pt',
+
+    #     # jet vars
+    #     'nonRes_DeltaPhi_j1MET', 'nonRes_DeltaPhi_j2MET', 
+    #     'nonRes_DeltaR_jg_min',  #heft
+    #     'n_jets', 'nonRes_chi_t0', 'nonRes_chi_t1',
+
+    #     # lepton vars
+    #     'lepton1_pt', 'lepton1_pfIsoId', 'lepton1_mvaID',
+    #     'DeltaR_b1l1',
+
+    #     # angular vars
+    #     'nonRes_CosThetaStar_CS', 'nonRes_CosThetaStar_jj', 'nonRes_CosThetaStar_gg',
+
+    #     # dijet vars
+    #     'nonRes_dijet_mass', 'nonRes_dijet_pt',  #heft
+
+    #     # bjet vars
+    #     # 'lead_bjet_PNetRegPt', #heft
+    #     'nonRes_lead_bjet_eta', # eta
+    #     'nonRes_lead_bjet_btagPNetB', # btag scores
+    #     'lead_bjet_sigmapT_over_pT', #heft
+    #     'lead_bjet_pt_over_Mjj', #heft
+    #     # --------
+    #     # 'sublead_bjet_PNetRegPt', #heft
+    #     'nonRes_sublead_bjet_eta', 
+    #     'nonRes_sublead_bjet_btagPNetB',
+    #     'sublead_bjet_sigmapT_over_pT', #heft
+    #     'sublead_bjet_pt_over_Mjj', #heft
+
+    #     # diphoton vars
+    #     'pt',  #heft
+    #     'eta',
+
+    #     # Photon vars
+    #     'lead_mvaID', 'lead_sigmaE_over_E',
+    #     'sublead_mvaID', 'sublead_sigmaE_over_E',
+        
+    #     # HH vars
+    #     'nonRes_HHbbggCandidate_pt', 'nonRes_HHbbggCandidate_eta', 'pt_balance',
+
+    #     # ZH vars
+    #     'DeltaPhi_jj', 
+    #     'DeltaEta_jj', #heft
+    #     'isr_jet_pt',  #heft
+    #     'DeltaPhi_isr_jet_z',
+    # }
     std_mapping = {
         # MET variables
         'puppiMET_sumEt': 'puppiMET_sumEt', 'puppiMET_pt': 'puppiMET_pt',
@@ -192,8 +252,10 @@ def process_data(
     pandas_aux_samples = {}
     high_level_aux_fields = {
         'event', # event number
-        'mass', 'nonRes_dijet_mass',  # diphoton and bb-dijet mass
-        'nonRes_HHbbggCandidate_mass',
+        # 'mass', 'nonRes_dijet_mass',  # diphoton and bb-dijet mass
+        # 'nonRes_HHbbggCandidate_mass',
+        'mass', 'dijet_PNetRegMass',  # diphoton and bb-dijet mass
+        'HH_PNetRegMass',
         'lepton1_pt', 'lepton2_pt',  # renamed to lepton1/2_bool in DataFrame, used to distinguish 0, 1, and 2+ lepton events
     }
     if 'hash' in samples[order[0]].fields:
