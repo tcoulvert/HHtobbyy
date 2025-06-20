@@ -17,7 +17,7 @@ FILL_VALUE = -999
 def process_data(
     filepaths_dict, output_dirpath, order,
     seed=21, mod_vals=(5, 5), k_fold_test=True, save=True,
-    std_json_dirpath=None, other_bkg_rescale=5
+    std_json_dirpath=None, other_bkg_rescale=5, jet_prefix='nonRes'
 ):
     # Load parquet files #
     samples = {}
@@ -37,12 +37,15 @@ def process_data(
                 else:
                     TIGHT_PNETBTAG_WP = 0.6915
                 sample_list[idx] = sample_list[idx][
-                    (sample_list[idx]['nonRes_lead_bjet_btagPNetB'] > TIGHT_PNETBTAG_WP)
-                    & (sample_list[idx]['nonRes_sublead_bjet_btagPNetB'] > TIGHT_PNETBTAG_WP)
+                    (sample_list[idx][f'{jet_prefix}_lead_bjet_btagPNetB'] > TIGHT_PNETBTAG_WP)
+                    & (sample_list[idx][f'{jet_prefix}_sublead_bjet_btagPNetB'] > TIGHT_PNETBTAG_WP)
                 ]
         samples[sample_name] = ak.concatenate(sample_list)
+        # for field in samples[sample_name].fields:
+        #     print(field)
+        #     print('-'*60)
         samples[sample_name] = samples[sample_name][
-            samples[sample_name]['nonRes_has_two_btagged_jets']
+            samples[sample_name][f'{jet_prefix}_has_two_btagged_jets']
             & (
                 samples[sample_name]['fiducialGeometricFlag'] if 'fiducialGeometricFlag' in samples[sample_name].fields else samples[sample_name]['pass_fiducial_geometric']
             ) & (
@@ -51,23 +54,11 @@ def process_data(
                     & samples[sample_name]['Diphoton30_22_R9Id_OR_IsoCaloId_AND_HE_R9Id_Mass95']
                 ) 
                 if 'Diphoton30_22_R9Id_OR_IsoCaloId_AND_HE_R9Id_Mass90' in samples[sample_name].fields else (samples[sample_name]['mass'] > 0)
+            ) & (
+                (samples[sample_name]['lead_mvaID'] > -0.7)
+                & (samples[sample_name]['sublead_mvaID'] > -0.7)
             )
         ]
-        # if re.search('HH', sample_name) is not None:
-        #     vbf_mask = (samples[sample_name]['sample_name'] == 'VBFToHH')
-        #     samples[sample_name]['eventWeight'] = ak.where(
-        #         vbf_mask, 1.757*samples[sample_name]['eventWeight'], samples[sample_name]['eventWeight']
-        #     )
-        # if re.search('non-res + ggFH + VBFH', sample_name) is not None:
-        #     ggf_mask = (samples[sample_name]['sample_name'] == 'GluGluHtoGG')
-        #     samples[sample_name]['eventWeight'] = ak.where(
-        #         ggf_mask, 1.15*samples[sample_name]['eventWeight'], samples[sample_name]['eventWeight']
-        #     )
-        # elif re.search('ttH + bbH', sample_name) is not None:
-        #     tth_mask = (samples[sample_name]['sample_name'] == 'ttHtoGG')
-        #     samples[sample_name]['eventWeight'] = ak.where(
-        #         tth_mask, 2.40*samples[sample_name]['eventWeight'], samples[sample_name]['eventWeight']
-        #     )
 
     # Rescale factor for sig and bkg samples
     if len(filepaths_dict) > 1:
@@ -88,38 +79,44 @@ def process_data(
     # Convert parquet files to pandas DFs #
     pandas_samples = {}
     dont_include_vars = []
+    merger_vars_map = {
+        'nonRes': '',
+        'nonResReg': 'MbbReg_',
+        'nonResReg_DNNpair': 'MbbRegDNNPair_'
+    }
     high_level_fields = {
         # MET variables
         'puppiMET_sumEt',  #heft
         'puppiMET_pt',
 
         # jet vars
-        'nonRes_DeltaPhi_j1MET', 'nonRes_DeltaPhi_j2MET', 
-        'nonRes_DeltaR_jg_min',  #heft
-        'n_jets', 'nonRes_chi_t0', 'nonRes_chi_t1',
+        f'{jet_prefix}_DeltaPhi_j1MET', f'{jet_prefix}_DeltaPhi_j2MET', 
+        f'{jet_prefix}_DeltaR_jg_min',  #heft
+        'n_jets', f'{jet_prefix}_chi_t0', f'{jet_prefix}_chi_t1',
 
         # lepton vars
         'lepton1_pt', 'lepton1_pfIsoId', 'lepton1_mvaID',
         'DeltaR_b1l1',
 
         # angular vars
-        'nonRes_CosThetaStar_CS', 'nonRes_CosThetaStar_jj', 'nonRes_CosThetaStar_gg',
+        f'{jet_prefix}_CosThetaStar_CS', f'{jet_prefix}_CosThetaStar_jj', f'{jet_prefix}_CosThetaStar_gg',
 
         # dijet vars
-        'dijet_PNetRegMass', 'dijet_PNetRegPt',  #heft
+        f'{jet_prefix}_dijet_mass' + ('' if jet_prefix == 'nonRes' else '_DNNreg'),  #heft
+        f'{jet_prefix}_dijet_pt',  #heft
 
         # bjet vars
-        'lead_bjet_PNetRegPt', #heft
-        'nonRes_lead_bjet_eta', # eta
-        'nonRes_lead_bjet_btagPNetB', # btag scores
-        'lead_bjet_sigmapT_over_RegPt', #heft
-        'lead_bjet_RegPt_over_Mjj', #heft
+        f'{jet_prefix}_lead_bjet_pt', #heft
+        f'{jet_prefix}_lead_bjet_eta', # eta
+        f'{jet_prefix}_lead_bjet_btagPNetB', # btag scores
+        f'{merger_vars_map[jet_prefix]}lead_bjet_sigmapT_over_pT', #heft
+        f'{merger_vars_map[jet_prefix]}lead_bjet_pt_over_Mjj', #heft
         # --------
-        'sublead_bjet_PNetRegPt', #heft
-        'nonRes_sublead_bjet_eta', 
-        'nonRes_sublead_bjet_btagPNetB',
-        'sublead_bjet_sigmapT_over_RegPt', #heft
-        'sublead_bjet_RegPt_over_Mjj', #heft
+        f'{jet_prefix}_sublead_bjet_pt', #heft
+        f'{jet_prefix}_sublead_bjet_eta', 
+        f'{jet_prefix}_sublead_bjet_btagPNetB',
+        f'{merger_vars_map[jet_prefix]}sublead_bjet_sigmapT_over_pT', #heft
+        f'{merger_vars_map[jet_prefix]}sublead_bjet_pt_over_Mjj', #heft
 
         # diphoton vars
         'pt',  #heft
@@ -127,121 +124,85 @@ def process_data(
 
         # Photon vars
         'lead_mvaID', 'lead_sigmaE_over_E',
+        # --------
         'sublead_mvaID', 'sublead_sigmaE_over_E',
         
         # HH vars
-        'HH_PNetRegPt', 'HH_PNetRegEta', 'RegPt_balance',
+        f'{jet_prefix}_HHbbggCandidate_pt', 
+        f'{jet_prefix}_HHbbggCandidate_eta', 
+        f'{merger_vars_map[jet_prefix]}pt_balance',
 
         # ZH vars
-        'DeltaPhi_jj', 
-        'DeltaEta_jj', #heft
-        'isr_jet_RegPt',  #heft
-        'DeltaPhi_isr_jet_z',
+        f'{merger_vars_map[jet_prefix]}DeltaPhi_jj', 
+        f'{merger_vars_map[jet_prefix]}DeltaEta_jj', #heft
+        f'{merger_vars_map[jet_prefix]}isr_jet_pt',  #heft
+        f'{merger_vars_map[jet_prefix]}DeltaPhi_isr_jet_z',
     }
-    # high_level_fields = {
-    #     # MET variables
-    #     'puppiMET_sumEt',  #heft
-    #     'puppiMET_pt',
-
-    #     # jet vars
-    #     'nonRes_DeltaPhi_j1MET', 'nonRes_DeltaPhi_j2MET', 
-    #     'nonRes_DeltaR_jg_min',  #heft
-    #     'n_jets', 'nonRes_chi_t0', 'nonRes_chi_t1',
-
-    #     # lepton vars
-    #     'lepton1_pt', 'lepton1_pfIsoId', 'lepton1_mvaID',
-    #     'DeltaR_b1l1',
-
-    #     # angular vars
-    #     'nonRes_CosThetaStar_CS', 'nonRes_CosThetaStar_jj', 'nonRes_CosThetaStar_gg',
-
-    #     # dijet vars
-    #     'nonRes_dijet_mass', 'nonRes_dijet_pt',  #heft
-
-    #     # bjet vars
-    #     # 'lead_bjet_PNetRegPt', #heft
-    #     'nonRes_lead_bjet_eta', # eta
-    #     'nonRes_lead_bjet_btagPNetB', # btag scores
-    #     'lead_bjet_sigmapT_over_pT', #heft
-    #     'lead_bjet_pt_over_Mjj', #heft
-    #     # --------
-    #     # 'sublead_bjet_PNetRegPt', #heft
-    #     'nonRes_sublead_bjet_eta', 
-    #     'nonRes_sublead_bjet_btagPNetB',
-    #     'sublead_bjet_sigmapT_over_pT', #heft
-    #     'sublead_bjet_pt_over_Mjj', #heft
-
-    #     # diphoton vars
-    #     'pt',  #heft
-    #     'eta',
-
-    #     # Photon vars
-    #     'lead_mvaID', 'lead_sigmaE_over_E',
-    #     'sublead_mvaID', 'sublead_sigmaE_over_E',
-        
-    #     # HH vars
-    #     'nonRes_HHbbggCandidate_pt', 'nonRes_HHbbggCandidate_eta', 'pt_balance',
-
-    #     # ZH vars
-    #     'DeltaPhi_jj', 
-    #     'DeltaEta_jj', #heft
-    #     'isr_jet_pt',  #heft
-    #     'DeltaPhi_isr_jet_z',
-    # }
     std_mapping = {
         # MET variables
         'puppiMET_sumEt': 'puppiMET_sumEt', 'puppiMET_pt': 'puppiMET_pt',
 
         # jet vars
-        'nonRes_DeltaPhi_j1MET': 'DeltaPhi_j1MET', 'nonRes_DeltaPhi_j2MET': 'DeltaPhi_j2MET', 'nonRes_DeltaR_jg_min': 'DeltaR_jg_min', 
-        'n_jets': 'n_jets', 'nonRes_chi_t0': 'chi_t0', 'nonRes_chi_t1': 'chi_t1',
+        f'{jet_prefix}_DeltaPhi_j1MET': 'DeltaPhi_j1MET', f'{jet_prefix}_DeltaPhi_j2MET': 'DeltaPhi_j2MET', 
+        f'{jet_prefix}_DeltaR_jg_min': 'DeltaR_jg_min', 
+        'n_jets': 'n_jets', 
+        f'{jet_prefix}_chi_t0': 'chi_t0', f'{jet_prefix}_chi_t1': 'chi_t1',
 
         # lepton vars
         'lepton1_pt': 'lepton1_pt', 'lepton1_pfIsoId': 'lepton1_pfIsoId', 'lepton1_mvaID': 'lepton1_mvaID',
         'DeltaR_b1l1': 'leadBjet_leadLepton',
 
         # angular vars
-        'nonRes_CosThetaStar_CS': 'CosThetaStar_CS', 'nonRes_CosThetaStar_jj': 'CosThetaStar_jj', 'nonRes_CosThetaStar_gg': 'CosThetaStar_gg',
+        f'{jet_prefix}_CosThetaStar_CS': 'CosThetaStar_CS', 
+        f'{jet_prefix}_CosThetaStar_jj': 'CosThetaStar_jj', 
+        f'{jet_prefix}_CosThetaStar_gg': 'CosThetaStar_gg',
 
         # dijet vars
-        'dijet_PNetRegMass': 'dijet_mass', 'dijet_PNetRegPt': 'dijet_pt',
-        # ------------------------
-        'nonRes_dijet_mass': 'dijet_mass', 'nonRes_dijet_pt': 'dijet_pt',
+        f'{jet_prefix}_dijet_mass' + ('' if jet_prefix == 'nonRes' else '_DNNreg'): 'dijet_mass', 
+        f'{jet_prefix}_dijet_pt': 'dijet_pt',
 
         # bjet vars
-        'lead_bjet_PNetRegPt': 'lead_bjet_pt', 'nonRes_lead_bjet_eta': 'lead_bjet_eta', 'lead_bjet_btagRobustParTAK4B': 'lead_bjet_btagPNetB',
-        'lead_bjet_sigmapT_over_RegPt': 'lead_bjet_sigmapT_over_pT', 'lead_bjet_RegPt_over_Mjj': 'lead_bjet_pt_over_Mjj',
-        'sublead_bjet_PNetRegPt': 'sublead_bjet_pt', 'nonRes_sublead_bjet_eta': 'sublead_bjet_eta', 'sublead_bjet_btagRobustParTAK4B': 'sublead_bjet_btagPNetB',
-        'sublead_bjet_sigmapT_over_RegPt': 'sublead_bjet_sigmapT_over_pT', 'sublead_bjet_RegPt_over_Mjj': 'sublead_bjet_pt_over_Mjj',
-        # ------------------------
-        'nonRes_lead_bjet_pt': 'lead_bjet_pt', 'nonRes_lead_bjet_btagPNetB': 'lead_bjet_btagPNetB',
-        'lead_bjet_sigmapT_over_pT': 'lead_bjet_sigmapT_over_pT', 'lead_bjet_pt_over_Mjj': 'lead_bjet_pt_over_Mjj',
-        'nonRes_sublead_bjet_pt': 'sublead_bjet_pt', 'nonRes_sublead_bjet_btagPNetB': 'sublead_bjet_btagPNetB',
-        'sublead_bjet_sigmapT_over_pT': 'sublead_bjet_sigmapT_over_pT', 'sublead_bjet_pt_over_Mjj': 'sublead_bjet_pt_over_Mjj',
+        f'{jet_prefix}_lead_bjet_pt': 'lead_bjet_pt', 
+        f'{jet_prefix}_lead_bjet_eta': 'lead_bjet_eta',
+        f'{jet_prefix}_lead_bjet_btagPNetB': 'lead_bjet_btagPNetB',
+        f'{merger_vars_map[jet_prefix]}lead_bjet_sigmapT_over_pT': 'lead_bjet_sigmapT_over_pT', 
+        f'{merger_vars_map[jet_prefix]}lead_bjet_pt_over_Mjj': 'lead_bjet_pt_over_Mjj',
+        # --------
+        f'{jet_prefix}_sublead_bjet_pt': 'sublead_bjet_pt',  
+        f'{jet_prefix}_sublead_bjet_eta': 'sublead_bjet_eta',
+        f'{jet_prefix}_sublead_bjet_btagPNetB': 'sublead_bjet_btagPNetB',
+        f'{merger_vars_map[jet_prefix]}sublead_bjet_sigmapT_over_pT': 'sublead_bjet_sigmapT_over_pT', 
+        f'{merger_vars_map[jet_prefix]}sublead_bjet_pt_over_Mjj': 'sublead_bjet_pt_over_Mjj',
 
         # diphoton vars
         'pt': 'pt', 'eta': 'eta',
 
         # Photon vars
-        'lead_mvaID_run3': 'lead_mvaID', 'lead_sigmaE_over_E': 'lead_sigmaE_over_E', 'lead_mvaID': 'lead_mvaID',
-        'lead_mvaID_nano': 'lead_mvaID', 'sublead_mvaID_nano': 'sublead_mvaID',
-        'sublead_mvaID_run3': 'sublead_mvaID', 'sublead_sigmaE_over_E': 'sublead_sigmaE_over_E', 'sublead_mvaID': 'sublead_mvaID',
+        'lead_mvaID': 'lead_mvaID', 'lead_sigmaE_over_E': 'lead_sigmaE_over_E',
+        # --------
+        'sublead_mvaID': 'sublead_mvaID', 'sublead_sigmaE_over_E': 'sublead_sigmaE_over_E',
         
         # HH vars
-        'HH_PNetRegPt': 'HHbbggCandidate_pt', 'HH_PNetRegEta': 'HHbbggCandidate_eta', 'RegPt_balance': 'pt_balance',
-        # ------------------------
-        'nonRes_HHbbggCandidate_pt': 'HHbbggCandidate_pt', 'nonRes_HHbbggCandidate_eta': 'HHbbggCandidate_eta', 'pt_balance': 'pt_balance',
+        f'{jet_prefix}_HHbbggCandidate_pt': 'HHbbggCandidate_pt', 
+        f'{jet_prefix}_HHbbggCandidate_eta': 'HHbbggCandidate_eta', 
+        f'{merger_vars_map[jet_prefix]}pt_balance': 'pt_balance',
 
         # ZH vars
-        'DeltaPhi_jj': 'DeltaPhi_jj', 'DeltaEta_jj': 'DeltaEta_jj',
-        'isr_jet_RegPt': 'isr_jet_pt', 'DeltaPhi_isr_jet_z': 'DeltaPhi_isr_jet_z',
-        # ------------------------
-        'isr_jet_pt': 'isr_jet_pt',
+        f'{merger_vars_map[jet_prefix]}DeltaPhi_jj': 'DeltaPhi_jj', 
+        f'{merger_vars_map[jet_prefix]}DeltaEta_jj': 'DeltaEta_jj',
+        f'{merger_vars_map[jet_prefix]}DeltaPhi_isr_jet_z': 'DeltaPhi_isr_jet_z',
+        f'{merger_vars_map[jet_prefix]}isr_jet_pt': 'isr_jet_pt',
         
         # Aux fields
-        'event': 'event', 'mass': 'mass', 'HH_PNetRegMass': 'HHbbggCandidate_mass', 'nonRes_HHbbggCandidate_mass': 'HHbbggCandidate_mass',
+        'event': 'event', 
+
+        'mass': 'mass', f'{jet_prefix}_HHbbggCandidate_mass': 'HHbbggCandidate_mass',
         'lepton1_pt': 'lepton1_pt', 'lepton2_pt': 'lepton2_pt',
-        'hash': 'hash', 'eventWeight': 'eventWeight', 'sample_name': 'sample_name', 'max_nonbjet_btag': 'max_nonbjet_btag',
+
+        'hash': 'hash', 'eventWeight': 'eventWeight', 'sample_name': 'sample_name', 
+
+        f'{merger_vars_map[jet_prefix]}max_nonbjet_btag': 'max_nonbjet_btag',
+
         'MultiBDT_output': 'MultiBDT_output',
     }
     # for field in samples[order[0]].fields:
@@ -252,10 +213,8 @@ def process_data(
     pandas_aux_samples = {}
     high_level_aux_fields = {
         'event', # event number
-        # 'mass', 'nonRes_dijet_mass',  # diphoton and bb-dijet mass
-        # 'nonRes_HHbbggCandidate_mass',
-        'mass', 'dijet_PNetRegMass',  # diphoton and bb-dijet mass
-        'HH_PNetRegMass',
+        'mass', f'{jet_prefix}_dijet_mass' + ('' if jet_prefix == 'nonRes' else '_DNNreg'),  # diphoton and bb-dijet mass
+        f'{jet_prefix}_HHbbggCandidate_mass',
         'lepton1_pt', 'lepton2_pt',  # renamed to lepton1/2_bool in DataFrame, used to distinguish 0, 1, and 2+ lepton events
     }
     if 'hash' in samples[order[0]].fields:
@@ -264,8 +223,8 @@ def process_data(
         high_level_aux_fields.add('eventWeight')  # computed weight using (genWeight * lumi * xs / sum_of_genWeights)
     if 'sample_name' in samples[order[0]].fields:
         high_level_aux_fields.add('sample_name')
-    if 'max_nonbjet_btag' in samples[order[0]].fields:
-        high_level_aux_fields.add('max_nonbjet_btag')
+    if f'{merger_vars_map[jet_prefix]}max_nonbjet_btag' in samples[order[0]].fields:
+        high_level_aux_fields.add(f'{merger_vars_map[jet_prefix]}max_nonbjet_btag')
     if 'MultiBDT_output' in samples[order[0]].fields:
         high_level_aux_fields.add('MultiBDT_output')
 
