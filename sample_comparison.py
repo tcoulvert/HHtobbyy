@@ -26,7 +26,8 @@ LPC_FILEPREFIX_23 = os.path.join(lpc_fileprefix, lpc_filegroup('2023'), 'sim', '
 LPC_FILEPREFIX_24 = os.path.join(lpc_fileprefix, lpc_filegroup('2024'), 'sim', '')
 END_FILEPATH = '*output.parquet' if re.search('MultiBDT_output', LPC_FILEPREFIX_22) is not None else '*merged.parquet'
 
-DESTDIR = '2023_2024_data_comparison'
+# DESTDIR = 'nonres_mass'
+DESTDIR = 'kappa_angular_comparison2'
 if not os.path.exists(DESTDIR):
     os.makedirs(DESTDIR)
 
@@ -55,92 +56,99 @@ LUMINOSITIES = {
     os.path.join(LPC_FILEPREFIX_24, ""): 109.08,
 }
 LUMINOSITIES['total_lumi'] = sum(LUMINOSITIES.values())
+LUMINOSITIES['22-23'] = sum([
+    LUMINOSITIES[os.path.join(LPC_FILEPREFIX_22, "preEE", "")],
+    LUMINOSITIES[os.path.join(LPC_FILEPREFIX_22, "postEE", "")],
+    LUMINOSITIES[os.path.join(LPC_FILEPREFIX_23, "preBPix", "")],
+    LUMINOSITIES[os.path.join(LPC_FILEPREFIX_23, "preBPix", "")],
+])
 
 # Dictionary of variables
 VARIABLES = {
     # key: hist.axis axes for plotting #
     # MET variables
-    'puppiMET_sumEt': hist.axis.Regular(40, 150., 2000, name='var', label=r'puppiMET $\Sigma E_T$ [GeV]', growth=False, underflow=False, overflow=False), 
-    'puppiMET_pt': hist.axis.Regular(40, 20., 250, name='var', label=r'puppiMET $p_T$ [GeV]', growth=False, underflow=False, overflow=False), 
+    # 'puppiMET_sumEt': hist.axis.Regular(40, 150., 2000, name='var', label=r'puppiMET $\Sigma E_T$ [GeV]', growth=False, underflow=False, overflow=False), 
+    # 'puppiMET_pt': hist.axis.Regular(40, 20., 250, name='var', label=r'puppiMET $p_T$ [GeV]', growth=False, underflow=False, overflow=False), 
 
-    # jet-MET variables
+    # # jet-MET variables
     'nonRes_DeltaPhi_j1MET': hist.axis.Regular(20,-3.2, 3.2, name='var', label=r'$\Delta\phi (j_1,E_T^{miss})$', growth=False, underflow=False, overflow=False), 
     'nonRes_DeltaPhi_j2MET': hist.axis.Regular(20, -3.2, 3.2, name='var', label=r'$\Delta\phi (j_2,E_T^{miss})$', growth=False, underflow=False, overflow=False), 
-    # jet-photon variables
+    # # jet-photon variables
     'nonRes_DeltaR_jg_min': hist.axis.Regular(30, 0, 5, name='var', label=r'min$(\Delta R(jet, \gamma))$', growth=False, underflow=False, overflow=False), 
-    # jet-lepton variables
-    'DeltaR_b1l1': hist.axis.Regular(30, 0, 5, name='var', label=r'$\Delta R(bjet_{lead}, l_{lead})$', growth=False, underflow=False, overflow=False),
+    # # jet-lepton variables
+    # 'DeltaR_b1l1': hist.axis.Regular(30, 0, 5, name='var', label=r'$\Delta R(bjet_{lead}, l_{lead})$', growth=False, underflow=False, overflow=False),
 
-    # bjet variables
-    'lead_bjet_PNetRegPt': hist.axis.Regular(40, 20., 250, name='var', label=r'lead bjet $p_T$ [GeV]', growth=False, underflow=False, overflow=False),
-    'nonRes_lead_bjet_eta': hist.axis.Regular(20, -5., 5., name='var', label=r'lead bjet $\eta$', growth=False, underflow=False, overflow=False),
-    'nonRes_lead_bjet_btagPNetB': hist.axis.Regular(50, 0., 1., name='var', label=r'$j_{lead}$ PNet btag score', growth=False, underflow=False, overflow=False), 
-    'lead_bjet_RegPt_over_Mjj': hist.axis.Regular(50, 0., 4., name='var', label=r'$j1 p_{T} / M_{jj}$', growth=False, underflow=False, overflow=False), 
-    'lead_bjet_sigmapT_over_RegPt': hist.axis.Regular(50, 0., 0.02, name='var', label=r'$j1 \sigma p_{T} / p_{T}$', growth=False, underflow=False, overflow=False), 
-    # ----------
-    'sublead_bjet_PNetRegPt': hist.axis.Regular(40, 20., 250, name='var', label=r'lead bjet $p_T$ [GeV]', growth=False, underflow=False, overflow=False),
-    'nonRes_sublead_bjet_eta': hist.axis.Regular(20, -5., 5., name='var', label=r'lead bjet $\eta$', growth=False, underflow=False, overflow=False),
-    'nonRes_sublead_bjet_btagPNetB': hist.axis.Regular(50, 0., 1., name='var', label=r'$j_{lead}$ PNet btag score', growth=False, underflow=False, overflow=False), 
-    'sublead_bjet_RegPt_over_Mjj': hist.axis.Regular(50, 0., 2., name='var', label=r'$j2 p_{T} / M_{jj}$', growth=False, underflow=False, overflow=False),
-    'sublead_bjet_sigmapT_over_RegPt': hist.axis.Regular(50, 0., 0.02, name='var', label=r'$j2 \sigma p_{T} / p_{T}$', growth=False, underflow=False, overflow=False),
+    # # bjet variables
+    # 'lead_bjet_PNetRegPt': hist.axis.Regular(40, 20., 250, name='var', label=r'lead bjet $p_T$ [GeV]', growth=False, underflow=False, overflow=False),
+    # 'nonRes_lead_bjet_eta': hist.axis.Regular(20, -5., 5., name='var', label=r'lead bjet $\eta$', growth=False, underflow=False, overflow=False),
+    # 'nonRes_lead_bjet_btagPNetB': hist.axis.Regular(50, 0., 1., name='var', label=r'$j_{lead}$ PNet btag score', growth=False, underflow=False, overflow=False), 
+    # 'lead_bjet_RegPt_over_Mjj': hist.axis.Regular(50, 0., 4., name='var', label=r'$j1 p_{T} / M_{jj}$', growth=False, underflow=False, overflow=False), 
+    # 'lead_bjet_sigmapT_over_RegPt': hist.axis.Regular(50, 0., 0.02, name='var', label=r'$j1 \sigma p_{T} / p_{T}$', growth=False, underflow=False, overflow=False), 
+    # # ----------
+    # 'sublead_bjet_PNetRegPt': hist.axis.Regular(40, 20., 250, name='var', label=r'lead bjet $p_T$ [GeV]', growth=False, underflow=False, overflow=False),
+    # 'nonRes_sublead_bjet_eta': hist.axis.Regular(20, -5., 5., name='var', label=r'lead bjet $\eta$', growth=False, underflow=False, overflow=False),
+    # 'nonRes_sublead_bjet_btagPNetB': hist.axis.Regular(50, 0., 1., name='var', label=r'$j_{lead}$ PNet btag score', growth=False, underflow=False, overflow=False), 
+    # 'sublead_bjet_RegPt_over_Mjj': hist.axis.Regular(50, 0., 2., name='var', label=r'$j2 p_{T} / M_{jj}$', growth=False, underflow=False, overflow=False),
+    # 'sublead_bjet_sigmapT_over_RegPt': hist.axis.Regular(50, 0., 0.02, name='var', label=r'$j2 \sigma p_{T} / p_{T}$', growth=False, underflow=False, overflow=False),
 
-    # jet variables
-    'n_jets': hist.axis.Integer(0, 10, name='var', label=r'$n_{jets}$', growth=False, underflow=False, overflow=False), 
-    'nonRes_chi_t0': hist.axis.Regular(40, 0., 150, name='var', label=r'$\chi_{t0}^2$', growth=False, underflow=False, overflow=False), 
-    'nonRes_chi_t1': hist.axis.Regular(30, 0., 500, name='var', label=r'$\chi_{t1}^2$', growth=False, underflow=False, overflow=False), 
+    # # jet variables
+    # 'n_jets': hist.axis.Integer(0, 10, name='var', label=r'$n_{jets}$', growth=False, underflow=False, overflow=False), 
+    # 'nonRes_chi_t0': hist.axis.Regular(40, 0., 150, name='var', label=r'$\chi_{t0}^2$', growth=False, underflow=False, overflow=False), 
+    # 'nonRes_chi_t1': hist.axis.Regular(30, 0., 500, name='var', label=r'$\chi_{t1}^2$', growth=False, underflow=False, overflow=False), 
 
-    # lepton variables
-    'lepton1_pt': hist.axis.Regular(40, 0., 200., name='var', label=r'lead lepton $p_T$ [GeV]', growth=False, underflow=False, overflow=False), 
-    # 'lepton1_pfIsoId': hist.axis.Integer(0, 12, name='var', label=r'$l_{lead}$ PF IsoId', growth=False, underflow=False, overflow=False), 
-    'lepton1_pfIsoId': hist.axis.Regular(12, 0, 12, name='var', label=r'$l_{lead}$ PF IsoId', growth=False, underflow=False, overflow=False), 
-    'lepton1_mvaID': hist.axis.Regular(50, -1., 1., name='var', label=r'$\l_{lead}$ MVA ID', growth=False, underflow=False, overflow=False),  
+    # # lepton variables
+    # 'lepton1_pt': hist.axis.Regular(40, 0., 200., name='var', label=r'lead lepton $p_T$ [GeV]', growth=False, underflow=False, overflow=False), 
+    # # 'lepton1_pfIsoId': hist.axis.Integer(0, 12, name='var', label=r'$l_{lead}$ PF IsoId', growth=False, underflow=False, overflow=False), 
+    # 'lepton1_pfIsoId': hist.axis.Regular(12, 0, 12, name='var', label=r'$l_{lead}$ PF IsoId', growth=False, underflow=False, overflow=False), 
+    # 'lepton1_mvaID': hist.axis.Regular(50, -1., 1., name='var', label=r'$\l_{lead}$ MVA ID', growth=False, underflow=False, overflow=False),  
 
-    # diphoton variables
-    'pt': hist.axis.Regular(40, 20., 2000, name='var', label=r' $\gamma\gamma p_{T}$ [GeV]', growth=False, underflow=False, overflow=False),
+    # # diphoton variables
+    # 'pt': hist.axis.Regular(40, 20., 2000, name='var', label=r' $\gamma\gamma p_{T}$ [GeV]', growth=False, underflow=False, overflow=False),
     'eta': hist.axis.Regular(20, -5., 5., name='var', label=r'$\gamma\gamma \eta$', growth=False, underflow=False, overflow=False), 
 
-    # angular (cos) variables
-    'nonRes_CosThetaStar_CS': hist.axis.Regular(20, -1, 1, name='var', label=r'cos$(\theta_{CS})$', growth=False, underflow=False, overflow=False), 
-    'nonRes_CosThetaStar_jj': hist.axis.Regular(20, -1, 1, name='var', label=r'cos$(\theta_{jj})$', growth=False, underflow=False, overflow=False), 
-    'nonRes_CosThetaStar_gg': hist.axis.Regular(50, -1., 1., name='var', label=r'cos$(\theta_{gg})$', growth=False, underflow=False, overflow=False),
+    # # angular (cos) variables
+    # 'nonRes_CosThetaStar_CS': hist.axis.Regular(20, -1, 1, name='var', label=r'cos$(\theta_{CS})$', growth=False, underflow=False, overflow=False), 
+    # 'nonRes_CosThetaStar_jj': hist.axis.Regular(20, -1, 1, name='var', label=r'cos$(\theta_{jj})$', growth=False, underflow=False, overflow=False), 
+    # 'nonRes_CosThetaStar_gg': hist.axis.Regular(50, -1., 1., name='var', label=r'cos$(\theta_{gg})$', growth=False, underflow=False, overflow=False),
 
-    # photon variables
-    'lead_mvaID': hist.axis.Regular(50, -1., 1., name='var', label=r'$\gamma_{lead}$ MVA ID', growth=False, underflow=False, overflow=False), 
-    'lead_sigmaE_over_E': hist.axis.Regular(50, 0., 0.06, name='var', label=r'$\gamma_1 \sigma {E} / E$', growth=False, underflow=False, overflow=False), 
-    # ----------
-    'sublead_mvaID': hist.axis.Regular(50, -1., 1., name='var', label=r'$\gamma_{sublead}$ MVA ID', growth=False, underflow=False, overflow=False),
-    'sublead_sigmaE_over_E': hist.axis.Regular(50, 0., 0.06, name='var', label=r'$\gamma_2 \sigma {E} / E$', growth=False, underflow=False, overflow=False),
+    # # photon variables
+    # 'lead_mvaID': hist.axis.Regular(50, -1., 1., name='var', label=r'$\gamma_{lead}$ MVA ID', growth=False, underflow=False, overflow=False), 
+    # 'lead_sigmaE_over_E': hist.axis.Regular(50, 0., 0.06, name='var', label=r'$\gamma_1 \sigma {E} / E$', growth=False, underflow=False, overflow=False), 
+    # # ----------
+    # 'sublead_mvaID': hist.axis.Regular(50, -1., 1., name='var', label=r'$\gamma_{sublead}$ MVA ID', growth=False, underflow=False, overflow=False),
+    # 'sublead_sigmaE_over_E': hist.axis.Regular(50, 0., 0.06, name='var', label=r'$\gamma_2 \sigma {E} / E$', growth=False, underflow=False, overflow=False),
 
-    # dijet variables
-    'dijet_PNetRegPt': hist.axis.Regular(100, 0., 500., name='var', label=r'jj $p_T$ [GeV]', growth=False, underflow=False, overflow=False),
+    # # dijet variables
+    # 'dijet_PNetRegPt': hist.axis.Regular(100, 0., 500., name='var', label=r'jj $p_T$ [GeV]', growth=False, underflow=False, overflow=False),
 
-    # HH variables
-    'HH_PNetRegPt': hist.axis.Regular(100, 0., 700., name='var', label=r'HH $p_T$ [GeV]', growth=False, underflow=False, overflow=False), 
-    'HH_PNetRegEta': hist.axis.Regular(50, -5., 5., name='var', label=r'HH $\eta$', growth=False, underflow=False, overflow=False),
+    # # HH variables
+    # 'HH_PNetRegPt': hist.axis.Regular(100, 0., 700., name='var', label=r'HH $p_T$ [GeV]', growth=False, underflow=False, overflow=False), 
+    # 'HH_PNetRegEta': hist.axis.Regular(50, -5., 5., name='var', label=r'HH $\eta$', growth=False, underflow=False, overflow=False),
 
-    # ATLAS variables #
-    'RegPt_balance': hist.axis.Regular(100, 0., 2., name='var', label=r'$p_{T,HH} / (p_{T,\gamma1} + p_{T,\gamma2} + p_{T,j1} + p_{T,j2})$', growth=False, underflow=False, overflow=False), 
+    # # ATLAS variables #
+    # 'RegPt_balance': hist.axis.Regular(100, 0., 2., name='var', label=r'$p_{T,HH} / (p_{T,\gamma1} + p_{T,\gamma2} + p_{T,j1} + p_{T,j2})$', growth=False, underflow=False, overflow=False), 
     
-    # VH variables #
+    # # VH variables #
     'DeltaPhi_jj': hist.axis.Regular(20, -3.2, 3.2, name='var', label=r'$\Delta\phi (j_1,j_2)$', growth=False, underflow=False, overflow=False),
     'DeltaEta_jj': hist.axis.Regular(20, 0., 10., name='var', label=r'$\Delta\eta (j_1,j_2)$', growth=False, underflow=False, overflow=False),
-    'isr_jet_RegPt': hist.axis.Regular(100, 0., 200., name='var', label=r'ISR jet $p_T$ [GeV]', growth=False, underflow=False, overflow=False),
+    # 'isr_jet_RegPt': hist.axis.Regular(100, 0., 200., name='var', label=r'ISR jet $p_T$ [GeV]', growth=False, underflow=False, overflow=False),
     'DeltaPhi_isr_jet_z': hist.axis.Regular(20, -3.2, 3.2, name='var', label=r'$\Delta\phi (j_{ISR},jj)$', growth=False, underflow=False, overflow=False),
 
     # BDT output #
-    'MultiBDT_output': hist.axis.Regular(100, 0., 1., name='var', label=r'Multiclass BDT output', growth=False, underflow=False, overflow=False), 
+    # 'mass': hist.axis.Regular(25, 25., 180., name='var', label=r'$M_{\gamma\gamma}$ [GeV]', growth=False, underflow=False, overflow=False),
+    # 'MultiBDT_output': hist.axis.Regular(100, 0., 1., name='var', label=r'Multiclass BDT output', growth=False, underflow=False, overflow=False), 
 }
 BLINDED_VARIABLES = {
     # dijet variables
-    'dijet_PNetRegMass': (
-        hist.axis.Regular(55, 70., 180., name='var', label=r'$M_{jj}$ [GeV]', growth=False, underflow=False, overflow=False),
-        [100, 150]
-    ),
-    # diphoton variables
-    'mass': (
-        hist.axis.Regular(55, 70., 180., name='var', label=r'$M_{\gamma\gamma}$ [GeV]', growth=False, underflow=False, overflow=False),
-        [115, 135]
-    )
+    # 'dijet_PNetRegMass': (
+    #     hist.axis.Regular(55, 70., 180., name='var', label=r'$M_{jj}$ [GeV]', growth=False, underflow=False, overflow=False),
+    #     [100, 150]
+    # ),
+    # # diphoton variables
+    # 'mass': (
+    #     hist.axis.Regular(55, 70., 180., name='var', label=r'$M_{\gamma\gamma}$ [GeV]', growth=False, underflow=False, overflow=False),
+    #     [115, 135]
+    # )
 }
 EXTRA_MC_VARIABLES = {
     'eventWeight', MC_DATA_MASK
@@ -155,15 +163,17 @@ def sideband_cuts(sample):
     """
     # Require diphoton and dijet exist (required in preselection, and thus is all True)
     event_mask = (
-        sample['nonRes_has_two_btagged_jets'] 
-        & sample['is_nonRes']
+        sample['nonRes_has_two_btagged_jets']
         & (
             sample['fiducialGeometricFlag'] if 'fiducialGeometricFlag' in sample.fields else sample['pass_fiducial_geometric']
         )
-        & (
-            (sample['mass'] < 115)
-            | (sample['mass'] > 135)
-        )
+        # & (
+        #     (sample['mass'] < 115)
+        #     | (sample['mass'] > 135)
+        # )
+        # & (
+        #     sample['MultiBDT_output'][:, 0] > 0.7
+        # )
     )
     sample[MC_DATA_MASK] = event_mask
 
@@ -175,52 +185,55 @@ def get_mc_dir_lists(dir_lists: dict):
     
     # Pull MC sample dir_list
     for sim_era in dir_lists.keys():
-        dir_lists[sim_era] = list(os.listdir(sim_era))
+        dir_lists[sim_era] = glob.glob(os.path.join(sim_era, "**", "nominal", END_FILEPATH), recursive=True)
         dir_lists[sim_era].sort()
 
 def get_data_dir_lists(dir_lists: dict):
     
     # Pull Data sample dir_list
     for data_era in dir_lists.keys():
-        dir_lists[data_era] = list(os.listdir(data_era))
+        dir_lists[data_era] = glob.glob(os.path.join(data_era, "**", END_FILEPATH), recursive=True)
         dir_lists[data_era].sort()
 
-def find_dirname(dir_name):
-    sample_name_map = {
-        # ggf HH (signal)
-        'GluGluToHH': 'GluGluToHH',
-        'GluGlutoHHto2B2G_kl_1p00_kt_1p00_c2_0p00': 'GluGluToHH',
-        'GluGlutoHHto2B2G_kl-1p00_kt-1p00_c2-0p00': 'GluGluToHH',
-        # prompt-prompt non-resonant
-        'GGJets': 'GGJets', 
-        # prompt-fake non-resonant
-        'GJetPt20To40': 'GJetPt20To40', 
-        'GJetPt40': 'GJetPt40', 
-        # ggf H
-        'GluGluHToGG': 'GluGluHToGG',
-        'GluGluHToGG_M_125': 'GluGluHToGG',
-        'GluGluHtoGG': 'GluGluHToGG',
-        # ttH
-        'ttHToGG': 'ttHToGG',
-        'ttHtoGG_M_125': 'ttHToGG',
-        'ttHtoGG': 'ttHToGG',
-        # vbf H
-        'VBFHToGG': 'VBFHToGG',
-        'VBFHToGG_M_125': 'VBFHToGG',
-        'VBFHtoGG': 'VBFHToGG',
-        # VH
-        'VHToGG': 'VHToGG',
-        'VHtoGG_M_125': 'VHToGG',
-        'VHtoGG': 'VHToGG',
-        'VHtoGG_M-125': 'VHToGG',
-        # bbH
-        'BBHto2G_M_125': 'bbHToGG',
-        'bbHtoGG': 'bbHToGG',
-    }
-    if dir_name in sample_name_map:
-        return sample_name_map[dir_name]
-    else:
-        return None
+# def find_dirname(dir_name):
+#     sample_name_map = {
+#         # ggf HH (signal)
+#         'GluGluToHH': 'GluGluToHH',
+#         'GluGlutoHHto2B2G_kl_1p00_kt_1p00_c2_0p00': 'GluGluToHH',
+#         'GluGlutoHHto2B2G_kl-1p00_kt-1p00_c2-0p00': 'GluGluToHH',
+#         # kappa scan (signal)
+#         'GluGlutoHHto2B2G_kl_0p00_kt_1p00_c2_0p00': 'GluGlutoHHto2B2G_kl_0p00_kt_1p00_c2_0p00',
+#         'GluGlutoHHto2B2G_kl_5p00_kt_1p00_c2_0p00': 'GluGlutoHHto2B2G_kl_5p00_kt_1p00_c2_0p00',
+#         # prompt-prompt non-resonant
+#         'GGJets': 'GGJets', 
+#         # prompt-fake non-resonant
+#         'GJetPt20To40': 'GJetPt20To40', 
+#         'GJetPt40': 'GJetPt40', 
+#         # ggf H
+#         'GluGluHToGG': 'GluGluHToGG',
+#         'GluGluHToGG_M_125': 'GluGluHToGG',
+#         'GluGluHtoGG': 'GluGluHToGG',
+#         # ttH
+#         'ttHToGG': 'ttHToGG',
+#         'ttHtoGG_M_125': 'ttHToGG',
+#         'ttHtoGG': 'ttHToGG',
+#         # vbf H
+#         'VBFHToGG': 'VBFHToGG',
+#         'VBFHToGG_M_125': 'VBFHToGG',
+#         'VBFHtoGG': 'VBFHToGG',
+#         # VH
+#         'VHToGG': 'VHToGG',
+#         'VHtoGG_M_125': 'VHToGG',
+#         'VHtoGG': 'VHToGG',
+#         'VHtoGG_M-125': 'VHToGG',
+#         # bbH
+#         'BBHto2G_M_125': 'bbHToGG',
+#         'bbHtoGG': 'bbHToGG',
+#     }
+#     if dir_name in sample_name_map:
+#         return sample_name_map[dir_name]
+#     else:
+#         return None
 
 def slimmed_parquet(sample, extra_variables):
     """
@@ -291,6 +304,37 @@ def generate_hists(pq_dict: dict, variable: str, axis, density=False, blind_edge
         )
 
     return hists, ratio_dict
+
+def generate_hist(
+    pq_dict: dict, variable: str, axis, blind_edges=None
+):
+    # https://indico.cern.ch/event/1433936/ #
+    # Generate syst hists and ratio hists
+    hists = {}
+    for ak_name, ak_arr in pq_dict.items():
+        ak_hist = ak_arr[:, 0] if 'MultiBDT_output' in VARIABLES else ak_arr
+
+        if blind_edges is not None:
+            mask = (
+                (
+                    (ak_hist[variable] < blind_edges[0]) 
+                    | (ak_hist[variable] > blind_edges[1])
+                ) & (ak_hist[MC_DATA_MASK])
+            )
+        else:
+            mask = ak_hist[MC_DATA_MASK]
+
+        if re.search('mc', ak_name.lower()) and APPLY_WEIGHTS:
+            hists[ak_name] = hist.Hist(axis, storage='weight').fill(
+                var=ak_hist[variable][mask],
+                weight=ak_hist['eventWeight'][mask],
+            )
+        else:
+            hists[ak_name] = hist.Hist(axis).fill(
+                var=ak_hist[variable][mask]
+            )
+
+    return hists
 
 def plot_ratio(
     ratio, mpl_ax, hist_axis, 
@@ -389,6 +433,44 @@ def plot(
     plt.savefig(f'{destdir}1dhist_{variable}_{hist_names[0]}_{hist_names[1]}_comparison.pdf')
     plt.savefig(f'{destdir}1dhist_{variable}_{hist_names[0]}_{hist_names[1]}_comparison.png')
     plt.close()
+
+def plot_hist(
+    variable: str, hists: dict, 
+    year='2022', era='postEE', lumi=0.0,
+    rel_dirpath='', histtypes=None, density=False,
+):
+    """
+    Plots and saves out the data-MC comparison histogram
+    """
+    # Initiate figure
+    fig, ax = plt.subplots(figsize=(11.49, 8.99))
+    linewidth=3.
+
+    hist_names = list(hists.keys())
+    if histtypes is None:
+        histtypes = {hist_name: "step" for hist_name in hist_names}
+    for hist_name in hist_names:
+        hep.histplot(
+            hists[hist_name], label=hist_name, 
+            yerr=hists[hist_name].variances() if (APPLY_WEIGHTS and re.search('mc', hist_name.lower()) is not None) else True,
+            ax=ax, lw=linewidth, histtype=histtypes[hist_name],
+            density=density
+        )
+
+    # Plotting niceties #
+    hep.cms.lumitext(f"{year}{era} {lumi:.2f}" + r"fb$^{-1}$ (13.6 TeV)", ax=ax)
+    hep.cms.text("Work in Progress", ax=ax)
+    # Plot legend properly
+    ax.legend(loc='center left', bbox_to_anchor=(1, 0.5), reverse=True)
+    plt.tight_layout(rect=(0, 0.01, 1, 1))
+    # ax.set_yscale('log')
+    # Save out the plot
+    destdir = os.path.join(DESTDIR, rel_dirpath, '')
+    if not os.path.exists(destdir):
+        os.makedirs(destdir)
+    plt.savefig(f'{destdir}1dhist_{variable}_comparison.pdf')
+    plt.savefig(f'{destdir}1dhist_{variable}_comparison.png')
+    plt.close()
     
 def main(sample_dirs, density=False):
     """
@@ -414,21 +496,8 @@ def main(sample_dirs, density=False):
             # print('======================== \n', year+''+cut_era+" started")
             sample_pqs[dir_name][sample_era] = []
 
-            for sample_name in sample_list:
-                if re.search('mc', dir_name.lower()) is not None:
-                    std_samplename = find_dirname(sample_name)
-                    if std_samplename is None:
-                        print(f'{sample_name} not in samples selected for this computation.')
-                        continue
-                    if len(os.listdir(os.path.join(sample_era, sample_name))) == 1:
-                        print(f'{sample_name} does not have variations computed.')
-                        continue
-
-                    sample_dirpath = os.path.join(sample_era, sample_name, 'nominal', END_FILEPATH)
-                else: 
-                    std_samplename = sample_name
-                    sample_dirpath = os.path.join(sample_era, sample_name, END_FILEPATH)
-                # print('======================== \n', std_samplename+" started")
+            for sample_dirpath in sample_list:
+                print('======================== \n', sample_era+" started")
 
                 sample = ak.from_parquet(glob.glob(sample_dirpath)[0])
                 sideband_cuts(sample)
@@ -458,28 +527,46 @@ def main(sample_dirs, density=False):
 
     # Ploting over variables for MC and Data
     for variable, axis in VARIABLES.items():
-        hists, ratio_hist = generate_hists(
-            concat_samples, variable, axis,
-            density=density
-        )
-        plot(
-            variable, hists, ratio_hist,
-            year='2024', era="", lumi=LUMINOSITIES[os.path.join(LPC_FILEPREFIX_24, "")],
-            sample_name='data', density=density
-        )
+        if len(concat_samples) > 1:
+            # hists, ratio_hist = generate_hists(
+            #     concat_samples, variable, axis,
+            #     density=density
+            # )
+            # plot(
+            #     variable, hists, ratio_hist,
+            #     year='2022-2023', era="", lumi=LUMINOSITIES['22-23'],
+            #     sample_name='data', density=density
+            # )
+            hists = generate_hist(
+                concat_samples, variable, axis,
+            )
+            plot_hist(
+                variable, hists,
+                year='', era="", lumi=LUMINOSITIES['22-23'],
+                density=density
+            )
+        else:
+            hists = generate_hist(
+                concat_samples, variable, axis,
+            )
+            plot_hist(
+                variable, hists,
+                year='', era="", lumi=LUMINOSITIES['22-23'],
+                density=density
+            )
 
-    # # Ploting over variables for MC and Data
-    for variable, (axis, blind_edges) in BLINDED_VARIABLES.items():
-        hists, ratio_hist = generate_hists(
-            concat_samples, variable, axis,
-            blind_edges=blind_edges,
-            density=density
-        )
-        plot(
-            variable, hists, ratio_hist,
-            year='2024', era="", lumi=LUMINOSITIES[os.path.join(LPC_FILEPREFIX_24, "")],
-            sample_name='data', density=density
-        )
+    # Ploting over variables for MC and Data
+    # for variable, (axis, blind_edges) in BLINDED_VARIABLES.items():
+    #     hists, ratio_hist = generate_hists(
+    #         concat_samples, variable, axis,
+    #         blind_edges=blind_edges,
+    #         density=density
+    #     )
+    #     plot(
+    #         variable, hists, ratio_hist,
+    #         year='2024', era="", lumi=LUMINOSITIES[os.path.join(LPC_FILEPREFIX_24, "")],
+    #         sample_name='data', density=density
+    #     )
             
 
 if __name__ == '__main__':
@@ -490,12 +577,40 @@ if __name__ == '__main__':
         #     os.path.join(LPC_FILEPREFIX_23, "preBPix", ""): None,
         #     os.path.join(LPC_FILEPREFIX_23, "postBPix", ""): None,
         # },
-        '2023 Data': {
-            os.path.join(LPC_FILEPREFIX_23[:-len('sim/')], "data", ""): None,
+        # '2023 Data': {
+        #     os.path.join(LPC_FILEPREFIX_23[:-len('sim/')], "data", ""): None,
+        # },
+        # '2024 Data': {
+        #     os.path.join(LPC_FILEPREFIX_24[:-len('sim/')], "data", ""): None,
+        # },
+        ########################
+        'MC_kl_1_kt_1_c2_0': {
+            os.path.join(LPC_FILEPREFIX_22, "preEE", "GluGlutoHHto2B2G_kl_1p00_kt_1p00_c2_0p00", ""): None,
+            os.path.join(LPC_FILEPREFIX_22, "postEE", "GluGluToHH", ""): None,
         },
-        '2024 Data': {
-            os.path.join(LPC_FILEPREFIX_24[:-len('sim/')], "data", ""): None,
+        'MC_kl_0_kt_1_c2_0': {
+            os.path.join(LPC_FILEPREFIX_22, "preEE", "GluGlutoHHto2B2G_kl_0p00_kt_1p00_c2_0p00", ""): None,
+            os.path.join(LPC_FILEPREFIX_22, "postEE", "GluGlutoHHto2B2G_kl_0p00_kt_1p00_c2_0p00", ""): None,
         },
+        'MC_kl_5_kt_1_c2_0': {
+            os.path.join(LPC_FILEPREFIX_22, "preEE", "GluGlutoHHto2B2G_kl_5p00_kt_1p00_c2_0p00", ""): None,
+            os.path.join(LPC_FILEPREFIX_22, "postEE", "GluGlutoHHto2B2G_kl_5p00_kt_1p00_c2_0p00", ""): None,
+        }
+        ########################
+        # 'MC_nonResonant': {
+        #     os.path.join(LPC_FILEPREFIX_22, "preEE", "GGJets", ""): None,
+        #     os.path.join(LPC_FILEPREFIX_22, "preEE", "GJetPt20To40", ""): None,
+        #     os.path.join(LPC_FILEPREFIX_22, "preEE", "GJetPt40", ""): None,
+        #     os.path.join(LPC_FILEPREFIX_22, "postEE", "GGJets" ""): None,
+        #     os.path.join(LPC_FILEPREFIX_22, "postEE", "GJetPt20To40" ""): None,
+        #     os.path.join(LPC_FILEPREFIX_22, "postEE", "GJetPt40" ""): None,
+        #     os.path.join(LPC_FILEPREFIX_23, "preBPix" "GGJets" ""): None,
+        #     os.path.join(LPC_FILEPREFIX_23, "preBPix" "GJetPt20To40" ""): None,
+        #     os.path.join(LPC_FILEPREFIX_23, "preBPix" "GJetPt40" ""): None,
+        #     os.path.join(LPC_FILEPREFIX_23, "postBPix", "GGJets" ""): None,
+        #     os.path.join(LPC_FILEPREFIX_23, "postBPix", "GJetPt20To40" ""): None,
+        #     os.path.join(LPC_FILEPREFIX_23, "postBPix", "GJetPt40" ""): None,
+        # }
     }
 
     main(sample_dirs, density=True)

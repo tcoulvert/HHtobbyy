@@ -323,7 +323,7 @@ def check_variables(sample, only_bare=False):
             #     print(f"jer DOWN jet pt 1sigma bounds = {smear_pt_bounds(selected_jet_pt, jer_dict[eta_range][pt_range][1])}")
             # print('='*60)
 
-def get_mc_dir_lists(dir_lists: dict):
+def get_mc_dir_lists(dir_lists: dict, all: bool=False):
     """
     Builds the dictionary of lists of samples to use in comparison.
       -> Automatically checks if the merger.py file has been run.
@@ -331,14 +331,24 @@ def get_mc_dir_lists(dir_lists: dict):
     
     # Pull MC sample dir_list
     for sim_era in dir_lists.keys():
-        dir_lists[sim_era] = list(os.listdir(sim_era))
+        if all:
+            dir_lists[sim_era] = glob.glob(os.path.join(sim_era, "**", END_FILEPATH), recursive=True)
+        else:
+            var = "nominal"
+            for sim_type in VARIATION_SYSTS: 
+                if re.search(sim_type, sim_era) is not None:
+                    var_direction = '_up' if re.search('_up', sim_era) else '_down'
+                    var = sim_type + var_direction
+                    break
+            
+            dir_lists[sim_era] = glob.glob(os.path.join(sim_era, "**", var, END_FILEPATH), recursive=True)
         dir_lists[sim_era].sort()
 
 def get_data_dir_lists(dir_lists: dict):
     
     # Pull Data sample dir_list
     for data_era in dir_lists.keys():
-        dir_lists[data_era] = list(os.listdir(data_era))
+        dir_lists[data_era] = glob.glob(os.path.join(data_era, "**", END_FILEPATH), recursive=True)
         dir_lists[data_era].sort()
 
 def find_dirname(dir_name):

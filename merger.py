@@ -357,10 +357,10 @@ def correct_weights(sample, sample_filepath_list, computebtag=True):
 
 def main():
     sim_dir_lists = {
-        os.path.join(lpc_fileprefix, "Run3_2022", "sim", "preEE", ""): None,
-        os.path.join(lpc_fileprefix, "Run3_2022", "sim", "postEE", ""): None,
-        os.path.join(lpc_fileprefix, "Run3_2023", "sim", "preBPix", ""): None,
-        os.path.join(lpc_fileprefix, "Run3_2023", "sim", "postBPix", ""): None,
+        # os.path.join(lpc_fileprefix, "Run3_2022", "sim", "preEE", ""): None,
+        # os.path.join(lpc_fileprefix, "Run3_2022", "sim", "postEE", ""): None,
+        # os.path.join(lpc_fileprefix, "Run3_2023", "sim", "preBPix", ""): None,
+        # os.path.join(lpc_fileprefix, "Run3_2023", "sim", "postBPix", ""): None,
 
         # os.path.join(lpc_fileprefix, "Run3_2022_SMEFTSingleH", "2022postEE", ""): None,
         # os.path.join(lpc_fileprefix, "Run3_2022_SMEFTSignal", "2022postEE", ""): None,
@@ -372,6 +372,7 @@ def main():
         # os.path.join(lpc_fileprefix, "Run3_2022", "data", ""): None,
         # os.path.join(lpc_fileprefix, "Run3_2023", "data", ""): None,
         # os.path.join(lpc_fileprefix, "Run3_2024", "data", ""): None,
+        os.path.join(lpc_fileprefix, "Run3_2024_temp_v14", ""): None,
     }
     
     # MC Era: total era luminosity [fb^-1] #
@@ -658,7 +659,9 @@ def main():
 
         for dir_name in dir_list:
 
-            if re.search('2024', data_era) is not None:
+            if re.search('temp', data_era) is not None:
+                sample_dirpath = os.path.join(data_era, "")
+            elif re.search('2024', data_era) is not None:
                 sample_dirpath = os.path.join(data_era, dir_name, "nominal", "")
             else:
                 sample_dirpath = os.path.join(data_era, dir_name, "")
@@ -675,6 +678,7 @@ def main():
             if len(sample_list) < 1:
                 continue
             sample = ak.concatenate(sample_list)
+            print(ak.size(sample, axis=0))
 
             for datasettype in DATASETTYPE:
                 # Slim parquets by removing Res fields (for now)
@@ -703,7 +707,10 @@ def main():
                 destdir = get_merged_filepath(sample_dirpath, datasettype=datasettype)
                 if not os.path.exists(destdir):
                     os.makedirs(destdir)
-                filepath = os.path.join(destdir, dir_name+'_merged.parquet')
+                if re.search('.parquet', dir_name) is None:
+                    filepath = os.path.join(destdir, dir_name+'_merged.parquet')
+                else:
+                    filepath = os.path.join(destdir, dir_name[:dir_name.find('.parquet')]+'_merged'+dir_name[dir_name.find('.parquet'):])
                 merged_parquet = ak.to_parquet(slim_sample, filepath)
                 del slim_sample
                 print('======================== \n', destdir)
