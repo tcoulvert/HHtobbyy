@@ -11,20 +11,16 @@ import pyarrow.parquet as pq
 import vector as vec
 vec.register_awkward()
 
-# need to delete the extra files under /store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v2/Run3_2023/ preBPix and postBPix
-
 # lpc_redirector = "root://cmseos.fnal.gov/"
 # lxplus_redirector = "root://eosuser.cern.ch/"
 # lxplus_fileprefix = "/eos/cms/store/group/phys_b2g/HHbbgg/HiggsDNA_parquet/v2"
-lpc_fileprefix = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v3/"
+lpc_fileprefix = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v3.1/"
 FILL_VALUE = -999
 NUM_JETS = 10
-FORCE_RERUN = True
-
-# xrdcp -r root://cmseos.fnal.gov//store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v2/
+FORCE_RERUN = False
 
 DATASETTYPE = {
-    'Resolved', #'Boosted'
+    'Resolved', 'Boosted'
 }
 
 def add_vars(sample, datasettype):
@@ -357,10 +353,10 @@ def correct_weights(sample, sample_filepath_list, computebtag=True):
 
 def main():
     sim_dir_lists = {
-        # os.path.join(lpc_fileprefix, "Run3_2022", "sim", "preEE", ""): None,
-        # os.path.join(lpc_fileprefix, "Run3_2022", "sim", "postEE", ""): None,
-        # os.path.join(lpc_fileprefix, "Run3_2023", "sim", "preBPix", ""): None,
-        # os.path.join(lpc_fileprefix, "Run3_2023", "sim", "postBPix", ""): None,
+        os.path.join(lpc_fileprefix, "Run3_2022", "sim", "preEE", ""): None,
+        os.path.join(lpc_fileprefix, "Run3_2022", "sim", "postEE", ""): None,
+        os.path.join(lpc_fileprefix, "Run3_2023", "sim", "preBPix", ""): None,
+        os.path.join(lpc_fileprefix, "Run3_2023", "sim", "postBPix", ""): None,
 
         # os.path.join(lpc_fileprefix, "Run3_2022_SMEFTSingleH", "2022postEE", ""): None,
         # os.path.join(lpc_fileprefix, "Run3_2022_SMEFTSignal", "2022postEE", ""): None,
@@ -369,10 +365,11 @@ def main():
         
     }
     data_dir_lists = {
-        # os.path.join(lpc_fileprefix, "Run3_2022", "data", ""): None,
-        # os.path.join(lpc_fileprefix, "Run3_2023", "data", ""): None,
+        os.path.join(lpc_fileprefix, "Run3_2022", "data", ""): None,
+        os.path.join(lpc_fileprefix, "Run3_2023", "data", ""): None,
         # os.path.join(lpc_fileprefix, "Run3_2024", "data", ""): None,
-        os.path.join(lpc_fileprefix, "Run3_2024_temp_v14", ""): None,
+        # os.path.join(lpc_fileprefix, "Run3_2024_temp_v14", ""): None,
+        os.path.join(lpc_fileprefix, "Run3_2024_v14_JECs_vetomaps", ""): None,
     }
     
     # MC Era: total era luminosity [fb^-1] #
@@ -406,7 +403,7 @@ def main():
         # non-resonant background #
         # https://xsdb-temp.app.cern.ch/xsdb/?columns=37748736&currentPage=0&pageSize=10&searchQuery=DAS%3DGG-Box-3Jets_MGG-80_13p6TeV_sherpa
         'GGJets': 88750., 
-        'GGJets_MGG-40to80': 88750.,
+        'GGJets_MGG-40to80': 318100.,
         'GGJets_MGG-80': 88750.,
         # https://xsdb-temp.app.cern.ch/xsdb/?columns=37748736&currentPage=0&pageSize=10&searchQuery=DAS%3DGJet_PT-20to40_DoubleEMEnriched_MGG-80_TuneCP5_13p6TeV_pythia8
         'GJetPt20To40': 242500., 
@@ -416,26 +413,27 @@ def main():
         'GJet_PT-40_DoubleEMEnriched_MGG-80': 919100., 
 
         # resonant background #
-        # https://twiki.cern.ch/twiki/bin/view/LHCPhysics/CERNYellowReportPageAt13TeV#gluon_gluon_Fusion_Process
-        'GluGluHToGG': 48520*0.00228,
-        'GluGluHToGG_M_125': 48520*0.00228,
-        'GluGluHtoGG': 48520*0.00228,
-        # https://twiki.cern.ch/twiki/bin/view/LHCPhysics/CERNYellowReportPageAt13TeV#ttH_Process
-        'ttHToGG': 506.5*0.00228,
-        'ttHtoGG_M_125': 506.5*0.00228,
-        'ttHtoGG': 506.5*0.00228,
-        # https://twiki.cern.ch/twiki/bin/view/LHCPhysics/CERNYellowReportPageAt13TeV#VBF_Process
-        'VBFHToGG': 3779*0.00228,
-        'VBFHToGG_M_125': 3779*0.00228,
-        'VBFHtoGG': 3779*0.00228,
-        # https://twiki.cern.ch/twiki/bin/view/LHCPhysics/CERNYellowReportPageAt13TeV#WH_Process + https://twiki.cern.ch/twiki/bin/view/LHCPhysics/CERNYellowReportPageAt13TeV#ZH_Process
-        'VHToGG': (1369 + 882.4)*0.00228,
-        'VHtoGG_M_125': (1369 + 882.4)*0.00228,
-        'VHtoGG': (1369 + 882.4)*0.00228,
-        'VHtoGG_M-125': (1369 + 882.4)*0.00228,
-        # https://twiki.cern.ch/twiki/bin/view/LHCPhysics/CERNYellowReportPageAt13TeV#bbH_Process
-        'BBHto2G_M_125': 526.5*0.00228,
-        'bbHtoGG': 526.5*0.00228,
+        #    -> xs taken from https://twiki.cern.ch/twiki/bin/view/LHCPhysics/LHCHWG136TeVxsec_extrap#ggF_N3LO_QCD_NLO_EW
+        # ggF H
+        'GluGluHToGG': 52170*0.00228,
+        'GluGluHToGG_M_125': 52170*0.00228,
+        'GluGluHtoGG': 52170*0.00228,
+        # ttH
+        'ttHToGG': 568.8*0.00228,
+        'ttHtoGG_M_125': 568.8*0.00228,
+        'ttHtoGG': 568.8*0.00228,
+        # VBF H
+        'VBFHToGG': 4075*0.00228,
+        'VBFHToGG_M_125': 4075*0.00228,
+        'VBFHtoGG': 4075*0.00228,
+        # VH
+        'VHToGG': (1453 + 942.2)*0.00228,
+        'VHtoGG_M_125': (1453 + 942.2)*0.00228,
+        'VHtoGG': (1453 + 942.2)*0.00228,
+        'VHtoGG_M-125': (1453 + 942.2)*0.00228,
+        # bbH
+        'BBHto2G_M_125': 525.1*0.00228,
+        'bbHtoGG': 525.1*0.00228,
 
         # kappa lambda scane signal samples #
         'GluGlutoHHto2B2G_kl_0p00_kt_1p00_c2_0p00': 34.43*0.0026,
@@ -445,23 +443,25 @@ def main():
         'GluGlutoHHto2B2G_kl-5p00_kt-1p00_c2-0p00': 34.43*0.0026,
 
         # extra VH samples (produced by Irene) #
-        'ZH_sample': 882.4*0.00228*0.69911,
+        'ZH_sample': 942.2*0.00228*0.69911,
         # https://twiki.cern.ch/twiki/bin/view/LHCPhysics/CERNYellowReportPageAt13TeV#ppZH_Total_Cross_Section_with_ap +  https://pdg.lbl.gov/2018/listings/rpp2018-list-z-boson.pdf
-        'ZH_Hto2G_Zto2Q_M-125': 882.4*0.00228*0.69911,
+        'ZH_Hto2G_Zto2Q_M-125': 942.2*0.00228*0.69911,
         # https://twiki.cern.ch/twiki/bin/view/LHCPhysics/CERNYellowReportPageAt13TeV#ppWH_Total_Cross_Section_with_ap +  https://pdg.lbl.gov/2022/listings/rpp2022-list-w-boson.pdf
-        'WminusH_Hto2G_Wto2Q_M-125': 1369*0.00228*0.6741,
+        'WminusH_Hto2G_Wto2Q_M-125': 1453*0.00228*0.6741,
         # https://twiki.cern.ch/twiki/bin/view/LHCPhysics/CERNYellowReportPageAt13TeV#ppWH_Total_Cross_Section_with_ap +  https://pdg.lbl.gov/2022/listings/rpp2022-list-w-boson.pdf
-        'WplusH_Hto2G_Wto2Q_M-125': 1369*0.00228*0.6741,
+        'WplusH_Hto2G_Wto2Q_M-125': 1453*0.00228*0.6741,
         
-        # # Other potential background samples
-        # # 'DDQCDGJets': 1,
-        # 'TTGG': 16.96,
+        # Other potential background samples
+        'DDQCDGJets': 1,
+        'TTGG': 16.96,
         # 'TTGJetPt10To100': 4216.,
         # 'TTG_1Jets_PTG_10to100': 4216.,
         # 'TTGJetPt100To200': 411.4,
         # 'TTG_1Jets_PTG_100to200': 411.4,
+        'TTG-1Jets_PTG-100to200': 411.4,
         # 'TTGJetPt200': 128.4,
         # 'TTG_1Jets_PTG_200': 128.4,
+        'TTG-1Jets_PTG-200': 128.4,
 
         # # SMEFT samples #
         # # singleH(?) background
@@ -502,8 +502,8 @@ def main():
         'VBFHHto2B2G_CV_1_C2V_1_C3_1': 'VBFToHH',
 
         'TTG_1Jets_PTG_10to100': 'TTGJetPt10To100',
-        'TTG_1Jets_PTG_100to200': 'TTGJetPt100To200',
-        'TTG_1Jets_PTG_200': 'TTGJetPt200',
+        'TTG-1Jets_PTG-100to200': 'TTGJetPt100To200',
+        'TTG-1Jets_PTG-200': 'TTGJetPt200',
 
         'GGJets_MGG-40to80': 'GGJets',
         'GGJets_MGG-80': 'GGJets',
@@ -519,14 +519,12 @@ def main():
 
         if not FORCE_RERUN:
             try:
-                already_run_dirs_set = set(
-                    os.listdir(get_merged_filepath(sim_era, 'Resolved'))
-                )
-                # already_run_dirs_set = set(
-                #     os.listdir(get_merged_filepath(sim_era, 'Resolved'))
-                # ) & set(
-                #     os.listdir(get_merged_filepath(sim_era, 'Boosted'))
-                # )
+                already_run_dirs_set = set()
+                for datasettype in DATASETTYPE:
+                    if len(already_run_dirs_set) == 0:
+                        already_run_dirs_set = set(os.listdir(get_merged_filepath(sim_era, datasettype)))
+                        continue
+                    already_run_dirs_set = already_run_dirs_set & set(os.listdir(get_merged_filepath(sim_era, datasettype)))
             except:
                 FileNotFoundError
                 already_run_dirs_set = set()
@@ -549,11 +547,12 @@ def main():
 
         if not FORCE_RERUN:
             try:
-                already_run_dirs_set = set(
-                    os.listdir(get_merged_filepath(data_era, 'Resolved'))
-                ) & set(
-                    os.listdir(get_merged_filepath(data_era, 'Boosted'))
-                )
+                already_run_dirs_set = set()
+                for datasettype in DATASETTYPE:
+                    if len(already_run_dirs_set) == 0:
+                        already_run_dirs_set = set(os.listdir(get_merged_filepath(sim_era, datasettype)))
+                        continue
+                    already_run_dirs_set = already_run_dirs_set & set(os.listdir(get_merged_filepath(sim_era, datasettype)))
             except:
                 FileNotFoundError
                 already_run_dirs_set = set()
@@ -574,23 +573,23 @@ def main():
 
             for sample_type in os.listdir(sample_dirpath):
 
-                if sample_type != 'nominal': continue
-
+                # if sample_type != 'nominal': continue
                 # if re.search('HH', dir_name) is None or re.search('preBPix', sim_era) is not None: continue
+                if sample_type != 'nominal' and re.search('H', dir_name) is None: continue
 
                 print(sim_era[sim_era[:-1].rfind('/')+1:-1]+f': {dir_name} - {sample_type}')
-                sample_type_dirpath = os.path.join(sample_dirpath, sample_type, "")
+                if re.search('.parquet', sample_type) is not None:
+                    sample_type_dirpath = os.path.join(sample_dirpath, "")
+                else:
+                    sample_type_dirpath = os.path.join(sample_dirpath, sample_type, "")
 
                 # Load all the parquets of a single sample into an ak array
                 sample_filepath_list = glob.glob(os.path.join(sample_type_dirpath, '*.parquet'))
                 sample_list = [ak.from_parquet(file) for file in sample_filepath_list]
                 if len(sample_list) < 1:
+                    print("No files to concatenate. Skipping sample.")
                     continue
                 sample = ak.concatenate(sample_list)
-
-                # for field in sample.fields:
-                #     print(field)
-                #     print('-'*60)
 
                 if 'weight_nominal' not in sample.fields and dir_name != 'DDQCDGJets':
                     correct_weights(
@@ -622,47 +621,12 @@ def main():
                 # Delete sample for memory reasons
                 del sample
 
-                # for i, sample in enumerate(sample_list):
-
-                #     if 'weight_nominal' not in sample.fields and dir_name != 'DDQCDGJets':
-                #         correct_weights(
-                #             sample, sample_filepath_list, 
-                #             computebtag=(sample_type=='nominal')
-                #         )
-
-                #     for datasettype in DATASETTYPE:
-                #         # Slim parquets by removing Res fields (for now)
-                #         slim_sample = slim_parquets(sample, datasettype)
-
-                #         # Add useful parquet meta-info
-                #         slim_sample['sample_name'] = dir_name if dir_name not in sample_name_map else sample_name_map[dir_name]
-                #         slim_sample['sample_era'] = sim_era[sim_era[:-1].rfind('/')+1:-1]
-                #         slim_sample['eventWeight'] = slim_sample['weight'] * luminosities[sim_era] * cross_sections[dir_name]
-
-                #         # Add necessary extra variables
-                #         add_vars(slim_sample, datasettype)
-                
-                #         # Save out merged parquet
-                #         destdir = get_merged_filepath(sample_type_dirpath, datasettype=datasettype)
-                #         if not os.path.exists(destdir):
-                #             os.makedirs(destdir)
-                #         filename = sample_filepath_list[i][sample_filepath_list[i].rfind('/')+1:sample_filepath_list[i].rfind('.')] + '_merged' + sample_filepath_list[i][sample_filepath_list[i].rfind('.'):]
-                #         filepath = os.path.join(destdir, filename)
-                #         merged_parquet = ak.to_parquet(slim_sample, filepath)
-                #         del slim_sample
-                #         print('======================== \n', filepath)
-                
-                # # Delete sample for memory reasons
-                # del sample_list
-
     for data_era, dir_list in data_dir_lists.items():
 
         for dir_name in dir_list:
 
-            if re.search('temp', data_era) is not None:
+            if re.search('.parquet', dir_name) is not None:
                 sample_dirpath = os.path.join(data_era, "")
-            elif re.search('2024', data_era) is not None:
-                sample_dirpath = os.path.join(data_era, dir_name, "nominal", "")
             else:
                 sample_dirpath = os.path.join(data_era, dir_name, "")
 
@@ -676,6 +640,7 @@ def main():
                     print('append failed, skipping file')
                     continue
             if len(sample_list) < 1:
+                print("No files to concatenate. Skipping sample.")
                 continue
             sample = ak.concatenate(sample_list)
             print(ak.size(sample, axis=0))
