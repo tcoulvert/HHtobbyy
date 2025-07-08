@@ -54,9 +54,12 @@ def main():
     if not args.force:
         skimmed_files_to_copy = []
         for file_to_copy in files_to_copy:
-            stat, out = subprocess.getstatusoutput(f"xrdfs {destination_redirector} ls {destination_filepath}")
+            stat, out = subprocess.getstatusoutput(f"xrdfs {destination_redirector} ls {destination_filepath}{file_to_copy}")
             if stat != 0: skimmed_files_to_copy.append(file_to_copy)
         files_to_copy = skimmed_files_to_copy
+    if len(files_to_copy) < 1:
+        return 1
+    print(files_to_copy)
 
     # Deleting the temp file
     os.system(f"rm temp.txt")

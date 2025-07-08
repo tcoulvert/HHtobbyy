@@ -17,7 +17,7 @@ vec.register_awkward()
 lpc_fileprefix = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v3.1/"
 FILL_VALUE = -999
 NUM_JETS = 10
-FORCE_RERUN = False
+FORCE_RERUN = True
 
 DATASETTYPE = {
     'Resolved', 'Boosted'
@@ -576,6 +576,7 @@ def main():
                 # if sample_type != 'nominal': continue
                 # if re.search('HH', dir_name) is None or re.search('preBPix', sim_era) is not None: continue
                 if sample_type != 'nominal' and re.search('H', dir_name) is None: continue
+                if re.search('VHtoGG', dir_name) is None or re.search('preBPix', sim_era) is None or sample_type != 'nominal': continue
 
                 print(sim_era[sim_era[:-1].rfind('/')+1:-1]+f': {dir_name} - {sample_type}')
                 if re.search('.parquet', sample_type) is not None:
@@ -621,67 +622,67 @@ def main():
                 # Delete sample for memory reasons
                 del sample
 
-    for data_era, dir_list in data_dir_lists.items():
+    # for data_era, dir_list in data_dir_lists.items():
 
-        for dir_name in dir_list:
+    #     for dir_name in dir_list:
 
-            if re.search('.parquet', dir_name) is not None:
-                sample_dirpath = os.path.join(data_era, "")
-            else:
-                sample_dirpath = os.path.join(data_era, dir_name, "")
+    #         if re.search('.parquet', dir_name) is not None:
+    #             sample_dirpath = os.path.join(data_era, "")
+    #         else:
+    #             sample_dirpath = os.path.join(data_era, dir_name, "")
 
-            # Load all the parquets of a single sample into an ak array
-            print(dir_name)
-            sample_list = []
-            for file in glob.glob(os.path.join(sample_dirpath, '*.parquet')):
-                try:
-                    sample_list.append(ak.from_parquet(file))
-                except:
-                    print('append failed, skipping file')
-                    continue
-            if len(sample_list) < 1:
-                print("No files to concatenate. Skipping sample.")
-                continue
-            sample = ak.concatenate(sample_list)
-            print(ak.size(sample, axis=0))
+    #         # Load all the parquets of a single sample into an ak array
+    #         print(dir_name)
+    #         sample_list = []
+    #         for file in glob.glob(os.path.join(sample_dirpath, '*.parquet')):
+    #             try:
+    #                 sample_list.append(ak.from_parquet(file))
+    #             except:
+    #                 print('append failed, skipping file')
+    #                 continue
+    #         if len(sample_list) < 1:
+    #             print("No files to concatenate. Skipping sample.")
+    #             continue
+    #         sample = ak.concatenate(sample_list)
+    #         print(ak.size(sample, axis=0))
 
-            for datasettype in DATASETTYPE:
-                # Slim parquets by removing Res fields (for now)
-                slim_sample = slim_parquets(sample, datasettype)
+    #         for datasettype in DATASETTYPE:
+    #             # Slim parquets by removing Res fields (for now)
+    #             slim_sample = slim_parquets(sample, datasettype)
 
-                wanted_fields = {
-                    'dZ', 
-                    'Diphoton30_22_R9Id_OR_IsoCaloId_AND_HE_R9Id_Mass90',  # old triggers
-                    'Diphoton30_22_R9Id_OR_IsoCaloId_AND_HE_R9Id_Mass95',
-                    'DiphotonMVA14p25_Mass90',  # new triggers
-                    'DiphotonMVA14p25_Tight_Mass90'
-                }
-                for field in wanted_fields:
-                    if field in slim_sample.fields: continue
-                    elif field not in sample.fields: continue
-                    slim_sample[field] = sample[field]
+    #             wanted_fields = {
+    #                 'dZ', 
+    #                 'Diphoton30_22_R9Id_OR_IsoCaloId_AND_HE_R9Id_Mass90',  # old triggers
+    #                 'Diphoton30_22_R9Id_OR_IsoCaloId_AND_HE_R9Id_Mass95',
+    #                 'DiphotonMVA14p25_Mass90',  # new triggers
+    #                 'DiphotonMVA14p25_Tight_Mass90'
+    #             }
+    #             for field in wanted_fields:
+    #                 if field in slim_sample.fields: continue
+    #                 elif field not in sample.fields: continue
+    #                 slim_sample[field] = sample[field]
 
-                # Add useful parquet meta-info
-                slim_sample['sample_name'] = dir_name
-                slim_sample['sample_era'] = data_era[data_era[:-1].rfind('/')+1:-1]
+    #             # Add useful parquet meta-info
+    #             slim_sample['sample_name'] = dir_name
+    #             slim_sample['sample_era'] = data_era[data_era[:-1].rfind('/')+1:-1]
 
-                # Add necessary extra variables
-                add_vars(slim_sample, datasettype)
+    #             # Add necessary extra variables
+    #             add_vars(slim_sample, datasettype)
         
-                # Save out merged parquet
-                destdir = get_merged_filepath(sample_dirpath, datasettype=datasettype)
-                if not os.path.exists(destdir):
-                    os.makedirs(destdir)
-                if re.search('.parquet', dir_name) is None:
-                    filepath = os.path.join(destdir, dir_name+'_merged.parquet')
-                else:
-                    filepath = os.path.join(destdir, dir_name[:dir_name.find('.parquet')]+'_merged'+dir_name[dir_name.find('.parquet'):])
-                merged_parquet = ak.to_parquet(slim_sample, filepath)
-                del slim_sample
-                print('======================== \n', destdir)
+    #             # Save out merged parquet
+    #             destdir = get_merged_filepath(sample_dirpath, datasettype=datasettype)
+    #             if not os.path.exists(destdir):
+    #                 os.makedirs(destdir)
+    #             if re.search('.parquet', dir_name) is None:
+    #                 filepath = os.path.join(destdir, dir_name+'_merged.parquet')
+    #             else:
+    #                 filepath = os.path.join(destdir, dir_name[:dir_name.find('.parquet')]+'_merged'+dir_name[dir_name.find('.parquet'):])
+    #             merged_parquet = ak.to_parquet(slim_sample, filepath)
+    #             del slim_sample
+    #             print('======================== \n', destdir)
             
-            # Delete sample for memory reasons
-            del sample
+    #         # Delete sample for memory reasons
+    #         del sample
 
 
 if __name__ == '__main__':
