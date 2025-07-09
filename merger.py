@@ -17,7 +17,7 @@ vec.register_awkward()
 lpc_fileprefix = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v3.1/"
 FILL_VALUE = -999
 NUM_JETS = 10
-FORCE_RERUN = True
+FORCE_RERUN = False
 
 DATASETTYPE = {
     'Resolved', 'Boosted'
@@ -436,11 +436,9 @@ def main():
         'bbHtoGG': 525.1*0.00228,
 
         # kappa lambda scane signal samples #
-        'GluGlutoHHto2B2G_kl_0p00_kt_1p00_c2_0p00': 34.43*0.0026,
-        'GluGlutoHHto2B2G_kl-0p00_kt-1p00_c2-0p00': 34.43*0.0026,
-        'GluGlutoHHto2B2G_kl-2p45_kt-1p00_c2-0p00': 34.43*0.0026,
-        'GluGlutoHHto2B2G_kl_5p00_kt_1p00_c2_0p00': 34.43*0.0026,
-        'GluGlutoHHto2B2G_kl-5p00_kt-1p00_c2-0p00': 34.43*0.0026,
+        'GluGlutoHH_kl-0p00_kt-1p00_c2-0p00': 34.43*0.0026,
+        'GluGlutoHH_kl-2p45_kt-1p00_c2-0p00': 34.43*0.0026,
+        'GluGlutoHH_kl-5p00_kt-1p00_c2-0p00': 34.43*0.0026,
 
         # extra VH samples (produced by Irene) #
         'ZH_sample': 942.2*0.00228*0.69911,
@@ -574,9 +572,7 @@ def main():
             for sample_type in os.listdir(sample_dirpath):
 
                 # if sample_type != 'nominal': continue
-                # if re.search('HH', dir_name) is None or re.search('preBPix', sim_era) is not None: continue
                 if sample_type != 'nominal' and re.search('H', dir_name) is None: continue
-                if re.search('VHtoGG', dir_name) is None or re.search('preBPix', sim_era) is None or sample_type != 'nominal': continue
 
                 print(sim_era[sim_era[:-1].rfind('/')+1:-1]+f': {dir_name} - {sample_type}')
                 if re.search('.parquet', sample_type) is not None:

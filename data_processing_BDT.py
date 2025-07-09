@@ -22,9 +22,9 @@ def process_data(
     # Load parquet files #
     samples = {}
     for sample_name, sample_filepaths in filepaths_dict.items():
-        for dir_path in sample_filepaths:
-            print(dir_path)
-            print(glob.glob(dir_path))
+        # for dir_path in sample_filepaths:
+        #     print(dir_path)
+        #     print(glob.glob(dir_path))
         sample_list = [ak.from_parquet(glob.glob(dir_path)) for dir_path in sample_filepaths]
         if re.search('VH', sample_name) is not None:
             ZandWH_idxs = []
