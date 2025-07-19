@@ -1,3 +1,4 @@
+import copy
 import os
 import subprocess
 
@@ -18,13 +19,21 @@ parser.add_argument("--output_dir", default=os.path.join(os.getcwd(), ".condor_c
 parser.add_argument("--queue", default="longlunch", help="Queue with which to submit the condor job.")
 parser.add_argument("--memory", default="10GB", help="RAM with which to submit the condor job.")
 
+def find_nth(string: str, sub: str, n: int):
+    index = 0
+    for i in range(n):
+        index += (string.find(sub) + len(sub))
+        string = string[index+len(sub):]
+    return index
+
+
 def main():
     args = parser.parse_args()
 
-    origin_redirector = args.origin_filepath[:args.origin_filepath.find("/store")]
-    origin_filepath = os.path.join(args.origin_filepath[args.origin_filepath.find("/store"):], "")
-    destination_redirector = args.destination_filepath[:args.destination_filepath.find("/store")]
-    destination_filepath = os.path.join(args.destination_filepath[args.destination_filepath.find("/store"):], "")
+    origin_redirector = args.origin_filepath[:find_nth(args.origin_filepath, "//", 2)+1]
+    origin_filepath = os.path.join(args.origin_filepath[find_nth(args.origin_filepath, "//", 2)+1:], "")
+    destination_redirector = args.destination_filepath[:find_nth(args.destination_filepath, "//", 2)+1]
+    destination_filepath = os.path.join(args.destination_filepath[find_nth(args.destination_filepath, "//", 2)+1:], "")
     
     jobs_dir = os.path.join(args.output_dir, subprocess.getoutput("date +%Y%m%d_%H%M%S"), "")
     if not os.path.exists(jobs_dir): os.makedirs(jobs_dir)
