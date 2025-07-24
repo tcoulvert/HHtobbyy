@@ -20,7 +20,8 @@ from data_processing_BDT import process_data
 
 
 # lpc_fileprefix = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v3/"
-lpc_fileprefix = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v3.1/"
+# lpc_fileprefix = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v3.1/"
+lpc_fileprefix = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v3_EFT/"
 Run3_2022 = 'Run3_2022_mergedFullResolved/sim'
 Run3_2023 = 'Run3_2023_mergedFullResolved/sim'
 Run3_2024 = 'Run3_2024_mergedFullResolved/sim'
@@ -28,110 +29,142 @@ Run3_2024 = 'Run3_2024_mergedFullResolved/sim'
 def get_filepath_dict(syst_name: str='nominal'):
     return {
         'ggF HH': [
-            lpc_fileprefix+Run3_2022+f"/preEE/GluGlutoHH_kl-1p00_kt-1p00_c2-0p00/{syst_name}/*merged.parquet", # central v2 preEE name
-            lpc_fileprefix+Run3_2022+f"/postEE/GluGlutoHH_kl-1p00_kt-1p00_c2-0p00/{syst_name}/*merged.parquet",  # central v2 postEE name
-            lpc_fileprefix+Run3_2023+f"/preBPix/GluGlutoHH_kl-1p00_kt-1p00_c2-0p00/{syst_name}/*merged.parquet",  # thomas name
-            lpc_fileprefix+Run3_2023+f"/postBPix/GluGlutoHH_kl-1p00_kt-1p00_c2-0p00/{syst_name}/*merged.parquet",
+            # lpc_fileprefix+Run3_2022+f"/preEE/GluGlutoHH_kl-1p00_kt-1p00_c2-0p00/{syst_name}/*merged.parquet", # central v2 preEE name
+            # lpc_fileprefix+Run3_2022+f"/postEE/GluGlutoHH_kl-1p00_kt-1p00_c2-0p00/{syst_name}/*merged.parquet",  # central v2 postEE name
+            # lpc_fileprefix+Run3_2023+f"/preBPix/GluGlutoHH_kl-1p00_kt-1p00_c2-0p00/{syst_name}/*merged.parquet",  # thomas name
+            # lpc_fileprefix+Run3_2023+f"/postBPix/GluGlutoHH_kl-1p00_kt-1p00_c2-0p00/{syst_name}/*merged.parquet",
 
-            # lpc_fileprefix+Run3_2022+f"/preEE/VBFHHto2B2G_CV_1_C2V_1_C3_1/{syst_name}/*merged.parquet", 
-            # lpc_fileprefix+Run3_2022+f"/postEE/VBFHHto2B2G_CV_1_C2V_1_C3_1/{syst_name}/*merged.parquet",
-            # lpc_fileprefix+Run3_2023+f"/preBPix/VBFHHto2B2G_CV_1_C2V_1_C3_1/{syst_name}/*merged.parquet", 
-            # lpc_fileprefix+Run3_2023+f"/postBPix/VBFHHto2B2G_CV_1_C2V_1_C3_1/{syst_name}/*merged.parquet",
+            # # lpc_fileprefix+Run3_2022+f"/preEE/VBFHHto2B2G_CV_1_C2V_1_C3_1/{syst_name}/*merged.parquet", 
+            # # lpc_fileprefix+Run3_2022+f"/postEE/VBFHHto2B2G_CV_1_C2V_1_C3_1/{syst_name}/*merged.parquet",
+            # # lpc_fileprefix+Run3_2023+f"/preBPix/VBFHHto2B2G_CV_1_C2V_1_C3_1/{syst_name}/*merged.parquet", 
+            # # lpc_fileprefix+Run3_2023+f"/postBPix/VBFHHto2B2G_CV_1_C2V_1_C3_1/{syst_name}/*merged.parquet",
 
-            # kappa lambda scan #
-            lpc_fileprefix+Run3_2022+f"/preEE/GluGlutoHH_kl-0p00_kt-1p00_c2-0p00/{syst_name}/*merged.parquet", 
-            lpc_fileprefix+Run3_2022+f"/postEE/GluGlutoHH_kl-0p00_kt-1p00_c2-0p00/{syst_name}/*merged.parquet",
-            lpc_fileprefix+Run3_2022+f"/preEE/GluGlutoHH_kl-2p45_kt-1p00_c2-0p00/{syst_name}/*merged.parquet", 
-            lpc_fileprefix+Run3_2022+f"/postEE/GluGlutoHH_kl-2p45_kt-1p00_c2-0p00/{syst_name}/*merged.parquet",
-            lpc_fileprefix+Run3_2022+f"/preEE/GluGlutoHH_kl-5p00_kt-1p00_c2-0p00/{syst_name}/*merged.parquet", 
-            lpc_fileprefix+Run3_2022+f"/postEE/GluGlutoHH_kl-5p00_kt-1p00_c2-0p00/{syst_name}/*merged.parquet",
-            lpc_fileprefix+Run3_2023+f"/preBPix/GluGlutoHH_kl-0p00_kt-1p00_c2-0p00/{syst_name}/*merged.parquet", 
-            lpc_fileprefix+Run3_2023+f"/postBPix/GluGlutoHH_kl-0p00_kt-1p00_c2-0p00/{syst_name}/*merged.parquet",
-            lpc_fileprefix+Run3_2023+f"/preBPix/GluGlutoHH_kl-2p45_kt-1p00_c2-0p00/{syst_name}/*merged.parquet", 
-            lpc_fileprefix+Run3_2023+f"/postBPix/GluGlutoHH_kl-2p45_kt-1p00_c2-0p00/{syst_name}/*merged.parquet",
-            lpc_fileprefix+Run3_2023+f"/preBPix/GluGlutoHH_kl-5p00_kt-1p00_c2-0p00/{syst_name}/*merged.parquet", 
-            lpc_fileprefix+Run3_2023+f"/postBPix/GluGlutoHH_kl-5p00_kt-1p00_c2-0p00/{syst_name}/*merged.parquet",
+            # # kappa lambda scan #
+            # lpc_fileprefix+Run3_2022+f"/preEE/GluGlutoHH_kl-0p00_kt-1p00_c2-0p00/{syst_name}/*merged.parquet", 
+            # lpc_fileprefix+Run3_2022+f"/postEE/GluGlutoHH_kl-0p00_kt-1p00_c2-0p00/{syst_name}/*merged.parquet",
+            # lpc_fileprefix+Run3_2022+f"/preEE/GluGlutoHH_kl-2p45_kt-1p00_c2-0p00/{syst_name}/*merged.parquet", 
+            # lpc_fileprefix+Run3_2022+f"/postEE/GluGlutoHH_kl-2p45_kt-1p00_c2-0p00/{syst_name}/*merged.parquet",
+            # lpc_fileprefix+Run3_2022+f"/preEE/GluGlutoHH_kl-5p00_kt-1p00_c2-0p00/{syst_name}/*merged.parquet", 
+            # lpc_fileprefix+Run3_2022+f"/postEE/GluGlutoHH_kl-5p00_kt-1p00_c2-0p00/{syst_name}/*merged.parquet",
+            # lpc_fileprefix+Run3_2023+f"/preBPix/GluGlutoHH_kl-0p00_kt-1p00_c2-0p00/{syst_name}/*merged.parquet", 
+            # lpc_fileprefix+Run3_2023+f"/postBPix/GluGlutoHH_kl-0p00_kt-1p00_c2-0p00/{syst_name}/*merged.parquet",
+            # lpc_fileprefix+Run3_2023+f"/preBPix/GluGlutoHH_kl-2p45_kt-1p00_c2-0p00/{syst_name}/*merged.parquet", 
+            # lpc_fileprefix+Run3_2023+f"/postBPix/GluGlutoHH_kl-2p45_kt-1p00_c2-0p00/{syst_name}/*merged.parquet",
+            # lpc_fileprefix+Run3_2023+f"/preBPix/GluGlutoHH_kl-5p00_kt-1p00_c2-0p00/{syst_name}/*merged.parquet", 
+            # lpc_fileprefix+Run3_2023+f"/postBPix/GluGlutoHH_kl-5p00_kt-1p00_c2-0p00/{syst_name}/*merged.parquet",
+
+            lpc_fileprefix+Run3_2022+f"/postEE/GluGluToHH/{syst_name}/*.parquet", 
+            lpc_fileprefix+Run3_2022+f"/postEE/ggHH-CH-20-CHD10-t1/{syst_name}/*.parquet", 
+            lpc_fileprefix+Run3_2022+f"/postEE/ggHH-CH-20-CHG0.1-t1/{syst_name}/*.parquet",
+            lpc_fileprefix+Run3_2022+f"/postEE/ggHH-CH-20-CHbox20-t1/{syst_name}/*.parquet",
+            lpc_fileprefix+Run3_2022+f"/postEE/ggHH-CH-20-CuH40-t1/{syst_name}/*.parquet", 
+            lpc_fileprefix+Run3_2022+f"/postEE/ggHH-CH-20-t1/{syst_name}/*.parquet",
+            lpc_fileprefix+Run3_2022+f"/postEE/ggHH-CH-6-t1/{syst_name}/*.parquet",
+            lpc_fileprefix+Run3_2022+f"/postEE/ggHH-CH10-t1/{syst_name}/*.parquet",
+            lpc_fileprefix+Run3_2022+f"/postEE/ggHH-CHD-5-t1/{syst_name}/*.parquet",
+            lpc_fileprefix+Run3_2022+f"/postEE/ggHH-CHD10-CHG0.1-t1/{syst_name}/*.parquet",
+            lpc_fileprefix+Run3_2022+f"/postEE/ggHH-CHD10-CuH40-t1/{syst_name}/*.parquet",
+            lpc_fileprefix+Run3_2022+f"/postEE/ggHH-CHD10-t1/{syst_name}/*.parquet",
+            lpc_fileprefix+Run3_2022+f"/postEE/ggHH-CHG-0.05-t1/{syst_name}/*.parquet",
+            lpc_fileprefix+Run3_2022+f"/postEE/ggHH-CHG0.1-t1/{syst_name}/*.parquet",
+            lpc_fileprefix+Run3_2022+f"/postEE/ggHH-CHbox-10-t1/{syst_name}/*.parquet",
+            lpc_fileprefix+Run3_2022+f"/postEE/ggHH-CHbox20-CHD10-t1/{syst_name}/*.parquet",
+            lpc_fileprefix+Run3_2022+f"/postEE/ggHH-CHbox20-CHG0.1-t1/{syst_name}/*.parquet",
+            lpc_fileprefix+Run3_2022+f"/postEE/ggHH-CHbox20-CuH40-t1/{syst_name}/*.parquet",
+            lpc_fileprefix+Run3_2022+f"/postEE/ggHH-CHbox20-t1/{syst_name}/*.parquet",
+            lpc_fileprefix+Run3_2022+f"/postEE/ggHH-CuH-20-t1/{syst_name}/*.parquet",
+            lpc_fileprefix+Run3_2022+f"/postEE/ggHH-CuH40-CHG0.1-t1/{syst_name}/*.parquet",
+            lpc_fileprefix+Run3_2022+f"/postEE/ggHH-CuH40-t1/{syst_name}/*.parquet",
+            lpc_fileprefix+Run3_2022+f"/postEE/ggHH_BM1/{syst_name}/*.parquet",
+            lpc_fileprefix+Run3_2022+f"/postEE/ggHH_BM3/{syst_name}/*.parquet",
+            lpc_fileprefix+Run3_2022+f"/postEE/ggHH_kl_0p00/{syst_name}/*.parquet",
+            lpc_fileprefix+Run3_2022+f"/postEE/ggHH_kl_2p45/{syst_name}/*.parquet",
+            lpc_fileprefix+Run3_2022+f"/postEE/ggHH_kl_5p00/{syst_name}/*.parquet",
         ],
         'ttH + bbH': [
-            # ttH
-            lpc_fileprefix+Run3_2022+f"/preEE/ttHtoGG/{syst_name}/*merged.parquet", 
-            lpc_fileprefix+Run3_2022+f"/postEE/ttHToGG/{syst_name}/*merged.parquet",
-            lpc_fileprefix+Run3_2023+f"/preBPix/ttHtoGG/{syst_name}/*merged.parquet", 
-            lpc_fileprefix+Run3_2023+f"/postBPix/ttHtoGG/{syst_name}/*merged.parquet",
-            # bbH
-            lpc_fileprefix+Run3_2022+f"/preEE/bbHtoGG/{syst_name}/*merged.parquet", 
-            lpc_fileprefix+Run3_2022+f"/postEE/bbHtoGG/{syst_name}/*merged.parquet",
-            lpc_fileprefix+Run3_2023+f"/preBPix/bbHtoGG/{syst_name}/*merged.parquet", 
-            lpc_fileprefix+Run3_2023+f"/postBPix/bbHtoGG/{syst_name}/*merged.parquet",
+            # # ttH
+            # lpc_fileprefix+Run3_2022+f"/preEE/ttHtoGG/{syst_name}/*merged.parquet", 
+            # lpc_fileprefix+Run3_2022+f"/postEE/ttHToGG/{syst_name}/*merged.parquet",
+            # lpc_fileprefix+Run3_2023+f"/preBPix/ttHtoGG/{syst_name}/*merged.parquet", 
+            # lpc_fileprefix+Run3_2023+f"/postBPix/ttHtoGG/{syst_name}/*merged.parquet",
+            # # bbH
+            # lpc_fileprefix+Run3_2022+f"/preEE/bbHtoGG/{syst_name}/*merged.parquet", 
+            # lpc_fileprefix+Run3_2022+f"/postEE/bbHtoGG/{syst_name}/*merged.parquet",
+            # lpc_fileprefix+Run3_2023+f"/preBPix/bbHtoGG/{syst_name}/*merged.parquet", 
+            # lpc_fileprefix+Run3_2023+f"/postBPix/bbHtoGG/{syst_name}/*merged.parquet",
         ],
         'VH': [
-            # VH
-            lpc_fileprefix+Run3_2022+f"/preEE/VHtoGG/{syst_name}/*merged.parquet", 
-            lpc_fileprefix+Run3_2022+f"/postEE/VHtoGG/{syst_name}/*merged.parquet",
-            lpc_fileprefix+Run3_2023+f"/preBPix/VHtoGG/{syst_name}/*merged.parquet", 
-            lpc_fileprefix+Run3_2023+f"/postBPix/VHtoGG/{syst_name}/*merged.parquet",
-            # ZH
-            lpc_fileprefix+Run3_2022+f"/preEE/ZH_Hto2G_Zto2Q_M-125/{syst_name}/*merged.parquet", 
-            lpc_fileprefix+Run3_2022+f"/postEE/ZH_Hto2G_Zto2Q_M-125/{syst_name}/*merged.parquet",
-            lpc_fileprefix+Run3_2023+f"/preBPix/ZH_Hto2G_Zto2Q_M-125/{syst_name}/*merged.parquet", 
-            lpc_fileprefix+Run3_2023+f"/postBPix/ZH_Hto2G_Zto2Q_M-125/{syst_name}/*merged.parquet",
-            # W-H
-            lpc_fileprefix+Run3_2022+f"/preEE/WminusH_Hto2G_Wto2Q_M-125/{syst_name}/*merged.parquet", 
-            lpc_fileprefix+Run3_2022+f"/postEE/WminusH_Hto2G_Wto2Q_M-125/{syst_name}/*merged.parquet",
-            lpc_fileprefix+Run3_2023+f"/preBPix/WminusH_Hto2G_Wto2Q_M-125/{syst_name}/*merged.parquet", 
-            lpc_fileprefix+Run3_2023+f"/postBPix/WminusH_Hto2G_Wto2Q_M-125/{syst_name}/*merged.parquet",
-            # W+H
-            lpc_fileprefix+Run3_2022+f"/preEE/WplusH_Hto2G_Wto2Q_M-125/{syst_name}/*merged.parquet", 
-            lpc_fileprefix+Run3_2022+f"/postEE/WplusH_Hto2G_Wto2Q_M-125/{syst_name}/*merged.parquet",
-            lpc_fileprefix+Run3_2023+f"/preBPix/WplusH_Hto2G_Wto2Q_M-125/{syst_name}/*merged.parquet", 
-            lpc_fileprefix+Run3_2023+f"/postBPix/WplusH_Hto2G_Wto2Q_M-125/{syst_name}/*merged.parquet",
+            # # VH
+            # lpc_fileprefix+Run3_2022+f"/preEE/VHtoGG/{syst_name}/*merged.parquet", 
+            # lpc_fileprefix+Run3_2022+f"/postEE/VHtoGG/{syst_name}/*merged.parquet",
+            # lpc_fileprefix+Run3_2023+f"/preBPix/VHtoGG/{syst_name}/*merged.parquet", 
+            # lpc_fileprefix+Run3_2023+f"/postBPix/VHtoGG/{syst_name}/*merged.parquet",
+            # # ZH
+            # lpc_fileprefix+Run3_2022+f"/preEE/ZH_Hto2G_Zto2Q_M-125/{syst_name}/*merged.parquet", 
+            # lpc_fileprefix+Run3_2022+f"/postEE/ZH_Hto2G_Zto2Q_M-125/{syst_name}/*merged.parquet",
+            # lpc_fileprefix+Run3_2023+f"/preBPix/ZH_Hto2G_Zto2Q_M-125/{syst_name}/*merged.parquet", 
+            # lpc_fileprefix+Run3_2023+f"/postBPix/ZH_Hto2G_Zto2Q_M-125/{syst_name}/*merged.parquet",
+            # # W-H
+            # lpc_fileprefix+Run3_2022+f"/preEE/WminusH_Hto2G_Wto2Q_M-125/{syst_name}/*merged.parquet", 
+            # lpc_fileprefix+Run3_2022+f"/postEE/WminusH_Hto2G_Wto2Q_M-125/{syst_name}/*merged.parquet",
+            # lpc_fileprefix+Run3_2023+f"/preBPix/WminusH_Hto2G_Wto2Q_M-125/{syst_name}/*merged.parquet", 
+            # lpc_fileprefix+Run3_2023+f"/postBPix/WminusH_Hto2G_Wto2Q_M-125/{syst_name}/*merged.parquet",
+            # # W+H
+            # lpc_fileprefix+Run3_2022+f"/preEE/WplusH_Hto2G_Wto2Q_M-125/{syst_name}/*merged.parquet", 
+            # lpc_fileprefix+Run3_2022+f"/postEE/WplusH_Hto2G_Wto2Q_M-125/{syst_name}/*merged.parquet",
+            # lpc_fileprefix+Run3_2023+f"/preBPix/WplusH_Hto2G_Wto2Q_M-125/{syst_name}/*merged.parquet", 
+            # lpc_fileprefix+Run3_2023+f"/postBPix/WplusH_Hto2G_Wto2Q_M-125/{syst_name}/*merged.parquet",
         ],
         'non-res + ggFH + VBFH': [
-            # GG + 3Jets 40-80
-            lpc_fileprefix+Run3_2022+f"/preEE/GGJets_MGG-40to80/{syst_name}/*merged.parquet", 
-            lpc_fileprefix+Run3_2022+f"/postEE/GGJets_MGG-40to80/{syst_name}/*merged.parquet",
-            lpc_fileprefix+Run3_2023+f"/preBPix/GGJets_MGG-40to80/{syst_name}/*merged.parquet", 
-            lpc_fileprefix+Run3_2023+f"/postBPix/GGJets_MGG-40to80/{syst_name}/*merged.parquet",
-            # GG + 3Jets 80-
-            lpc_fileprefix+Run3_2022+f"/preEE/GGJets_MGG-80/{syst_name}/*merged.parquet", 
-            lpc_fileprefix+Run3_2022+f"/postEE/GGJets_MGG-80/{syst_name}/*merged.parquet",
-            lpc_fileprefix+Run3_2023+f"/preBPix/GGJets_MGG-80/{syst_name}/*merged.parquet", 
-            lpc_fileprefix+Run3_2023+f"/postBPix/GGJets_MGG-80/{syst_name}/*merged.parquet",
-            # GJet pT 20-40
-            lpc_fileprefix+Run3_2022+f"/preEE/GJet_PT-20to40_DoubleEMEnriched_MGG-80/{syst_name}/*merged.parquet", 
-            lpc_fileprefix+Run3_2022+f"/postEE/GJet_PT-20to40_DoubleEMEnriched_MGG-80/{syst_name}/*merged.parquet",
-            lpc_fileprefix+Run3_2023+f"/preBPix/GJet_PT-20to40_DoubleEMEnriched_MGG-80/{syst_name}/*merged.parquet", 
-            lpc_fileprefix+Run3_2023+f"/postBPix/GJet_PT-20to40_DoubleEMEnriched_MGG-80/{syst_name}/*merged.parquet",
-            # GJet pT 40-inf
-            lpc_fileprefix+Run3_2022+f"/preEE/GJet_PT-40_DoubleEMEnriched_MGG-80/{syst_name}/*merged.parquet", 
-            lpc_fileprefix+Run3_2022+f"/postEE/GJet_PT-40_DoubleEMEnriched_MGG-80/{syst_name}/*merged.parquet",
-            lpc_fileprefix+Run3_2023+f"/preBPix/GJet_PT-40_DoubleEMEnriched_MGG-80/{syst_name}/*merged.parquet", 
-            lpc_fileprefix+Run3_2023+f"/postBPix/GJet_PT-40_DoubleEMEnriched_MGG-80/{syst_name}/*merged.parquet",
-            # ggF H
-            lpc_fileprefix+Run3_2022+f"/preEE/GluGluHtoGG/{syst_name}/*merged.parquet", 
-            lpc_fileprefix+Run3_2022+f"/postEE/GluGluHtoGG/{syst_name}/*merged.parquet",
-            lpc_fileprefix+Run3_2023+f"/preBPix/GluGluHtoGG/{syst_name}/*merged.parquet", 
-            lpc_fileprefix+Run3_2023+f"/postBPix/GluGluHtoGG/{syst_name}/*merged.parquet",
-            # VBF H
-            lpc_fileprefix+Run3_2022+f"/preEE/VBFHtoGG/{syst_name}/*merged.parquet", 
-            lpc_fileprefix+Run3_2022+f"/postEE/VBFHToGG/{syst_name}/*merged.parquet",
-            lpc_fileprefix+Run3_2023+f"/preBPix/VBFHtoGG/{syst_name}/*merged.parquet", 
-            lpc_fileprefix+Run3_2023+f"/postBPix/VBFHtoGG/{syst_name}/*merged.parquet",
+            # # GG + 3Jets 40-80
+            # lpc_fileprefix+Run3_2022+f"/preEE/GGJets_MGG-40to80/{syst_name}/*merged.parquet", 
+            # lpc_fileprefix+Run3_2022+f"/postEE/GGJets_MGG-40to80/{syst_name}/*merged.parquet",
+            # lpc_fileprefix+Run3_2023+f"/preBPix/GGJets_MGG-40to80/{syst_name}/*merged.parquet", 
+            # lpc_fileprefix+Run3_2023+f"/postBPix/GGJets_MGG-40to80/{syst_name}/*merged.parquet",
+            # # GG + 3Jets 80-
+            # lpc_fileprefix+Run3_2022+f"/preEE/GGJets_MGG-80/{syst_name}/*merged.parquet", 
+            # lpc_fileprefix+Run3_2022+f"/postEE/GGJets_MGG-80/{syst_name}/*merged.parquet",
+            # lpc_fileprefix+Run3_2023+f"/preBPix/GGJets_MGG-80/{syst_name}/*merged.parquet", 
+            # lpc_fileprefix+Run3_2023+f"/postBPix/GGJets_MGG-80/{syst_name}/*merged.parquet",
+            # # GJet pT 20-40
+            # lpc_fileprefix+Run3_2022+f"/preEE/GJet_PT-20to40_DoubleEMEnriched_MGG-80/{syst_name}/*merged.parquet", 
+            # lpc_fileprefix+Run3_2022+f"/postEE/GJet_PT-20to40_DoubleEMEnriched_MGG-80/{syst_name}/*merged.parquet",
+            # lpc_fileprefix+Run3_2023+f"/preBPix/GJet_PT-20to40_DoubleEMEnriched_MGG-80/{syst_name}/*merged.parquet", 
+            # lpc_fileprefix+Run3_2023+f"/postBPix/GJet_PT-20to40_DoubleEMEnriched_MGG-80/{syst_name}/*merged.parquet",
+            # # GJet pT 40-inf
+            # lpc_fileprefix+Run3_2022+f"/preEE/GJet_PT-40_DoubleEMEnriched_MGG-80/{syst_name}/*merged.parquet", 
+            # lpc_fileprefix+Run3_2022+f"/postEE/GJet_PT-40_DoubleEMEnriched_MGG-80/{syst_name}/*merged.parquet",
+            # lpc_fileprefix+Run3_2023+f"/preBPix/GJet_PT-40_DoubleEMEnriched_MGG-80/{syst_name}/*merged.parquet", 
+            # lpc_fileprefix+Run3_2023+f"/postBPix/GJet_PT-40_DoubleEMEnriched_MGG-80/{syst_name}/*merged.parquet",
+            # # ggF H
+            # lpc_fileprefix+Run3_2022+f"/preEE/GluGluHtoGG/{syst_name}/*merged.parquet", 
+            # lpc_fileprefix+Run3_2022+f"/postEE/GluGluHtoGG/{syst_name}/*merged.parquet",
+            # lpc_fileprefix+Run3_2023+f"/preBPix/GluGluHtoGG/{syst_name}/*merged.parquet", 
+            # lpc_fileprefix+Run3_2023+f"/postBPix/GluGluHtoGG/{syst_name}/*merged.parquet",
+            # # VBF H
+            # lpc_fileprefix+Run3_2022+f"/preEE/VBFHtoGG/{syst_name}/*merged.parquet", 
+            # lpc_fileprefix+Run3_2022+f"/postEE/VBFHToGG/{syst_name}/*merged.parquet",
+            # lpc_fileprefix+Run3_2023+f"/preBPix/VBFHtoGG/{syst_name}/*merged.parquet", 
+            # lpc_fileprefix+Run3_2023+f"/postBPix/VBFHtoGG/{syst_name}/*merged.parquet",
         ],
     }
 
+# MODEL_FILEPATH = os.path.join(
+#     '/uscms/home/tsievert/nobackup/XHYbbgg/HHtobbyy/MultiClassBDT_model_outputs/v14/v3_vars_DijetMass_22_23/2025-07-08_15-47-07',
+#     ''
+# )
 MODEL_FILEPATH = os.path.join(
-    '/uscms/home/tsievert/nobackup/XHYbbgg/HHtobbyy/MultiClassBDT_model_outputs/v14/v3_vars_DijetMass_22_23/2025-07-08_15-47-07',
+    '/uscms/home/tsievert/nobackup/XHYbbgg/HHtobbyy/MultiClassBDT_model_outputs/v14/v3_vars_EFT_DijetMass_22_23/2025-07-09_08-23-13',
     ''
 )
 MOD_VALS = (5, 5)
-FORCE_REEVAL = False
+FORCE_REEVAL = True
 
 order = ['ggF HH', 'ttH + bbH', 'VH', 'non-res + ggFH + VBFH']
 
 # Booster parameters #
 param = {}
-# v12 #
+# v14 #
 param['eta']              = 0.05 # learning rate
 num_trees = round(25 / param['eta'])  # number of trees to make
 param['max_depth']        = 10  # maximum depth of a tree
@@ -207,17 +240,17 @@ VARIATIONS_FILEPATHS_DICT = {
 
 # load and pre-process the data
 DATA_FILEPATHS_DICT = {
-    'Data': [
-        # 2022
-        lpc_fileprefix+Run3_2022[:-4]+f"/data/DataC_2022/*merged.parquet",
-        lpc_fileprefix+Run3_2022[:-4]+f"/data/DataD_2022/*merged.parquet",
-        lpc_fileprefix+Run3_2022[:-4]+f"/data/Data_EraE/*merged.parquet",
-        lpc_fileprefix+Run3_2022[:-4]+f"/data/Data_EraF/*merged.parquet",
-        lpc_fileprefix+Run3_2022[:-4]+f"/data/Data_EraG/*merged.parquet",
-        # 2023
-        lpc_fileprefix+Run3_2023[:-4]+"/data/Data_EraC/*merged.parquet",
-        lpc_fileprefix+Run3_2023[:-4]+"/data/Data_EraD/*merged.parquet",
-    ],
+    # 'Data': [
+    #     # 2022
+    #     lpc_fileprefix+Run3_2022[:-4]+f"/data/DataC_2022/*merged.parquet",
+    #     lpc_fileprefix+Run3_2022[:-4]+f"/data/DataD_2022/*merged.parquet",
+    #     lpc_fileprefix+Run3_2022[:-4]+f"/data/Data_EraE/*merged.parquet",
+    #     lpc_fileprefix+Run3_2022[:-4]+f"/data/Data_EraF/*merged.parquet",
+    #     lpc_fileprefix+Run3_2022[:-4]+f"/data/Data_EraG/*merged.parquet",
+    #     # 2023
+    #     lpc_fileprefix+Run3_2023[:-4]+"/data/Data_EraC/*merged.parquet",
+    #     lpc_fileprefix+Run3_2023[:-4]+"/data/Data_EraD/*merged.parquet",
+    # ],
 }
 
 # Sorts the predictions to map the output to the correct event
@@ -279,7 +312,8 @@ def pass_category(multibdt_output, cat_i):
     return pass_ttH & pass_QCD & pass_prevQCD
 
 
-dirpath_addition = '_MultiBDT_output'
+# dirpath_addition = '_MultiBDT_output_DijetMass_SignalCorr_22_23'
+dirpath_addition = '_MultiBDT_output_EFT_SignalCorr_22_23'
 filename_addition = '_MultiBDT_output'
 basefilename_postfix = 'Run3_202x_mergedFullResolved'  # Resolved
 
@@ -297,6 +331,11 @@ for i, sample_name in enumerate(order):
 
             if variation != 'nominal' and re.search('H', get_file_sample_name(dirpath, variation).upper()) is None: continue
             if re.search('Q', get_file_sample_name(dirpath, variation).upper()) is not None: continue
+
+            # if (
+            #     re.search('VH', get_file_sample_name(dirpath, variation).upper()) is None
+            #     or re.search('preBPix', dirpath) is None
+            # ): continue
 
             print('======================== started \n', dirpath)
 
@@ -338,7 +377,7 @@ for i, sample_name in enumerate(order):
                         warnings.simplefilter("ignore")
                         
                         booster = xgb.Booster(param)
-                        booster.load_model(os.path.join(MODEL_FILEPATH, f'{MODEL_FILEPATH.split('/')[-1]}_BDT_fold{fold_idx}.model'))
+                        booster.load_model(os.path.join(MODEL_FILEPATH, f'{MODEL_FILEPATH.split("/")[-2]}_BDT_fold{fold_idx}.model'))
 
                         bdt_test_sample_dict = xgb.DMatrix(
                             data=SAMPLE_data_hlf_test_dict[f"fold_{fold_idx}"], label=SAMPLE_label_test_dict[f"fold_{fold_idx}"], 
@@ -417,7 +456,7 @@ for dirpath in DATA_FILEPATHS_DICT['Data']:
             warnings.simplefilter("ignore")
 
             booster = xgb.Booster(param)
-            booster.load_model(os.path.join(MODEL_FILEPATH, f'{MODEL_FILEPATH.split('/')[-1]}_BDT_fold{fold_idx}.model'))
+            booster.load_model(os.path.join(MODEL_FILEPATH, f'{MODEL_FILEPATH.split("/")[-2]}_BDT_fold{fold_idx}.model'))
 
             # all-fold eval
             BDT_train_preds = booster.predict(

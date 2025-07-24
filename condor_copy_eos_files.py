@@ -68,7 +68,7 @@ def main():
         files_to_copy = skimmed_files_to_copy
     if len(files_to_copy) < 1:
         return 1
-    print(files_to_copy)
+    # print(files_to_copy)
 
     # Deleting the temp file
     os.system(f"rm temp.txt")
