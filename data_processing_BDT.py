@@ -86,12 +86,10 @@ def process_data(
     }
     high_level_fields = {
         # MET variables
-        # 'puppiMET_sumEt',  #heft
         'puppiMET_pt',
 
         # jet vars
         f'{jet_prefix}_DeltaPhi_j1MET', f'{jet_prefix}_DeltaPhi_j2MET', 
-        # f'{jet_prefix}_DeltaR_jg_min',  #heft
         'n_jets', f'{jet_prefix}_chi_t0', f'{jet_prefix}_chi_t1',
 
         # lepton vars
@@ -101,25 +99,14 @@ def process_data(
         # angular vars
         f'{jet_prefix}_CosThetaStar_CS', f'{jet_prefix}_CosThetaStar_jj', f'{jet_prefix}_CosThetaStar_gg',
 
-        # dijet vars
-        # f'{jet_prefix}_dijet_mass' + ('' if jet_prefix == 'nonRes' else '_DNNreg'),  #heft
-        # f'{jet_prefix}_dijet_pt',  #heft
-
         # bjet vars
-        # f'{jet_prefix}_lead_bjet_pt', #heft
         f'{jet_prefix}_lead_bjet_eta', # eta
         f'{jet_prefix}_lead_bjet_btagPNetB', # btag scores
-        # f'{merger_vars_map[jet_prefix]}lead_bjet_sigmapT_over_pT', #heft
-        # f'{merger_vars_map[jet_prefix]}lead_bjet_pt_over_Mjj', #heft
         # --------
-        # f'{jet_prefix}_sublead_bjet_pt', #heft
         f'{jet_prefix}_sublead_bjet_eta', 
         f'{jet_prefix}_sublead_bjet_btagPNetB',
-        # f'{merger_vars_map[jet_prefix]}sublead_bjet_sigmapT_over_pT', #heft
-        # f'{merger_vars_map[jet_prefix]}sublead_bjet_pt_over_Mjj', #heft
 
         # diphoton vars
-        # 'pt',  #heft
         'eta',
 
         # Photon vars
@@ -133,11 +120,38 @@ def process_data(
         f'{merger_vars_map[jet_prefix]}pt_balance',
 
         # ZH vars
-        f'{merger_vars_map[jet_prefix]}DeltaPhi_jj', 
-        # f'{merger_vars_map[jet_prefix]}DeltaEta_jj', #heft
-        # f'{merger_vars_map[jet_prefix]}isr_jet_pt',  #heft
+        f'{merger_vars_map[jet_prefix]}DeltaPhi_jj',
         f'{merger_vars_map[jet_prefix]}DeltaPhi_isr_jet_z',
     }
+    mHH_corr_high_level_fields = {
+        # MET variables
+        'puppiMET_sumEt',  #eft
+
+        # jet vars
+        f'{jet_prefix}_DeltaR_jg_min',  #eft
+
+        # dijet vars
+        f'{jet_prefix}_dijet_mass' + ('' if jet_prefix == 'nonRes' else '_DNNreg'),  #eft
+        f'{jet_prefix}_dijet_pt',  #eft
+
+        # bjet vars
+        f'{jet_prefix}_lead_bjet_pt', #eft
+        f'{merger_vars_map[jet_prefix]}lead_bjet_sigmapT_over_pT', #eft
+        f'{merger_vars_map[jet_prefix]}lead_bjet_pt_over_Mjj', #eft
+        # --------
+        f'{jet_prefix}_sublead_bjet_pt', #eft
+        f'{merger_vars_map[jet_prefix]}sublead_bjet_sigmapT_over_pT', #eft
+        f'{merger_vars_map[jet_prefix]}sublead_bjet_pt_over_Mjj', #eft
+
+        # diphoton vars
+        'pt',  #eft
+
+        # ZH vars
+        f'{merger_vars_map[jet_prefix]}DeltaEta_jj', #eft
+        f'{merger_vars_map[jet_prefix]}isr_jet_pt',  #eft
+    }
+    if re.search('_EFT', output_dirpath) is None: 
+        high_level_fields = high_level_fields | mHH_corr_high_level_fields
     std_mapping = {
         # MET variables
         'puppiMET_sumEt': 'puppiMET_sumEt', 'puppiMET_pt': 'puppiMET_pt',

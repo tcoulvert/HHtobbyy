@@ -13,17 +13,17 @@ vec.register_awkward()
 
 # lpc_redirector = "root://cmseos.fnal.gov/"
 # lxplus_redirector = "root://eosuser.cern.ch/"
-# lpc_fileprefix = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v3.1/"
-lpc_fileprefix = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v3_EFT/"
+lpc_fileprefix = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v3.1/"
+# lpc_fileprefix = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v3_EFT/"
 FILL_VALUE = -999
 NUM_JETS = 10
 FORCE_RERUN = True
-MERGE_FILES = False
+MERGE_FILES = True
 
 DATASETTYPE = {
     'Resolved', 
-    # 'Boosted', 
-    # 'AllVars'
+    'Boosted', 
+    'AllVars'
 }
 
 def add_vars(sample, datasettype):
@@ -360,8 +360,8 @@ def correct_weights(sample, sample_filepath_list, computebtag=True):
 
 def main():
     sim_dir_lists = {
-        # os.path.join(lpc_fileprefix, "Run3_2022", "sim", "preEE", ""): None,
-        os.path.join(lpc_fileprefix, "Run3_2022", "sim", "postEE", ""): None,
+        os.path.join(lpc_fileprefix, "Run3_2022", "sim", "preEE", ""): None,
+        # os.path.join(lpc_fileprefix, "Run3_2022", "sim", "postEE", ""): None,
         # os.path.join(lpc_fileprefix, "Run3_2023", "sim", "preBPix", ""): None,
         # os.path.join(lpc_fileprefix, "Run3_2023", "sim", "postBPix", ""): None,
 
@@ -468,15 +468,14 @@ def main():
         # 'TTG_1Jets_PTG_200': 128.4,
         'TTG-1Jets_PTG-200': 128.4,
 
-        # # SMEFT samples #
-        # # singleH(?) background
+        # SMEFT samples #
         # signal
-        'GluGluToHH': 1, 'ggHH-CH-20-CHD10-t1': 1, 'ggHH-CH-20-CHG0.1-t1': 1, 'ggHH-CH-20-CHbox20-t1': 1,
-        'ggHH-CH-20-CuH40-t1': 1, 'ggHH-CH-20-t1': 1, 'ggHH-CH-6-t1': 1, 'ggHH-CH10-t1': 1, 'ggHH-CHD-5-t1': 1, 
-        'ggHH-CHD10-CHG0.1-t1': 1, 'ggHH-CHD10-CuH40-t1': 1, 'ggHH-CHD10-t1': 1, 'ggHH-CHG-0.05-t1': 1,
-        'ggHH-CHG0.1-t1': 1, 'ggHH-CHbox-10-t1': 1, 'ggHH-CHbox20-CHD10-t1': 1, 'ggHH-CHbox20-CHG0.1-t1': 1,
-        'ggHH-CHbox20-CuH40-t1': 1, 'ggHH-CHbox20-t1': 1, 'ggHH-CuH-20-t1': 1, 'ggHH-CuH40-CHG0.1-t1': 1,
-        'ggHH-CuH40-t1': 1, 'ggHH_BM1': 1, 'ggHH_BM3': 1, 'ggHH_kl_0p00': 1, 'ggHH_kl_2p45': 1, 'ggHH_kl_5p00': 1,
+        # 'GluGluToHH': 1, 'ggHH-CH-20-CHD10-t1': 1, 'ggHH-CH-20-CHG0.1-t1': 1, 'ggHH-CH-20-CHbox20-t1': 1,
+        # 'ggHH-CH-20-CuH40-t1': 1, 'ggHH-CH-20-t1': 1, 'ggHH-CH-6-t1': 1, 'ggHH-CH10-t1': 1, 'ggHH-CHD-5-t1': 1, 
+        # 'ggHH-CHD10-CHG0.1-t1': 1, 'ggHH-CHD10-CuH40-t1': 1, 'ggHH-CHD10-t1': 1, 'ggHH-CHG-0.05-t1': 1,
+        # 'ggHH-CHG0.1-t1': 1, 'ggHH-CHbox-10-t1': 1, 'ggHH-CHbox20-CHD10-t1': 1, 'ggHH-CHbox20-CHG0.1-t1': 1,
+        # 'ggHH-CHbox20-CuH40-t1': 1, 'ggHH-CHbox20-t1': 1, 'ggHH-CuH-20-t1': 1, 'ggHH-CuH40-CHG0.1-t1': 1,
+        # 'ggHH-CuH40-t1': 1, 'ggHH_BM1': 1, 'ggHH_BM3': 1, 'ggHH_kl_0p00': 1, 'ggHH_kl_2p45': 1, 'ggHH_kl_5p00': 1,
     }
     sample_name_map = {
         'GluGlutoHHto2B2G_kl_1p00_kt_1p00_c2_0p00': 'GluGluToHH', 
@@ -579,10 +578,10 @@ def main():
 
                 # if sample_type != 'nominal': continue
                 if sample_type != 'nominal' and re.search('H', dir_name) is None: continue
-                # if (
-                #     re.search('VH', sample_dirpath) is None
-                #     or re.search('preBPix', sample_dirpath) is None
-                # ): continue
+                if (
+                    re.search('GluGlutoHH_kl-5p00_kt-1p00_c2-0p00', sample_dirpath) is None
+                    or sample_type != 'FNUF_up'
+                ): continue
 
                 print(sim_era[sim_era[:-1].rfind('/')+1:-1]+f': {dir_name} - {sample_type}')
                 if re.search('.parquet', sample_type) is not None:

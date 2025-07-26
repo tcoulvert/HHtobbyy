@@ -17,135 +17,143 @@ from sklearn.metrics import log_loss
 
 # Module packages
 from data_processing_BDT import process_data
+from evaluate_boosted_BDT import evaluate_boosted
 
+
+FORCE_REEVAL = False
+EVAL_MC = True
+EVAL_DATA = True
+EVAL_BOOSTED = False
 
 # lpc_fileprefix = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v3/"
-# lpc_fileprefix = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v3.1/"
-lpc_fileprefix = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v3_EFT/"
-Run3_2022 = 'Run3_2022_mergedFullResolved/sim'
-Run3_2023 = 'Run3_2023_mergedFullResolved/sim'
-Run3_2024 = 'Run3_2024_mergedFullResolved/sim'
+lpc_fileprefix = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v3.1/"
+# lpc_fileprefix = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v3_EFT/"
+# basefilename_postfix = lambda s: f"Run3_{s}_mergedFullResolved"
+basefilename_postfix = lambda s: f"Run3_{s}_mergedFullAllVars"
+Run3_2022 = f'{basefilename_postfix("2022")}/sim'
+Run3_2023 = f'{basefilename_postfix("2023")}/sim'
+Run3_2024 = f'{basefilename_postfix("2024")}/sim'
 
 def get_filepath_dict(syst_name: str='nominal'):
     return {
         'ggF HH': [
-            # lpc_fileprefix+Run3_2022+f"/preEE/GluGlutoHH_kl-1p00_kt-1p00_c2-0p00/{syst_name}/*merged.parquet", # central v2 preEE name
-            # lpc_fileprefix+Run3_2022+f"/postEE/GluGlutoHH_kl-1p00_kt-1p00_c2-0p00/{syst_name}/*merged.parquet",  # central v2 postEE name
-            # lpc_fileprefix+Run3_2023+f"/preBPix/GluGlutoHH_kl-1p00_kt-1p00_c2-0p00/{syst_name}/*merged.parquet",  # thomas name
-            # lpc_fileprefix+Run3_2023+f"/postBPix/GluGlutoHH_kl-1p00_kt-1p00_c2-0p00/{syst_name}/*merged.parquet",
+            lpc_fileprefix+Run3_2022+f"/preEE/GluGlutoHH_kl-1p00_kt-1p00_c2-0p00/{syst_name}/*merged.parquet", # central v2 preEE name
+            lpc_fileprefix+Run3_2022+f"/postEE/GluGlutoHH_kl-1p00_kt-1p00_c2-0p00/{syst_name}/*merged.parquet",  # central v2 postEE name
+            lpc_fileprefix+Run3_2023+f"/preBPix/GluGlutoHH_kl-1p00_kt-1p00_c2-0p00/{syst_name}/*merged.parquet",  # thomas name
+            lpc_fileprefix+Run3_2023+f"/postBPix/GluGlutoHH_kl-1p00_kt-1p00_c2-0p00/{syst_name}/*merged.parquet",
 
-            # # lpc_fileprefix+Run3_2022+f"/preEE/VBFHHto2B2G_CV_1_C2V_1_C3_1/{syst_name}/*merged.parquet", 
-            # # lpc_fileprefix+Run3_2022+f"/postEE/VBFHHto2B2G_CV_1_C2V_1_C3_1/{syst_name}/*merged.parquet",
-            # # lpc_fileprefix+Run3_2023+f"/preBPix/VBFHHto2B2G_CV_1_C2V_1_C3_1/{syst_name}/*merged.parquet", 
-            # # lpc_fileprefix+Run3_2023+f"/postBPix/VBFHHto2B2G_CV_1_C2V_1_C3_1/{syst_name}/*merged.parquet",
+            # lpc_fileprefix+Run3_2022+f"/preEE/VBFHHto2B2G_CV_1_C2V_1_C3_1/{syst_name}/*merged.parquet", 
+            # lpc_fileprefix+Run3_2022+f"/postEE/VBFHHto2B2G_CV_1_C2V_1_C3_1/{syst_name}/*merged.parquet",
+            # lpc_fileprefix+Run3_2023+f"/preBPix/VBFHHto2B2G_CV_1_C2V_1_C3_1/{syst_name}/*merged.parquet", 
+            # lpc_fileprefix+Run3_2023+f"/postBPix/VBFHHto2B2G_CV_1_C2V_1_C3_1/{syst_name}/*merged.parquet",
 
-            # # kappa lambda scan #
-            # lpc_fileprefix+Run3_2022+f"/preEE/GluGlutoHH_kl-0p00_kt-1p00_c2-0p00/{syst_name}/*merged.parquet", 
-            # lpc_fileprefix+Run3_2022+f"/postEE/GluGlutoHH_kl-0p00_kt-1p00_c2-0p00/{syst_name}/*merged.parquet",
-            # lpc_fileprefix+Run3_2022+f"/preEE/GluGlutoHH_kl-2p45_kt-1p00_c2-0p00/{syst_name}/*merged.parquet", 
-            # lpc_fileprefix+Run3_2022+f"/postEE/GluGlutoHH_kl-2p45_kt-1p00_c2-0p00/{syst_name}/*merged.parquet",
-            # lpc_fileprefix+Run3_2022+f"/preEE/GluGlutoHH_kl-5p00_kt-1p00_c2-0p00/{syst_name}/*merged.parquet", 
-            # lpc_fileprefix+Run3_2022+f"/postEE/GluGlutoHH_kl-5p00_kt-1p00_c2-0p00/{syst_name}/*merged.parquet",
-            # lpc_fileprefix+Run3_2023+f"/preBPix/GluGlutoHH_kl-0p00_kt-1p00_c2-0p00/{syst_name}/*merged.parquet", 
-            # lpc_fileprefix+Run3_2023+f"/postBPix/GluGlutoHH_kl-0p00_kt-1p00_c2-0p00/{syst_name}/*merged.parquet",
-            # lpc_fileprefix+Run3_2023+f"/preBPix/GluGlutoHH_kl-2p45_kt-1p00_c2-0p00/{syst_name}/*merged.parquet", 
-            # lpc_fileprefix+Run3_2023+f"/postBPix/GluGlutoHH_kl-2p45_kt-1p00_c2-0p00/{syst_name}/*merged.parquet",
-            # lpc_fileprefix+Run3_2023+f"/preBPix/GluGlutoHH_kl-5p00_kt-1p00_c2-0p00/{syst_name}/*merged.parquet", 
-            # lpc_fileprefix+Run3_2023+f"/postBPix/GluGlutoHH_kl-5p00_kt-1p00_c2-0p00/{syst_name}/*merged.parquet",
+            # kappa lambda scan #
+            lpc_fileprefix+Run3_2022+f"/preEE/GluGlutoHH_kl-0p00_kt-1p00_c2-0p00/{syst_name}/*merged.parquet", 
+            lpc_fileprefix+Run3_2022+f"/postEE/GluGlutoHH_kl-0p00_kt-1p00_c2-0p00/{syst_name}/*merged.parquet",
+            lpc_fileprefix+Run3_2022+f"/preEE/GluGlutoHH_kl-2p45_kt-1p00_c2-0p00/{syst_name}/*merged.parquet", 
+            lpc_fileprefix+Run3_2022+f"/postEE/GluGlutoHH_kl-2p45_kt-1p00_c2-0p00/{syst_name}/*merged.parquet",
+            lpc_fileprefix+Run3_2022+f"/preEE/GluGlutoHH_kl-5p00_kt-1p00_c2-0p00/{syst_name}/*merged.parquet", 
+            lpc_fileprefix+Run3_2022+f"/postEE/GluGlutoHH_kl-5p00_kt-1p00_c2-0p00/{syst_name}/*merged.parquet",
+            lpc_fileprefix+Run3_2023+f"/preBPix/GluGlutoHH_kl-0p00_kt-1p00_c2-0p00/{syst_name}/*merged.parquet", 
+            lpc_fileprefix+Run3_2023+f"/postBPix/GluGlutoHH_kl-0p00_kt-1p00_c2-0p00/{syst_name}/*merged.parquet",
+            lpc_fileprefix+Run3_2023+f"/preBPix/GluGlutoHH_kl-2p45_kt-1p00_c2-0p00/{syst_name}/*merged.parquet", 
+            lpc_fileprefix+Run3_2023+f"/postBPix/GluGlutoHH_kl-2p45_kt-1p00_c2-0p00/{syst_name}/*merged.parquet",
+            lpc_fileprefix+Run3_2023+f"/preBPix/GluGlutoHH_kl-5p00_kt-1p00_c2-0p00/{syst_name}/*merged.parquet", 
+            lpc_fileprefix+Run3_2023+f"/postBPix/GluGlutoHH_kl-5p00_kt-1p00_c2-0p00/{syst_name}/*merged.parquet",
 
-            lpc_fileprefix+Run3_2022+f"/postEE/GluGluToHH/{syst_name}/*.parquet", 
-            lpc_fileprefix+Run3_2022+f"/postEE/ggHH-CH-20-CHD10-t1/{syst_name}/*.parquet", 
-            lpc_fileprefix+Run3_2022+f"/postEE/ggHH-CH-20-CHG0.1-t1/{syst_name}/*.parquet",
-            lpc_fileprefix+Run3_2022+f"/postEE/ggHH-CH-20-CHbox20-t1/{syst_name}/*.parquet",
-            lpc_fileprefix+Run3_2022+f"/postEE/ggHH-CH-20-CuH40-t1/{syst_name}/*.parquet", 
-            lpc_fileprefix+Run3_2022+f"/postEE/ggHH-CH-20-t1/{syst_name}/*.parquet",
-            lpc_fileprefix+Run3_2022+f"/postEE/ggHH-CH-6-t1/{syst_name}/*.parquet",
-            lpc_fileprefix+Run3_2022+f"/postEE/ggHH-CH10-t1/{syst_name}/*.parquet",
-            lpc_fileprefix+Run3_2022+f"/postEE/ggHH-CHD-5-t1/{syst_name}/*.parquet",
-            lpc_fileprefix+Run3_2022+f"/postEE/ggHH-CHD10-CHG0.1-t1/{syst_name}/*.parquet",
-            lpc_fileprefix+Run3_2022+f"/postEE/ggHH-CHD10-CuH40-t1/{syst_name}/*.parquet",
-            lpc_fileprefix+Run3_2022+f"/postEE/ggHH-CHD10-t1/{syst_name}/*.parquet",
-            lpc_fileprefix+Run3_2022+f"/postEE/ggHH-CHG-0.05-t1/{syst_name}/*.parquet",
-            lpc_fileprefix+Run3_2022+f"/postEE/ggHH-CHG0.1-t1/{syst_name}/*.parquet",
-            lpc_fileprefix+Run3_2022+f"/postEE/ggHH-CHbox-10-t1/{syst_name}/*.parquet",
-            lpc_fileprefix+Run3_2022+f"/postEE/ggHH-CHbox20-CHD10-t1/{syst_name}/*.parquet",
-            lpc_fileprefix+Run3_2022+f"/postEE/ggHH-CHbox20-CHG0.1-t1/{syst_name}/*.parquet",
-            lpc_fileprefix+Run3_2022+f"/postEE/ggHH-CHbox20-CuH40-t1/{syst_name}/*.parquet",
-            lpc_fileprefix+Run3_2022+f"/postEE/ggHH-CHbox20-t1/{syst_name}/*.parquet",
-            lpc_fileprefix+Run3_2022+f"/postEE/ggHH-CuH-20-t1/{syst_name}/*.parquet",
-            lpc_fileprefix+Run3_2022+f"/postEE/ggHH-CuH40-CHG0.1-t1/{syst_name}/*.parquet",
-            lpc_fileprefix+Run3_2022+f"/postEE/ggHH-CuH40-t1/{syst_name}/*.parquet",
-            lpc_fileprefix+Run3_2022+f"/postEE/ggHH_BM1/{syst_name}/*.parquet",
-            lpc_fileprefix+Run3_2022+f"/postEE/ggHH_BM3/{syst_name}/*.parquet",
-            lpc_fileprefix+Run3_2022+f"/postEE/ggHH_kl_0p00/{syst_name}/*.parquet",
-            lpc_fileprefix+Run3_2022+f"/postEE/ggHH_kl_2p45/{syst_name}/*.parquet",
-            lpc_fileprefix+Run3_2022+f"/postEE/ggHH_kl_5p00/{syst_name}/*.parquet",
+            # lpc_fileprefix+Run3_2022+f"/postEE/GluGluToHH/{syst_name}/*.parquet", 
+            # lpc_fileprefix+Run3_2022+f"/postEE/ggHH-CH-20-CHD10-t1/{syst_name}/*.parquet", 
+            # lpc_fileprefix+Run3_2022+f"/postEE/ggHH-CH-20-CHG0.1-t1/{syst_name}/*.parquet",
+            # lpc_fileprefix+Run3_2022+f"/postEE/ggHH-CH-20-CHbox20-t1/{syst_name}/*.parquet",
+            # lpc_fileprefix+Run3_2022+f"/postEE/ggHH-CH-20-CuH40-t1/{syst_name}/*.parquet", 
+            # lpc_fileprefix+Run3_2022+f"/postEE/ggHH-CH-20-t1/{syst_name}/*.parquet",
+            # lpc_fileprefix+Run3_2022+f"/postEE/ggHH-CH-6-t1/{syst_name}/*.parquet",
+            # lpc_fileprefix+Run3_2022+f"/postEE/ggHH-CH10-t1/{syst_name}/*.parquet",
+            # lpc_fileprefix+Run3_2022+f"/postEE/ggHH-CHD-5-t1/{syst_name}/*.parquet",
+            # lpc_fileprefix+Run3_2022+f"/postEE/ggHH-CHD10-CHG0.1-t1/{syst_name}/*.parquet",
+            # lpc_fileprefix+Run3_2022+f"/postEE/ggHH-CHD10-CuH40-t1/{syst_name}/*.parquet",
+            # lpc_fileprefix+Run3_2022+f"/postEE/ggHH-CHD10-t1/{syst_name}/*.parquet",
+            # lpc_fileprefix+Run3_2022+f"/postEE/ggHH-CHG-0.05-t1/{syst_name}/*.parquet",
+            # lpc_fileprefix+Run3_2022+f"/postEE/ggHH-CHG0.1-t1/{syst_name}/*.parquet",
+            # lpc_fileprefix+Run3_2022+f"/postEE/ggHH-CHbox-10-t1/{syst_name}/*.parquet",
+            # lpc_fileprefix+Run3_2022+f"/postEE/ggHH-CHbox20-CHD10-t1/{syst_name}/*.parquet",
+            # lpc_fileprefix+Run3_2022+f"/postEE/ggHH-CHbox20-CHG0.1-t1/{syst_name}/*.parquet",
+            # lpc_fileprefix+Run3_2022+f"/postEE/ggHH-CHbox20-CuH40-t1/{syst_name}/*.parquet",
+            # lpc_fileprefix+Run3_2022+f"/postEE/ggHH-CHbox20-t1/{syst_name}/*.parquet",
+            # lpc_fileprefix+Run3_2022+f"/postEE/ggHH-CuH-20-t1/{syst_name}/*.parquet",
+            # lpc_fileprefix+Run3_2022+f"/postEE/ggHH-CuH40-CHG0.1-t1/{syst_name}/*.parquet",
+            # lpc_fileprefix+Run3_2022+f"/postEE/ggHH-CuH40-t1/{syst_name}/*.parquet",
+            # lpc_fileprefix+Run3_2022+f"/postEE/ggHH_BM1/{syst_name}/*.parquet",
+            # lpc_fileprefix+Run3_2022+f"/postEE/ggHH_BM3/{syst_name}/*.parquet",
+            # lpc_fileprefix+Run3_2022+f"/postEE/ggHH_kl_0p00/{syst_name}/*.parquet",
+            # lpc_fileprefix+Run3_2022+f"/postEE/ggHH_kl_2p45/{syst_name}/*.parquet",
+            # lpc_fileprefix+Run3_2022+f"/postEE/ggHH_kl_5p00/{syst_name}/*.parquet",
         ],
         'ttH + bbH': [
-            # # ttH
-            # lpc_fileprefix+Run3_2022+f"/preEE/ttHtoGG/{syst_name}/*merged.parquet", 
-            # lpc_fileprefix+Run3_2022+f"/postEE/ttHToGG/{syst_name}/*merged.parquet",
-            # lpc_fileprefix+Run3_2023+f"/preBPix/ttHtoGG/{syst_name}/*merged.parquet", 
-            # lpc_fileprefix+Run3_2023+f"/postBPix/ttHtoGG/{syst_name}/*merged.parquet",
-            # # bbH
-            # lpc_fileprefix+Run3_2022+f"/preEE/bbHtoGG/{syst_name}/*merged.parquet", 
-            # lpc_fileprefix+Run3_2022+f"/postEE/bbHtoGG/{syst_name}/*merged.parquet",
-            # lpc_fileprefix+Run3_2023+f"/preBPix/bbHtoGG/{syst_name}/*merged.parquet", 
-            # lpc_fileprefix+Run3_2023+f"/postBPix/bbHtoGG/{syst_name}/*merged.parquet",
+            # ttH
+            lpc_fileprefix+Run3_2022+f"/preEE/ttHtoGG/{syst_name}/*merged.parquet", 
+            lpc_fileprefix+Run3_2022+f"/postEE/ttHToGG/{syst_name}/*merged.parquet",
+            lpc_fileprefix+Run3_2023+f"/preBPix/ttHtoGG/{syst_name}/*merged.parquet", 
+            lpc_fileprefix+Run3_2023+f"/postBPix/ttHtoGG/{syst_name}/*merged.parquet",
+            # bbH
+            lpc_fileprefix+Run3_2022+f"/preEE/bbHtoGG/{syst_name}/*merged.parquet", 
+            lpc_fileprefix+Run3_2022+f"/postEE/bbHtoGG/{syst_name}/*merged.parquet",
+            lpc_fileprefix+Run3_2023+f"/preBPix/bbHtoGG/{syst_name}/*merged.parquet", 
+            lpc_fileprefix+Run3_2023+f"/postBPix/bbHtoGG/{syst_name}/*merged.parquet",
         ],
         'VH': [
-            # # VH
-            # lpc_fileprefix+Run3_2022+f"/preEE/VHtoGG/{syst_name}/*merged.parquet", 
-            # lpc_fileprefix+Run3_2022+f"/postEE/VHtoGG/{syst_name}/*merged.parquet",
-            # lpc_fileprefix+Run3_2023+f"/preBPix/VHtoGG/{syst_name}/*merged.parquet", 
-            # lpc_fileprefix+Run3_2023+f"/postBPix/VHtoGG/{syst_name}/*merged.parquet",
-            # # ZH
-            # lpc_fileprefix+Run3_2022+f"/preEE/ZH_Hto2G_Zto2Q_M-125/{syst_name}/*merged.parquet", 
-            # lpc_fileprefix+Run3_2022+f"/postEE/ZH_Hto2G_Zto2Q_M-125/{syst_name}/*merged.parquet",
-            # lpc_fileprefix+Run3_2023+f"/preBPix/ZH_Hto2G_Zto2Q_M-125/{syst_name}/*merged.parquet", 
-            # lpc_fileprefix+Run3_2023+f"/postBPix/ZH_Hto2G_Zto2Q_M-125/{syst_name}/*merged.parquet",
-            # # W-H
-            # lpc_fileprefix+Run3_2022+f"/preEE/WminusH_Hto2G_Wto2Q_M-125/{syst_name}/*merged.parquet", 
-            # lpc_fileprefix+Run3_2022+f"/postEE/WminusH_Hto2G_Wto2Q_M-125/{syst_name}/*merged.parquet",
-            # lpc_fileprefix+Run3_2023+f"/preBPix/WminusH_Hto2G_Wto2Q_M-125/{syst_name}/*merged.parquet", 
-            # lpc_fileprefix+Run3_2023+f"/postBPix/WminusH_Hto2G_Wto2Q_M-125/{syst_name}/*merged.parquet",
-            # # W+H
-            # lpc_fileprefix+Run3_2022+f"/preEE/WplusH_Hto2G_Wto2Q_M-125/{syst_name}/*merged.parquet", 
-            # lpc_fileprefix+Run3_2022+f"/postEE/WplusH_Hto2G_Wto2Q_M-125/{syst_name}/*merged.parquet",
-            # lpc_fileprefix+Run3_2023+f"/preBPix/WplusH_Hto2G_Wto2Q_M-125/{syst_name}/*merged.parquet", 
-            # lpc_fileprefix+Run3_2023+f"/postBPix/WplusH_Hto2G_Wto2Q_M-125/{syst_name}/*merged.parquet",
+            # VH
+            lpc_fileprefix+Run3_2022+f"/preEE/VHtoGG/{syst_name}/*merged.parquet", 
+            lpc_fileprefix+Run3_2022+f"/postEE/VHtoGG/{syst_name}/*merged.parquet",
+            lpc_fileprefix+Run3_2023+f"/preBPix/VHtoGG/{syst_name}/*merged.parquet", 
+            lpc_fileprefix+Run3_2023+f"/postBPix/VHtoGG/{syst_name}/*merged.parquet",
+            # ZH
+            lpc_fileprefix+Run3_2022+f"/preEE/ZH_Hto2G_Zto2Q_M-125/{syst_name}/*merged.parquet", 
+            lpc_fileprefix+Run3_2022+f"/postEE/ZH_Hto2G_Zto2Q_M-125/{syst_name}/*merged.parquet",
+            lpc_fileprefix+Run3_2023+f"/preBPix/ZH_Hto2G_Zto2Q_M-125/{syst_name}/*merged.parquet", 
+            lpc_fileprefix+Run3_2023+f"/postBPix/ZH_Hto2G_Zto2Q_M-125/{syst_name}/*merged.parquet",
+            # W-H
+            lpc_fileprefix+Run3_2022+f"/preEE/WminusH_Hto2G_Wto2Q_M-125/{syst_name}/*merged.parquet", 
+            lpc_fileprefix+Run3_2022+f"/postEE/WminusH_Hto2G_Wto2Q_M-125/{syst_name}/*merged.parquet",
+            lpc_fileprefix+Run3_2023+f"/preBPix/WminusH_Hto2G_Wto2Q_M-125/{syst_name}/*merged.parquet", 
+            lpc_fileprefix+Run3_2023+f"/postBPix/WminusH_Hto2G_Wto2Q_M-125/{syst_name}/*merged.parquet",
+            # W+H
+            lpc_fileprefix+Run3_2022+f"/preEE/WplusH_Hto2G_Wto2Q_M-125/{syst_name}/*merged.parquet", 
+            lpc_fileprefix+Run3_2022+f"/postEE/WplusH_Hto2G_Wto2Q_M-125/{syst_name}/*merged.parquet",
+            lpc_fileprefix+Run3_2023+f"/preBPix/WplusH_Hto2G_Wto2Q_M-125/{syst_name}/*merged.parquet", 
+            lpc_fileprefix+Run3_2023+f"/postBPix/WplusH_Hto2G_Wto2Q_M-125/{syst_name}/*merged.parquet",
         ],
         'non-res + ggFH + VBFH': [
-            # # GG + 3Jets 40-80
-            # lpc_fileprefix+Run3_2022+f"/preEE/GGJets_MGG-40to80/{syst_name}/*merged.parquet", 
-            # lpc_fileprefix+Run3_2022+f"/postEE/GGJets_MGG-40to80/{syst_name}/*merged.parquet",
-            # lpc_fileprefix+Run3_2023+f"/preBPix/GGJets_MGG-40to80/{syst_name}/*merged.parquet", 
-            # lpc_fileprefix+Run3_2023+f"/postBPix/GGJets_MGG-40to80/{syst_name}/*merged.parquet",
-            # # GG + 3Jets 80-
-            # lpc_fileprefix+Run3_2022+f"/preEE/GGJets_MGG-80/{syst_name}/*merged.parquet", 
-            # lpc_fileprefix+Run3_2022+f"/postEE/GGJets_MGG-80/{syst_name}/*merged.parquet",
-            # lpc_fileprefix+Run3_2023+f"/preBPix/GGJets_MGG-80/{syst_name}/*merged.parquet", 
-            # lpc_fileprefix+Run3_2023+f"/postBPix/GGJets_MGG-80/{syst_name}/*merged.parquet",
-            # # GJet pT 20-40
-            # lpc_fileprefix+Run3_2022+f"/preEE/GJet_PT-20to40_DoubleEMEnriched_MGG-80/{syst_name}/*merged.parquet", 
-            # lpc_fileprefix+Run3_2022+f"/postEE/GJet_PT-20to40_DoubleEMEnriched_MGG-80/{syst_name}/*merged.parquet",
-            # lpc_fileprefix+Run3_2023+f"/preBPix/GJet_PT-20to40_DoubleEMEnriched_MGG-80/{syst_name}/*merged.parquet", 
-            # lpc_fileprefix+Run3_2023+f"/postBPix/GJet_PT-20to40_DoubleEMEnriched_MGG-80/{syst_name}/*merged.parquet",
-            # # GJet pT 40-inf
-            # lpc_fileprefix+Run3_2022+f"/preEE/GJet_PT-40_DoubleEMEnriched_MGG-80/{syst_name}/*merged.parquet", 
-            # lpc_fileprefix+Run3_2022+f"/postEE/GJet_PT-40_DoubleEMEnriched_MGG-80/{syst_name}/*merged.parquet",
-            # lpc_fileprefix+Run3_2023+f"/preBPix/GJet_PT-40_DoubleEMEnriched_MGG-80/{syst_name}/*merged.parquet", 
-            # lpc_fileprefix+Run3_2023+f"/postBPix/GJet_PT-40_DoubleEMEnriched_MGG-80/{syst_name}/*merged.parquet",
-            # # ggF H
-            # lpc_fileprefix+Run3_2022+f"/preEE/GluGluHtoGG/{syst_name}/*merged.parquet", 
-            # lpc_fileprefix+Run3_2022+f"/postEE/GluGluHtoGG/{syst_name}/*merged.parquet",
-            # lpc_fileprefix+Run3_2023+f"/preBPix/GluGluHtoGG/{syst_name}/*merged.parquet", 
-            # lpc_fileprefix+Run3_2023+f"/postBPix/GluGluHtoGG/{syst_name}/*merged.parquet",
-            # # VBF H
-            # lpc_fileprefix+Run3_2022+f"/preEE/VBFHtoGG/{syst_name}/*merged.parquet", 
-            # lpc_fileprefix+Run3_2022+f"/postEE/VBFHToGG/{syst_name}/*merged.parquet",
-            # lpc_fileprefix+Run3_2023+f"/preBPix/VBFHtoGG/{syst_name}/*merged.parquet", 
-            # lpc_fileprefix+Run3_2023+f"/postBPix/VBFHtoGG/{syst_name}/*merged.parquet",
+            # GG + 3Jets 40-80
+            lpc_fileprefix+Run3_2022+f"/preEE/GGJets_MGG-40to80/{syst_name}/*merged.parquet", 
+            lpc_fileprefix+Run3_2022+f"/postEE/GGJets_MGG-40to80/{syst_name}/*merged.parquet",
+            lpc_fileprefix+Run3_2023+f"/preBPix/GGJets_MGG-40to80/{syst_name}/*merged.parquet", 
+            lpc_fileprefix+Run3_2023+f"/postBPix/GGJets_MGG-40to80/{syst_name}/*merged.parquet",
+            # GG + 3Jets 80-
+            lpc_fileprefix+Run3_2022+f"/preEE/GGJets_MGG-80/{syst_name}/*merged.parquet", 
+            lpc_fileprefix+Run3_2022+f"/postEE/GGJets_MGG-80/{syst_name}/*merged.parquet",
+            lpc_fileprefix+Run3_2023+f"/preBPix/GGJets_MGG-80/{syst_name}/*merged.parquet", 
+            lpc_fileprefix+Run3_2023+f"/postBPix/GGJets_MGG-80/{syst_name}/*merged.parquet",
+            # GJet pT 20-40
+            lpc_fileprefix+Run3_2022+f"/preEE/GJet_PT-20to40_DoubleEMEnriched_MGG-80/{syst_name}/*merged.parquet", 
+            lpc_fileprefix+Run3_2022+f"/postEE/GJet_PT-20to40_DoubleEMEnriched_MGG-80/{syst_name}/*merged.parquet",
+            lpc_fileprefix+Run3_2023+f"/preBPix/GJet_PT-20to40_DoubleEMEnriched_MGG-80/{syst_name}/*merged.parquet", 
+            lpc_fileprefix+Run3_2023+f"/postBPix/GJet_PT-20to40_DoubleEMEnriched_MGG-80/{syst_name}/*merged.parquet",
+            # GJet pT 40-inf
+            lpc_fileprefix+Run3_2022+f"/preEE/GJet_PT-40_DoubleEMEnriched_MGG-80/{syst_name}/*merged.parquet", 
+            lpc_fileprefix+Run3_2022+f"/postEE/GJet_PT-40_DoubleEMEnriched_MGG-80/{syst_name}/*merged.parquet",
+            lpc_fileprefix+Run3_2023+f"/preBPix/GJet_PT-40_DoubleEMEnriched_MGG-80/{syst_name}/*merged.parquet", 
+            lpc_fileprefix+Run3_2023+f"/postBPix/GJet_PT-40_DoubleEMEnriched_MGG-80/{syst_name}/*merged.parquet",
+            # ggF H
+            lpc_fileprefix+Run3_2022+f"/preEE/GluGluHtoGG/{syst_name}/*merged.parquet", 
+            lpc_fileprefix+Run3_2022+f"/postEE/GluGluHtoGG/{syst_name}/*merged.parquet",
+            lpc_fileprefix+Run3_2023+f"/preBPix/GluGluHtoGG/{syst_name}/*merged.parquet", 
+            lpc_fileprefix+Run3_2023+f"/postBPix/GluGluHtoGG/{syst_name}/*merged.parquet",
+            # VBF H
+            lpc_fileprefix+Run3_2022+f"/preEE/VBFHtoGG/{syst_name}/*merged.parquet", 
+            lpc_fileprefix+Run3_2022+f"/postEE/VBFHToGG/{syst_name}/*merged.parquet",
+            lpc_fileprefix+Run3_2023+f"/preBPix/VBFHtoGG/{syst_name}/*merged.parquet", 
+            lpc_fileprefix+Run3_2023+f"/postBPix/VBFHtoGG/{syst_name}/*merged.parquet",
         ],
     }
 
@@ -157,8 +165,16 @@ MODEL_FILEPATH = os.path.join(
     '/uscms/home/tsievert/nobackup/XHYbbgg/HHtobbyy/MultiClassBDT_model_outputs/v14/v3_vars_EFT_DijetMass_22_23/2025-07-09_08-23-13',
     ''
 )
+# MODEL_FILEPATH = os.path.join(
+#     '/uscms/home/tsievert/nobackup/XHYbbgg/HHtobbyy/MultiClassBDT_model_outputs/v14/v3_vars_MbbRegDNNPairDijetMassKappaLambda_22_23/2025-07-14_13-20-17',
+#     ''
+# )
 MOD_VALS = (5, 5)
-FORCE_REEVAL = True
+
+BOOSTED_MODEL_FILEPATHS = {
+    'all_plus_vh': '/uscms/home/tsievert/nobackup/XHYbbgg/preprocessing_and_boosted_trainings_categorization/boosted/clf_all_plus_vh_separateParquet.pkl',
+    'vh_model': '/uscms/home/tsievert/nobackup/XHYbbgg/preprocessing_and_boosted_trainings_categorization/boosted/clf_vh_model_multiclassSeparateParquets.pkl'
+}
 
 order = ['ggF HH', 'ttH + bbH', 'VH', 'non-res + ggFH + VBFH']
 
@@ -240,17 +256,25 @@ VARIATIONS_FILEPATHS_DICT = {
 
 # load and pre-process the data
 DATA_FILEPATHS_DICT = {
-    # 'Data': [
-    #     # 2022
-    #     lpc_fileprefix+Run3_2022[:-4]+f"/data/DataC_2022/*merged.parquet",
-    #     lpc_fileprefix+Run3_2022[:-4]+f"/data/DataD_2022/*merged.parquet",
-    #     lpc_fileprefix+Run3_2022[:-4]+f"/data/Data_EraE/*merged.parquet",
-    #     lpc_fileprefix+Run3_2022[:-4]+f"/data/Data_EraF/*merged.parquet",
-    #     lpc_fileprefix+Run3_2022[:-4]+f"/data/Data_EraG/*merged.parquet",
-    #     # 2023
-    #     lpc_fileprefix+Run3_2023[:-4]+"/data/Data_EraC/*merged.parquet",
-    #     lpc_fileprefix+Run3_2023[:-4]+"/data/Data_EraD/*merged.parquet",
-    # ],
+    'Data': [
+        # # 2022
+        # lpc_fileprefix+Run3_2022[:-4]+f"/data/DataC_2022/*merged.parquet",
+        # lpc_fileprefix+Run3_2022[:-4]+f"/data/DataD_2022/*merged.parquet",
+        # lpc_fileprefix+Run3_2022[:-4]+f"/data/Data_EraE/*merged.parquet",
+        # lpc_fileprefix+Run3_2022[:-4]+f"/data/Data_EraF/*merged.parquet",
+        # lpc_fileprefix+Run3_2022[:-4]+f"/data/Data_EraG/*merged.parquet",
+        # # 2023
+        # lpc_fileprefix+Run3_2023[:-4]+"/data/Data_EraC/*merged.parquet",
+        # lpc_fileprefix+Run3_2023[:-4]+"/data/Data_EraD/*merged.parquet",
+
+        # 2022
+        lpc_fileprefix+Run3_2022[:-4]+"/data/allData*merged.parquet",
+        # 2023
+        lpc_fileprefix+Run3_2023[:-4]+"/data/allData*merged.parquet",
+        # 2024
+        # lpc_fileprefix+Run3_2024[:-4]+"/data/allData*merged.parquet",
+        lpc_fileprefix+"Run3_2024_mergedFullAllVars_v14_JECs_vetomaps/allData*merged.parquet"
+    ],
 }
 
 # Sorts the predictions to map the output to the correct event
@@ -312,203 +336,212 @@ def pass_category(multibdt_output, cat_i):
     return pass_ttH & pass_QCD & pass_prevQCD
 
 
-# dirpath_addition = '_MultiBDT_output_DijetMass_SignalCorr_22_23'
-dirpath_addition = '_MultiBDT_output_EFT_SignalCorr_22_23'
+# dirpath_addition = '_MultiBDT_output_Boosted_DijetMass_SignalCorr_22_23'
+# dirpath_addition = '_MultiBDT_output_Boosted_EFT_SignalCorr_22_23'
+dirpath_addition = '_MultiBDT_output_Boosted_22to24v1'
 filename_addition = '_MultiBDT_output'
-basefilename_postfix = 'Run3_202x_mergedFullResolved'  # Resolved
 
 jet_prefix = 'nonResReg_DNNpair' if re.search('MbbRegDNNPair', MODEL_FILEPATH) is not None else (
     'nonResReg' if re.search('MbbReg', MODEL_FILEPATH) is not None else 'nonRes'
 )
 
-## MC SAMPLES ##
-# Load parquet files #
-for i, sample_name in enumerate(order):
+if EVAL_MC: 
+    ## MC SAMPLES ##
+    # Load parquet files #
+    for i, sample_name in enumerate(order):
 
-    for variation, variation_filepath_dict in VARIATIONS_FILEPATHS_DICT.items():
+        for variation, variation_filepath_dict in VARIATIONS_FILEPATHS_DICT.items():
 
-        for dirpath in variation_filepath_dict[sample_name]:
+            for dirpath in variation_filepath_dict[sample_name]:
 
-            if variation != 'nominal' and re.search('H', get_file_sample_name(dirpath, variation).upper()) is None: continue
-            if re.search('Q', get_file_sample_name(dirpath, variation).upper()) is not None: continue
+                if variation != 'nominal' and re.search('H', get_file_sample_name(dirpath, variation).upper()) is None: continue
+                if re.search('Q', get_file_sample_name(dirpath, variation).upper()) is not None: continue
 
-            # if (
-            #     re.search('VH', get_file_sample_name(dirpath, variation).upper()) is None
-            #     or re.search('preBPix', dirpath) is None
-            # ): continue
+                print('======================== started \n', dirpath)
 
-            print('======================== started \n', dirpath)
+                for parquet_filepath in glob.glob(dirpath):
+                    dest_filepath = parquet_filepath[:parquet_filepath.find('Run3_202')+len(basefilename_postfix('202x'))] + dirpath_addition + parquet_filepath[parquet_filepath.find('Run3_202')+len(basefilename_postfix('202x')):parquet_filepath.rfind('.')] + filename_addition + parquet_filepath[parquet_filepath.rfind('.'):]
+                    if not os.path.exists(dest_filepath[:dest_filepath.rfind('/')]):
+                        os.makedirs(dest_filepath[:dest_filepath.rfind('/')])
+                    elif not FORCE_REEVAL and os.path.exists(dest_filepath):
+                        print(f'file already exists at \n{dest_filepath}\n{"="*60}')
+                        continue
 
-            for parquet_filepath in glob.glob(dirpath):
-                dest_filepath = parquet_filepath[:parquet_filepath.find('Run3_202')+len(basefilename_postfix)] + dirpath_addition + parquet_filepath[parquet_filepath.find('Run3_202')+len(basefilename_postfix):parquet_filepath.rfind('.')] + filename_addition + parquet_filepath[parquet_filepath.rfind('.'):]
-                if not os.path.exists(dest_filepath[:dest_filepath.rfind('/')]):
-                    os.makedirs(dest_filepath[:dest_filepath.rfind('/')])
-                elif not FORCE_REEVAL and os.path.exists(dest_filepath):
-                    print(f'file already exists at \n{dest_filepath}\n{"="*60}')
-                    continue
+                    sample = ak.from_parquet(parquet_filepath)
+                    sample['MultiBDT_flag'] = (
+                        sample[f'{jet_prefix}_has_two_btagged_jets']
+                        & sample['fiducialGeometricFlag']
+                        & (
+                            (sample['lead_mvaID'] > -0.7)
+                            & (sample['sublead_mvaID'] > -0.7)
+                        )
+                    )
 
-                sample = ak.from_parquet(parquet_filepath)
-                sample = sample[
-                    sample[f'{jet_prefix}_has_two_btagged_jets']
-                    & sample['fiducialGeometricFlag']
-                    & (
-                        (sample['lead_mvaID'] > -0.7)
-                        & (sample['sublead_mvaID'] > -0.7)
+                    if EVAL_BOOSTED: evaluate_boosted(sample, BOOSTED_MODEL_FILEPATHS)
+
+                    (
+                        NOTHING_IGNORE,
+                        IGNORE_data_df_dict, SAMPLE_data_test_df_dict, 
+                        IGNORE_data_hlf_dict, IGNORE_label_dict,
+                        SAMPLE_data_hlf_test_dict, SAMPLE_label_test_dict, 
+                        SAMPLE_hlf_vars_columns_dict,
+                        IGNORE_data_aux_dict, SAMPLE_data_test_aux_dict
+                    ) = process_data(
+                        {"sample": [parquet_filepath]}, MODEL_FILEPATH, order=['sample'], mod_vals=MOD_VALS, k_fold_test=True,
+                        save=False, std_json_dirpath=MODEL_FILEPATH, 
+                        jet_prefix=jet_prefix
+                    )
+
+                    sample_preds = []
+                    for fold_idx in range(len(SAMPLE_data_test_df_dict)):
+                        
+                        with warnings.catch_warnings():
+                            warnings.simplefilter("ignore")
+                            
+                            booster = xgb.Booster(param)
+                            booster.load_model(os.path.join(MODEL_FILEPATH, f'{MODEL_FILEPATH.split("/")[-2]}_BDT_fold{fold_idx}.model'))
+
+                            bdt_test_sample_dict = xgb.DMatrix(
+                                data=SAMPLE_data_hlf_test_dict[f"fold_{fold_idx}"], label=SAMPLE_label_test_dict[f"fold_{fold_idx}"], 
+                                missing=-999.0, feature_names=list(SAMPLE_hlf_vars_columns_dict[f"fold_{fold_idx}"])
+                            )
+
+                            sample_preds.append(
+                                booster.predict(
+                                    bdt_test_sample_dict, 
+                                    iteration_range=(0, booster.best_iteration+1)
+                                )
+                            )
+
+                    MultiBDT_flag = ak.to_numpy(sample['MultiBDT_flag'])
+                    MultiBDT_output = np.zeros((np.size(MultiBDT_flag), len(order)))
+                    MultiBDT_output[MultiBDT_flag] = sorted_preds(
+                        sample_preds, SAMPLE_data_test_aux_dict, sample[sample['MultiBDT_flag']]
+                    )
+                    sample['MultiBDT_output'] = MultiBDT_output
+
+                    merged_parquet = ak.to_parquet(sample, dest_filepath)
+                    del sample
+                    print('======================== finished \n', dest_filepath)
+
+if EVAL_DATA:
+    ## DATA ##
+    for dirpath in DATA_FILEPATHS_DICT['Data']:
+
+        print('======================== started \n', dirpath)
+        parquet_filepath = glob.glob(dirpath)[0]
+        dest_filepath = parquet_filepath[:parquet_filepath.find('Run3_202')+len(basefilename_postfix('202x'))] + dirpath_addition + parquet_filepath[parquet_filepath.find('Run3_202')+len(basefilename_postfix('202x')):parquet_filepath.rfind('.')] + filename_addition + parquet_filepath[parquet_filepath.rfind('.'):]
+        if not os.path.exists(dest_filepath[:dest_filepath.rfind('/')]):
+            os.makedirs(dest_filepath[:dest_filepath.rfind('/')])
+        elif not FORCE_REEVAL and os.path.exists(dest_filepath):
+            print(f'file already exists at \n{dest_filepath}\n{"="*60}')
+            continue
+        
+        data_sample = ak.from_parquet(parquet_filepath)
+        data_sample['MultiBDT_flag'] = (
+            data_sample[f'{jet_prefix}_has_two_btagged_jets']
+            & data_sample['pass_fiducial_geometric']
+            & (
+                (
+                    data_sample['Diphoton30_22_R9Id_OR_IsoCaloId_AND_HE_R9Id_Mass90']
+                    & data_sample['Diphoton30_22_R9Id_OR_IsoCaloId_AND_HE_R9Id_Mass95']
+                ) 
+                if 'Diphoton30_22_R9Id_OR_IsoCaloId_AND_HE_R9Id_Mass90' in data_sample.fields else (data_sample['mass'] > 0)
+            ) & (
+                (data_sample['lead_mvaID'] > -0.7)
+                & (data_sample['sublead_mvaID'] > -0.7)
+            )
+        )
+
+        if EVAL_BOOSTED: evaluate_boosted(data_sample, BOOSTED_MODEL_FILEPATHS)
+
+        (
+            NOTHING_IGNORE,
+            DATA_data_df_dict, DATA_data_test_df_dict, 
+            DATA_data_hlf_dict, DATA_label_dict,
+            DATA_data_hlf_test_dict, DATA_label_test_dict, 
+            DATA_hlf_vars_columns_dict,
+            DATA_data_aux_dict, DATA_data_test_aux_dict
+        ) = process_data(
+            {"sample": [parquet_filepath]}, MODEL_FILEPATH, order=['sample'], mod_vals=MOD_VALS, k_fold_test=True,
+            save=False, std_json_dirpath=MODEL_FILEPATH,
+            jet_prefix=jet_prefix
+        )
+
+        bdt_train_data_dict = xgb.DMatrix(
+            data=DATA_data_hlf_dict[f"fold_0"], label=DATA_label_dict[f"fold_0"], 
+            missing=-999.0, feature_names=list(DATA_hlf_vars_columns_dict[f"fold_0"])
+        )
+        bdt_test_data_dict = xgb.DMatrix(
+            data=DATA_data_hlf_test_dict[f"fold_0"], label=DATA_label_test_dict[f"fold_0"], 
+            missing=-999.0, feature_names=list(DATA_hlf_vars_columns_dict[f"fold_0"])
+        )
+
+        test_preds = []
+        for fold_idx in range(len(DATA_label_test_dict)):
+
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+
+                booster = xgb.Booster(param)
+                booster.load_model(os.path.join(MODEL_FILEPATH, f'{MODEL_FILEPATH.split("/")[-2]}_BDT_fold{fold_idx}.model'))
+
+                # all-fold eval
+                BDT_train_preds = booster.predict(
+                    bdt_train_data_dict, 
+                    iteration_range=(0, booster.best_iteration+1)
+                )
+                BDT_test_preds = booster.predict(
+                    bdt_test_data_dict, 
+                    iteration_range=(0, booster.best_iteration+1)
+                )
+
+                BDT_all_preds = np.concatenate([BDT_train_preds, BDT_test_preds])
+                BDT_all_preds = BDT_all_preds[
+                    np.argsort(
+                        np.concatenate([DATA_data_aux_dict[f"fold_0"].loc[:, 'hash'].to_numpy(), DATA_data_test_aux_dict[f"fold_0"].loc[:, 'hash'].to_numpy()])
                     )
                 ]
 
-                (
-                    NOTHING_IGNORE,
-                    IGNORE_data_df_dict, SAMPLE_data_test_df_dict, 
-                    IGNORE_data_hlf_dict, IGNORE_label_dict,
-                    SAMPLE_data_hlf_test_dict, SAMPLE_label_test_dict, 
-                    SAMPLE_hlf_vars_columns_dict,
-                    IGNORE_data_aux_dict, SAMPLE_data_test_aux_dict
-                ) = process_data(
-                    {"sample": [parquet_filepath]}, MODEL_FILEPATH, order=['sample'], mod_vals=MOD_VALS, k_fold_test=True,
-                    save=False, std_json_dirpath=MODEL_FILEPATH, 
-                    jet_prefix=jet_prefix
+                if fold_idx == 0:
+                    data_preds = copy.deepcopy(BDT_all_preds)
+                else:
+                    data_preds += BDT_all_preds
+
+                    if fold_idx == len(DATA_label_test_dict) - 1:
+                        data_preds = data_preds / len(DATA_label_test_dict)
+
+
+                # single-fold eval
+                bdt_test_data_fold = xgb.DMatrix(
+                    data=DATA_data_hlf_test_dict[f"fold_{fold_idx}"], label=DATA_label_test_dict[f"fold_{fold_idx}"], 
+                    missing=-999.0, feature_names=list(DATA_hlf_vars_columns_dict[f"fold_{fold_idx}"])
                 )
 
-                sample_preds = []
-                for fold_idx in range(len(SAMPLE_data_test_df_dict)):
-                    
-                    with warnings.catch_warnings():
-                        warnings.simplefilter("ignore")
-                        
-                        booster = xgb.Booster(param)
-                        booster.load_model(os.path.join(MODEL_FILEPATH, f'{MODEL_FILEPATH.split("/")[-2]}_BDT_fold{fold_idx}.model'))
-
-                        bdt_test_sample_dict = xgb.DMatrix(
-                            data=SAMPLE_data_hlf_test_dict[f"fold_{fold_idx}"], label=SAMPLE_label_test_dict[f"fold_{fold_idx}"], 
-                            missing=-999.0, feature_names=list(SAMPLE_hlf_vars_columns_dict[f"fold_{fold_idx}"])
-                        )
-
-                        sample_preds.append(
-                            booster.predict(
-                                bdt_test_sample_dict, 
-                                iteration_range=(0, booster.best_iteration+1)
-                            )
-                        )
-
-                sample['MultiBDT_output'] = sorted_preds(
-                    sample_preds, SAMPLE_data_test_aux_dict, sample
+                test_preds.append(
+                    booster.predict(
+                        bdt_test_data_fold,
+                        iteration_range=(0, booster.best_iteration+1)
+                    )
                 )
 
-                merged_parquet = ak.to_parquet(sample, dest_filepath)
-                del sample
-                print('======================== finished \n', dest_filepath)
-
-## DATA ##
-for dirpath in DATA_FILEPATHS_DICT['Data']:
-
-    print('======================== started \n', dirpath)
-    parquet_filepath = glob.glob(dirpath)[0]
-    dest_filepath = parquet_filepath[:parquet_filepath.find('Run3_202')+len(basefilename_postfix)] + dirpath_addition + parquet_filepath[parquet_filepath.find('Run3_202')+len(basefilename_postfix):parquet_filepath.rfind('.')] + filename_addition + parquet_filepath[parquet_filepath.rfind('.'):]
-    if not os.path.exists(dest_filepath[:dest_filepath.rfind('/')]):
-        os.makedirs(dest_filepath[:dest_filepath.rfind('/')])
-    elif not FORCE_REEVAL and os.path.exists(dest_filepath):
-        print(f'file already exists at \n{dest_filepath}\n{"="*60}')
-        continue
-    
-    data_sample = ak.from_parquet(parquet_filepath)
-    data_sample = data_sample[
-        data_sample[f'{jet_prefix}_has_two_btagged_jets']
-        & data_sample['pass_fiducial_geometric']
-        & (
-            (
-                data_sample['Diphoton30_22_R9Id_OR_IsoCaloId_AND_HE_R9Id_Mass90']
-                & data_sample['Diphoton30_22_R9Id_OR_IsoCaloId_AND_HE_R9Id_Mass95']
-            ) 
-            if 'Diphoton30_22_R9Id_OR_IsoCaloId_AND_HE_R9Id_Mass90' in data_sample.fields else (data_sample['mass'] > 0)
-        ) & (
-            (data_sample['lead_mvaID'] > -0.7)
-            & (data_sample['sublead_mvaID'] > -0.7)
+        MultiBDT_flag = ak.to_numpy(data_sample['MultiBDT_flag'])
+        MultiBDT_output = np.zeros((np.size(MultiBDT_flag), len(order)))
+        MultiBDT_output[MultiBDT_flag] = sorted_preds(
+            data_preds, DATA_data_test_aux_dict, data_sample[data_sample['MultiBDT_flag']],
+            sorted_preds=True
         )
-    ]
+        MultiBDT_output_mod5 = np.zeros_like(MultiBDT_output)
+        MultiBDT_output_mod5[MultiBDT_flag] = sorted_preds(
+            test_preds, DATA_data_test_aux_dict, data_sample[data_sample['MultiBDT_flag']]
+        )
+        data_sample['MultiBDT_output'] = MultiBDT_output
+        data_sample['MultiBDT_output_mod5'] = MultiBDT_output_mod5
 
-    (
-        NOTHING_IGNORE,
-        DATA_data_df_dict, DATA_data_test_df_dict, 
-        DATA_data_hlf_dict, DATA_label_dict,
-        DATA_data_hlf_test_dict, DATA_label_test_dict, 
-        DATA_hlf_vars_columns_dict,
-        DATA_data_aux_dict, DATA_data_test_aux_dict
-    ) = process_data(
-        {"sample": [parquet_filepath]}, MODEL_FILEPATH, order=['sample'], mod_vals=MOD_VALS, k_fold_test=True,
-        save=False, std_json_dirpath=MODEL_FILEPATH,
-        jet_prefix=jet_prefix
-    )
+        # print(f"Total number of events in {dest_filepath}\n = {ak.num(data_sample, axis=0)}")
+        # for cat_i, cat in enumerate(CATS):
+        #     print(f"Passing number of events in cat{cat_i} {dest_filepath}\n = {ak.sum(pass_category(data_sample['MultiBDT_output'], cat_i), axis=0)}")
 
-    bdt_train_data_dict = xgb.DMatrix(
-        data=DATA_data_hlf_dict[f"fold_0"], label=DATA_label_dict[f"fold_0"], 
-        missing=-999.0, feature_names=list(DATA_hlf_vars_columns_dict[f"fold_0"])
-    )
-    bdt_test_data_dict = xgb.DMatrix(
-        data=DATA_data_hlf_test_dict[f"fold_0"], label=DATA_label_test_dict[f"fold_0"], 
-        missing=-999.0, feature_names=list(DATA_hlf_vars_columns_dict[f"fold_0"])
-    )
-
-    test_preds = []
-    for fold_idx in range(len(DATA_label_test_dict)):
-
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-
-            booster = xgb.Booster(param)
-            booster.load_model(os.path.join(MODEL_FILEPATH, f'{MODEL_FILEPATH.split("/")[-2]}_BDT_fold{fold_idx}.model'))
-
-            # all-fold eval
-            BDT_train_preds = booster.predict(
-                bdt_train_data_dict, 
-                iteration_range=(0, booster.best_iteration+1)
-            )
-            BDT_test_preds = booster.predict(
-                bdt_test_data_dict, 
-                iteration_range=(0, booster.best_iteration+1)
-            )
-
-            BDT_all_preds = np.concatenate([BDT_train_preds, BDT_test_preds])
-            BDT_all_preds = BDT_all_preds[
-                np.argsort(
-                    np.concatenate([DATA_data_aux_dict[f"fold_0"].loc[:, 'hash'].to_numpy(), DATA_data_test_aux_dict[f"fold_0"].loc[:, 'hash'].to_numpy()])
-                )
-            ]
-
-            if fold_idx == 0:
-                data_preds = copy.deepcopy(BDT_all_preds)
-            else:
-                data_preds += BDT_all_preds
-
-                if fold_idx == len(DATA_label_test_dict) - 1:
-                    data_preds = data_preds / len(DATA_label_test_dict)
-
-
-            # single-fold eval
-            bdt_test_data_fold = xgb.DMatrix(
-                data=DATA_data_hlf_test_dict[f"fold_{fold_idx}"], label=DATA_label_test_dict[f"fold_{fold_idx}"], 
-                missing=-999.0, feature_names=list(DATA_hlf_vars_columns_dict[f"fold_{fold_idx}"])
-            )
-
-            test_preds.append(
-                booster.predict(
-                    bdt_test_data_fold,
-                    iteration_range=(0, booster.best_iteration+1)
-                )
-            )
-
-    data_sample['MultiBDT_output'] = sorted_preds(
-        data_preds, DATA_data_test_aux_dict, data_sample,
-        sorted_preds=True
-    )
-    data_sample['MultiBDT_output_mod5'] = sorted_preds(
-        test_preds, DATA_data_test_aux_dict, data_sample
-    )
-
-    # print(f"Total number of events in {dest_filepath}\n = {ak.num(data_sample, axis=0)}")
-    # for cat_i, cat in enumerate(CATS):
-    #     print(f"Passing number of events in cat{cat_i} {dest_filepath}\n = {ak.sum(pass_category(data_sample['MultiBDT_output'], cat_i), axis=0)}")
-
-    merged_parquet = ak.to_parquet(data_sample, dest_filepath)
-    del data_sample
-    print('======================== finished \n', dest_filepath)
+        merged_parquet = ak.to_parquet(data_sample, dest_filepath)
+        del data_sample
+        print('======================== finished \n', dest_filepath)
