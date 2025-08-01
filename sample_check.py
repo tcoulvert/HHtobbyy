@@ -18,9 +18,10 @@ plt.rcParams.update({'font.size': 20})
 cmap_petroff10 = ["#3f90da", "#ffa90e", "#bd1f01", "#94a4a2", "#832db6", "#a96b59", "#e76300", "#b9ac70", "#717581", "#92dadd"]
 plt.rcParams.update({"axes.prop_cycle": cycler("color", cmap_petroff10)})
 
-lpc_fileprefix = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v2/"
-lpc_filegroup = lambda s: f'Run3_{s}_merged'
-# lpc_filegroup = lambda s: f'Run3_{s}_merged_MultiBDT_output_mvaIDCorr_22_23'
+# lpc_fileprefix = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v2/"
+lpc_fileprefix = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v3.1/"
+# lpc_filegroup = lambda s: f'Run3_{s}_mergedFullAllVars'
+lpc_filegroup = lambda s: f'Run3_{s}_mergedFullResolved_MultiBDT_output_EFT_SignalCorr_22_23'
 LPC_FILEPREFIX_22 = os.path.join(lpc_fileprefix, lpc_filegroup('2022'), 'sim', '')
 LPC_FILEPREFIX_23 = os.path.join(lpc_fileprefix, lpc_filegroup('2023'), 'sim', '')
 LPC_FILEPREFIX_24 = os.path.join(lpc_fileprefix, lpc_filegroup('2024'), 'sim', '')
@@ -55,6 +56,7 @@ LUMINOSITIES = {
     os.path.join(LPC_FILEPREFIX_24, ""): 109.08,
 }
 LUMINOSITIES['total_lumi'] = sum(LUMINOSITIES.values())
+LUMINOSITIES['2022-2023'] = LUMINOSITIES['total_lumi'] - LUMINOSITIES[os.path.join(LPC_FILEPREFIX_24, "")]
 
 # Dictionary of variables
 VARIABLES = {
@@ -128,14 +130,14 @@ VARIABLES = {
     # 'DeltaPhi_isr_jet_z': hist.axis.Regular(20, -3.2, 3.2, name='var', label=r'$\Delta\phi (j_{ISR},jj)$', growth=False, underflow=False, overflow=False),
 
     # # BDT output #
-    # 'MultiBDT_output': hist.axis.Regular(100, 0., 1., name='var', label=r'Multiclass BDT output', growth=False, underflow=False, overflow=False), 
+    'MultiBDT_output': hist.axis.Regular(50, 0.9, 1., name='var', label=r'Multiclass BDT output', growth=False, underflow=False, overflow=False), 
 }
 BLINDED_VARIABLES = {
     # diphoton variables
-    'mass': (
-        hist.axis.Regular(55, 80., 180., name='var', label=r'$M_{\gamma\gamma}$ [GeV]', growth=False, underflow=False, overflow=False),
-        [115, 135]
-    )
+    # 'mass': (
+    #     hist.axis.Regular(55, 80., 180., name='var', label=r'$M_{\gamma\gamma}$ [GeV]', growth=False, underflow=False, overflow=False),
+    #     [115, 135]
+    # )
 }
 EXTRA_MC_VARIABLES = {
     'eventWeight', MC_DATA_MASK
@@ -150,9 +152,16 @@ def sideband_cuts(sample):
     """
     # Require diphoton and dijet exist (required in preselection, and thus is all True)
     event_mask = (
-        sample['is_nonRes']
+        sample['nonRes_has_two_btagged_jets']
         & (
             sample['fiducialGeometricFlag'] if 'fiducialGeometricFlag' in sample.fields else sample['pass_fiducial_geometric']
+        ) & (
+            (sample['lead_mvaID'] > -0.7)
+            & (sample['sublead_mvaID'] > -0.7)
+        )
+        # sample['MultiBDT_flag']
+        & ( 
+            (sample['mass'] < 115) | (sample['mass'] > 135)  # blinded
         )
     )
     sample[MC_DATA_MASK] = event_mask
@@ -444,9 +453,7 @@ def plot(
     Plots and saves out the data-MC comparison histogram
     """
     # Initiate figure
-    fig, axs = plt.subplots(
-        2, 1, sharex=True, height_ratios=[4,1], figsize=(10, 8)
-    )
+    fig, axs = plt.subplots(figsize=(10, 8))
     linewidth=2.
 
     hist_names = list(hists.keys())
@@ -456,21 +463,20 @@ def plot(
         hep.histplot(
             hists[hist_name], label=hist_name, 
             yerr=hists[hist_name].variances() if (APPLY_WEIGHTS and re.search('mc', hist_name.lower()) is not None) else True,
-            ax=axs[0], lw=linewidth, histtype=histtypes[idx], alpha=0.8,
+            ax=axs, lw=linewidth, histtype=histtypes[idx], alpha=0.8,
             density=density
         )
     
     # Plotting niceties #
-    hep.cms.lumitext(f"{year}{era} {lumi:.2f}" + r"fb$^{-1}$ (13.6 TeV)", ax=axs[0])
-    hep.cms.text("Work in Progress", ax=axs[0])
+    hep.cms.lumitext(f"{year}{era} {lumi:.2f}" + r"fb$^{-1}$ (13.6 TeV)", ax=axs)
+    hep.cms.text("Work in Progress", ax=axs)
     # Plot legend properly
-    axs[0].legend()
+    axs.legend()
     # Push the stack and ratio plots closer together
     fig.subplots_adjust(hspace=0.05)
     # Plot x_axis label properly
-    axs[0].set_xlabel('')
-    axs[1].set_xlabel(hist_names[0]+'  '+hists[hist_names[0]].axes.label[0])
-    axs[0].set_yscale('log') if variable == 'MultiBDT_output' else axs[0].set_yscale('linear')
+    axs.set_xlabel(hist_names[0]+'  '+hists[hist_names[0]].axes.label[0])
+    axs.set_yscale('log') if variable == 'MultiBDT_output' else axs.set_yscale('linear')
     # Save out the plot
     destdir = os.path.join(DESTDIR, rel_dirpath, '')
     if not os.path.exists(destdir):
@@ -520,14 +526,16 @@ def main(
                     sample_jerUp_dirpath = os.path.join(sample_era, sample_name, 'jer_syst_up', END_FILEPATH)
                     sample_jerDown_dirpath = os.path.join(sample_era, sample_name, 'jer_syst_down', END_FILEPATH)
                 else: 
-                    std_samplename = sample_name
-                    sample_dirpath = os.path.join(sample_era, sample_name, END_FILEPATH)
+                    std_samplename = sample_name.split('/')[-2]
+                    sample_dirpath = sample_name
                 print('======================== \n', std_samplename+" started")
 
                 sample = ak.from_parquet(glob.glob(sample_dirpath)[0])
+
                 sideband_cuts(sample)
 
-                check_variables(sample)
+                if re.search('mc', dir_name.lower()) is not None:
+                    check_variables(sample)
 
                 if re.search('mc', dir_name.lower()) is not None:
                     sample_jerUp = ak.from_parquet(glob.glob(sample_jerUp_dirpath)[0])
@@ -584,7 +592,7 @@ def main(
             density=density
         )
 
-    # # Ploting over variables for MC and Data
+    # Ploting over variables for MC and Data
     for variable, (axis, blind_edges) in BLINDED_VARIABLES.items():
         hists = generate_hists(
             concat_samples, variable, axis,
@@ -600,12 +608,13 @@ def main(
 
 if __name__ == '__main__':
     sample_dirs = {
-        'MC-2022preEE': {
-            os.path.join(LPC_FILEPREFIX_22, "preEE", ""): None,
+        'Data': {
+            os.path.join(lpc_fileprefix, lpc_filegroup('2022'), "data", ""): None,
+            os.path.join(lpc_fileprefix, lpc_filegroup('2023'), "data", ""): None,
         },
     }
     main(
         sample_dirs, 
-        year='2022', era='preEE', lumi=LUMINOSITIES[os.path.join(LPC_FILEPREFIX_22, "preEE", "")], 
+        year='2022-23', era='', lumi=LUMINOSITIES['2022-2023'], 
         density=False
     )

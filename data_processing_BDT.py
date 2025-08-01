@@ -17,7 +17,8 @@ FILL_VALUE = -999
 def process_data(
     filepaths_dict, output_dirpath, order,
     seed=21, mod_vals=(5, 5), k_fold_test=True, save=True,
-    std_json_dirpath=None, other_bkg_rescale=5, jet_prefix='nonRes'
+    std_json_dirpath=None, other_bkg_rescale=5, jet_prefix='nonRes',
+    apply_mask=True
 ):
     # Load parquet files #
     samples = {}
@@ -44,21 +45,22 @@ def process_data(
         # for field in samples[sample_name].fields:
         #     print(field)
         #     print('-'*60)
-        samples[sample_name] = samples[sample_name][
-            samples[sample_name][f'{jet_prefix}_has_two_btagged_jets']
-            & (
-                samples[sample_name]['fiducialGeometricFlag'] if 'fiducialGeometricFlag' in samples[sample_name].fields else samples[sample_name]['pass_fiducial_geometric']
-            ) & (
-                (
-                    samples[sample_name]['Diphoton30_22_R9Id_OR_IsoCaloId_AND_HE_R9Id_Mass90']
-                    & samples[sample_name]['Diphoton30_22_R9Id_OR_IsoCaloId_AND_HE_R9Id_Mass95']
-                ) 
-                if 'Diphoton30_22_R9Id_OR_IsoCaloId_AND_HE_R9Id_Mass90' in samples[sample_name].fields else (samples[sample_name]['mass'] > 0)
-            ) & (
-                (samples[sample_name]['lead_mvaID'] > -0.7)
-                & (samples[sample_name]['sublead_mvaID'] > -0.7)
-            )
-        ]
+        if apply_mask:
+            samples[sample_name] = samples[sample_name][
+                samples[sample_name][f'{jet_prefix}_has_two_btagged_jets']
+                & (
+                    samples[sample_name]['fiducialGeometricFlag'] if 'fiducialGeometricFlag' in samples[sample_name].fields else samples[sample_name]['pass_fiducial_geometric']
+                ) & (
+                    (
+                        samples[sample_name]['Diphoton30_22_R9Id_OR_IsoCaloId_AND_HE_R9Id_Mass90']
+                        & samples[sample_name]['Diphoton30_22_R9Id_OR_IsoCaloId_AND_HE_R9Id_Mass95']
+                    ) 
+                    if 'Diphoton30_22_R9Id_OR_IsoCaloId_AND_HE_R9Id_Mass90' in samples[sample_name].fields else (samples[sample_name]['mass'] > 0)
+                ) & (
+                    (samples[sample_name]['lead_mvaID'] > -0.7)
+                    & (samples[sample_name]['sublead_mvaID'] > -0.7)
+                )
+            ]
 
     # Rescale factor for sig and bkg samples
     if len(filepaths_dict) > 1:

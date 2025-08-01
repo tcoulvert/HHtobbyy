@@ -13,15 +13,24 @@ vec.register_awkward()
 
 # lpc_redirector = "root://cmseos.fnal.gov/"
 # lxplus_redirector = "root://eosuser.cern.ch/"
-lpc_fileprefix = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v3.1/"
+# lpc_fileprefix = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v3.1/"
 # lpc_fileprefix = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v3_EFT/"
+# Run3_2022_fileprefix = 'Run3_2022'
+# Run3_2023_fileprefix = 'Run3_2023'
+# Run3_2024_fileprefix = 'Run3_2024'
+
+lpc_fileprefix = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v3_Zee/"
+Run3_2022_fileprefix = 'Run3_2022_merged'
+Run3_2023_fileprefix = 'Run3_2023_merged'
+Run3_2024_fileprefix = 'Run3_2024_merged'
+
 FILL_VALUE = -999
 NUM_JETS = 10
 FORCE_RERUN = True
-MERGE_FILES = True
+MERGE_FILES = False
 
 DATASETTYPE = {
-    'Resolved', 
+    # 'Resolved', 
     'Boosted', 
     'AllVars'
 }
@@ -259,11 +268,12 @@ def add_vars_resolved(sample):
         & (sample['sublead_mvaID'] > -0.7)
     )
 
+BASE_FILEPREFIX = "Run3_202x_merged"
 def get_merged_filepath(unmerged_filepath, datasettype):
     merged_filepath = os.path.join(
-        unmerged_filepath[:unmerged_filepath.rfind("Run3_202")+len("Run3_202x")] 
-        + f"_mergedFull{datasettype}"
-        + unmerged_filepath[unmerged_filepath.rfind("Run3_202")+len("Run3_202x"):],
+        unmerged_filepath[:unmerged_filepath.rfind("Run3_202")+len(BASE_FILEPREFIX)] 
+        + (f"Full{datasettype}" if BASE_FILEPREFIX.endswith('_merged') else f"_mergedFull{datasettype}")
+        + unmerged_filepath[unmerged_filepath.rfind("Run3_202")+len(BASE_FILEPREFIX):],
         ""
     )
     if (
@@ -360,10 +370,10 @@ def correct_weights(sample, sample_filepath_list, computebtag=True):
 
 def main():
     sim_dir_lists = {
-        os.path.join(lpc_fileprefix, "Run3_2022", "sim", "preEE", ""): None,
-        # os.path.join(lpc_fileprefix, "Run3_2022", "sim", "postEE", ""): None,
-        # os.path.join(lpc_fileprefix, "Run3_2023", "sim", "preBPix", ""): None,
-        # os.path.join(lpc_fileprefix, "Run3_2023", "sim", "postBPix", ""): None,
+        # os.path.join(lpc_fileprefix, Run3_2022_fileprefix, "sim", "preEE", ""): None,
+        # os.path.join(lpc_fileprefix, Run3_2022_fileprefix, "sim", "postEE", ""): None,
+        # os.path.join(lpc_fileprefix, Run3_2023_fileprefix, "sim", "preBPix", ""): None,
+        # os.path.join(lpc_fileprefix, Run3_2023_fileprefix, "sim", "postBPix", ""): None,
 
         # os.path.join(lpc_fileprefix, "Run3_2022_SMEFTSingleH", "2022postEE", ""): None,
         # os.path.join(lpc_fileprefix, "Run3_2022_SMEFTSignal", "2022postEE", ""): None,
@@ -372,20 +382,19 @@ def main():
         
     }
     data_dir_lists = {
-        # os.path.join(lpc_fileprefix, "Run3_2022", "data", ""): None,
-        # os.path.join(lpc_fileprefix, "Run3_2023", "data", ""): None,
-        # # os.path.join(lpc_fileprefix, "Run3_2024", "data", ""): None,
-        # # os.path.join(lpc_fileprefix, "Run3_2024_temp_v14", ""): None,
+        os.path.join(lpc_fileprefix, Run3_2022_fileprefix, "data", ""): None,
+        os.path.join(lpc_fileprefix, Run3_2023_fileprefix, "data", ""): None,
+        
         # os.path.join(lpc_fileprefix, "Run3_2024_v14_JECs_vetomaps", ""): None,
     }
     
     # MC Era: total era luminosity [fb^-1] #
     luminosities = {
-        os.path.join(lpc_fileprefix, "Run3_2022", "sim", "preEE", ""): 7.9804,
-        os.path.join(lpc_fileprefix, "Run3_2022", "sim", "postEE", ""): 26.6717,
-        os.path.join(lpc_fileprefix, "Run3_2023", "sim", "preBPix", ""): 17.794,
-        os.path.join(lpc_fileprefix, "Run3_2023", "sim", "postBPix", ""): 9.451,
-        os.path.join(lpc_fileprefix, "Run3_2024", "sim", "2024", ""): 109.08,
+        os.path.join(lpc_fileprefix, Run3_2022_fileprefix, "sim", "preEE", ""): 7.9804,
+        os.path.join(lpc_fileprefix, Run3_2022_fileprefix, "sim", "postEE", ""): 26.6717,
+        os.path.join(lpc_fileprefix, Run3_2023_fileprefix, "sim", "preBPix", ""): 17.794,
+        os.path.join(lpc_fileprefix, Run3_2023_fileprefix, "sim", "postBPix", ""): 9.451,
+        os.path.join(lpc_fileprefix, Run3_2024_fileprefix, "sim", "2024", ""): 109.08,
 
         # os.path.join(lpc_fileprefix, "Run3_2022_SMEFTSingleH", "2022postEE", ""): 26.6717,
         # os.path.join(lpc_fileprefix, "Run3_2022_SMEFTSignal", "2022postEE", ""): 26.6717,
@@ -470,12 +479,44 @@ def main():
 
         # SMEFT samples #
         # signal
-        # 'GluGluToHH': 1, 'ggHH-CH-20-CHD10-t1': 1, 'ggHH-CH-20-CHG0.1-t1': 1, 'ggHH-CH-20-CHbox20-t1': 1,
-        # 'ggHH-CH-20-CuH40-t1': 1, 'ggHH-CH-20-t1': 1, 'ggHH-CH-6-t1': 1, 'ggHH-CH10-t1': 1, 'ggHH-CHD-5-t1': 1, 
-        # 'ggHH-CHD10-CHG0.1-t1': 1, 'ggHH-CHD10-CuH40-t1': 1, 'ggHH-CHD10-t1': 1, 'ggHH-CHG-0.05-t1': 1,
-        # 'ggHH-CHG0.1-t1': 1, 'ggHH-CHbox-10-t1': 1, 'ggHH-CHbox20-CHD10-t1': 1, 'ggHH-CHbox20-CHG0.1-t1': 1,
-        # 'ggHH-CHbox20-CuH40-t1': 1, 'ggHH-CHbox20-t1': 1, 'ggHH-CuH-20-t1': 1, 'ggHH-CuH40-CHG0.1-t1': 1,
-        # 'ggHH-CuH40-t1': 1, 'ggHH_BM1': 1, 'ggHH_BM3': 1, 'ggHH_kl_0p00': 1, 'ggHH_kl_2p45': 1, 'ggHH_kl_5p00': 1,
+        'GluGluToHH': 1, 'ggHH-CH-20-CHD10-t1': 1, 'ggHH-CH-20-CHG0.1-t1': 1, 'ggHH-CH-20-CHbox20-t1': 1,
+        'ggHH-CH-20-CuH40-t1': 1, 'ggHH-CH-20-t1': 1, 'ggHH-CH-6-t1': 1, 'ggHH-CH10-t1': 1, 'ggHH-CHD-5-t1': 1, 
+        'ggHH-CHD10-CHG0.1-t1': 1, 'ggHH-CHD10-CuH40-t1': 1, 'ggHH-CHD10-t1': 1, 'ggHH-CHG-0.05-t1': 1,
+        'ggHH-CHG0.1-t1': 1, 'ggHH-CHbox-10-t1': 1, 'ggHH-CHbox20-CHD10-t1': 1, 'ggHH-CHbox20-CHG0.1-t1': 1,
+        'ggHH-CHbox20-CuH40-t1': 1, 'ggHH-CHbox20-t1': 1, 'ggHH-CuH-20-t1': 1, 'ggHH-CuH40-CHG0.1-t1': 1,
+        'ggHH-CuH40-t1': 1, 'ggHH_BM1': 1, 'ggHH_BM3': 1, 'ggHH_kl_0p00': 1, 'ggHH_kl_2p45': 1, 'ggHH_kl_5p00': 1,
+
+        # ZZ bbee samples #
+        # ZZ signal
+        'ZZto2L2Q': 6788.,
+
+        # Z to 2l resonant bkg
+        'DYto2L_2Jets': 5378000.,
+        'TWZto2QLNu2L': 3.338,
+        'WZto2L2Q': 7568.,
+        
+        # 2W to 2l bkg
+        'TTto2L2Nu_2Jets': 95490.,
+        'WWto2L2Nu_2Jets_OS': 2780.,
+        'WWto2L2Nu_2Jets_SS_EW': 29.54,
+        'WWto2L2Nu_2Jets_SS_QCD': 27.86,
+
+        # 2 real gamma/lepton
+        'TTGG': 16.96,
+        'GGJets_MGG-40to80': 318100.,
+        'GGJets_MGG-80': 88750.,
+
+        # 1 real gamma/lepton
+        'TTG_PTG-10to100': 4216.,
+        'TTG_PTG-100to200': 411.4,
+        'TTG_PTG-200': 128.4,
+        'TTtoLNu2Q': 762100.,
+        'GJet_PT-20to40_DoubleEMEnriched_MGG-80': 242500.,
+        'GJet_PT-40_DoubleEMEnriched_MGG-80': 919100.,
+        
+        # 0 real gamma/lepton
+        'QCD_PT-30toInf_DoubleEMEnriched_MGG-40to80': 252200000.,
+        'QCD_PT-40toInf_DoubleEMEnriched_MGG-80toInf': 124700000.,
     }
     sample_name_map = {
         'GluGlutoHHto2B2G_kl_1p00_kt_1p00_c2_0p00': 'GluGluToHH', 
@@ -511,7 +552,9 @@ def main():
         'GGJets_MGG-40to80': 'GGJets',
         'GGJets_MGG-80': 'GGJets',
         'GJet_PT-20to40_DoubleEMEnriched_MGG-80': 'GJetPt20To40',
-        'GJet_PT-40_DoubleEMEnriched_MGG-80': 'GJetPt40'
+        'GJet_PT-40_DoubleEMEnriched_MGG-80': 'GJetPt40',
+        'QCD_PT-30toInf_DoubleEMEnriched_MGG-40to80': 'JetJet',
+        'QCD_PT-40toInf_DoubleEMEnriched_MGG-80toInf': 'JetJet',
     }
     
     # Pull MC sample dir_list
@@ -576,12 +619,12 @@ def main():
 
             for sample_type in os.listdir(sample_dirpath):
 
-                # if sample_type != 'nominal': continue
-                if sample_type != 'nominal' and re.search('H', dir_name) is None: continue
-                if (
-                    re.search('GluGlutoHH_kl-5p00_kt-1p00_c2-0p00', sample_dirpath) is None
-                    or sample_type != 'FNUF_up'
-                ): continue
+                if sample_type != 'nominal': continue
+                # if sample_type != 'nominal' and re.search('H', dir_name) is None: continue
+                # if (
+                #     re.search('GluGlutoHH_kl-5p00_kt-1p00_c2-0p00', sample_dirpath) is None
+                #     or sample_type != 'FNUF_up'
+                # ): continue
 
                 print(sim_era[sim_era[:-1].rfind('/')+1:-1]+f': {dir_name} - {sample_type}')
                 if re.search('.parquet', sample_type) is not None:
@@ -643,21 +686,26 @@ def main():
 
             # Load all the parquets of a single sample into an ak array
             print(dir_name)
-            sample_list = []
-            for file in glob.glob(os.path.join(sample_dirpath, '*.parquet')):
+            sample_filepaths = glob.glob(os.path.join(sample_dirpath, '*.parquet'))
+            sample_list, sample_names = [], []
+            for file in sample_filepaths:
                 try:
                     sample_list.append(ak.from_parquet(file))
+                    sample_names.append(file[file.rfind('/')+1:file.rfind('.')])
                 except:
                     print('append failed, skipping file')
                     continue
             if len(sample_list) < 1:
                 print("No files to concatenate. Skipping sample.")
                 continue
+
             
             if MERGE_FILES:
                 sample_list = [ak.concatenate(sample_list)]
+                sample_names = ['allData_NOTAG_merged']
 
-            for sample in sample_list:
+            for sample_name, sample in zip(sample_names, sample_list):
+                
                 for datasettype in DATASETTYPE:
                     # Slim parquets by removing Res fields (for now)
                     slim_sample = slim_parquets(sample, datasettype)
@@ -686,7 +734,7 @@ def main():
                     if not os.path.exists(destdir):
                         os.makedirs(destdir)
                     if re.search('.parquet', dir_name) is None:
-                        filepath = os.path.join(destdir, dir_name+'_merged.parquet')
+                        filepath = os.path.join(destdir, sample_name+'_merged.parquet')
                     else:
                         filepath = os.path.join(destdir, dir_name[:dir_name.find('.parquet')]+'_merged'+dir_name[dir_name.find('.parquet'):])
                     # if MERGE_FILES:
@@ -695,7 +743,7 @@ def main():
                     #     filepath = os.path.join(destdir, sample_filepath_list[i].split('/')[-1])
                     merged_parquet = ak.to_parquet(slim_sample, filepath)
                     del slim_sample
-                    print('======================== \n', destdir)
+                    print('======================== \n', filepath)
                 
                 # Delete sample for memory reasons
                 del sample
