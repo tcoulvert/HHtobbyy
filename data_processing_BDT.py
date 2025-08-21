@@ -253,7 +253,7 @@ def process_data(
         pandas_samples[sample_name] = {}
         for field in hlf_list:
             
-            new_column = ak.to_numpy(sample[field], allow_missing=False)
+            new_column = ak.to_numpy(sample[field], allow_missing=False).flatten()
             if new_column.dtype == np.float64:
                 pandas_samples[sample_name][std_mapping[field]] = np.array(new_column, dtype=np.float32)
             else: 
@@ -262,7 +262,7 @@ def process_data(
         pandas_aux_samples[sample_name] = {}
         for field in hlf_aux_list:
 
-            new_column = ak.to_numpy(sample[field], allow_missing=False)
+            new_column = ak.to_numpy(sample[field], allow_missing=False).flatten()
             if new_column.dtype == np.float64:
                 pandas_aux_samples[sample_name][std_mapping[field]] = np.array(new_column, dtype=np.float32)
             else:
@@ -273,8 +273,19 @@ def process_data(
             pandas_aux_samples[sample_name][new_field] = copy.deepcopy(pandas_aux_samples[sample_name][old_field] != FILL_VALUE)
             del pandas_aux_samples[sample_name][old_field]
         if 'MultiBDT_output' in high_level_aux_fields:
-            pandas_aux_samples[sample_name]['MultiBDT_output'] = pandas_aux_samples[sample_name]['MultiBDT_output'][:, 0]
-        
+            pandas_aux_samples[sample_name]['MultiBDT_output_ggH'] = pandas_aux_samples[sample_name]['MultiBDT_output'][0::4]
+            pandas_aux_samples[sample_name]['MultiBDT_output_ttH'] = pandas_aux_samples[sample_name]['MultiBDT_output'][1::4]
+            pandas_aux_samples[sample_name]['MultiBDT_output_VH'] = pandas_aux_samples[sample_name]['MultiBDT_output'][2::4]
+            pandas_aux_samples[sample_name]['MultiBDT_output_nonRes'] = pandas_aux_samples[sample_name]['MultiBDT_output'][3::4]
+            pandas_aux_samples[sample_name].pop('MultiBDT_output')
+        # for var, col in pandas_samples[sample_name].items():
+        #     print('-'*60)
+        #     print(var)
+        #     print(np.shape(col))
+        # for var, col in pandas_aux_samples[sample_name].items():
+        #     print('-'*60)
+        #     print(var)
+        #     print(np.shape(col))
         pandas_samples[sample_name] = pd.DataFrame(pandas_samples[sample_name])
         pandas_aux_samples[sample_name] = pd.DataFrame(pandas_aux_samples[sample_name])
 
