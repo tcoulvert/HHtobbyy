@@ -13,27 +13,79 @@ vec.register_awkward()
 
 # lpc_redirector = "root://cmseos.fnal.gov/"
 # lxplus_redirector = "root://eosuser.cern.ch/"
-# lpc_fileprefix = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v3.1/"
+lpc_fileprefix = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v3.2/"
 # lpc_fileprefix = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v3_EFT/"
-# Run3_2022_fileprefix = 'Run3_2022'
-# Run3_2023_fileprefix = 'Run3_2023'
-# Run3_2024_fileprefix = 'Run3_2024'
+Run3_2022_fileprefix = 'Run3_2022'
+Run3_2023_fileprefix = 'Run3_2023'
+Run3_2024_fileprefix = 'Run3_2024'
 
-lpc_fileprefix = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v3_Zee/"
-Run3_2022_fileprefix = 'Run3_2022_merged'
-Run3_2023_fileprefix = 'Run3_2023_merged'
-Run3_2024_fileprefix = 'Run3_2024_merged'
+# lpc_fileprefix = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v3_Zee/"
+# Run3_2022_fileprefix = 'Run3_2022_merged'
+# Run3_2023_fileprefix = 'Run3_2023_merged'
+# Run3_2024_fileprefix = 'Run3_2024_merged'
 
 FILL_VALUE = -999
 NUM_JETS = 10
-FORCE_RERUN = True
-MERGE_FILES = False
+FORCE_RERUN = False
+MERGE_FILES = True
 
 DATASETTYPE = {
-    # 'Resolved', 
-    'Boosted', 
+    'Resolved', 
+    # 'Boosted', 
     'AllVars'
 }
+
+sim_resolved_bTagWPs = {
+    os.path.join(lpc_fileprefix, Run3_2022_fileprefix, "sim", "preEE", ""): {
+        'L': 0.047, 'M': 0.245, 'T': 0.6734, 'XT': 0.7862, 'XXT': 0.961
+    },
+    os.path.join(lpc_fileprefix, Run3_2022_fileprefix, "sim", "postEE", ""): {
+        'L': 0.0499, 'M': 0.2605, 'T': 0.6915, 'XT': 0.8033, 'XXT': 0.9664
+    },
+    os.path.join(lpc_fileprefix, Run3_2023_fileprefix, "sim", "preBPix", ""): {
+        'L': 0.0358, 'M': 0.1917, 'T': 0.6172, 'XT': 0.7515, 'XXT': 0.9659
+    },
+    os.path.join(lpc_fileprefix, Run3_2023_fileprefix, "sim", "postBPix", ""): {
+        'L': 0.0359, 'M': 0.1919, 'T': 0.6133, 'XT': 0.7544, 'XXT': 0.9688
+    },
+    os.path.join(lpc_fileprefix, Run3_2024_fileprefix, "sim", "2024", ""): {
+        'L': 0.0246, 'M': 0.1272, 'T': 0.4648, 'XT': 0.6298, 'XXT': 0.9739
+    }
+}
+
+def add_bTagWP(sample, datasettype, era):
+    if datasettype == 'Resolved':
+        add_bTagWP_resolved(sample, era)
+    elif datasettype == 'Boosted':
+        add_bTagWP_boosted(sample, era)
+    elif datasettype == 'AllVars':
+        add_bTagWP_resolved(sample, era)
+        add_bTagWP_boosted(sample, era)
+    else:
+        raise NotImplementedError(f"Datasettype you requested ({datasettype}) is not implemented. We only have implemented: {DATASETTYPE.keys()}")
+
+def add_bTagWP_boosted(sample, era):
+    pass
+
+def add_bTagWP_resolved(sample, era):
+    print(f"era: {era}")
+    if era in sim_resolved_bTagWPs.keys():
+        bTag_WPs = sim_resolved_bTagWPs[era]
+    else:
+        if '2022' in era and ('DataC' in era or 'DataD' in era):
+            bTag_WPs = sim_resolved_bTagWPs[os.path.join(lpc_fileprefix, Run3_2022_fileprefix, "sim", "preEE", "")]
+        elif '2022' in era and ('EraE' in era or 'EraF' in era or 'EraG' in era):
+            bTag_WPs = sim_resolved_bTagWPs[os.path.join(lpc_fileprefix, Run3_2022_fileprefix, "sim", "postEE", "")]
+        elif '2023' in era and 'EraC' in era:
+            bTag_WPs = sim_resolved_bTagWPs[os.path.join(lpc_fileprefix, Run3_2023_fileprefix, "sim", "preBPix", "")]
+        elif '2023' in era and 'EraD' in era:
+            bTag_WPs = sim_resolved_bTagWPs[os.path.join(lpc_fileprefix, Run3_2023_fileprefix, "sim", "postBPix", "")]
+        elif '2024' in era:
+            bTag_WPs = sim_resolved_bTagWPs[os.path.join(lpc_fileprefix, Run3_2024_fileprefix, "sim", "2024", "")]
+    for AN_type in ['nonRes', 'nonResReg', 'nonResReg_DNNpair']:
+        for bjet_type in ['lead', 'sublead']:
+            for WPname, bTagWP in bTag_WPs.items():
+                sample[f"{AN_type}_{bjet_type}_bjet_bTagWP{WPname}"] = sample[f"{AN_type}_{bjet_type}_bjet_btagPNetB"] > bTagWP
 
 def add_vars(sample, datasettype):
     if datasettype == 'Resolved':
@@ -268,7 +320,7 @@ def add_vars_resolved(sample):
         & (sample['sublead_mvaID'] > -0.7)
     )
 
-BASE_FILEPREFIX = "Run3_202x_merged"
+BASE_FILEPREFIX = "Run3_202x"
 def get_merged_filepath(unmerged_filepath, datasettype):
     merged_filepath = os.path.join(
         unmerged_filepath[:unmerged_filepath.rfind("Run3_202")+len(BASE_FILEPREFIX)] 
@@ -370,10 +422,10 @@ def correct_weights(sample, sample_filepath_list, computebtag=True):
 
 def main():
     sim_dir_lists = {
-        # os.path.join(lpc_fileprefix, Run3_2022_fileprefix, "sim", "preEE", ""): None,
-        # os.path.join(lpc_fileprefix, Run3_2022_fileprefix, "sim", "postEE", ""): None,
-        # os.path.join(lpc_fileprefix, Run3_2023_fileprefix, "sim", "preBPix", ""): None,
-        # os.path.join(lpc_fileprefix, Run3_2023_fileprefix, "sim", "postBPix", ""): None,
+        os.path.join(lpc_fileprefix, Run3_2022_fileprefix, "sim", "preEE", ""): None,
+        os.path.join(lpc_fileprefix, Run3_2022_fileprefix, "sim", "postEE", ""): None,
+        os.path.join(lpc_fileprefix, Run3_2023_fileprefix, "sim", "preBPix", ""): None,
+        os.path.join(lpc_fileprefix, Run3_2023_fileprefix, "sim", "postBPix", ""): None,
 
         # os.path.join(lpc_fileprefix, "Run3_2022_SMEFTSingleH", "2022postEE", ""): None,
         # os.path.join(lpc_fileprefix, "Run3_2022_SMEFTSignal", "2022postEE", ""): None,
@@ -659,6 +711,7 @@ def main():
 
                         # Add necessary extra variables
                         add_vars(slim_sample, datasettype)
+                        add_bTagWP(slim_sample, datasettype, sim_era)
                 
                         # Save out merged parquet
                         destdir = get_merged_filepath(sample_type_dirpath, datasettype=datasettype)
@@ -728,6 +781,7 @@ def main():
 
                     # Add necessary extra variables
                     add_vars(slim_sample, datasettype)
+                    add_bTagWP(slim_sample, datasettype, sample_dirpath+dir_name)
             
                     # Save out merged parquet
                     destdir = get_merged_filepath(sample_dirpath, datasettype=datasettype)

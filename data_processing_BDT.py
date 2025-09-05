@@ -103,10 +103,15 @@ def process_data(
 
         # bjet vars
         f'{jet_prefix}_lead_bjet_eta', # eta
-        f'{jet_prefix}_lead_bjet_btagPNetB', # btag scores
+        # f'{jet_prefix}_lead_bjet_btagPNetB', # btag scores
+        f"{jet_prefix}_lead_bjet_bTagWPL", f"{jet_prefix}_lead_bjet_bTagWPM", f"{jet_prefix}_lead_bjet_bTagWPT",
+        f"{jet_prefix}_lead_bjet_bTagWPXT", f"{jet_prefix}_lead_bjet_bTagWPXXT",
         # --------
         f'{jet_prefix}_sublead_bjet_eta', 
-        f'{jet_prefix}_sublead_bjet_btagPNetB',
+        # f'{jet_prefix}_sublead_bjet_btagPNetB',
+        f"{jet_prefix}_sublead_bjet_bTagWPL", f"{jet_prefix}_sublead_bjet_bTagWPM", f"{jet_prefix}_sublead_bjet_bTagWPT",
+        f"{jet_prefix}_sublead_bjet_bTagWPXT", f"{jet_prefix}_sublead_bjet_bTagWPXXT",
+        
 
         # diphoton vars
         'eta',
