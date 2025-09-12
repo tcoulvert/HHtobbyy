@@ -41,6 +41,14 @@ def process_data(
                     (sample_list[idx][f'{jet_prefix}_lead_bjet_btagPNetB'] > TIGHT_PNETBTAG_WP)
                     & (sample_list[idx][f'{jet_prefix}_sublead_bjet_btagPNetB'] > TIGHT_PNETBTAG_WP)
                 ]
+        if re.search('res', sample_name) is not None:
+            for idx, dir_path in enumerate(sample_filepaths):
+                if (
+                    # re.search('GGJets_MGG-80', dir_path) is not None
+                    # or re.search('GJet_', dir_path) is not None
+                    re.search('GJet', dir_path) is not None
+                ):
+                    sample_list[idx]["eventWeight"] = sample_list[idx]["eventWeight"] * 1.78
         samples[sample_name] = ak.concatenate(sample_list)
         # for field in samples[sample_name].fields:
         #     print(field)
@@ -183,15 +191,33 @@ def process_data(
         f'{jet_prefix}_dijet_pt': 'dijet_pt',
 
         # bjet vars
+        # kinematics
         f'{jet_prefix}_lead_bjet_pt': 'lead_bjet_pt', 
         f'{jet_prefix}_lead_bjet_eta': 'lead_bjet_eta',
+        # btag
         f'{jet_prefix}_lead_bjet_btagPNetB': 'lead_bjet_btagPNetB',
+        # btag WPs
+        f"{jet_prefix}_lead_bjet_bTagWPL": 'lead_bjet_bTagWPL', 
+        f"{jet_prefix}_lead_bjet_bTagWPM": 'lead_bjet_bTagWPM', 
+        f"{jet_prefix}_lead_bjet_bTagWPT": 'lead_bjet_bTagWPT',
+        f"{jet_prefix}_lead_bjet_bTagWPXT": 'lead_bjet_bTagWPXT', 
+        f"{jet_prefix}_lead_bjet_bTagWPXXT": 'lead_bjet_bTagWPXXT',
+        # reco
         f'{merger_vars_map[jet_prefix]}lead_bjet_sigmapT_over_pT': 'lead_bjet_sigmapT_over_pT', 
         f'{merger_vars_map[jet_prefix]}lead_bjet_pt_over_Mjj': 'lead_bjet_pt_over_Mjj',
         # --------
+        # kinematics
         f'{jet_prefix}_sublead_bjet_pt': 'sublead_bjet_pt',  
         f'{jet_prefix}_sublead_bjet_eta': 'sublead_bjet_eta',
+        # btag
         f'{jet_prefix}_sublead_bjet_btagPNetB': 'sublead_bjet_btagPNetB',
+        # btag WPs
+        f"{jet_prefix}_sublead_bjet_bTagWPL": 'sublead_bjet_bTagWPL', 
+        f"{jet_prefix}_sublead_bjet_bTagWPM": 'sublead_bjet_bTagWPM', 
+        f"{jet_prefix}_sublead_bjet_bTagWPT": 'sublead_bjet_bTagWPT',
+        f"{jet_prefix}_sublead_bjet_bTagWPXT": 'sublead_bjet_bTagWPXT', 
+        f"{jet_prefix}_sublead_bjet_bTagWPXXT": 'sublead_bjet_bTagWPXXT',
+        # reco
         f'{merger_vars_map[jet_prefix]}sublead_bjet_sigmapT_over_pT': 'sublead_bjet_sigmapT_over_pT', 
         f'{merger_vars_map[jet_prefix]}sublead_bjet_pt_over_Mjj': 'sublead_bjet_pt_over_Mjj',
 
@@ -261,6 +287,8 @@ def process_data(
             new_column = ak.to_numpy(sample[field], allow_missing=False).flatten()
             if new_column.dtype == np.float64:
                 pandas_samples[sample_name][std_mapping[field]] = np.array(new_column, dtype=np.float32)
+            elif new_column.dtype == bool:
+                pandas_samples[sample_name][std_mapping[field]] = np.array(new_column, dtype=np.int32)
             else: 
                 pandas_samples[sample_name][std_mapping[field]] = copy.deepcopy(new_column)
             
@@ -270,6 +298,8 @@ def process_data(
             new_column = ak.to_numpy(sample[field], allow_missing=False).flatten()
             if new_column.dtype == np.float64:
                 pandas_aux_samples[sample_name][std_mapping[field]] = np.array(new_column, dtype=np.float32)
+            elif new_column.dtype == bool:
+                pandas_samples[sample_name][std_mapping[field]] = np.array(new_column, dtype=np.int32)
             else:
                 pandas_aux_samples[sample_name][std_mapping[field]] = copy.deepcopy(new_column)
                 
@@ -368,6 +398,11 @@ def process_data(
             'HHbbggCandidate_eta', 'HHbbggCandidate_phi',
             # VH variables #
             'DeltaPhi_jj', 'DeltaPhi_isr_jet_z', 'DeltaEta_jj',
+            # bTag WPs
+            'lead_bjet_bTagWPL', 'lead_bjet_bTagWPM', 'lead_bjet_bTagWPT',
+            'lead_bjet_bTagWPXT', 'lead_bjet_bTagWPXXT',
+            'sublead_bjet_bTagWPL', 'sublead_bjet_bTagWPM', 'sublead_bjet_bTagWPT',
+            'sublead_bjet_bTagWPXT', 'sublead_bjet_bTagWPXXT',
         }
         log_fields = {
             'puppiMET_sumEt', 'puppiMET_pt', # MET variables
@@ -398,6 +433,7 @@ def process_data(
         df_train = pd.concat([train_dict_of_dfs[sample_name] for sample_name in order], ignore_index=True)
         df_train = df_train.sample(frac=1, random_state=seed).reset_index(drop=True)
         df_train = apply_log_and_exp(df_train)
+        # print(df_train.dtypes)
         masked_x_sample = np.ma.array(df_train, mask=(df_train == FILL_VALUE))
 
         if std_json_dirpath is not None:

@@ -13,7 +13,8 @@ vec.register_awkward()
 
 # lpc_redirector = "root://cmseos.fnal.gov/"
 # lxplus_redirector = "root://eosuser.cern.ch/"
-lpc_fileprefix = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v3.2/"
+# lpc_fileprefix = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v3.2/"
+lpc_fileprefix = "/eos/uscms/store/user/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/"
 # lpc_fileprefix = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v3_EFT/"
 Run3_2022_fileprefix = 'Run3_2022'
 Run3_2023_fileprefix = 'Run3_2023'
@@ -85,7 +86,11 @@ def add_bTagWP_resolved(sample, era):
     for AN_type in ['nonRes', 'nonResReg', 'nonResReg_DNNpair']:
         for bjet_type in ['lead', 'sublead']:
             for WPname, bTagWP in bTag_WPs.items():
-                sample[f"{AN_type}_{bjet_type}_bjet_bTagWP{WPname}"] = sample[f"{AN_type}_{bjet_type}_bjet_btagPNetB"] > bTagWP
+                # sample[f"{AN_type}_{bjet_type}_bjet_bTagWP{WPname}"] = (sample[f"{AN_type}_{bjet_type}_bjet_btagPNetB"] > bTagWP)
+                sample[f"{AN_type}_{bjet_type}_bjet_bTagWP{WPname}"] = ak.where(
+                    sample[f"{AN_type}_{bjet_type}_bjet_btagPNetB"] > bTagWP,
+                    1., 0.
+                )
 
 def add_vars(sample, datasettype):
     if datasettype == 'Resolved':
@@ -422,10 +427,11 @@ def correct_weights(sample, sample_filepath_list, computebtag=True):
 
 def main():
     sim_dir_lists = {
-        os.path.join(lpc_fileprefix, Run3_2022_fileprefix, "sim", "preEE", ""): None,
-        os.path.join(lpc_fileprefix, Run3_2022_fileprefix, "sim", "postEE", ""): None,
-        os.path.join(lpc_fileprefix, Run3_2023_fileprefix, "sim", "preBPix", ""): None,
-        os.path.join(lpc_fileprefix, Run3_2023_fileprefix, "sim", "postBPix", ""): None,
+        # os.path.join(lpc_fileprefix, Run3_2022_fileprefix, "sim", "preEE", ""): None,
+        # os.path.join(lpc_fileprefix, Run3_2022_fileprefix, "sim", "postEE", ""): None,
+        # os.path.join(lpc_fileprefix, Run3_2023_fileprefix, "sim", "preBPix", ""): None,
+        # os.path.join(lpc_fileprefix, Run3_2023_fileprefix, "sim", "postBPix", ""): None,
+        os.path.join(lpc_fileprefix, Run3_2024_fileprefix, ""): None,
 
         # os.path.join(lpc_fileprefix, "Run3_2022_SMEFTSingleH", "2022postEE", ""): None,
         # os.path.join(lpc_fileprefix, "Run3_2022_SMEFTSignal", "2022postEE", ""): None,
@@ -434,8 +440,8 @@ def main():
         
     }
     data_dir_lists = {
-        os.path.join(lpc_fileprefix, Run3_2022_fileprefix, "data", ""): None,
-        os.path.join(lpc_fileprefix, Run3_2023_fileprefix, "data", ""): None,
+        # os.path.join(lpc_fileprefix, Run3_2022_fileprefix, "data", ""): None,
+        # os.path.join(lpc_fileprefix, Run3_2023_fileprefix, "data", ""): None,
         
         # os.path.join(lpc_fileprefix, "Run3_2024_v14_JECs_vetomaps", ""): None,
     }
@@ -446,7 +452,7 @@ def main():
         os.path.join(lpc_fileprefix, Run3_2022_fileprefix, "sim", "postEE", ""): 26.6717,
         os.path.join(lpc_fileprefix, Run3_2023_fileprefix, "sim", "preBPix", ""): 17.794,
         os.path.join(lpc_fileprefix, Run3_2023_fileprefix, "sim", "postBPix", ""): 9.451,
-        os.path.join(lpc_fileprefix, Run3_2024_fileprefix, "sim", "2024", ""): 109.08,
+        os.path.join(lpc_fileprefix, Run3_2024_fileprefix, ""): 109.08,
 
         # os.path.join(lpc_fileprefix, "Run3_2022_SMEFTSingleH", "2022postEE", ""): 26.6717,
         # os.path.join(lpc_fileprefix, "Run3_2022_SMEFTSignal", "2022postEE", ""): 26.6717,
@@ -512,10 +518,13 @@ def main():
         'ZH_sample': 942.2*0.00228*0.69911,
         # https://twiki.cern.ch/twiki/bin/view/LHCPhysics/CERNYellowReportPageAt13TeV#ppZH_Total_Cross_Section_with_ap +  https://pdg.lbl.gov/2018/listings/rpp2018-list-z-boson.pdf
         'ZH_Hto2G_Zto2Q_M-125': 942.2*0.00228*0.69911,
+        'ZHtoGG': 942.2*0.00228*0.69911,
         # https://twiki.cern.ch/twiki/bin/view/LHCPhysics/CERNYellowReportPageAt13TeV#ppWH_Total_Cross_Section_with_ap +  https://pdg.lbl.gov/2022/listings/rpp2022-list-w-boson.pdf
         'WminusH_Hto2G_Wto2Q_M-125': 1453*0.00228*0.6741,
+        'WmHtoGG': 1453*0.00228*0.6741,
         # https://twiki.cern.ch/twiki/bin/view/LHCPhysics/CERNYellowReportPageAt13TeV#ppWH_Total_Cross_Section_with_ap +  https://pdg.lbl.gov/2022/listings/rpp2022-list-w-boson.pdf
         'WplusH_Hto2G_Wto2Q_M-125': 1453*0.00228*0.6741,
+        'WpHtoGG': 1453*0.00228*0.6741,
         
         # Other potential background samples
         'DDQCDGJets': 1,
@@ -672,6 +681,7 @@ def main():
             for sample_type in os.listdir(sample_dirpath):
 
                 if sample_type != 'nominal': continue
+                if re.search('GGJet', dir_name) is not None: continue
                 # if sample_type != 'nominal' and re.search('H', dir_name) is None: continue
                 # if (
                 #     re.search('GluGlutoHH_kl-5p00_kt-1p00_c2-0p00', sample_dirpath) is None
