@@ -16,7 +16,7 @@ import xgboost as xgb
 from sklearn.metrics import log_loss
 
 # Module packages
-from data_processing_BDT import process_data
+from HHtobbyy.preprocessing.resolved_BDT import process_data
 from evaluate_boosted_BDT import evaluate_boosted
 
 

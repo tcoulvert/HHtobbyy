@@ -1,0 +1,275 @@
+# Stdlib packages
+import argparse
+import copy
+import logging
+import re
+import os
+
+# Common Py packages
+import numpy as np  
+import pandas as pd
+import pyarrow.parquet as pq
+
+################################
+
+
+BASIC_VARIABLES = lambda jet_prefix: {
+    # MET variables
+    'puppiMET_pt',
+
+    # jet vars
+    f'{jet_prefix}_DeltaPhi_j1MET', f'{jet_prefix}_DeltaPhi_j2MET', 
+    'n_jets', f'{jet_prefix}_chi_t0', f'{jet_prefix}_chi_t1',
+
+    # lepton vars
+    'lepton1_pt', 'lepton1_pfIsoId', 'lepton1_mvaID',
+    'DeltaR_b1l1',
+
+    # angular vars
+    f'{jet_prefix}_CosThetaStar_CS', f'{jet_prefix}_CosThetaStar_jj', f'{jet_prefix}_CosThetaStar_gg',
+
+    # bjet vars
+    f'{jet_prefix}_lead_bjet_eta', # eta
+    f"{jet_prefix}_lead_bjet_bTagWPL", f"{jet_prefix}_lead_bjet_bTagWPM", f"{jet_prefix}_lead_bjet_bTagWPT",
+    f"{jet_prefix}_lead_bjet_bTagWPXT", f"{jet_prefix}_lead_bjet_bTagWPXXT",
+    # --------
+    f'{jet_prefix}_sublead_bjet_eta', 
+    f"{jet_prefix}_sublead_bjet_bTagWPL", f"{jet_prefix}_sublead_bjet_bTagWPM", f"{jet_prefix}_sublead_bjet_bTagWPT",
+    f"{jet_prefix}_sublead_bjet_bTagWPXT", f"{jet_prefix}_sublead_bjet_bTagWPXXT",
+    
+    # diphoton vars
+    'eta',
+
+    # Photon vars
+    'lead_mvaID', 'lead_sigmaE_over_E',
+    # --------
+    'sublead_mvaID', 'sublead_sigmaE_over_E',
+    
+    # HH vars
+    f'{jet_prefix}_HHbbggCandidate_pt', 
+    f'{jet_prefix}_HHbbggCandidate_eta', 
+    f'{jet_prefix}pt_balance',
+
+    # ZH vars
+    f'{jet_prefix}DeltaPhi_jj',
+    f'{jet_prefix}DeltaPhi_isr_jet_z',
+}
+MHH_CORRELATED_VARIABLES = lambda jet_prefix: {
+    # MET variables
+    'puppiMET_sumEt',  #eft
+
+    # jet vars
+    f'{jet_prefix}_DeltaR_jg_min',  #eft
+
+    # dijet vars
+    f'{jet_prefix}_dijet_mass' + ('' if jet_prefix == 'nonRes' else '_DNNreg'),  #eft
+    f'{jet_prefix}_dijet_pt',  #eft
+
+    # bjet vars
+    f'{jet_prefix}_lead_bjet_pt', #eft
+    f'{jet_prefix}lead_bjet_sigmapT_over_pT', #eft
+    f'{jet_prefix}lead_bjet_pt_over_Mjj', #eft
+    # --------
+    f'{jet_prefix}_sublead_bjet_pt', #eft
+    f'{jet_prefix}sublead_bjet_sigmapT_over_pT', #eft
+    f'{jet_prefix}sublead_bjet_pt_over_Mjj', #eft
+
+    # diphoton vars
+    'pt',  #eft
+
+    # ZH vars
+    f'{jet_prefix}DeltaEta_jj', #eft
+    f'{jet_prefix}isr_jet_pt',  #eft
+}
+AUX_VARIABLES = lambda jet_prefix: {
+    # identifiable event info
+    'event', 'lumi', 'hash', 'sample_name', 
+
+    # MC info
+    'eventWeight',
+
+    # mass
+    'mass', 
+    f'{jet_prefix}_dijet_mass' + ('' if jet_prefix == 'nonRes' else '_DNNreg'),
+    f'{jet_prefix}_HHbbggCandidate_mass',
+
+    # sculpting study
+    f'{jet_prefix}_max_nonbjet_btag',
+}
+
+FILL_VALUE = -999
+TRAIN_MOD = 5
+VAL_SPLIT = 0.2
+JET_PREFIX = 'nonRes'
+
+SEED = 21
+BASE_FILEPATH = 'Run3_202'
+
+################################
+
+
+logger = logging.getLogger(__name__)
+parser = argparse.ArgumentParser(description="Standardize BDT inputs and save out dataframe parquets.")
+parser.add_argument(
+    "--train_test_filepaths", 
+    default='',
+    help="Full train_test_filepath(s) (separated with \',\') on LPC"
+)
+parser.add_argument(
+    "--train_filepaths", 
+    default='',
+    help="Full train_filepath(s) (separated with \',\') on LPC"
+)
+parser.add_argument(
+    "--test_filepaths", 
+    default='',
+    help="Full test_filepath(s) (separated with \',\') on LPC"
+)
+parser.add_argument(
+    "--output_dirpath", 
+    default=os.getcwd(),
+    help="Full filepath on LPC for output to be dumped"
+)
+
+################################
+
+
+def make_output_filepath(filepath, output_dirpath, extra_text):
+    filename = filepath[filepath.rfind('/')+1:]
+    output_dirpath = os.path.join(output_dirpath, filepath[filepath.find(BASE_FILEPATH):filepath.rfind('/')])
+    if not os.path.exists(output_dirpath):
+        os.makedirs(output_dirpath)
+
+    filename = filename[:filename.rfind('.')] + f"_{extra_text}" + filename[filename.rfind('.'):]
+
+    return os.path.join(output_dirpath, filename)
+
+def no_standardize(column):
+    no_std_terms = {
+        'phi', 'eta',  # angular
+        'id',  # IDs
+        'btag'  # bTags
+    }
+    return any(no_std_term in column.lower() for no_std_term in no_std_terms)
+
+def log_standardize(column):
+    log_std_terms = {
+        'pt', 'chi',
+    }
+    return any(log_std_term in column for log_std_term in log_std_terms)
+
+def apply_log(df):
+    for col in df.columns:
+        if log_standardize(col):
+            mask = (df.loc[:, col].to_numpy() > 0)
+            df.loc[mask, col] = np.log(df.loc[mask, col])
+    return df
+
+def get_dfs(filepaths, BDT_vars, AUX_vars):
+    dfs, aux_dfs = {}, {}
+    for filepath in sorted(filepaths):
+        dfs[filepath] = pq.read_table(filepath, columns=BDT_vars).to_pandas()
+        aux_dfs[filepath] = pq.read_table(filepath, columns=AUX_vars).to_pandas()
+    return dfs, aux_dfs
+
+def get_split_dfs(filepaths, BDT_vars, AUX_vars, fold_idx):
+    # Train/Val events are those with eventID % mod_val != fold, test events are the others
+    dfs, aux_dfs = get_dfs(filepaths, BDT_vars, AUX_vars)
+
+    train_dfs, train_aux_dfs, test_dfs, test_aux_dfs = {}, {}, {}, {}
+    for filepath in sorted(filepaths):
+        train_mask = (dfs[filepath]['event'] % TRAIN_MOD).ne(fold_idx)
+        test_mask = (aux_dfs[filepath]['event'] % TRAIN_MOD).eq(fold_idx)
+
+        train_dfs[filepath] = dfs[filepath].loc[train_mask].reset_index(drop=True)
+        train_aux_dfs[filepath] = aux_dfs[filepath].loc[train_mask].reset_index(drop=True)
+        test_dfs[filepath] = dfs[filepath].loc[test_mask].reset_index(drop=True)
+        test_aux_dfs[filepath] = aux_dfs[filepath].loc[test_mask].reset_index(drop=True)
+        
+    return train_dfs, train_aux_dfs, test_dfs, test_aux_dfs
+
+def compute_standardization(train_dfs, train_dfs_fold):
+    merged_train_df = pd.concat(list(train_dfs.values())+list(train_dfs_fold.values()), ignore_index=True)
+
+    merged_train_df = merged_train_df.sample(frac=1, random_state=SEED).reset_index(drop=True)
+    merged_train_df = apply_log(merged_train_df)
+    masked_x_sample = np.ma.array(merged_train_df, mask=(merged_train_df == FILL_VALUE))
+
+    x_mean = masked_x_sample.mean(axis=0)
+    x_std = masked_x_sample.std(axis=0)
+    for i, col in enumerate(merged_train_df.columns):
+        if no_standardize(col):
+            x_mean[i] = 0
+            x_std[i] = 1
+
+    return x_mean, x_std
+
+def preprocess_resolved_bdt(input_filepaths, output_dirpath):
+    """
+    Builds and standardizes the dataframes to be used for training,
+
+    Inputs:
+        - input_filepaths = {
+            'train-test': ['', '', '', ...]
+            'train': ['','', ...]
+            'test': ['','', ...]
+        }
+        - output_dirpath = <str> filepath to dump output (defaults to cwd)
+    """
+    # Defining variables to use #
+    if re.search('_EFT', output_dirpath) is None: 
+        BDT_variables = BASIC_VARIABLES(JET_PREFIX) | MHH_CORRELATED_VARIABLES(JET_PREFIX)
+    else:
+        BDT_variables = BASIC_VARIABLES(JET_PREFIX)
+    AUX_variables = AUX_VARIABLES(JET_PREFIX)
+        
+    train_dfs, train_aux_dfs = get_dfs(input_filepaths['train'], BDT_variables, AUX_variables)
+    test_dfs, test_aux_dfs = get_dfs(input_filepaths['test'], BDT_variables, AUX_variables)
+
+    for fold_idx in range(TRAIN_MOD):
+        (
+            train_dfs_fold, train_aux_dfs_fold, 
+            test_dfs_fold, test_aux_dfs_fold 
+        ) = get_split_dfs(input_filepaths['train-test'], BDT_variables, AUX_variables, fold_idx)
+
+        x_mean, x_std = compute_standardization(train_dfs, train_dfs_fold)
+
+        for filepath in train_dfs.keys():
+            train_dfs_fold[filepath] = copy.deepcopy(train_dfs[filepath])
+            train_aux_dfs_fold[filepath] = copy.deepcopy(train_aux_dfs[filepath])
+        for filepath, df in train_dfs_fold.items():
+            cols = list(df.columns)
+            df = apply_log(df)
+            df = (np.ma.array(df, mask=(df == FILL_VALUE)) - x_mean)/x_std
+            df = pd.DataFrame(df.filled(FILL_VALUE), columns=cols)
+
+            df = pd.merge(df, train_aux_dfs_fold[filepath], how='outer')
+            df.rename(columns={aux_var: f'AUX_{aux_var}' for aux_var in AUX_variables})
+
+            output_filepath = make_output_filepath(filepath, output_dirpath, f"train{fold_idx}")
+            df.to_parquet(output_filepath)
+
+        for filepath in test_dfs.keys():
+            test_dfs_fold[filepath] = copy.deepcopy(test_dfs[filepath])
+            test_aux_dfs_fold[filepath] = copy.deepcopy(test_aux_dfs[filepath])
+        for filepath, df in test_dfs_fold.items():
+            cols = list(df.columns)
+            df = apply_log(df)
+            df = (np.ma.array(df, mask=(df == FILL_VALUE)) - x_mean)/x_std
+            df = pd.DataFrame(df.filled(FILL_VALUE), columns=cols)
+
+            df = pd.merge(df, test_aux_dfs_fold[filepath], how='outer')
+            df.rename(columns={aux_var: f'AUX_{aux_var}' for aux_var in AUX_variables})
+
+            output_filepath = make_output_filepath(filepath, output_dirpath, f"test{fold_idx}")
+            df.to_parquet(output_filepath)
+
+if __name__ == '__main__':
+    args = parser.parse_args()
+
+    input_filepaths = {
+        'train-test': args.train_test_filepaths.split(','),
+        'train': args.train_ilepaths.split(','),
+        'test': args.test_filepaths.split(','),
+    }
+    preprocess_resolved_bdt(input_filepaths, args.output_dirpath)
