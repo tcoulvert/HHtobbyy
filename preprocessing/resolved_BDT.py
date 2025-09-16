@@ -50,11 +50,11 @@ BASIC_VARIABLES = lambda jet_prefix: {
     # HH vars
     f'{jet_prefix}_HHbbggCandidate_pt', 
     f'{jet_prefix}_HHbbggCandidate_eta', 
-    f'{jet_prefix}pt_balance',
+    f'{jet_prefix}_pt_balance',
 
     # ZH vars
-    f'{jet_prefix}DeltaPhi_jj',
-    f'{jet_prefix}DeltaPhi_isr_jet_z',
+    f'{jet_prefix}_DeltaPhi_jj',
+    f'{jet_prefix}_DeltaPhi_isr_jet_z',
 }
 MHH_CORRELATED_VARIABLES = lambda jet_prefix: {
     # MET variables
@@ -69,19 +69,19 @@ MHH_CORRELATED_VARIABLES = lambda jet_prefix: {
 
     # bjet vars
     f'{jet_prefix}_lead_bjet_pt', #eft
-    f'{jet_prefix}lead_bjet_sigmapT_over_pT', #eft
-    f'{jet_prefix}lead_bjet_pt_over_Mjj', #eft
+    f'{jet_prefix}_lead_bjet_sigmapT_over_pT', #eft
+    f'{jet_prefix}_lead_bjet_pt_over_Mjj', #eft
     # --------
     f'{jet_prefix}_sublead_bjet_pt', #eft
-    f'{jet_prefix}sublead_bjet_sigmapT_over_pT', #eft
-    f'{jet_prefix}sublead_bjet_pt_over_Mjj', #eft
+    f'{jet_prefix}_sublead_bjet_sigmapT_over_pT', #eft
+    f'{jet_prefix}_sublead_bjet_pt_over_Mjj', #eft
 
     # diphoton vars
     'pt',  #eft
 
     # ZH vars
-    f'{jet_prefix}DeltaEta_jj', #eft
-    f'{jet_prefix}isr_jet_pt',  #eft
+    f'{jet_prefix}_DeltaEta_jj', #eft
+    f'{jet_prefix}_isr_jet_pt',  #eft
 }
 AUX_VARIABLES = lambda jet_prefix: {
     # identifiable event info
@@ -131,9 +131,13 @@ parser.add_argument(
 ################################
 
 
-def make_output_filepath(filepath, output_dirpath, extra_text):
+def make_output_filepath(filepath, base_output_dirpath, extra_text):
     filename = filepath[filepath.rfind('/')+1:]
-    output_dirpath = os.path.join(output_dirpath, filepath[filepath.find(BASE_FILEPATH):filepath.rfind('/')])
+    output_dirpath = os.path.join(
+        base_output_dirpath, 
+        CURRENT_TIME, 
+        filepath[filepath.find(BASE_FILEPATH):filepath.rfind('/')]
+    )
     if not os.path.exists(output_dirpath):
         os.makedirs(output_dirpath)
 
@@ -175,7 +179,7 @@ def get_split_dfs(filepaths, BDT_vars, AUX_vars, fold_idx):
 
     train_dfs, train_aux_dfs, test_dfs, test_aux_dfs = {}, {}, {}, {}
     for filepath in sorted(filepaths):
-        train_mask = (dfs[filepath]['event'] % TRAIN_MOD).ne(fold_idx)
+        train_mask = (aux_dfs[filepath]['event'] % TRAIN_MOD).ne(fold_idx)
         test_mask = (aux_dfs[filepath]['event'] % TRAIN_MOD).eq(fold_idx)
 
         train_dfs[filepath] = dfs[filepath].loc[train_mask].reset_index(drop=True)
@@ -240,8 +244,9 @@ def preprocess_resolved_bdt(input_filepaths, output_dirpath):
             df = (np.ma.array(df, mask=(df == FILL_VALUE)) - x_mean)/x_std
             df = pd.DataFrame(df.filled(FILL_VALUE), columns=cols)
 
-            df = pd.merge(df, train_aux_dfs_fold[filepath], how='outer')
-            df.rename(columns={aux_var: f'AUX_{aux_var}' for aux_var in AUX_variables})
+            for aux_col in train_aux_dfs_fold[filepath].columns:
+                if aux_col in df.columns: continue
+                df[f"AUX_{aux_col}"] = train_aux_dfs_fold[filepath].loc[:,aux_col]
 
             output_filepath = make_output_filepath(filepath, output_dirpath, f"train{fold_idx}")
             df.to_parquet(output_filepath)
@@ -255,8 +260,9 @@ def preprocess_resolved_bdt(input_filepaths, output_dirpath):
             df = (np.ma.array(df, mask=(df == FILL_VALUE)) - x_mean)/x_std
             df = pd.DataFrame(df.filled(FILL_VALUE), columns=cols)
 
-            df = pd.merge(df, test_aux_dfs_fold[filepath], how='outer')
-            df.rename(columns={aux_var: f'AUX_{aux_var}' for aux_var in AUX_variables})
+            for aux_col in test_aux_dfs_fold[filepath].columns:
+                if aux_col in df.columns: continue
+                df[f"AUX_{aux_col}"] = test_aux_dfs_fold[filepath].loc[:,aux_col]
 
             output_filepath = make_output_filepath(filepath, output_dirpath, f"test{fold_idx}")
             df.to_parquet(output_filepath)

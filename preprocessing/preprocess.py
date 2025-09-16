@@ -164,7 +164,7 @@ def make_dataset(filepath, era, type='MC'):
 
     ak.to_parquet(sample, filepath)
     del sample
-    print('========================')
+    print('Finished \n', '========================')
 
 def make_mc(sim_eras=None, output=None):
     if sim_eras is None:
