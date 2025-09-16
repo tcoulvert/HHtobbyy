@@ -5,6 +5,7 @@ import os
 
 import awkward as ak
 import numpy as np
+import pyarrow.parquet as pq
 import vector as vec
 vec.register_awkward()
 
@@ -20,13 +21,14 @@ luminosities = {
     '2022*preEE': 7.9804,
     '2022*postEE': 26.6717,
     '2023*preBPix': 17.794,
-    '2022*postBPix': 9.451,
+    '2023*postBPix': 9.451,
     '2024': 109.08
 }
 # Name: cross section [fb] @ sqrrt{s}=13.6 TeV & m_H=125.09 GeV #
 cross_sections = {
     # Signal #
-    'GluGluToHH': 34.43*0.0026, 'VBFHH': 1.870*0.0026,
+    'GluGluToHH': 34.43*0.0026, 
+    # 'VBFHH': 1.870*0.0026,
 
     # Resonant (Mgg) background #
     # Fake b-jets
@@ -73,6 +75,7 @@ sample_name_map = {
     # Data #
     'Data'
 }
+BAD_DIRS = {'outdated'}
 
 RUN_ALL_MC = False
 END_FILEPATH = "*.parquet"
@@ -103,20 +106,47 @@ parser.add_argument(
 
 def get_files(eras, type='MC'):
     for era in eras.keys():
-        all_dirs_set = set(glob.glob(os.path.join(eras, "**", END_FILEPATH), recursive=True))
+        all_dirs_set = set(
+            glob.glob(os.path.join(era, "**", END_FILEPATH), recursive=True)
+        )
 
+        # Remove bad dirs
+        all_dirs_set = set(
+            item for item in all_dirs_set 
+            if match_sample(item, BAD_DIRS) is None
+        )
+
+        # Remove non-necessary MC samples
         if type.upper() == 'MC' and not RUN_ALL_MC:
-            for item in all_dirs_set:
-                if match_sample(item, cross_sections.keys()) is None: all_dirs_set.pop(item)
+            all_dirs_set = set(
+                item for item in all_dirs_set 
+                if match_sample(item, cross_sections.keys()) is not None
+            )
+        
 
         eras[era] = sorted(all_dirs_set)
 
 def make_dataset(filepath, era, type='MC'):
     print('======================== \n', 'Starting \n', filepath)
-    sample = ak.from_parquet(filepath)
+    schema = pq.read_schema(filepath)
+    sample = ak.from_arrow(
+        pq.read_table(
+            filepath, 
+            columns=[
+                field for field in schema.names
+                if (
+                    'VBF' not in field
+                    and not (
+                        'nonResReg' in field 
+                        and 'nonResReg_DNNpair' not in field
+                    )
+                )
+            ]
+        )
+    )
 
     # Add useful parquet meta-info
-    sample['sample_name'] = match_sample(filepath, sample_name_map)
+    sample['sample_name'] = match_sample(filepath, sample_name_map) if match_sample(filepath, sample_name_map) is not None else filepath.split('/')[-3]
     sample['sample_era'] = era[era.find('Run3_202'):-1]
     if type.upper() == 'MC':
         sample['eventWeight'] = (
@@ -151,8 +181,7 @@ def make_mc(sim_eras=None, output=None):
     # Perform the variable calculation and merging
     for sim_era, filepaths in sim_eras.items():
         for filepath in filepaths:
-            # if sample_type != 'nominal': continue
-            # if re.search('GGJet', dir_name) is not None: continue
+            if 'nominal' not in filepath: continue
             make_dataset(filepath, sim_era)
 
 def make_data(data_eras=None, output=None):
@@ -174,11 +203,11 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     sim_eras = {
-        os.path.join(era, '') for era in args.sim_era_filepaths
+            os.path.join(era, ''): list() for era in args.sim_era_filepaths.split(',')
     } if args.sim_era_filepaths is not None else None
     make_mc(sim_eras=sim_eras, output=args.output_dirpath)
 
     data_eras = {
-        os.path.join(era, '') for era in args.data_era_filepaths
+            os.path.join(era, ''): list() for era in args.data_era_filepaths.split(',')
     } if args.data_era_filepaths is not None else None
     make_data(data_eras=data_eras, output=args.output_dirpath)

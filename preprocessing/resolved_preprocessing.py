@@ -17,13 +17,14 @@ resolved_bTagWPs = {
     '2022*preEE': {'L': 0.047, 'M': 0.245, 'T': 0.6734, 'XT': 0.7862, 'XXT': 0.961},
     '2022*postEE': {'L': 0.0499, 'M': 0.2605, 'T': 0.6915, 'XT': 0.8033, 'XXT': 0.9664},
     '2023*preBPix': {'L': 0.0358, 'M': 0.1917, 'T': 0.6172, 'XT': 0.7515, 'XXT': 0.9659},
-    '2022*postBPix': {'L': 0.0359, 'M': 0.1919, 'T': 0.6133, 'XT': 0.7544, 'XXT': 0.9688},
+    '2023*postBPix': {'L': 0.0359, 'M': 0.1919, 'T': 0.6133, 'XT': 0.7544, 'XXT': 0.9688},
     '2024': {'L': 0.0246, 'M': 0.1272, 'T': 0.4648, 'XT': 0.6298, 'XXT': 0.9739}
 }
 
 FILL_VALUE = -999
 NUM_JETS = 10
-PREFACTORS = ['nonRes', 'nonResReg', 'nonResReg_DNNpair']
+# PREFACTORS = ['nonRes', 'nonResReg', 'nonResReg_DNNpair']
+PREFACTORS = ['nonRes', 'nonResReg_DNNpair']  # 'nonResReg'
 
 ################################
 
@@ -146,25 +147,28 @@ def add_vars_resolved(sample, filepath):
         sample[f'{prefactor}_max_nonbjet_btag'] = max_nonbjet_btag(sample, prefactor=prefactor)
 
         add_bTagWP_resolved(sample, filepath, prefactor=prefactor)
-        
-        sample['pass_mva-0.7'] = (
-            (sample['lead_mvaID'] > -0.7)
-            & (sample['sublead_mvaID'] > -0.7)
-        )
 
-        sample[f'{prefactor}_resolved_BDT_mask'] = (
-            sample[f'{prefactor}_has_two_btagged_jets'] & sample['pass_mva-0.7']
+        sample['pass_mva-0.7'] = ak.where(
+            (sample['lead_mvaID'] > -0.7)
+            & (sample['sublead_mvaID'] > -0.7),
+            1, 0
+        )
+        sample[f'{prefactor}_resolved_BDT_mask'] = ak.where(
+            sample[f'{prefactor}_has_two_btagged_jets'] & (sample['pass_mva-0.7'] > 0)
             & (
                 sample['fiducialGeometricFlag'] if 'fiducialGeometricFlag' in sample.fields else sample['pass_fiducial_geometric']
             ) & (
                 (
-                    (sample[f'{prefactor}_lead_bjet_btagWPT'] > 0)
-                    & (sample[f'{prefactor}_sublead_bjet_btagWPT'] > 0)
+                    (sample[f'{prefactor}_lead_bjet_bTagWPT'] > 0)
+                    & (sample[f'{prefactor}_sublead_bjet_bTagWPT'] > 0)
                 ) if match_sample(filepath, {'W*HTo2G', 'ZH*To2G'}) is not None else (sample['mass'] > 0)
             ) & (
                 (
                     sample['Diphoton30_22_R9Id_OR_IsoCaloId_AND_HE_R9Id_Mass90']
                     | sample['Diphoton30_22_R9Id_OR_IsoCaloId_AND_HE_R9Id_Mass95']
                 ) if 'Diphoton30_22_R9Id_OR_IsoCaloId_AND_HE_R9Id_Mass90' in sample.fields else (sample['mass'] > 0)
-            ) 
+            ),
+            1, 0
         )
+
+        del bjet_4moms, dijet_4mom

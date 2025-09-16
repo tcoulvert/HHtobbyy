@@ -1,9 +1,11 @@
 # Stdlib packages
 import argparse
 import copy
+import datetime
+import json
 import logging
-import re
 import os
+import re
 
 # Common Py packages
 import numpy as np  
@@ -99,11 +101,11 @@ AUX_VARIABLES = lambda jet_prefix: {
 
 FILL_VALUE = -999
 TRAIN_MOD = 5
-VAL_SPLIT = 0.2
 JET_PREFIX = 'nonRes'
 
 SEED = 21
 BASE_FILEPATH = 'Run3_202'
+CURRENT_TIME = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
 
 ################################
 
@@ -111,24 +113,19 @@ BASE_FILEPATH = 'Run3_202'
 logger = logging.getLogger(__name__)
 parser = argparse.ArgumentParser(description="Standardize BDT inputs and save out dataframe parquets.")
 parser.add_argument(
-    "--train_test_filepaths", 
+    "--input_filepaths", 
     default='',
-    help="Full train_test_filepath(s) (separated with \',\') on LPC"
-)
-parser.add_argument(
-    "--train_filepaths", 
-    default='',
-    help="Full train_filepath(s) (separated with \',\') on LPC"
-)
-parser.add_argument(
-    "--test_filepaths", 
-    default='',
-    help="Full test_filepath(s) (separated with \',\') on LPC"
+    help="JSON for full filepaths (separated with \',\') on LPC"
 )
 parser.add_argument(
     "--output_dirpath", 
     default=os.getcwd(),
     help="Full filepath on LPC for output to be dumped"
+)
+parser.add_argument(
+    "--force", 
+    action="store_true",
+    help="Flag to force the re-creation of the files"
 )
 
 ################################
@@ -140,7 +137,7 @@ def make_output_filepath(filepath, output_dirpath, extra_text):
     if not os.path.exists(output_dirpath):
         os.makedirs(output_dirpath)
 
-    filename = filename[:filename.rfind('.')] + f"_{extra_text}" + filename[filename.rfind('.'):]
+    filename = filename[:filename.rfind('.')] + f"_{extra_text}_{CURRENT_TIME}" + filename[filename.rfind('.'):]
 
     return os.path.join(output_dirpath, filename)
 
@@ -168,8 +165,8 @@ def apply_log(df):
 def get_dfs(filepaths, BDT_vars, AUX_vars):
     dfs, aux_dfs = {}, {}
     for filepath in sorted(filepaths):
-        dfs[filepath] = pq.read_table(filepath, columns=BDT_vars).to_pandas()
-        aux_dfs[filepath] = pq.read_table(filepath, columns=AUX_vars).to_pandas()
+        dfs[filepath] = pq.read_table(filepath, columns=list(BDT_vars)).to_pandas()
+        aux_dfs[filepath] = pq.read_table(filepath, columns=list(AUX_vars)).to_pandas()
     return dfs, aux_dfs
 
 def get_split_dfs(filepaths, BDT_vars, AUX_vars, fold_idx):
@@ -267,9 +264,7 @@ def preprocess_resolved_bdt(input_filepaths, output_dirpath):
 if __name__ == '__main__':
     args = parser.parse_args()
 
-    input_filepaths = {
-        'train-test': args.train_test_filepaths.split(','),
-        'train': args.train_ilepaths.split(','),
-        'test': args.test_filepaths.split(','),
-    }
+    with open(args.input_filepaths, 'r') as f:
+        input_filepaths = json.load(f)
+
     preprocess_resolved_bdt(input_filepaths, args.output_dirpath)
