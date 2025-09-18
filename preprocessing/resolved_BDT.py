@@ -245,7 +245,6 @@ def preprocess_resolved_bdt(input_filepaths, output_dirpath):
             df = pd.DataFrame(df.filled(FILL_VALUE), columns=cols)
 
             for aux_col in train_aux_dfs_fold[filepath].columns:
-                if aux_col in df.columns: continue
                 df[f"AUX_{aux_col}"] = train_aux_dfs_fold[filepath].loc[:,aux_col]
 
             output_filepath = make_output_filepath(filepath, output_dirpath, f"train{fold_idx}")
@@ -261,7 +260,6 @@ def preprocess_resolved_bdt(input_filepaths, output_dirpath):
             df = pd.DataFrame(df.filled(FILL_VALUE), columns=cols)
 
             for aux_col in test_aux_dfs_fold[filepath].columns:
-                if aux_col in df.columns: continue
                 df[f"AUX_{aux_col}"] = test_aux_dfs_fold[filepath].loc[:,aux_col]
 
             output_filepath = make_output_filepath(filepath, output_dirpath, f"test{fold_idx}")
