@@ -6,6 +6,7 @@ import glob
 import json
 import os
 import re
+import sys
 import warnings
 from pathlib import Path
 
@@ -38,7 +39,7 @@ from skopt.utils import use_named_args
 
 # Module packages
 from plotting_utils import (
-    plot_filepath,
+    plot_filepath, pad_list
 )
 
 ################################
@@ -133,3 +134,6 @@ def make_losses(output_dirpath: str):
         losses_std_arrs=[std_train, std_val, std_test],
         linestyles=['solid', 'dashed', 'dotted'],
     )
+
+if __name__ == "__main__":
+    make_losses(sys.argv[1])

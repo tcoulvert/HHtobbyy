@@ -119,7 +119,7 @@ def make_rocs(output_dirpath: str, base_filepath: str):
     if not os.path.exists(plot_dirpath):
         os.makedirs(plot_dirpath)
 
-    base_tpr = np.linspace(0, 1, 100000)
+    base_tpr = np.linspace(0, 1, 5000)
     preds, truths, weights = {sample_name: list() for sample_name in order}, {sample_name: list() for sample_name in order}, {sample_name: list() for sample_name in order}
 
     param_filepath = os.path.join(output_dirpath, f"{output_dirpath.split('/')[-2]}_best_params.json")
@@ -135,7 +135,7 @@ def make_rocs(output_dirpath: str, base_filepath: str):
         fold_fprs_tth, fold_tprs_tth, fold_thresholds_tth, fold_auc_tth = [], [], [], []
         fold_fprs_qcd, fold_tprs_qcd, fold_thresholds_qcd, fold_auc_qcd = [], [], [], []
 
-        train_dm, val_dm, test_dm = get_DMatrices(
+        _, _, test_dm = get_DMatrices(
             get_filepaths_func(base_filepath), fold_idx
         )
 
@@ -209,6 +209,18 @@ def make_rocs(output_dirpath: str, base_filepath: str):
 
         fpr_tth, tpr_tth, threshold_tth = roc_curve(signal_truths, tth_preds)
         fpr_qcd, tpr_qcd, threshold_qcd = roc_curve(signal_truths, qcd_preds)
+
+        fptidx = np.argmin(np.abs(fpr_tth - 1e-2))
+        fpqidx = np.argmin(np.abs(fpr_qcd - 5e-5))
+
+        print_str = (
+            output_dirpath.split('/')[-2] + "\n"
+            + f"DttH - signal tpr = {tpr_tth[fptidx]:.4f} @ fpr of {fpr_tth[fptidx]:.4f}\n"
+            + f"DQCD - signal tpr = {tpr_qcd[fpqidx]:.4f} @ fpr of {fpr_qcd[fpqidx]:.4f}"
+        )
+        print(print_str)
+        # print(f"DttH - signal tpr = {tpr_tth[fptidx]:.4f} @ fpr of {fpr_tth[fptidx]:.4f}")
+        # print(f"DQCD - signal tpr = {tpr_qcd[fpqidx]:.4f} @ fpr of {fpr_qcd[fpqidx]:.4f}")
 
         fpr_tth = np.interp(base_tpr, tpr_tth, fpr_tth)
         threshold_tth = np.interp(base_tpr, tpr_tth, threshold_tth)

@@ -39,8 +39,6 @@ from skopt.utils import use_named_args
 ################################
 
 
-gpustat.print_gpustat()
-
 plt.style.use(hep.style.CMS)
 plt.rcParams.update({'font.size': 20})
 cmap_petroff10 = ["#3f90da", "#ffa90e", "#bd1f01", "#94a4a2", "#832db6", "#a96b59", "#e76300", "#b9ac70", "#717581", "#92dadd"]
@@ -66,10 +64,14 @@ def plot_filepath(plot_name, plot_dirpath, plot_prefix, plot_postfix, format='pn
     return plot_filepath
 
 def get_ttH_score(multibdt_output):
-    return multibdt_output[:, 0] / (multibdt_output[:, 0] + multibdt_output[:, 1])
+    ttH_preds = multibdt_output[:, 0] / (multibdt_output[:, 0] + multibdt_output[:, 1])
+    ttH_preds[np.isnan(ttH_preds)] = 0
+    return ttH_preds
 
 def get_QCD_score(multibdt_output):
-    return multibdt_output[:, 0] / (multibdt_output[:, 0] + multibdt_output[:, 2] + multibdt_output[:, 3])
+    QCD_preds = multibdt_output[:, 0] / (multibdt_output[:, 0] + multibdt_output[:, 2] + multibdt_output[:, 3])
+    QCD_preds[np.isnan(QCD_preds)] = 0
+    return QCD_preds
 
 OPTIMIZED_CUTS = {
     '1D': [0.9977, 0.9946, 0.9874],
