@@ -34,7 +34,8 @@ from retrieval_utils import (
 gpustat.print_gpustat()
 
 LPC_FILEPREFIX = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/training_parquets/"
-PARQUET_TIME = "2025-09-16_15-49-17"
+# PARQUET_TIME = "2025-09-18_22-28-00"
+PARQUET_TIME = "2025-09-18_22-33-38"
 BASE_FILEPATH = os.path.join(LPC_FILEPREFIX, PARQUET_TIME, "")
 
 CURRENT_DIRPATH = str(Path().absolute())
@@ -63,6 +64,8 @@ if OPTIMIZE_SPACE:
 else:
     param, num_trees = opt.init_params(N_CLASSES)
 param['eval_metric'] = 'merror'
+with open(param_filepath, 'w') as f:
+    json.dump(param, f)
 param = list(param.items()) + [('eval_metric', 'mlogloss')]
 
 evals_result_dict = {f"fold_{fold_idx}": dict() for fold_idx in range(N_FOLDS)}

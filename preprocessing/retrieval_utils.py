@@ -52,6 +52,11 @@ def get_Dataframes(get_filepaths, fold_idx: int, dataset: str):
         )
         class_aux['AUX_label1D'] = i
         class_aux['AUX_eventWeightTrain'] = class_aux['AUX_eventWeight']
+
+        mask_field = [field for field in class_aux.columns if 'resolved_BDT_mask' in field][0]
+        mask = (class_aux[mask_field] > 0)
+        class_df = class_df.loc[mask]
+        class_aux = class_aux.loc[mask]
         
         if df is None:
             df = class_df

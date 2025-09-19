@@ -35,15 +35,17 @@ from retrieval_utils import get_DMatrices
 def init_params(n_classes: int, static_params_dict: dict=None):
     param = {}
     # Booster parameters
-    param['eta']              = 0.1        # learning rate
-    param['max_depth']        = 4          # max number of splittings per tree
-    param['subsample']        = 0.5        # fraction of events to train tree on
-    param['colsample_bytree'] = 0.8        # fraction of features to train tree on
+    param['eta']              = 0.05       # learning rate
+    param['max_depth']        = 10         # max number of splittings per tree
+    param['subsample']        = 0.2        # fraction of events to train tree on
+    param['colsample_bytree'] = 0.6        # fraction of features to train tree on
     param['num_class']        = n_classes  # num classes for multi-class training
     param['min_child_weight'] = 0.25
-    param['tree_method']      = 'hist'
+    param['device']           = 'cuda'
+    param['tree_method']      = 'gpu_hist'
     param['max_bin']          = 512
     param['grow_policy']      = 'lossguide'
+    param['sampling_method']  = 'gradient_based'
     # Learning task parameters
     param['objective']   = 'multi:softprob'   # objective function
     param['eval_metric'] = 'mlogloss'         # evaluation metric for cross validation
