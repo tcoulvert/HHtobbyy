@@ -3,6 +3,8 @@
 import datetime
 import json
 import os
+import subprocess
+import sys
 from pathlib import Path
 
 # HEP packages
@@ -11,14 +13,18 @@ import xgboost as xgb
 
 ################################
 
+GIT_REPO = (
+    subprocess.Popen(["git", "rev-parse", "--show-toplevel"], stdout=subprocess.PIPE)
+    .communicate()[0]
+    .rstrip()
+    .decode("utf-8")
+)
+sys.path.append(os.path.join(GIT_REPO, "preprocessing/"))
 
-from training_utils import (
-    get_filepaths_func, get_filepaths
-)
-from optimize_hyperparams import (
-    init_params, optimize_hyperparams
-)
-from preprocessing.retrieval_utils import (
+
+import training_utils as utils
+import optimize_hyperparams as opt
+from retrieval_utils import (
     get_DMatrices
 )
 
@@ -41,7 +47,7 @@ if not os.path.exists(OUTPUT_DIRPATH):
     os.makedirs(OUTPUT_DIRPATH)
 
 OPTIMIZE_SPACE = False
-N_CLASSES = len(get_filepaths(BASE_FILEPATH, 0, ''))
+N_CLASSES = len(utils.get_filepaths(BASE_FILEPATH, 0, ''))
 N_FOLDS = 5
 
 ################################
@@ -51,11 +57,11 @@ param_filepath = os.path.join(OUTPUT_DIRPATH, f'{CURRENT_TIME}_best_params.json'
 if OPTIMIZE_SPACE:
     print('OPTIMIZING SPACE')
     
-    param, num_trees = optimize_hyperparams(
-        get_filepaths_func(BASE_FILEPATH), param_filepath, verbose=True
+    param, num_trees = opt.optimize_hyperparams(
+        utils.get_filepaths_func(BASE_FILEPATH), param_filepath, verbose=True
     )
 else:
-    param, num_trees = init_params(N_CLASSES)
+    param, num_trees = opt.init_params(N_CLASSES)
 param['eval_metric'] = 'merror'
 param = list(param.items()) + [('eval_metric', 'mlogloss')]
 
@@ -64,22 +70,22 @@ for fold_idx in range(N_FOLDS):
     print(f"fold {fold_idx}")
 
     train_dm, val_dm, test_dm = get_DMatrices(
-        get_filepaths_func(BASE_FILEPATH), fold_idx
+        utils.get_filepaths_func(BASE_FILEPATH), fold_idx
     )
 
     # Train bdt
-    evallist = [(train_dm, 'train'), (val_dm, 'test'), (test_dm, 'val')]
-    booster = xgb.train(
-        param, train_dm, num_boost_round=num_trees, 
-        evals=evallist, early_stopping_rounds=10, 
-        verbose_eval=25, evals_result=evals_result_dict[f"fold_{fold_idx}"],
-    )
+#     evallist = [(train_dm, 'train'), (val_dm, 'test'), (test_dm, 'val')]
+#     booster = xgb.train(
+#         param, train_dm, num_boost_round=num_trees, 
+#         evals=evallist, early_stopping_rounds=10, 
+#         verbose_eval=25, evals_result=evals_result_dict[f"fold_{fold_idx}"],
+#     )
 
-    booster.save_model(os.path.join(OUTPUT_DIRPATH, f'{CURRENT_TIME}_BDT_fold{fold_idx}.model'))
+#     booster.save_model(os.path.join(OUTPUT_DIRPATH, f'{CURRENT_TIME}_BDT_fold{fold_idx}.model'))
     
-    # Print perf on test dataset
-    print(booster.eval(test_dm, name='test', iteration=booster.best_iteration))
-    print('='*100)
+#     # Print perf on test dataset
+#     print(booster.eval(test_dm, name='test', iteration=booster.best_iteration))
+#     print('='*100)
             
-with open(os.path.join(OUTPUT_DIRPATH, f'{CURRENT_TIME}_BDT_eval_result.json'), 'w') as f:
-    json.dump(evals_result_dict, f)
+# with open(os.path.join(OUTPUT_DIRPATH, f'{CURRENT_TIME}_BDT_eval_result.json'), 'w') as f:
+#     json.dump(evals_result_dict, f)

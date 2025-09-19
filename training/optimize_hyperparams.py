@@ -1,6 +1,9 @@
 # %matplotlib widget
 # Stdlib packages
 import json
+import os
+import subprocess
+import sys
 
 # Common Py packages
 import numpy as np
@@ -16,9 +19,15 @@ from skopt.utils import use_named_args
 ################################
 
 
-from preprocessing.retrieval_utils import (
-    get_DMatrices
+GIT_REPO = (
+    subprocess.Popen(["git", "rev-parse", "--show-toplevel"], stdout=subprocess.PIPE)
+    .communicate()[0]
+    .rstrip()
+    .decode("utf-8")
 )
+sys.path.append(os.path.join(GIT_REPO, "preprocessing/"))
+
+from retrieval_utils import get_DMatrices
 
 ################################
 
@@ -47,7 +56,7 @@ def init_params(n_classes: int, static_params_dict: dict=None):
 
 
 def optimize_hyperparams(
-    get_filepaths: function, 
+    get_filepaths, 
     param_filepath: str, static_params_dict: dict=None,
     verbose: bool=False, verbose_eval: bool=False, start_point: int=0,
 ):

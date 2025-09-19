@@ -45,6 +45,7 @@ def get_Dataframe(filepath: str, aux: bool=False):
     return df
 def get_Dataframes(get_filepaths, fold_idx: int, dataset: str):
     filepaths = get_filepaths(fold_idx, dataset)
+    print(filepaths)
 
     df, aux = None, None
     for i, bdt_class in enumerate(filepaths.keys()):
