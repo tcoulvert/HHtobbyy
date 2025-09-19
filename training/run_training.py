@@ -74,18 +74,18 @@ for fold_idx in range(N_FOLDS):
     )
 
     # Train bdt
-#     evallist = [(train_dm, 'train'), (val_dm, 'test'), (test_dm, 'val')]
-#     booster = xgb.train(
-#         param, train_dm, num_boost_round=num_trees, 
-#         evals=evallist, early_stopping_rounds=10, 
-#         verbose_eval=25, evals_result=evals_result_dict[f"fold_{fold_idx}"],
-#     )
+    evallist = [(train_dm, 'train'), (val_dm, 'test'), (test_dm, 'val')]
+    booster = xgb.train(
+        param, train_dm, num_boost_round=num_trees, 
+        evals=evallist, early_stopping_rounds=10, 
+        verbose_eval=25, evals_result=evals_result_dict[f"fold_{fold_idx}"],
+    )
 
-#     booster.save_model(os.path.join(OUTPUT_DIRPATH, f'{CURRENT_TIME}_BDT_fold{fold_idx}.model'))
+    booster.save_model(os.path.join(OUTPUT_DIRPATH, f'{CURRENT_TIME}_BDT_fold{fold_idx}.model'))
     
-#     # Print perf on test dataset
-#     print(booster.eval(test_dm, name='test', iteration=booster.best_iteration))
-#     print('='*100)
+    # Print perf on test dataset
+    print(booster.eval(test_dm, name='test', iteration=booster.best_iteration))
+    print('='*100)
             
-# with open(os.path.join(OUTPUT_DIRPATH, f'{CURRENT_TIME}_BDT_eval_result.json'), 'w') as f:
-#     json.dump(evals_result_dict, f)
+with open(os.path.join(OUTPUT_DIRPATH, f'{CURRENT_TIME}_BDT_eval_result.json'), 'w') as f:
+    json.dump(evals_result_dict, f)
