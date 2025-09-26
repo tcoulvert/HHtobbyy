@@ -149,6 +149,8 @@ def make_dataset(filepath, era, type='MC'):
     sample['sample_name'] = match_sample(filepath, sample_name_map) if match_sample(filepath, sample_name_map) is not None else filepath.split('/')[-3]
     sample['sample_era'] = era[era.find('Run3_202'):-1]
     if type.upper() == 'MC':
+        print(f"lumi match = {match_sample(filepath, luminosities.keys())}")
+        print(f"xs match = {match_sample(filepath, cross_sections.keys())}")
         sample['eventWeight'] = (
             sample['weight'] 
             * luminosities[match_sample(filepath, luminosities.keys())] 
@@ -157,8 +159,8 @@ def make_dataset(filepath, era, type='MC'):
     else: 
         sample['eventWeight'] =  ak.ones_like(sample['pt'])
 
-    add_vars_resolved(sample, filepath)
-    add_vars_boosted(sample, filepath)
+    # add_vars_resolved(sample, filepath)
+    # add_vars_boosted(sample, filepath)
     if 'hash' not in sample.fields:
         sample['hash'] = np.arange(ak.num(sample['pt'], axis=0))
 

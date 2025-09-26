@@ -27,6 +27,6 @@ def deltaEta(eta1, eta2):
     return ak_abs(eta1 - eta2)
 
 def match_sample(sample_str, regexes):
-    for regex in sorted(regexes, key=len):
+    for regex in sorted(regexes, key=len, reverse=True):
         if all(exp.lower() in sample_str.lower() for exp in regex.split('*')): return regex
      
