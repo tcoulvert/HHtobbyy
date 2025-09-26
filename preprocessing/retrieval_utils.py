@@ -66,6 +66,9 @@ def get_Dataframes(get_filepaths, fold_idx: int, dataset: str):
             aux = pd.concat([aux, class_aux], ignore_index=True)
 
     # Upweight resonant background and signal samples for training #
+    # Non-Resonant background #
+    nonres_mask = aux['AUX_sample_name'].eq('GJet')
+    aux.loc[nonres_mask, 'AUX_eventWeightTrain'] = aux.loc[nonres_mask, 'AUX_eventWeightTrain'] * 1.78
     # Resonant background
     for i, _ in enumerate([key for key in filepaths.keys() if 'nonRes' not in key and 'HH' not in key]):
         class_mask = aux['AUX_label1D'].eq(i)

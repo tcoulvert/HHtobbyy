@@ -214,7 +214,7 @@ def make_rocs(output_dirpath: str, base_filepath: str):
         fpqidx = np.argmin(np.abs(fpr_qcd - 5e-5))
 
         print_str = (
-            output_dirpath.split('/')[-2] + "\n"
+            output_dirpath.split('/')[-2] + "\n" + f"sig vs. {sample_name if sample_name != order[0] else 'all'}" + "\n"
             + f"DttH - signal tpr = {tpr_tth[fptidx]:.4f} @ fpr of {fpr_tth[fptidx]:.4f}\n"
             + f"DQCD - signal tpr = {tpr_qcd[fpqidx]:.4f} @ fpr of {fpr_qcd[fpqidx]:.4f}"
         )
