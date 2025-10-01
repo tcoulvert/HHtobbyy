@@ -13,7 +13,7 @@ from sklearn.model_selection import train_test_split
 ################################
 
 
-RES_BKG_RESCALE = 100
+RES_BKG_RESCALE = 1000  # 1e3
 DF_SHUFFLE = True
 RNG_SEED = 21
 FILL_VALUE = -999

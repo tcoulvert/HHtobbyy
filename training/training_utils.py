@@ -29,20 +29,34 @@ from retrieval_utils import get_labelND
 
 ################################
 
+def get_sample_filepaths(base_filepath, sample_name, syst_name, fold_idx, dataset):
+    return glob.glob(os.path.join(base_filepath, "**", sample_name, f"*{syst_name}*", f"*{dataset}{fold_idx}*.parquet"), recursive=True)
 
 def get_filepaths_func(base_filepath: str, syst_name: str='nominal'):
     return lambda fold_idx, dataset: {
-        'ggF HH': glob.glob(os.path.join(base_filepath, "**", "*GluGlu*HH*kl-1p00*", f"*{syst_name}*", f"*{dataset}{fold_idx}*.parquet"), recursive=True),
-        'ttH + bbH': glob.glob(os.path.join(base_filepath, "**", "*ttH*", f"*{syst_name}*", f"*{dataset}{fold_idx}*.parquet"), recursive=True) 
-        + glob.glob(os.path.join(base_filepath, "**", "*bbH*", f"*{syst_name}*", f"*{dataset}{fold_idx}*.parquet"), recursive=True),
-        'VH': glob.glob(os.path.join(base_filepath, "**", "*VH*", f"*{syst_name}*", f"*{dataset}{fold_idx}*.parquet"), recursive=True)
-        + glob.glob(os.path.join(base_filepath, "**", "*ZH*", f"*{syst_name}*", f"*{dataset}{fold_idx}*.parquet"), recursive=True)
-        + glob.glob(os.path.join(base_filepath, "**", "*Wm*H*", f"*{syst_name}*", f"*{dataset}{fold_idx}*.parquet"), recursive=True)
-        + glob.glob(os.path.join(base_filepath, "**", "*Wp*H*", f"*{syst_name}*", f"*{dataset}{fold_idx}*.parquet"), recursive=True),
-        'nonRes + ggFH + VBFH': glob.glob(os.path.join(base_filepath, "**", "*GGJets*", f"*{syst_name}*", f"*{dataset}{fold_idx}*.parquet"), recursive=True)
-        + glob.glob(os.path.join(base_filepath, "**", "*GJet*", f"*{syst_name}*", f"*{dataset}{fold_idx}*.parquet"), recursive=True)
-        + glob.glob(os.path.join(base_filepath, "**", "*GluGluH*GG*", f"*{syst_name}*", f"*{dataset}{fold_idx}*.parquet"), recursive=True)
-        + glob.glob(os.path.join(base_filepath, "**", "*VBFH*GG*", f"*{syst_name}*", f"*{dataset}{fold_idx}*.parquet"), recursive=True),
+        'ggF HH': sorted(
+            set(glob.glob(os.path.join(base_filepath, "**", "*GluGlu*HH*kl-1p00*", f"*{syst_name}*", f"*{dataset}{fold_idx}*.parquet"), recursive=True))
+        ),
+        
+        'ttH + bbH': sorted(
+            set(glob.glob(os.path.join(base_filepath, "**", "*ttH*", f"*{syst_name}*", f"*{dataset}{fold_idx}*.parquet"), recursive=True))
+            | set(glob.glob(os.path.join(base_filepath, "**", "*bbH*", f"*{syst_name}*", f"*{dataset}{fold_idx}*.parquet"), recursive=True))
+        ),
+        
+        'VH': sorted(
+            set(glob.glob(os.path.join(base_filepath, "**", "*VH*", f"*{syst_name}*", f"*{dataset}{fold_idx}*.parquet"), recursive=True))
+            | set(glob.glob(os.path.join(base_filepath, "**", "*ZH*", f"*{syst_name}*", f"*{dataset}{fold_idx}*.parquet"), recursive=True))
+            | set(glob.glob(os.path.join(base_filepath, "**", "*Wm*H*", f"*{syst_name}*", f"*{dataset}{fold_idx}*.parquet"), recursive=True))
+            | set(glob.glob(os.path.join(base_filepath, "**", "*Wp*H*", f"*{syst_name}*", f"*{dataset}{fold_idx}*.parquet"), recursive=True))
+        ),
+        
+        'nonRes + ggFH + VBFH': sorted(
+            set(glob.glob(os.path.join(base_filepath, "**", "*GGJets*", f"*{syst_name}*", f"*{dataset}{fold_idx}*.parquet"), recursive=True))
+            | set(glob.glob(os.path.join(base_filepath, "**", "*GJet*", f"*{syst_name}*", f"*{dataset}{fold_idx}*.parquet"), recursive=True))
+            | set(glob.glob(os.path.join(base_filepath, "**", "*TTGG*", f"*{syst_name}*", f"*{dataset}{fold_idx}*.parquet"), recursive=True))
+            | set(glob.glob(os.path.join(base_filepath, "**", "*GluGluH*GG*", f"*{syst_name}*", f"*{dataset}{fold_idx}*.parquet"), recursive=True))
+            | set(glob.glob(os.path.join(base_filepath, "**", "*VBFH*GG*", f"*{syst_name}*", f"*{dataset}{fold_idx}*.parquet"), recursive=True))
+        ),
     }
 
 def get_filepaths(base_filepath: str, fold_idx: int, dataset: str, syst_name: str='nominal'):
