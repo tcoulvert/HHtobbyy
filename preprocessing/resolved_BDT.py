@@ -12,6 +12,11 @@ import numpy as np
 import pandas as pd
 import pyarrow.parquet as pq
 
+# HEP packages
+import hist
+import mplhep as hep
+import matplotlib.pyplot as plt
+
 ################################
 
 
@@ -112,6 +117,8 @@ JET_PREFIX = 'nonRes'
 SEED = 21
 BASE_FILEPATH = 'Run3_202'
 CURRENT_TIME = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+CWD = os.getcwd()
+MAKE_PLOTS = True
 
 ################################
 
@@ -125,7 +132,7 @@ parser.add_argument(
 )
 parser.add_argument(
     "--output_dirpath", 
-    default=os.getcwd(),
+    default=CWD,
     help="Full filepath on LPC for output to be dumped"
 )
 parser.add_argument(
@@ -135,6 +142,31 @@ parser.add_argument(
 )
 
 ################################
+
+
+def plot_vars(df, output_dirpath, sample_name, title="pre-std, train"):
+    std_type, df_type = tuple(title.split(", "))
+
+    if "pre" in std_type: apply_logs(df)
+
+    for var in df.columns:
+        if log_standardize(var): var_label = f"ln({var})"
+        else: var_label = var
+
+        var_hist = hist.Hist(
+            hist.axis.Regular(100, np.min(df[var]), np.max(df[var]), name="var", label=var_label), 
+        ).fill(var=df[var])
+
+        fig, ax = plt.subplot()
+        hep.cms.lumitext(f"Run3" + r" (13.6 TeV)", ax=ax)
+        hep.cms.text("Simulation", ax=ax)
+
+        hep.histplot(var_hist, ax=ax, linewidth=3, histtype="step", yerr=True, label=" - ".join([sample_name, title]))
+        plt.legend()
+
+        plt.savefig(os.path.join(output_dirpath, "plots", f"{var}_{std_type.replace('-', '')}_{df_type}.pdf"), bbox_inches='tight')
+        plt.savefig(os.path.join(output_dirpath, "plots", f"{var}_{std_type.replace('-', '')}_{df_type}.png"), bbox_inches='tight')
+        plt.close()
 
 
 def make_output_filepath(filepath, base_output_dirpath, extra_text):
@@ -165,11 +197,11 @@ def log_standardize(column):
     }
     return any(log_std_term in column for log_std_term in log_std_terms)
 
-def apply_log(df):
+def apply_logs(df):
     for col in df.columns:
         if log_standardize(col):
-            mask = (df.loc[:, col].to_numpy() > 0)
-            df.loc[mask, col] = np.log(df.loc[mask, col])
+            mask = (df[col].to_numpy() > 0)
+            df.loc[mask, col] = np.log(df[col])
     return df
 
 def get_dfs(filepaths, BDT_vars, AUX_vars):
@@ -199,7 +231,7 @@ def compute_standardization(train_dfs, train_dfs_fold):
     merged_train_df = pd.concat(list(train_dfs.values())+list(train_dfs_fold.values()), ignore_index=True)
 
     merged_train_df = merged_train_df.sample(frac=1, random_state=SEED).reset_index(drop=True)
-    merged_train_df = apply_log(merged_train_df)
+    merged_train_df = apply_logs(merged_train_df)
     masked_x_sample = np.ma.array(merged_train_df, mask=(merged_train_df == FILL_VALUE))
 
     x_mean = masked_x_sample.mean(axis=0)
@@ -244,31 +276,42 @@ def preprocess_resolved_bdt(input_filepaths, output_dirpath):
         for filepath in train_dfs.keys():
             train_dfs_fold[filepath] = copy.deepcopy(train_dfs[filepath])
             train_aux_dfs_fold[filepath] = copy.deepcopy(train_aux_dfs[filepath])
+
         for filepath, df in train_dfs_fold.items():
+            output_filepath = make_output_filepath(filepath, output_dirpath, f"train{fold_idx}")
+            if MAKE_PLOTS: plot_vars(df, output_filepath, train_aux_dfs_fold[filepath]["AUX_sample_name"], title="pre-std, train")
+
             cols = list(df.columns)
-            df = apply_log(df)
+            df = apply_logs(df)
             df = (np.ma.array(df, mask=(df == FILL_VALUE)) - x_mean)/x_std
             df = pd.DataFrame(df.filled(FILL_VALUE), columns=cols)
+
+            if MAKE_PLOTS: plot_vars(df, output_filepath, train_aux_dfs_fold[filepath]["AUX_sample_name"], title="post-std, train")
 
             for aux_col in train_aux_dfs_fold[filepath].columns:
                 df[f"AUX_{aux_col}"] = train_aux_dfs_fold[filepath].loc[:,aux_col]
 
-            output_filepath = make_output_filepath(filepath, output_dirpath, f"train{fold_idx}")
             df.to_parquet(output_filepath)
+
 
         for filepath in test_dfs.keys():
             test_dfs_fold[filepath] = copy.deepcopy(test_dfs[filepath])
             test_aux_dfs_fold[filepath] = copy.deepcopy(test_aux_dfs[filepath])
+
         for filepath, df in test_dfs_fold.items():
+            output_filepath = make_output_filepath(filepath, output_dirpath, f"test{fold_idx}")
+            if MAKE_PLOTS: plot_vars(df, output_filepath, test_aux_dfs_fold[filepath]["AUX_sample_name"], title="pre-std, test")
+
             cols = list(df.columns)
-            df = apply_log(df)
+            df = apply_logs(df)
             df = (np.ma.array(df, mask=(df == FILL_VALUE)) - x_mean)/x_std
             df = pd.DataFrame(df.filled(FILL_VALUE), columns=cols)
+
+            if MAKE_PLOTS: plot_vars(df, output_filepath, test_aux_dfs_fold[filepath]["AUX_sample_name"], title="post-std, test")
 
             for aux_col in test_aux_dfs_fold[filepath].columns:
                 df[f"AUX_{aux_col}"] = test_aux_dfs_fold[filepath].loc[:,aux_col]
 
-            output_filepath = make_output_filepath(filepath, output_dirpath, f"test{fold_idx}")
             df.to_parquet(output_filepath)
 
 if __name__ == '__main__':
