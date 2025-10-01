@@ -146,6 +146,8 @@ parser.add_argument(
 
 def plot_vars(df, output_dirpath, sample_name, title="pre-std, train"):
     std_type, df_type = tuple(title.split(", "))
+    plot_dirpath = os.path.join(output_dirpath, "plots")
+    if not os.path.exists(plot_dirpath): os.makedirs(plot_dirpath)
 
     if "pre" in std_type: apply_logs(df)
 
@@ -154,18 +156,19 @@ def plot_vars(df, output_dirpath, sample_name, title="pre-std, train"):
         else: var_label = var
 
         var_hist = hist.Hist(
-            hist.axis.Regular(100, np.min(df[var]), np.max(df[var]), name="var", label=var_label), 
+            hist.axis.Regular(100, np.min(df.loc[(df[var] != FILL_VALUE), var]), np.max(df.loc[(df[var] != FILL_VALUE), var]), name="var", label=var_label), 
         ).fill(var=df[var])
 
-        fig, ax = plt.subplot()
+        fig, ax = plt.subplots()
         hep.cms.lumitext(f"Run3" + r" (13.6 TeV)", ax=ax)
         hep.cms.text("Simulation", ax=ax)
 
-        hep.histplot(var_hist, ax=ax, linewidth=3, histtype="step", yerr=True, label=" - ".join([sample_name, title]))
+        hep.histplot(var_hist, ax=ax, histtype="step", yerr=True, label=" - ".join([sample_name, title]))
         plt.legend()
+        plt.yscale('log')
 
-        plt.savefig(os.path.join(output_dirpath, "plots", f"{var}_{std_type.replace('-', '')}_{df_type}.pdf"), bbox_inches='tight')
-        plt.savefig(os.path.join(output_dirpath, "plots", f"{var}_{std_type.replace('-', '')}_{df_type}.png"), bbox_inches='tight')
+        plt.savefig(os.path.join(plot_dirpath, f"{var}_{std_type.replace('-', '')}_{df_type}.pdf"), bbox_inches='tight')
+        plt.savefig(os.path.join(plot_dirpath, f"{var}_{std_type.replace('-', '')}_{df_type}.png"), bbox_inches='tight')
         plt.close()
 
 
@@ -279,14 +282,24 @@ def preprocess_resolved_bdt(input_filepaths, output_dirpath):
 
         for filepath, df in train_dfs_fold.items():
             output_filepath = make_output_filepath(filepath, output_dirpath, f"train{fold_idx}")
-            if MAKE_PLOTS: plot_vars(df, output_filepath, train_aux_dfs_fold[filepath]["AUX_sample_name"], title="pre-std, train")
+            if MAKE_PLOTS: plot_vars(
+                df, 
+                "/".join(output_filepath.split("/")[:-1]), 
+                train_aux_dfs_fold[filepath]["sample_name"][0], 
+                title="pre-std, train"
+            )
 
             cols = list(df.columns)
             df = apply_logs(df)
             df = (np.ma.array(df, mask=(df == FILL_VALUE)) - x_mean)/x_std
             df = pd.DataFrame(df.filled(FILL_VALUE), columns=cols)
 
-            if MAKE_PLOTS: plot_vars(df, output_filepath, train_aux_dfs_fold[filepath]["AUX_sample_name"], title="post-std, train")
+            if MAKE_PLOTS: plot_vars(
+                df, 
+                "/".join(output_filepath.split("/")[:-1]), 
+                train_aux_dfs_fold[filepath]["sample_name"][0], 
+                title="post-std, train"
+            )
 
             for aux_col in train_aux_dfs_fold[filepath].columns:
                 df[f"AUX_{aux_col}"] = train_aux_dfs_fold[filepath].loc[:,aux_col]
@@ -300,14 +313,24 @@ def preprocess_resolved_bdt(input_filepaths, output_dirpath):
 
         for filepath, df in test_dfs_fold.items():
             output_filepath = make_output_filepath(filepath, output_dirpath, f"test{fold_idx}")
-            if MAKE_PLOTS: plot_vars(df, output_filepath, test_aux_dfs_fold[filepath]["AUX_sample_name"], title="pre-std, test")
+            if MAKE_PLOTS: plot_vars(
+                df, 
+                "/".join(output_filepath.split("/")[:-1]), 
+                test_aux_dfs_fold[filepath]["sample_name"][0], 
+                title="pre-std, test"
+            )
 
             cols = list(df.columns)
             df = apply_logs(df)
             df = (np.ma.array(df, mask=(df == FILL_VALUE)) - x_mean)/x_std
             df = pd.DataFrame(df.filled(FILL_VALUE), columns=cols)
 
-            if MAKE_PLOTS: plot_vars(df, output_filepath, test_aux_dfs_fold[filepath]["AUX_sample_name"], title="post-std, test")
+            if MAKE_PLOTS: plot_vars(
+                df, 
+                "/".join(output_filepath.split("/")[:-1]), 
+                test_aux_dfs_fold[filepath]["sample_name"][0], 
+                title="post-std, test"
+            )
 
             for aux_col in test_aux_dfs_fold[filepath].columns:
                 df[f"AUX_{aux_col}"] = test_aux_dfs_fold[filepath].loc[:,aux_col]
