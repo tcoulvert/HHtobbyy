@@ -14,11 +14,11 @@ from preprocessing_utils import (
 
 
 resolved_bTagWPs = {
-    '2022*preEE': {'L': 0.047, 'M': 0.245, 'T': 0.6734, 'XT': 0.7862, 'XXT': 0.961},
-    '2022*postEE': {'L': 0.0499, 'M': 0.2605, 'T': 0.6915, 'XT': 0.8033, 'XXT': 0.9664},
-    '2023*preBPix': {'L': 0.0358, 'M': 0.1917, 'T': 0.6172, 'XT': 0.7515, 'XXT': 0.9659},
-    '2023*postBPix': {'L': 0.0359, 'M': 0.1919, 'T': 0.6133, 'XT': 0.7544, 'XXT': 0.9688},
-    '2024': {'L': 0.0246, 'M': 0.1272, 'T': 0.4648, 'XT': 0.6298, 'XXT': 0.9739}
+    '2022*preEE': ("btagPNetB", {'L': 0.047, 'M': 0.245, 'T': 0.6734, 'XT': 0.7862, 'XXT': 0.961}),
+    '2022*postEE': ("btagPNetB", {'L': 0.0499, 'M': 0.2605, 'T': 0.6915, 'XT': 0.8033, 'XXT': 0.9664}),
+    '2023*preBPix': ("btagPNetB", {'L': 0.0358, 'M': 0.1917, 'T': 0.6172, 'XT': 0.7515, 'XXT': 0.9659}),
+    '2023*postBPix': ("btagPNetB", {'L': 0.0359, 'M': 0.1919, 'T': 0.6133, 'XT': 0.7544, 'XXT': 0.9688}),
+    '2024': ("btagUParTAK4B", {'L': 0.0246, 'M': 0.1272, 'T': 0.4648, 'XT': 0.6298, 'XXT': 0.9739})
 }
 
 FILL_VALUE = -999
@@ -31,14 +31,14 @@ PREFACTORS = ['nonRes', 'nonResReg_DNNpair']  # 'nonResReg'
 
 # Variables to add for resolved training
 def add_bTagWP_resolved(sample, era, prefactor='nonRes'):
-    WP_dict = resolved_bTagWPs[match_sample(era, resolved_bTagWPs.keys())]
+    bTagVar, WP_dict = resolved_bTagWPs[match_sample(era, resolved_bTagWPs.keys())]
     
     for bjet_type in ['lead', 'sublead']:
+        if bTagVar == "btagUParTAK4B": btag_field = f"{prefactor}{bjet_type}_bjet_{bTagVar}"
+        else: btag_field = f"{prefactor}_{bjet_type}_bjet_{bTagVar}"
+
         for WPname, WP in WP_dict.items():
-            sample[f"{prefactor}_{bjet_type}_bjet_bTagWP{WPname}"] = ak.where(
-                sample[f"{prefactor}_{bjet_type}_bjet_btagPNetB"] > WP,
-                1, 0
-            )
+            sample[f"{prefactor}_{bjet_type}_bjet_bTagWP{WPname}"] = ak.where(sample[btag_field] > WP, 1, 0)
 
 def jet_mask(sample, i, prefactor='nonRes'):
     return (
@@ -146,6 +146,10 @@ def add_vars_resolved(sample, filepath):
         # max non-bjet btag score -> sets lower limit for resampling #
         sample[f'{prefactor}_max_nonbjet_btag'] = max_nonbjet_btag(sample, prefactor=prefactor)
 
+        # for field in sample.fields:
+        #     if not ("btagUParTAK4B" in field and "bjet" in field): continue
+        #     new_field = field[:field.find('Res')+len('Res')] + '_' + field[field.find('Res')+len('Res'):]
+        #     sample[new_field] = sample[field]
         add_bTagWP_resolved(sample, filepath, prefactor=prefactor)
 
         sample['pass_mva-0.7'] = ak.where(
