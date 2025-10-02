@@ -155,9 +155,15 @@ def plot_vars(df, output_dirpath, sample_name, title="pre-std, train"):
         if log_standardize(var): var_label = f"ln({var})"
         else: var_label = var
 
+        max_val = np.max(df.loc[(df[var] != FILL_VALUE), var])
+        min_val = np.min(df.loc[(df[var] != FILL_VALUE), var])
+        # padding = 0.01*(max_val-min_val)
+        # var_hist = hist.Hist(
+        #     hist.axis.Regular(100, min_val-padding, max_val+padding, name="var", label=var_label), 
+        # ).fill(var=df.loc[(df[var] != FILL_VALUE), var])
         var_hist = hist.Hist(
-            hist.axis.Regular(100, np.min(df.loc[(df[var] != FILL_VALUE), var]), np.max(df.loc[(df[var] != FILL_VALUE), var]), name="var", label=var_label), 
-        ).fill(var=df[var])
+            hist.axis.Regular(100, min_val, max_val, name="var", label=var_label, growth=True), 
+        ).fill(var=df.loc[(df[var] != FILL_VALUE), var])
 
         fig, ax = plt.subplots()
         hep.cms.lumitext(f"Run3" + r" (13.6 TeV)", ax=ax)
@@ -204,7 +210,7 @@ def apply_logs(df):
     for col in df.columns:
         if log_standardize(col):
             mask = (df[col].to_numpy() > 0)
-            df.loc[mask, col] = np.log(df[col])
+            df.loc[mask, col] = np.log(df.loc[mask, col])
     return df
 
 def get_dfs(filepaths, BDT_vars, AUX_vars):
@@ -343,4 +349,7 @@ if __name__ == '__main__':
     with open(args.input_filepaths, 'r') as f:
         input_filepaths = json.load(f)
 
+    print('='*60)
+    print(f'Starting Resolved BDT processing at {CURRENT_TIME}')
     preprocess_resolved_bdt(input_filepaths, args.output_dirpath)
+    print(f'Finished Resolved BDT processing')

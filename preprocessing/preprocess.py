@@ -134,12 +134,12 @@ def make_dataset(filepath, era, type='MC'):
             filepath, 
             columns=[
                 field for field in schema.names
-                # if (
-                #     'VBF' not in field
-                #     and not (
-                #         'nonResReg' in field and 'nonResReg_DNNpair' not in field
-                #     )
-                # )
+                if (
+                    'VBF' not in field
+                    and not (
+                        'nonResReg' in field and 'nonResReg_DNNpair' not in field
+                    )
+                )
             ]
         )
     )
@@ -163,7 +163,7 @@ def make_dataset(filepath, era, type='MC'):
     if 'hash' not in sample.fields:
         sample['hash'] = np.arange(ak.num(sample['pt'], axis=0))
 
-    ak.to_parquet(sample, filepath)
+    # ak.to_parquet(sample, filepath)
     del sample
     print('Finished \n', '========================')
 
