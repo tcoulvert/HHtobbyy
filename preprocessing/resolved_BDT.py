@@ -151,19 +151,27 @@ def plot_vars(df, output_dirpath, sample_name, title="pre-std, train"):
 
     if "pre" in std_type: apply_logs(df)
 
+    print('='*60+'\n'+'='*60)
+    print(output_dirpath)
+
     for var in df.columns:
         if log_standardize(var): var_label = f"ln({var})"
         else: var_label = var
 
-        max_val = np.max(df.loc[(df[var] != FILL_VALUE), var])
-        min_val = np.min(df.loc[(df[var] != FILL_VALUE), var])
-        # padding = 0.01*(max_val-min_val)
-        # var_hist = hist.Hist(
-        #     hist.axis.Regular(100, min_val-padding, max_val+padding, name="var", label=var_label), 
-        # ).fill(var=df.loc[(df[var] != FILL_VALUE), var])
+        var_mask = (
+            (df[var] != FILL_VALUE)
+            & np.isfinite(df[var])
+        )
+        good_var_bool = np.any(var_mask) and np.min(df.loc[var_mask, var]) != np.max(df.loc[var_mask, var])
+
+        max_val = np.max(df.loc[var_mask, var]) if good_var_bool else 0.
+        min_val = np.min(df.loc[var_mask, var]) if good_var_bool else 1.
+        print('-'*60)
+        print(var)
+        print(f"min = {min_val}, max = {max_val}")
         var_hist = hist.Hist(
             hist.axis.Regular(100, min_val, max_val, name="var", label=var_label, growth=True), 
-        ).fill(var=df.loc[(df[var] != FILL_VALUE), var])
+        ).fill(var=df.loc[var_mask, var])
 
         fig, ax = plt.subplots()
         hep.cms.lumitext(f"Run3" + r" (13.6 TeV)", ax=ax)
