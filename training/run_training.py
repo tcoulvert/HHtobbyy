@@ -36,12 +36,13 @@ gpustat.print_gpustat()
 LPC_FILEPREFIX = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/training_parquets/"
 # PARQUET_TIME = "2025-09-18_22-33-38"  # 2022-23 bTags
 # PARQUET_TIME = "2025-09-19_12-29-53"  # 2022-23 WPs
-PARQUET_TIME = ""  # 2022-24 WPs
+PARQUET_TIME = "2025-10-06_20-27-29"  # 2024 WPs  2025-10-07_17-32-07
+# PARQUET_TIME = ""  # 2022-24 WPs
 BASE_FILEPATH = os.path.join(LPC_FILEPREFIX, PARQUET_TIME, "")
 
 CURRENT_DIRPATH = str(Path().absolute())
 VERSION = 'v16'
-VARS = '22to24_bTagWP'
+VARS = '24_bTagWP'
 CURRENT_TIME = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
 
 OUTPUT_DIRPATH = os.path.join(CURRENT_DIRPATH, f"../MultiClassBDT_model_outputs", VERSION, VARS, CURRENT_TIME)

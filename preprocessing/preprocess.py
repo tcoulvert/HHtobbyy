@@ -163,7 +163,7 @@ def make_dataset(filepath, era, type='MC'):
     if 'hash' not in sample.fields:
         sample['hash'] = np.arange(ak.num(sample['pt'], axis=0))
 
-    # ak.to_parquet(sample, filepath)
+    ak.to_parquet(sample, filepath)
     del sample
     print('Finished \n', '========================')
 

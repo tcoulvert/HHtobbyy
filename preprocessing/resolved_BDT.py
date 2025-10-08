@@ -144,9 +144,9 @@ parser.add_argument(
 ################################
 
 
-def plot_vars(df, output_dirpath, sample_name, title="pre-std, train"):
+def plot_vars(df, output_dirpath, sample_name, title="pre-std, train0"):
     std_type, df_type = tuple(title.split(", "))
-    plot_dirpath = os.path.join(output_dirpath, "plots")
+    plot_dirpath = os.path.join(output_dirpath, "plots", "_".join([std_type.replace('-', ''), df_type]))
     if not os.path.exists(plot_dirpath): os.makedirs(plot_dirpath)
 
     if "pre" in std_type: apply_logs(df)
@@ -300,7 +300,7 @@ def preprocess_resolved_bdt(input_filepaths, output_dirpath):
                 df, 
                 "/".join(output_filepath.split("/")[:-1]), 
                 train_aux_dfs_fold[filepath]["sample_name"][0], 
-                title="pre-std, train"
+                title=f"pre-std, train{fold_idx}"
             )
 
             cols = list(df.columns)
@@ -312,7 +312,7 @@ def preprocess_resolved_bdt(input_filepaths, output_dirpath):
                 df, 
                 "/".join(output_filepath.split("/")[:-1]), 
                 train_aux_dfs_fold[filepath]["sample_name"][0], 
-                title="post-std, train"
+                title=f"post-std, train{fold_idx}"
             )
 
             for aux_col in train_aux_dfs_fold[filepath].columns:
@@ -331,7 +331,7 @@ def preprocess_resolved_bdt(input_filepaths, output_dirpath):
                 df, 
                 "/".join(output_filepath.split("/")[:-1]), 
                 test_aux_dfs_fold[filepath]["sample_name"][0], 
-                title="pre-std, test"
+                title=f"pre-std, test{fold_idx}"
             )
 
             cols = list(df.columns)
@@ -343,7 +343,7 @@ def preprocess_resolved_bdt(input_filepaths, output_dirpath):
                 df, 
                 "/".join(output_filepath.split("/")[:-1]), 
                 test_aux_dfs_fold[filepath]["sample_name"][0], 
-                title="post-std, test"
+                title=f"post-std, test{fold_idx}"
             )
 
             for aux_col in test_aux_dfs_fold[filepath].columns:
