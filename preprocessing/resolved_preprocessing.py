@@ -59,8 +59,7 @@ def zh_isr_jet(sample, dijet_4mom, jet_4moms, prefactor='nonRes'):
         z_jet_4mom = dijet_4mom + jet_4moms[f'jet{i}_4mom']
 
         better_isr_bool = (
-            ak.where(z_jet_4mom.pt < min_total_pt, True, False)
-            | ak.where(min_total_pt == FILL_VALUE, True, False)
+            (z_jet_4mom.pt < min_total_pt) | (min_total_pt == FILL_VALUE)
         ) & jet_i_mask
         min_total_pt = ak.where(
             better_isr_bool, z_jet_4mom.pt, min_total_pt
@@ -68,7 +67,7 @@ def zh_isr_jet(sample, dijet_4mom, jet_4moms, prefactor='nonRes'):
         isr_jet_4mom = ak.where(
             better_isr_bool, jet_4moms[f'jet{i}_4mom'], isr_jet_4mom
         )
-    return isr_jet_4mom, ak.where(min_total_pt != FILL_VALUE, True, False)
+    return isr_jet_4mom, (min_total_pt != FILL_VALUE)
 
 def max_nonbjet_btag(sample, prefactor='nonRes'):
     max_btag_score = ak.Array([0. for _ in range(ak.num(sample['event'], axis=0))])
@@ -100,6 +99,12 @@ def add_vars_resolved(sample, filepath):
         )
 
     for prefactor in PREFACTORS:
+
+        good_bjets = ak.zip({
+            'lead': (sample[f'{prefactor}_lead_bjet_pt'] != FILL_VALUE),
+            'sublead': (sample[f'{prefactor}_sublead_bjet_pt'] != FILL_VALUE),
+            'dijet': (sample[f'{prefactor}_lead_bjet_pt'] != FILL_VALUE) & (sample[f'{prefactor}_sublead_bjet_pt'] != FILL_VALUE)
+        })
     
         # Regressed bjet kinematics #
         bjet_4moms = {}
@@ -122,34 +127,56 @@ def add_vars_resolved(sample, filepath):
             sample[f'{field}_sigmaE_over_E'] = sample[f'{field}_energyErr'] / (sample[f'{field}_pt'] * np.cosh(sample[f'{field}_eta']))
             
             # bjet variables
-            sample[f'{prefactor}_{field}_bjet_pt_over_Mjj'] = sample[f'{prefactor}_{field}_bjet_pt'] / sample[f'{prefactor}_dijet_mass']
-            sample[f'{prefactor}_{field}_bjet_sigmapT_over_pT'] = sample[f'{prefactor}_{field}_bjet_PNetRegPtRawRes'] / sample[f'{prefactor}_{field}_bjet_pt']
+            sample[f'{prefactor}_{field}_bjet_pt_over_Mjj'] = ak.where(
+                good_bjets[field], 
+                sample[f'{prefactor}_{field}_bjet_pt'] / sample[f'{prefactor}_dijet_mass'],
+                FILL_VALUE
+            )
+            sample[f'{prefactor}_{field}_bjet_sigmapT_over_pT'] = ak.where(
+                good_bjets[field],
+                sample[f'{prefactor}_{field}_bjet_PNetRegPtRawRes'] / sample[f'{prefactor}_{field}_bjet_pt'],
+                FILL_VALUE
+            )
 
 
         # mHH variables #
-        sample[f'{prefactor}_pt_balance'] = sample[f'{prefactor}_HHbbggCandidate_pt'] / (sample['lead_pt'] + sample['sublead_pt'] + sample[f'{prefactor}_lead_bjet_pt'] + sample[f'{prefactor}_sublead_bjet_pt'])
+        sample[f'{prefactor}_pt_balance'] = ak.where(
+            good_bjets['dijet'],
+            sample[f'{prefactor}_HHbbggCandidate_pt'] / (sample['lead_pt'] + sample['sublead_pt'] + sample[f'{prefactor}_lead_bjet_pt'] + sample[f'{prefactor}_sublead_bjet_pt']),
+            FILL_VALUE
+        )
 
 
         # VH variables #
-        sample[f'{prefactor}_DeltaPhi_jj'] = deltaPhi(sample[f'{prefactor}_lead_bjet_phi'], sample[f'{prefactor}_sublead_bjet_phi'])
-        sample[f'{prefactor}_DeltaEta_jj'] = deltaEta(sample[f'{prefactor}_lead_bjet_eta'], sample[f'{prefactor}_sublead_bjet_eta'])
+        sample[f'{prefactor}_DeltaPhi_jj'] = ak.where(
+            good_bjets['dijet'],
+            deltaPhi(sample[f'{prefactor}_lead_bjet_phi'], sample[f'{prefactor}_sublead_bjet_phi']),
+            FILL_VALUE
+        )
+        sample[f'{prefactor}_DeltaEta_jj'] = ak.where(
+            good_bjets['dijet'],
+            deltaEta(sample[f'{prefactor}_lead_bjet_eta'], sample[f'{prefactor}_sublead_bjet_eta']),
+            FILL_VALUE
+        )
+
 
         # ISR-like jet variables
         isr_jet_4mom, isr_jet_bool = zh_isr_jet(sample, dijet_4mom, jet_4moms)
-        sample[f'{prefactor}_isr_jet_pt'] = ak.where(isr_jet_bool, isr_jet_4mom.pt, FILL_VALUE)  # pt of isr jet
+        sample[f'{prefactor}_isr_jet_pt'] = ak.where(  # pt of isr jet
+            isr_jet_bool & good_bjets['dijet'], 
+            isr_jet_4mom.pt, 
+            FILL_VALUE
+        )
         sample[f'{prefactor}_DeltaPhi_isr_jet_z'] = ak.where(  # phi angle between isr jet and z candidate
-            isr_jet_bool,
+            isr_jet_bool & good_bjets['dijet'],
             deltaPhi(isr_jet_4mom.phi, sample[f'{prefactor}_dijet_phi']), 
             FILL_VALUE
         )
 
+
         # max non-bjet btag score -> sets lower limit for resampling #
         sample[f'{prefactor}_max_nonbjet_btag'] = max_nonbjet_btag(sample, prefactor=prefactor)
 
-        # for field in sample.fields:
-        #     if not ("btagUParTAK4B" in field and "bjet" in field): continue
-        #     new_field = field[:field.find('Res')+len('Res')] + '_' + field[field.find('Res')+len('Res'):]
-        #     sample[new_field] = sample[field]
         add_bTagWP_resolved(sample, filepath, prefactor=prefactor)
 
         sample['pass_mva-0.7'] = ak.where(

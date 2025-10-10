@@ -38,13 +38,15 @@ BASIC_VARIABLES = lambda jet_prefix: {
     # bjet vars
     f'{jet_prefix}_lead_bjet_eta', # eta
     # f"{jet_prefix}_lead_bjet_btagPNetB",
-    f"{jet_prefix}_lead_bjet_bTagWPL", f"{jet_prefix}_lead_bjet_bTagWPM", f"{jet_prefix}_lead_bjet_bTagWPT",
-    f"{jet_prefix}_lead_bjet_bTagWPXT", f"{jet_prefix}_lead_bjet_bTagWPXXT",
+    f"{jet_prefix}lead_bjet_btagUParTAK4B",
+    # f"{jet_prefix}_lead_bjet_bTagWPL", f"{jet_prefix}_lead_bjet_bTagWPM", f"{jet_prefix}_lead_bjet_bTagWPT",
+    # f"{jet_prefix}_lead_bjet_bTagWPXT", f"{jet_prefix}_lead_bjet_bTagWPXXT",
     # --------
     f'{jet_prefix}_sublead_bjet_eta', 
     # f"{jet_prefix}_sublead_bjet_btagPNetB",
-    f"{jet_prefix}_sublead_bjet_bTagWPL", f"{jet_prefix}_sublead_bjet_bTagWPM", f"{jet_prefix}_sublead_bjet_bTagWPT",
-    f"{jet_prefix}_sublead_bjet_bTagWPXT", f"{jet_prefix}_sublead_bjet_bTagWPXXT",
+    f"{jet_prefix}sublead_bjet_btagUParTAK4B",
+    # f"{jet_prefix}_sublead_bjet_bTagWPL", f"{jet_prefix}_sublead_bjet_bTagWPM", f"{jet_prefix}_sublead_bjet_bTagWPT",
+    # f"{jet_prefix}_sublead_bjet_bTagWPXT", f"{jet_prefix}_sublead_bjet_bTagWPXXT",
     
     # diphoton vars
     'eta',
@@ -119,6 +121,7 @@ BASE_FILEPATH = 'Run3_202'
 CURRENT_TIME = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
 CWD = os.getcwd()
 MAKE_PLOTS = True
+DF_MASK = 'default'
 
 ################################
 
@@ -200,6 +203,12 @@ def make_output_filepath(filepath, base_output_dirpath, extra_text):
 
     return os.path.join(output_dirpath, filename)
 
+def get_df_mask(df, aux_df):
+    if DF_MASK == 'default':
+        return (aux_df[f'{JET_PREFIX}_resolved_BDT_mask'] > 0)
+    else:
+        raise NotImplementedError(f"Mask method {DF_MASK} not yet implemented, use \'default\'.")
+
 def no_standardize(column):
     no_std_terms = {
         'phi', 'eta',  # angular
@@ -226,6 +235,10 @@ def get_dfs(filepaths, BDT_vars, AUX_vars):
     for filepath in sorted(filepaths):
         dfs[filepath] = pq.read_table(filepath, columns=list(BDT_vars)).to_pandas()
         aux_dfs[filepath] = pq.read_table(filepath, columns=list(AUX_vars)).to_pandas()
+
+        df_mask = get_df_mask(dfs[filepath], aux_dfs[filepath])
+        dfs[filepath] = dfs[filepath].loc[df_mask].reset_index(drop=True)
+        aux_dfs[filepath] = aux_dfs[filepath].loc[df_mask].reset_index(drop=True)
     return dfs, aux_dfs
 
 def get_split_dfs(filepaths, BDT_vars, AUX_vars, fold_idx):
