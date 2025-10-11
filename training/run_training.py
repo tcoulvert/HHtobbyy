@@ -36,7 +36,8 @@ gpustat.print_gpustat()
 LPC_FILEPREFIX = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/training_parquets/"
 # PARQUET_TIME = "2025-10-08_14-25-00"  # 2022-23 WPs
 # PARQUET_TIME = "2025-10-07_17-32-07"  # 2024 WPs  
-PARQUET_TIME = "2025-10-09_16-32-50"  # 2024 UParT bTags
+# PARQUET_TIME = "2025-10-09_16-32-50"  # 2024 UParT bTags
+PARQUET_TIME = "2025-10-10_11-54-04"  # 2024 PNet bTags
 # PARQUET_TIME = ""  # 2022-24 WPs
 BASE_FILEPATH = os.path.join(LPC_FILEPREFIX, PARQUET_TIME, "")
 
