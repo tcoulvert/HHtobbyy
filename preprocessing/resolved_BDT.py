@@ -97,7 +97,7 @@ AUX_VARIABLES = lambda jet_prefix: {
     'event', 'lumi', 'hash', 'sample_name', 
 
     # MC info
-    'eventWeight',
+    'weight', 'eventWeight',
 
     # mass
     'mass', 
@@ -120,8 +120,11 @@ SEED = 21
 BASE_FILEPATH = 'Run3_202'
 CURRENT_TIME = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
 CWD = os.getcwd()
-MAKE_PLOTS = True
 DF_MASK = 'default'
+
+DEBUG = False
+DRYRUN = False
+MAKE_PLOTS = False
 
 ################################
 
@@ -143,6 +146,21 @@ parser.add_argument(
     action="store_true",
     help="Flag to force the re-creation of the files"
 )
+parser.add_argument(
+    "--plots", 
+    action="store_true",
+    help="Makes plots of dataset input variables"
+)
+parser.add_argument(
+    "--debug", 
+    action="store_true",
+    help="Flag to print debug messages"
+)
+parser.add_argument(
+    "--dryrun", 
+    action="store_true",
+    help="Flag to not save parquets out and just try running"
+)
 
 ################################
 
@@ -154,8 +172,9 @@ def plot_vars(df, output_dirpath, sample_name, title="pre-std, train0"):
 
     if "pre" in std_type: apply_logs(df)
 
-    print('='*60+'\n'+'='*60)
-    print(output_dirpath)
+    if DEBUG:
+        print('='*60+'\n'+'='*60)
+        print(output_dirpath)
 
     for var in df.columns:
         if log_standardize(var): var_label = f"ln({var})"
@@ -169,9 +188,12 @@ def plot_vars(df, output_dirpath, sample_name, title="pre-std, train0"):
 
         max_val = np.max(df.loc[var_mask, var]) if good_var_bool else 0.
         min_val = np.min(df.loc[var_mask, var]) if good_var_bool else 1.
-        print('-'*60)
-        print(var)
-        print(f"min = {min_val}, max = {max_val}")
+
+        if DEBUG:
+            print('-'*60)
+            print(var)
+            print(f"min = {min_val}, max = {max_val}")
+
         var_hist = hist.Hist(
             hist.axis.Regular(100, min_val, max_val, name="var", label=var_label, growth=True), 
         ).fill(var=df.loc[var_mask, var])
@@ -196,7 +218,7 @@ def make_output_filepath(filepath, base_output_dirpath, extra_text):
         CURRENT_TIME, 
         filepath[filepath.find(BASE_FILEPATH):filepath.rfind('/')]
     )
-    if not os.path.exists(output_dirpath):
+    if not os.path.exists(output_dirpath) and not DRYRUN:
         os.makedirs(output_dirpath)
 
     filename = filename[:filename.rfind('.')] + f"_{extra_text}_{CURRENT_TIME}" + filename[filename.rfind('.'):]
@@ -309,12 +331,19 @@ def preprocess_resolved_bdt(input_filepaths, output_dirpath):
 
         for filepath, df in train_dfs_fold.items():
             output_filepath = make_output_filepath(filepath, output_dirpath, f"train{fold_idx}")
-            if MAKE_PLOTS: plot_vars(
-                df, 
-                "/".join(output_filepath.split("/")[:-1]), 
-                train_aux_dfs_fold[filepath]["sample_name"][0], 
-                title=f"pre-std, train{fold_idx}"
-            )
+            if MAKE_PLOTS: 
+                plot_vars(
+                    df, 
+                    "/".join(output_filepath.split("/")[:-1]), 
+                    train_aux_dfs_fold[filepath]["sample_name"][0], 
+                    title=f"pre-std, train{fold_idx}"
+                )
+            if DEBUG:
+                print('-'*60)
+                print(f"input = \n{filepath}\n{'-'*60}\noutput = \n{output_filepath}")
+                print(f"num events = {len(df)}")
+                print(f"sum of weights = {train_aux_dfs_fold[filepath].loc[:,'weight'].sum()}")
+                print(f"sum of eventWeights = {train_aux_dfs_fold[filepath].loc[:,'eventWeight'].sum()}")
 
             cols = list(df.columns)
             df = apply_logs(df)
@@ -331,7 +360,7 @@ def preprocess_resolved_bdt(input_filepaths, output_dirpath):
             for aux_col in train_aux_dfs_fold[filepath].columns:
                 df[f"AUX_{aux_col}"] = train_aux_dfs_fold[filepath].loc[:,aux_col]
 
-            df.to_parquet(output_filepath)
+            if not DRYRUN: df.to_parquet(output_filepath)
 
 
         for filepath in test_dfs.keys():
@@ -340,12 +369,13 @@ def preprocess_resolved_bdt(input_filepaths, output_dirpath):
 
         for filepath, df in test_dfs_fold.items():
             output_filepath = make_output_filepath(filepath, output_dirpath, f"test{fold_idx}")
-            if MAKE_PLOTS: plot_vars(
-                df, 
-                "/".join(output_filepath.split("/")[:-1]), 
-                test_aux_dfs_fold[filepath]["sample_name"][0], 
-                title=f"pre-std, test{fold_idx}"
-            )
+            if MAKE_PLOTS: 
+                plot_vars(
+                    df, 
+                    "/".join(output_filepath.split("/")[:-1]), 
+                    test_aux_dfs_fold[filepath]["sample_name"][0], 
+                    title=f"pre-std, test{fold_idx}"
+                )
 
             cols = list(df.columns)
             df = apply_logs(df)
@@ -362,10 +392,14 @@ def preprocess_resolved_bdt(input_filepaths, output_dirpath):
             for aux_col in test_aux_dfs_fold[filepath].columns:
                 df[f"AUX_{aux_col}"] = test_aux_dfs_fold[filepath].loc[:,aux_col]
 
-            df.to_parquet(output_filepath)
+            if not DRYRUN: df.to_parquet(output_filepath)
 
 if __name__ == '__main__':
     args = parser.parse_args()
+
+    DEBUG = args.debug
+    DRYRUN = args.dryrun
+    MAKE_PLOTS = args.plots
 
     with open(args.input_filepaths, 'r') as f:
         input_filepaths = json.load(f)
