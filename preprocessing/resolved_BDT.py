@@ -225,11 +225,11 @@ def make_output_filepath(filepath, base_output_dirpath, extra_text):
 
     return os.path.join(output_dirpath, filename)
 
-def get_df_mask(df, aux_df):
+def get_df_mask(df):
     if DF_MASK == 'none':
         return (df['pt'] > 0)
     if DF_MASK == 'default':
-        return (aux_df[f'{JET_PREFIX}_resolved_BDT_mask'] > 0)
+        return (df[f'{JET_PREFIX}_resolved_BDT_mask'] > 0)
     else:
         raise NotImplementedError(f"Mask method {DF_MASK} not yet implemented, use \'default\'.")
 
@@ -260,12 +260,14 @@ def get_dfs(filepaths, BDT_vars, AUX_vars):
         if DEBUG:
             print('-'*60)
             print(filepath)
-        dfs[filepath] = pq.read_table(filepath, columns=list(BDT_vars)).to_pandas()
-        aux_dfs[filepath] = pq.read_table(filepath, columns=list(AUX_vars)).to_pandas()
+            
+        pq_file = pq.ParquetFile(filepath)
+        for pq_batch in pq_file.iter_batches(batch_size=131_072, columns=list(BDT_vars)+list(AUX_vars)):
+            df_batch = pq_batch.to_pandas()
+            df_mask = get_df_mask(df_batch)
+            dfs[filepath] = df_batch.loc[df_mask, list(BDT_vars)].reset_index(drop=True)
+            aux_dfs[filepath] = df_batch.loc[df_mask, list(AUX_vars)].reset_index(drop=True)
 
-        df_mask = get_df_mask(dfs[filepath], aux_dfs[filepath])
-        dfs[filepath] = dfs[filepath].loc[df_mask].reset_index(drop=True)
-        aux_dfs[filepath] = aux_dfs[filepath].loc[df_mask].reset_index(drop=True)
     return dfs, aux_dfs
 
 def get_split_dfs(filepaths, BDT_vars, AUX_vars, fold_idx):
