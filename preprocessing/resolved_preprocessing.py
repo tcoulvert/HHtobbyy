@@ -19,7 +19,6 @@ resolved_bTagWPs = {
     '2023*preBPix': ("btagPNetB", {'L': 0.0358, 'M': 0.1917, 'T': 0.6172, 'XT': 0.7515, 'XXT': 0.9659}),
     '2023*postBPix': ("btagPNetB", {'L': 0.0359, 'M': 0.1919, 'T': 0.6133, 'XT': 0.7544, 'XXT': 0.9688}),
     '2024': ("btagUParTAK4B", {'L': 0.0246, 'M': 0.1272, 'T': 0.4648, 'XT': 0.6298, 'XXT': 0.9739})
-    # '2024': ("btagPNetB", {'L': 0.0359, 'M': 0.1919, 'T': 0.6133, 'XT': 0.7544, 'XXT': 0.9688}),
 }
 
 FILL_VALUE = -999
@@ -39,7 +38,11 @@ def add_bTagWP_resolved(sample, era, prefactor='nonRes'):
         else: btag_field = f"{prefactor}_{bjet_type}_bjet_{bTagVar}"
 
         for WPname, WP in WP_dict.items():
-            sample[f"{prefactor}_{bjet_type}_bjet_bTagWP{WPname}"] = ak.where(sample[btag_field] > WP, 1, 0)
+            try:
+                sample[f"{prefactor}_{bjet_type}_bjet_bTagWP{WPname}"] = ak.where(sample[btag_field] > WP, 1, 0)
+            except:
+                sample[f"{prefactor}_{bjet_type}_bjet_bTagWP{WPname}"] = ak.where(sample[f"{prefactor}_{bjet_type}_bjet_{bTagVar}"] > WP, 1, 0)
+
 
 def jet_mask(sample, i, prefactor='nonRes'):
     return (

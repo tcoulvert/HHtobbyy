@@ -1,7 +1,7 @@
 import argparse
 import glob
 import logging
-import os
+import os, subprocess
 
 import awkward as ak
 import numpy as np
@@ -78,7 +78,8 @@ sample_name_map = {
 BAD_DIRS = {'outdated'}
 
 RUN_ALL_MC = False
-END_FILEPATH = "*.parquet"
+END_FILEPATH = "*merged.parquet"
+NEW_END_FILEPATH = "*preprocessed.parquet"
 
 ################################
 
@@ -126,45 +127,54 @@ def get_files(eras, type='MC'):
 
         eras[era] = sorted(all_dirs_set)
 
+def get_output_filepath(input_filepath: str):
+    keep_substr = input_filepath[:input_filepath.rfind(END_FILEPATH[1:])]
+    new_substr = NEW_END_FILEPATH[1:]
+    return keep_substr+new_substr
+
 def make_dataset(filepath, era, type='MC'):
     print('======================== \n', 'Starting \n', filepath)
+    pq_file = pq.ParquetFile(filepath)
     schema = pq.read_schema(filepath)
-    sample = ak.from_arrow(
-        pq.read_table(
-            filepath, 
-            columns=[
-                field for field in schema.names
-                if (
-                    'VBF' not in field
-                    and not (
-                        'nonResReg' in field and 'nonResReg_DNNpair' not in field
-                    )
-                )
-            ]
+    columns = [
+        field for field in schema.names if (
+            'VBF' not in field
+            and not (
+                'nonResReg' in field and 'nonResReg_DNNpair' not in field
+            )
         )
-    )
+    ]
 
-    # Add useful parquet meta-info
-    sample['sample_name'] = match_sample(filepath, sample_name_map) if match_sample(filepath, sample_name_map) is not None else filepath.split('/')[-3]
-    sample['sample_era'] = era[era.find('Run3_202'):-1]
-    if type.upper() == 'MC':
-        print(f"lumi match = {match_sample(filepath, luminosities.keys())}")
-        print(f"xs match = {match_sample(filepath, cross_sections.keys())}")
-        sample['eventWeight'] = (
-            sample['weight'] 
-            * luminosities[match_sample(filepath, luminosities.keys())] 
-            * cross_sections[match_sample(filepath, cross_sections.keys())]
-        )
-    else: 
-        sample['eventWeight'] =  ak.ones_like(sample['pt'])
+    output_filepath = get_output_filepath(filepath)
+    pq_writer = None
+    for pq_batch in pq_file.iter_batches(batch_size=131_072, columns=columns):
+        ak_batch = ak.from_arrow(pq_batch)
 
-    add_vars_resolved(sample, filepath)
-    add_vars_boosted(sample, filepath)
-    if 'hash' not in sample.fields:
-        sample['hash'] = np.arange(ak.num(sample['pt'], axis=0))
+        # Add useful parquet meta-info
+        ak_batch['sample_name'] = match_sample(filepath, sample_name_map) if match_sample(filepath, sample_name_map) is not None else filepath.split('/')[-3]
+        ak_batch['sample_era'] = era[era.find('Run3_202'):-1]
+        if type.upper() == 'MC':
+            print(f"lumi match = {match_sample(filepath, luminosities.keys())}")
+            print(f"xs match = {match_sample(filepath, cross_sections.keys())}")
+            ak_batch['eventWeight'] = (
+                ak_batch['weight'] 
+                * luminosities[match_sample(filepath, luminosities.keys())] 
+                * cross_sections[match_sample(filepath, cross_sections.keys())]
+            )
+        else: 
+            ak_batch['eventWeight'] =  ak.ones_like(ak_batch['pt'])
 
-    ak.to_parquet(sample, filepath)
-    del sample
+        add_vars_resolved(ak_batch, filepath)
+        add_vars_boosted(ak_batch, filepath)
+        if 'hash' not in ak_batch.fields:
+            ak_batch['hash'] = np.arange(ak.num(ak_batch['pt'], axis=0))
+
+        table_batch = ak.to_arrow_table(ak_batch)
+        if pq_writer is None:
+            pq_writer = pq.ParquetWriter(output_filepath, schema=table_batch.schema)
+        pq_writer.write_table(table_batch)
+    # subprocess.run(["rm", "-f", filepath])
+    # subprocess.run(["mv", output_filepath, filepath])
     print('Finished \n', '========================')
 
 def make_mc(sim_eras=None, output=None):
@@ -182,7 +192,10 @@ def make_mc(sim_eras=None, output=None):
     # Perform the variable calculation and merging
     for sim_era, filepaths in sim_eras.items():
         for filepath in filepaths:
-            if 'nominal' not in filepath: continue
+            if (
+                # 'nominal' not in filepath 
+                match_sample(filepath, {'GGJets*40to80', 'GGJets*80', 'TTGG'}) is None
+            ): continue
             make_dataset(filepath, sim_era)
 
 def make_data(data_eras=None, output=None):
