@@ -192,10 +192,7 @@ def make_mc(sim_eras=None, output=None):
     # Perform the variable calculation and merging
     for sim_era, filepaths in sim_eras.items():
         for filepath in filepaths:
-            if (
-                # 'nominal' not in filepath 
-                match_sample(filepath, {'GGJets*40to80', 'GGJets*80', 'TTGG'}) is None
-            ): continue
+            if match_sample(filepath, {'_up/', '_down/'}) is not None: continue
             make_dataset(filepath, sim_era)
 
 def make_data(data_eras=None, output=None):
