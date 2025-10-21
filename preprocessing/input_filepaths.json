@@ -70,9 +70,9 @@
         "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/Run3_2024/sim/WpHtoGG/nominal/NOTAG_merged.parquet",
         "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/Run3_2024/sim/ZHtoGG/nominal/NOTAG_merged.parquet",
 
-        "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/Run3_2024/sim/GGJets_MGG-40to80/nominal/NOTAG_merged.parquet",
-        "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/Run3_2024/sim/GGJets_MGG-80/nominal/NOTAG_merged.parquet",
-        "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/Run3_2024/sim/TTGG/nominal/NOTAG_merged.parquet"
+        "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/Run3_2024/sim/GGJets_MGG-40to80/NOTAG_preprocessed.parquet",
+        "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/Run3_2024/sim/GGJets_MGG-80/NOTAG_preprocessed.parquet",
+        "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/Run3_2024/sim/TTGG/NOTAG_preprocessed.parquet"
     ],
     "train": [
         "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/Run3_2022/sim/preEE/WminusH_Hto2G_Wto2Q_M-125/nominal/NOTAG_merged.parquet",

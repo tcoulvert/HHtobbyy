@@ -34,19 +34,18 @@ from retrieval_utils import (
 gpustat.print_gpustat()
 
 LPC_FILEPREFIX = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/training_parquets/"
-# PARQUET_TIME = "2025-10-08_14-25-00"  # 2022-23 WPs
+# PARQUET_TIME = ""  # 2022-23 WPs
 # PARQUET_TIME = "2025-10-20_16-57-16"  # 2022-23 PNet w/ extra kappa lambda samples
 # PARQUET_TIME = "2025-10-20_16-57-44"  # 2022-23 PNet w/ large batch sample
-# PARQUET_TIME = "2025-10-07_17-32-07"  # 2024 WPs  
+# PARQUET_TIME = ""  # 2024 WPs  
 # PARQUET_TIME = "2025-10-20_16-16-12"  # 2024 PNet w/ merge fix
-# PARQUET_TIME = "2025-10-09_16-32-50"  # 2024 UParT bTags
-PARQUET_TIME = "2025-10-20_16-16-12"  # 2024 PNet bTags
-# PARQUET_TIME = ""  # 2022-24 WPs
+# PARQUET_TIME = "2025-10-20_16-16-12"  # 2024 PNet bTags
+PARQUET_TIME = "2025-10-21_11-17-26"  # 2022-24 WPs
 BASE_FILEPATH = os.path.join(LPC_FILEPREFIX, PARQUET_TIME, "")
 
 CURRENT_DIRPATH = str(Path().absolute())
 VERSION = 'v16'
-VARS = '24_bTagPNet'
+VARS = '22to24_bTagWP'
 CURRENT_TIME = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
 
 OUTPUT_DIRPATH = os.path.join(CURRENT_DIRPATH, f"../MultiClassBDT_model_outputs", VERSION, VARS, CURRENT_TIME)
