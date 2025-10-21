@@ -147,7 +147,7 @@ def make_dataset(filepath, era, type='MC'):
 
     output_filepath = get_output_filepath(filepath)
     pq_writer = None
-    for pq_batch in pq_file.iter_batches(batch_size=131_072, columns=columns):
+    for pq_batch in pq_file.iter_batches(batch_size=524_288, columns=columns):
         ak_batch = ak.from_arrow(pq_batch)
 
         # Add useful parquet meta-info
