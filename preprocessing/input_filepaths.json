@@ -75,24 +75,60 @@
         "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/Run3_2024/sim/TTGG/NOTAG_preprocessed.parquet"
     ],
     "train": [
+        "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/Run3_2022/sim/preEE/GluGlutoHH_kl-1p00_kt-1p00_c2-0p00_batch4/nominal/NOTAG_merged.parquet",
+        "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/Run3_2022/sim/preEE/GluGlutoHH_kl-1p00_kt-1p00_c2-0p00_batch5/nominal/NOTAG_merged.parquet",
+        "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/Run3_2022/sim/preEE/GluGlutoHH_kl-1p00_kt-1p00_c2-0p00_batch6/nominal/NOTAG_merged.parquet",
+        "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/Run3_2022/sim/preEE/GluGlutoHH_kl-0p00_kt-1p00_c2-0p00/nominal/NOTAG_merged.parquet",
+        "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/Run3_2022/sim/preEE/GluGlutoHH_kl-2p45_kt-1p00_c2-0p00/nominal/NOTAG_merged.parquet",
+        "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/Run3_2022/sim/preEE/GluGlutoHH_kl-5p00_kt-1p00_c2-0p00/nominal/NOTAG_merged.parquet",
+
         "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/Run3_2022/sim/preEE/WminusH_Hto2G_Wto2Q_M-125/nominal/NOTAG_merged.parquet",
         "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/Run3_2022/sim/preEE/WplusH_Hto2G_Wto2Q_M-125/nominal/NOTAG_merged.parquet",
         "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/Run3_2022/sim/preEE/ZH_Hto2G_Zto2Q_M-125/nominal/NOTAG_merged.parquet",
 
+
+        "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/Run3_2022/sim/postEE/GluGlutoHH_kl-1p00_kt-1p00_c2-0p00_batch4/nominal/NOTAG_merged.parquet",
+        "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/Run3_2022/sim/postEE/GluGlutoHH_kl-1p00_kt-1p00_c2-0p00_batch5/nominal/NOTAG_merged.parquet",
+        "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/Run3_2022/sim/postEE/GluGlutoHH_kl-1p00_kt-1p00_c2-0p00_batch6/nominal/NOTAG_merged.parquet",
+        "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/Run3_2022/sim/postEE/GluGlutoHH_kl-0p00_kt-1p00_c2-0p00/nominal/NOTAG_merged.parquet",
+        "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/Run3_2022/sim/postEE/GluGlutoHH_kl-2p45_kt-1p00_c2-0p00/nominal/NOTAG_merged.parquet",
+        "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/Run3_2022/sim/postEE/GluGlutoHH_kl-5p00_kt-1p00_c2-0p00/nominal/NOTAG_merged.parquet",
 
         "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/Run3_2022/sim/postEE/WminusH_Hto2G_Wto2Q_M-125/nominal/NOTAG_merged.parquet",
         "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/Run3_2022/sim/postEE/WplusH_Hto2G_Wto2Q_M-125/nominal/NOTAG_merged.parquet",
         "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/Run3_2022/sim/postEE/ZH_Hto2G_Zto2Q_M-125/nominal/NOTAG_merged.parquet",
 
 
+        "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/Run3_2023/sim/preBPix/GluGlutoHH_kl-1p00_kt-1p00_c2-0p00_batch4/nominal/NOTAG_merged.parquet",
+        "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/Run3_2023/sim/preBPix/GluGlutoHH_kl-1p00_kt-1p00_c2-0p00_batch5/nominal/NOTAG_merged.parquet",
+        "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/Run3_2023/sim/preBPix/GluGlutoHH_kl-1p00_kt-1p00_c2-0p00_batch6/nominal/NOTAG_merged.parquet",
+        "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/Run3_2023/sim/preBPix/GluGlutoHH_kl-0p00_kt-1p00_c2-0p00/nominal/NOTAG_merged.parquet",
+        "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/Run3_2023/sim/preBPix/GluGlutoHH_kl-2p45_kt-1p00_c2-0p00/nominal/NOTAG_merged.parquet",
+        "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/Run3_2023/sim/preBPix/GluGlutoHH_kl-5p00_kt-1p00_c2-0p00/nominal/NOTAG_merged.parquet",
+
         "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/Run3_2023/sim/preBPix/WminusH_Hto2G_Wto2Q_M-125/nominal/NOTAG_merged.parquet",
         "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/Run3_2023/sim/preBPix/WplusH_Hto2G_Wto2Q_M-125/nominal/NOTAG_merged.parquet",
         "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/Run3_2023/sim/preBPix/ZH_Hto2G_Zto2Q_M-125/nominal/NOTAG_merged.parquet",
 
 
+        "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/Run3_2023/sim/postBPix/GluGlutoHH_kl-1p00_kt-1p00_c2-0p00_batch4/nominal/NOTAG_merged.parquet",
+        "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/Run3_2023/sim/postBPix/GluGlutoHH_kl-1p00_kt-1p00_c2-0p00_batch5/nominal/NOTAG_merged.parquet",
+        "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/Run3_2023/sim/postBPix/GluGlutoHH_kl-1p00_kt-1p00_c2-0p00_batch6/nominal/NOTAG_merged.parquet",
+        "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/Run3_2023/sim/postBPix/GluGlutoHH_kl-0p00_kt-1p00_c2-0p00/nominal/NOTAG_merged.parquet",
+        "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/Run3_2023/sim/postBPix/GluGlutoHH_kl-2p45_kt-1p00_c2-0p00/nominal/NOTAG_merged.parquet",
+        "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/Run3_2023/sim/postBPix/GluGlutoHH_kl-5p00_kt-1p00_c2-0p00/nominal/NOTAG_merged.parquet",
+
         "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/Run3_2023/sim/postBPix/WminusH_Hto2G_Wto2Q_M-125/nominal/NOTAG_merged.parquet",
         "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/Run3_2023/sim/postBPix/WplusH_Hto2G_Wto2Q_M-125/nominal/NOTAG_merged.parquet",
-        "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/Run3_2023/sim/postBPix/ZH_Hto2G_Zto2Q_M-125/nominal/NOTAG_merged.parquet"
+        "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/Run3_2023/sim/postBPix/ZH_Hto2G_Zto2Q_M-125/nominal/NOTAG_merged.parquet",
+
+
+        "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/Run3_2024/sim/GluGlutoHH_kl-1p00_kt-1p00_c2-0p00_batch4/nominal/NOTAG_merged.parquet",
+        "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/Run3_2024/sim/GluGlutoHH_kl-1p00_kt-1p00_c2-0p00_batch5/nominal/NOTAG_merged.parquet",
+        "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/Run3_2024/sim/GluGlutoHH_kl-1p00_kt-1p00_c2-0p00_batch6/nominal/NOTAG_merged.parquet",
+        "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/Run3_2024/sim/GluGlutoHH_kl-0p00_kt-1p00_c2-0p00/nominal/NOTAG_merged.parquet",
+        "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/Run3_2024/sim/GluGlutoHH_kl-2p45_kt-1p00_c2-0p00/nominal/NOTAG_merged.parquet",
+        "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/Run3_2024/sim/GluGlutoHH_kl-5p00_kt-1p00_c2-0p00/nominal/NOTAG_merged.parquet"
     ],
     "test": []
 }

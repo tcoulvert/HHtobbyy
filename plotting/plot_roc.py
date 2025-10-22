@@ -96,10 +96,10 @@ def plot_rocs(
     plt.ylim((0., 1.))
     if log is not None and re.search('x', log) is not None:
         plt.xscale('log')
-        plt.xlim((1e-4, 1))
+        plt.xlim((1e-5, 1))
     if log is not None and re.search('y', log) is not None:
         plt.yscale('log')
-        plt.ylim((1e-3, 1))
+        plt.ylim((1e-4, 1))
     
     plt.savefig(
         plot_filepath(plot_name, plot_dirpath, plot_prefix, plot_postfix), 
@@ -212,15 +212,15 @@ def make_rocs(output_dirpath: str, base_filepath: str):
 
         fptidx = np.argmin(np.abs(fpr_tth - 1e-2))
         fpqidx = np.argmin(np.abs(fpr_qcd - 5e-5))
+        fpqlooseidx = np.argmin(np.abs(fpr_qcd - 1e-3))
 
         print_str = (
-            output_dirpath.split('/')[-2] + "\n" + f"sig vs. {sample_name if sample_name != order[0] else 'all'}" + "\n"
-            + f"DttH - signal tpr = {tpr_tth[fptidx]:.4f} @ fpr of {fpr_tth[fptidx]:.4f}\n"
-            + f"DQCD - signal tpr = {tpr_qcd[fpqidx]:.4f} @ fpr of {fpr_qcd[fpqidx]:.4f}"
+            output_dirpath.split('/')[-2] + "\n" + f"sig vs. {sample_name if sample_name != order[0] else 'all'}"
+            + '\n' + f"DttH - signal tpr = {tpr_tth[fptidx]:.4f} @ fpr of {fpr_tth[fptidx]:.4f}"
+            + '\n' + f"DQCD - signal tpr = {tpr_qcd[fpqlooseidx]:.4f} @ fpr of {fpr_qcd[fpqlooseidx]:.4f}"
+            + '\n' + f"DQCD - signal tpr = {tpr_qcd[fpqidx]:.4f} @ fpr of {fpr_qcd[fpqidx]:.4f}"
         )
         print(print_str)
-        # print(f"DttH - signal tpr = {tpr_tth[fptidx]:.4f} @ fpr of {fpr_tth[fptidx]:.4f}")
-        # print(f"DQCD - signal tpr = {tpr_qcd[fpqidx]:.4f} @ fpr of {fpr_qcd[fpqidx]:.4f}")
 
         fpr_tth = np.interp(base_tpr, tpr_tth, fpr_tth)
         threshold_tth = np.interp(base_tpr, tpr_tth, threshold_tth)
