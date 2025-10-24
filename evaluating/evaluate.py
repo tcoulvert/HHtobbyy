@@ -30,7 +30,14 @@ from retrieval_utils import (
 ################################
 
 
-def evaluate_model(output_dirpath: str, base_filepath: str, fold: int=None):
+gpustat.print_gpustat()
+
+order = ['ggF HH', 'ttH + bbH', 'VH', 'non-res + ggFH + VBFH']
+
+################################
+
+
+def evaluate_model(output_dirpath: str, base_filepath: str, fold: int=None, preds: str='train-val-test'):
     output_dirpath = os.path.join(output_dirpath, "")
     param_filepath = os.path.join(output_dirpath, f'{output_dirpath.split('/')[-2]}_best_params.json')
     with open(param_filepath, 'r') as f:
@@ -38,25 +45,30 @@ def evaluate_model(output_dirpath: str, base_filepath: str, fold: int=None):
     param = list(param.items()) + [('eval_metric', 'mlogloss')]
 
     train_preds, val_preds, test_preds = {}, {}, {}
-    for fold_idx in range(N_FOLDS):
+    for fold_idx in range(5):
         if fold is not None and fold != fold_idx: continue
         print(f"fold {fold_idx}")
 
-        booster.load_model(os.path.join(OUTPUT_DIRPATH, f'{CURRENT_TIME}_BDT_fold{fold_idx}.model'))
+        booster = xgb.Booster(param)
+        booster.load_model(os.path.join(output_dirpath, f"{output_dirpath.split('/')[-2]}_BDT_fold{fold_idx}.model"))
 
         train_dm, val_dm, test_dm = get_DMatrices(
             utils.get_filepaths_func(base_filepath), fold_idx
         )
 
-        train_preds[f"fold_{fold_idx}"] = booster.predict(
-            train_dm, iteration_range=(0, booster.best_iteration+1)
-        )
-        val_preds[f"fold_{fold_idx}"] = booster.predict(
-            val_dm, iteration_range=(0, booster.best_iteration+1)
-        )
-        test_preds[f"fold_{fold_idx}"] = booster.predict(
-            test_dm, iteration_range=(0, booster.best_iteration+1)
-        )
+        if 'train' in preds.lower():
+            train_preds[f"fold_{fold_idx}"] = booster.predict(
+                train_dm, iteration_range=(0, booster.best_iteration+1)
+            )
+        if 'val' in preds.lower():
+            val_preds[f"fold_{fold_idx}"] = booster.predict(
+                val_dm, iteration_range=(0, booster.best_iteration+1)
+            )
+        if 'test' in preds.lower():
+            test_preds[f"fold_{fold_idx}"] = booster.predict(
+                test_dm, iteration_range=(0, booster.best_iteration+1)
+            )
 
-    return train_preds, val_preds, test_preds
+    return_tuple = tuple([preds_dict for preds_name, preds_dict in zip(['train', 'val', 'test'], [train_preds, val_preds, test_preds]) if preds_name in preds.lower()])
+    return return_tuple
 

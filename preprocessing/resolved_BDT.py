@@ -41,12 +41,16 @@ BASIC_VARIABLES = lambda jet_prefix: {
     # f"{jet_prefix}lead_bjet_btagUParTAK4B",
     f"{jet_prefix}_lead_bjet_bTagWPL", f"{jet_prefix}_lead_bjet_bTagWPM", f"{jet_prefix}_lead_bjet_bTagWPT",
     f"{jet_prefix}_lead_bjet_bTagWPXT", f"{jet_prefix}_lead_bjet_bTagWPXXT",
+    # f"{jet_prefix}_lead_bjet_bTagWPXMT",
+    # f"{jet_prefix}_lead_bjet_bTagWPXXXT",
     # --------
     f'{jet_prefix}_sublead_bjet_eta', 
     # f"{jet_prefix}_sublead_bjet_btagPNetB",
     # f"{jet_prefix}sublead_bjet_btagUParTAK4B",
     f"{jet_prefix}_sublead_bjet_bTagWPL", f"{jet_prefix}_sublead_bjet_bTagWPM", f"{jet_prefix}_sublead_bjet_bTagWPT",
     f"{jet_prefix}_sublead_bjet_bTagWPXT", f"{jet_prefix}_sublead_bjet_bTagWPXXT",
+    # f"{jet_prefix}_sublead_bjet_bTagWPXMT",
+    # f"{jet_prefix}_sublead_bjet_bTagWPXXXT",
     
     # diphoton vars
     'eta',
@@ -379,6 +383,12 @@ def preprocess_resolved_bdt(input_filepaths, output_dirpath):
                     test_aux_dfs_fold[filepath]["sample_name"][0], 
                     title=f"pre-std, test{fold_idx}"
                 )
+            if DEBUG:
+                print('-'*60)
+                print(f"input = \n{filepath}\n{'-'*60}\noutput = \n{output_filepath}")
+                print(f"num events = {len(df)}")
+                print(f"sum of weights = {train_aux_dfs_fold[filepath].loc[:,'weight'].sum()}")
+                print(f"sum of eventWeights = {train_aux_dfs_fold[filepath].loc[:,'eventWeight'].sum()}")
 
             cols = list(df.columns)
             df = apply_logs(df)

@@ -73,8 +73,6 @@ plt.rcParams.update({'font.size': 20})
 cmap_petroff10 = ["#3f90da", "#ffa90e", "#bd1f01", "#94a4a2", "#832db6", "#a96b59", "#e76300", "#b9ac70", "#717581", "#92dadd"]
 plt.rcParams.update({"axes.prop_cycle": cycler("color", cmap_petroff10)})
 
-
-
 order = ['ggF HH', 'ttH + bbH', 'VH', 'non-res + ggFH + VBFH']
 
 ################################
@@ -210,15 +208,23 @@ def make_rocs(output_dirpath: str, base_filepath: str):
         fpr_tth, tpr_tth, threshold_tth = roc_curve(signal_truths, tth_preds)
         fpr_qcd, tpr_qcd, threshold_qcd = roc_curve(signal_truths, qcd_preds)
 
-        fptidx = np.argmin(np.abs(fpr_tth - 1e-2))
-        fpqidx = np.argmin(np.abs(fpr_qcd - 5e-5))
-        fpqlooseidx = np.argmin(np.abs(fpr_qcd - 1e-3))
+        def sqrtNerr(num, denom):
+            return ( (num / denom**2) + (num**2 / denom**3) )**0.5  # Poisson error
 
+        fptidx = np.argmin(np.abs(fpr_tth - 1e-2))
+        fptstat = sqrtNerr(np.sum(np.logical_and(signal_truths > 0, tth_preds > threshold_tth[fptidx])), np.sum(signal_truths > 0))
+        fpqidx = np.argmin(np.abs(fpr_qcd - 5e-5))
+        fpqstat = sqrtNerr(np.sum(np.logical_and(signal_truths > 0, qcd_preds > threshold_tth[fpqidx])), np.sum(signal_truths > 0))
+        fpqlooseidx = np.argmin(np.abs(fpr_qcd - 1e-3))
+        fpqloosestat = sqrtNerr(np.sum(np.logical_and(signal_truths > 0, qcd_preds > threshold_tth[fpqlooseidx])), np.sum(signal_truths > 0))
+
+        head_str = ' - '.join(output_dirpath.split('/')[-3:-1])+'\n' if sample_name == order[0] else ''
         print_str = (
-            output_dirpath.split('/')[-2] + "\n" + f"sig vs. {sample_name if sample_name != order[0] else 'all'}"
-            + '\n' + f"DttH - signal tpr = {tpr_tth[fptidx]:.4f} @ fpr of {fpr_tth[fptidx]:.4f}"
-            + '\n' + f"DQCD - signal tpr = {tpr_qcd[fpqlooseidx]:.4f} @ fpr of {fpr_qcd[fpqlooseidx]:.4f}"
-            + '\n' + f"DQCD - signal tpr = {tpr_qcd[fpqidx]:.4f} @ fpr of {fpr_qcd[fpqidx]:.4f}"
+            head_str
+            + f"sig vs. {sample_name if sample_name != order[0] else 'all'}"
+            + '\n' + f"  * DttH - signal tpr = {tpr_tth[fptidx]:.3f}±{fptstat:.3f} @ fpr of {fpr_tth[fptidx]:.3f}"
+            + '\n' + f"  * DQCD - signal tpr = {tpr_qcd[fpqlooseidx]:.4f}±{fpqloosestat:.4f} @ fpr of {fpr_qcd[fpqlooseidx]:.4f}"
+            + '\n' + f"  * DQCD - signal tpr = {tpr_qcd[fpqidx]:.5f}±{fpqstat:.5f} @ fpr of {fpr_qcd[fpqidx]:.5f}"
         )
         print(print_str)
 
