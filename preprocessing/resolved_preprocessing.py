@@ -19,7 +19,7 @@ resolved_bTagWPs = {
     '2023*preBPix': ("btagPNetB", {'L': 0.0358, 'M': 0.1917, 'T': 0.6172, 'XT': 0.7515, 'XXT': 0.9659}),
     '2023*postBPix': ("btagPNetB", {'L': 0.0359, 'M': 0.1919, 'T': 0.6133, 'XT': 0.7544, 'XXT': 0.9688}),
     # '2024': ("btagUParTAK4B", {'L': 0.0246, 'M': 0.1272, 'T': 0.4648, 'XT': 0.6298, 'XXT': 0.9739})
-    '2024': ("btagUParTAK4B", {'L': 0.0246, 'M': 0.1272, 'T': 0.4648, 'XT': 0.6298, 'XMT': 0.9295, 'XXT': 0.9739, 'XXXT': 0.9983})  # XMT calculated to have ggF HH kl-1p00 lead *AND* sublead bjets pass with 25% efficiency, XXXT was calculated to have ggF HH kl-1p00 lead *OR* sublead bjets pass with 25% efficiency
+    '2024': ("btagUParTAK4B", {'L': 0.0246, 'M': 0.1272, 'T': 0.4648, 'XT': 0.6298, 'XMT': 0.9295, 'XXT': 0.9739, 'XXMT': 0.9978, 'XXXT': 0.9983, 'XXXXT': 0.9987})  # XMT calculated to have ggF HH kl-1p00 lead *AND* sublead bjets pass with 25% efficiency, XXXT was calculated to have ggF HH kl-1p00 lead *OR* sublead bjets pass with 25% efficiency, XXMT calculated for 35% efficiency, XXXXT calculated for 10% efficiency
 }
 
 FILL_VALUE = -999
