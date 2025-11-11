@@ -41,20 +41,18 @@ BASIC_VARIABLES = lambda jet_prefix: {
     # f"{jet_prefix}lead_bjet_btagUParTAK4B",
     f"{jet_prefix}_lead_bjet_bTagWPL", f"{jet_prefix}_lead_bjet_bTagWPM", f"{jet_prefix}_lead_bjet_bTagWPT",
     f"{jet_prefix}_lead_bjet_bTagWPXT", f"{jet_prefix}_lead_bjet_bTagWPXXT",
-    # f"{jet_prefix}_lead_bjet_bTagWPXMT",
-    f"{jet_prefix}_lead_bjet_bTagWPXXXT",
-    f"{jet_prefix}_lead_bjet_bTagWPXXMT",
+    # f"{jet_prefix}_lead_bjet_bTagWPXXXT",
     # f"{jet_prefix}_lead_bjet_bTagWPXXXXT",
+    # f"{jet_prefix}_lead_bjet_bTagWPXXXXXT",
     # --------
     f'{jet_prefix}_sublead_bjet_eta', 
     # f"{jet_prefix}_sublead_bjet_btagPNetB",
     # f"{jet_prefix}sublead_bjet_btagUParTAK4B",
     f"{jet_prefix}_sublead_bjet_bTagWPL", f"{jet_prefix}_sublead_bjet_bTagWPM", f"{jet_prefix}_sublead_bjet_bTagWPT",
     f"{jet_prefix}_sublead_bjet_bTagWPXT", f"{jet_prefix}_sublead_bjet_bTagWPXXT",
-    # f"{jet_prefix}_sublead_bjet_bTagWPXMT",
-    f"{jet_prefix}_sublead_bjet_bTagWPXXXT",
-     f"{jet_prefix}_sublead_bjet_bTagWPXXMT",
+    # f"{jet_prefix}_sublead_bjet_bTagWPXXXT",
     # f"{jet_prefix}_sublead_bjet_bTagWPXXXXT",
+    # f"{jet_prefix}_sublead_bjet_bTagWPXXXXXT",
     
     # diphoton vars
     'eta',
@@ -133,6 +131,7 @@ DF_MASK = 'default'  # 'none'
 DEBUG = False
 DRYRUN = False
 MAKE_PLOTS = False
+REMAKE_TEST = False
 
 ################################
 
@@ -150,9 +149,9 @@ parser.add_argument(
     help="Full filepath on LPC for output to be dumped"
 )
 parser.add_argument(
-    "--force", 
+    "--remake_test", 
     action="store_true",
-    help="Flag to force the re-creation of the files"
+    help="Flag to extend existing parquets with extra samples for testing/evaluation (i.e. NOT training) following the same standardization -- requires there to be samples and standarization JSONs at the output_dirpath location."
 )
 parser.add_argument(
     "--plots", 
@@ -222,8 +221,7 @@ def plot_vars(df, output_dirpath, sample_name, title="pre-std, train0"):
 def make_output_filepath(filepath, base_output_dirpath, extra_text):
     filename = filepath[filepath.rfind('/')+1:]
     output_dirpath = os.path.join(
-        base_output_dirpath, 
-        CURRENT_TIME, 
+        base_output_dirpath,
         filepath[filepath.find(BASE_FILEPATH):filepath.rfind('/')]
     )
     if not os.path.exists(output_dirpath) and not DRYRUN:
@@ -266,11 +264,11 @@ def get_dfs(filepaths, BDT_vars, AUX_vars):
     dfs, aux_dfs = {}, {}
     for filepath in sorted(filepaths):
         pq_file = pq.ParquetFile(filepath)
-        for pq_batch in pq_file.iter_batches(batch_size=524_288, columns=list(BDT_vars)+list(AUX_vars)):
+        for pq_batch in pq_file.iter_batches(batch_size=524_288, columns=BDT_vars+AUX_vars):
             df_batch = pq_batch.to_pandas()
             df_mask = get_df_mask(df_batch)
-            dfs[filepath] = df_batch.loc[df_mask, list(BDT_vars)].reset_index(drop=True)
-            aux_dfs[filepath] = df_batch.loc[df_mask, list(AUX_vars)].reset_index(drop=True)
+            dfs[filepath] = df_batch.loc[df_mask, BDT_vars].reset_index(drop=True)
+            aux_dfs[filepath] = df_batch.loc[df_mask, AUX_vars].reset_index(drop=True)
 
     return dfs, aux_dfs
 
@@ -324,6 +322,7 @@ def preprocess_resolved_bdt(input_filepaths, output_dirpath):
     else:
         BDT_variables = BASIC_VARIABLES(JET_PREFIX)
     AUX_variables = AUX_VARIABLES(JET_PREFIX)
+    BDT_variables, AUX_variables = list(BDT_variables), list(AUX_variables)
         
     train_dfs, train_aux_dfs = get_dfs(input_filepaths['train'], BDT_variables, AUX_variables)
     test_dfs, test_aux_dfs = get_dfs(input_filepaths['test'], BDT_variables, AUX_variables)
@@ -334,44 +333,59 @@ def preprocess_resolved_bdt(input_filepaths, output_dirpath):
             test_dfs_fold, test_aux_dfs_fold 
         ) = get_split_dfs(input_filepaths['train-test'], BDT_variables, AUX_variables, fold_idx)
 
-        x_mean, x_std = compute_standardization(train_dfs, train_dfs_fold)
 
-        for filepath in train_dfs.keys():
-            train_dfs_fold[filepath] = copy.deepcopy(train_dfs[filepath])
-            train_aux_dfs_fold[filepath] = copy.deepcopy(train_aux_dfs[filepath])
+        stdjson_filepath = os.path.join(output_dirpath, 'standardization.json')
+        if not REMAKE_TEST:
+            x_mean, x_std = compute_standardization(train_dfs, train_dfs_fold)
+            if not DRYRUN:
+                stdjson = {'col': BDT_variables, 'mean': x_mean.tolist(), 'std': x_std.tolist()}
+                with open(stdjson_filepath, 'w') as f:
+                    json.dump(stdjson, f)
+        else:
+            with open(stdjson_filepath, 'r') as f:
+                stdjson = json.load(f)
+            if stdjson['col'] != BDT_variables: 
+                raise Exception("New variables do not match variables used in standardization, check std json file.")
+            x_mean, x_std = stdjson['mean'], stdjson['std']
 
-        for filepath, df in train_dfs_fold.items():
-            output_filepath = make_output_filepath(filepath, output_dirpath, f"train{fold_idx}")
-            if MAKE_PLOTS: 
-                plot_vars(
+
+        if not REMAKE_TEST:
+            for filepath in train_dfs.keys():
+                train_dfs_fold[filepath] = copy.deepcopy(train_dfs[filepath])
+                train_aux_dfs_fold[filepath] = copy.deepcopy(train_aux_dfs[filepath])
+
+            for filepath, df in train_dfs_fold.items():
+                output_filepath = make_output_filepath(filepath, output_dirpath, f"train{fold_idx}")
+                if MAKE_PLOTS: 
+                    plot_vars(
+                        df, 
+                        "/".join(output_filepath.split("/")[:-1]), 
+                        train_aux_dfs_fold[filepath]["sample_name"][0], 
+                        title=f"pre-std, train{fold_idx}"
+                    )
+                if DEBUG:
+                    print('-'*60)
+                    print(f"input = \n{filepath}\n{'-'*60}\noutput = \n{output_filepath}")
+                    print(f"num events = {len(df)}")
+                    print(f"sum of weights = {train_aux_dfs_fold[filepath].loc[:,'weight'].sum()}")
+                    print(f"sum of eventWeights = {train_aux_dfs_fold[filepath].loc[:,'eventWeight'].sum()}")
+
+                cols = list(df.columns)
+                df = apply_logs(df)
+                df = (np.ma.array(df, mask=(df == FILL_VALUE)) - x_mean)/x_std
+                df = pd.DataFrame(df.filled(FILL_VALUE), columns=cols)
+
+                if MAKE_PLOTS: plot_vars(
                     df, 
                     "/".join(output_filepath.split("/")[:-1]), 
                     train_aux_dfs_fold[filepath]["sample_name"][0], 
-                    title=f"pre-std, train{fold_idx}"
+                    title=f"post-std, train{fold_idx}"
                 )
-            if DEBUG:
-                print('-'*60)
-                print(f"input = \n{filepath}\n{'-'*60}\noutput = \n{output_filepath}")
-                print(f"num events = {len(df)}")
-                print(f"sum of weights = {train_aux_dfs_fold[filepath].loc[:,'weight'].sum()}")
-                print(f"sum of eventWeights = {train_aux_dfs_fold[filepath].loc[:,'eventWeight'].sum()}")
 
-            cols = list(df.columns)
-            df = apply_logs(df)
-            df = (np.ma.array(df, mask=(df == FILL_VALUE)) - x_mean)/x_std
-            df = pd.DataFrame(df.filled(FILL_VALUE), columns=cols)
+                for aux_col in train_aux_dfs_fold[filepath].columns:
+                    df[f"AUX_{aux_col}"] = train_aux_dfs_fold[filepath].loc[:,aux_col]
 
-            if MAKE_PLOTS: plot_vars(
-                df, 
-                "/".join(output_filepath.split("/")[:-1]), 
-                train_aux_dfs_fold[filepath]["sample_name"][0], 
-                title=f"post-std, train{fold_idx}"
-            )
-
-            for aux_col in train_aux_dfs_fold[filepath].columns:
-                df[f"AUX_{aux_col}"] = train_aux_dfs_fold[filepath].loc[:,aux_col]
-
-            if not DRYRUN: df.to_parquet(output_filepath)
+                if not DRYRUN: df.to_parquet(output_filepath)
 
 
         for filepath in test_dfs.keys():
@@ -414,14 +428,20 @@ def preprocess_resolved_bdt(input_filepaths, output_dirpath):
 if __name__ == '__main__':
     args = parser.parse_args()
 
+    with open(args.input_filepaths, 'r') as f:
+        input_filepaths = json.load(f)
+    args_output_dirpath = os.path.normpath(args.output_dirpath)
+
     DEBUG = args.debug
     DRYRUN = args.dryrun
     MAKE_PLOTS = args.plots
-
-    with open(args.input_filepaths, 'r') as f:
-        input_filepaths = json.load(f)
+    REMAKE_TEST = args.remake_test
+    if REMAKE_TEST: CURRENT_TIME = args_output_dirpath[args_output_dirpath.rfind('/')+1:]
+    else: args_output_dirpath = os.path.join(args_output_dirpath, CURRENT_TIME)
+    if not os.path.exists(args_output_dirpath) and not DRYRUN:
+        os.makedirs(args_output_dirpath)
 
     print('='*60)
     print(f'Starting Resolved BDT processing at {CURRENT_TIME}')
-    preprocess_resolved_bdt(input_filepaths, args.output_dirpath)
+    preprocess_resolved_bdt(input_filepaths, args_output_dirpath)
     print(f'Finished Resolved BDT processing')
