@@ -14,7 +14,7 @@ Assuming you have `.parquet` files from HiggsDNA, the first steo in this reposit
 
 To run the pre-processing, use the `preprocess.py` script as follows:
 
->`python preprocess.py --sim_era_filepaths <filepath_for_MC_era_1>,<filepath_for_MC_era_2>,etc --data_era_filepaths <filepath_for_Data_era_1>,<filepath_for_Data_era_2>,etc --output_dirpath <path_to_output_directory>`
+`python preprocess.py --sim_era_filepaths <filepath_for_MC_era_1>,<filepath_for_MC_era_2>,etc --data_era_filepaths <filepath_for_Data_era_1>,<filepath_for_Data_era_2>,etc --output_dirpath <path_to_output_directory>`
 
 The `--sim_era_filepaths` (`--data_era_filepaths`) flag is expecting a directory whose immediate children are all the MC (Data) samples for that era. For example, the directory structure for the filepaths flags would look something like the following:
 ```bash
@@ -40,7 +40,7 @@ After running the `preprocess.py` script, all the necessary variables have been 
 
 To run the variable standardization and training dataset creatin, use the `resolved_BDT.py` script as follows:
 
->`python resolved_BDT.py --input_filepaths <filepath_to_JSON_dictionary_of_filepaths> --output_dirpath <filepath_to_dump_training_files>`
+`python resolved_BDT.py --input_filepaths <filepath_to_JSON_dictionary_of_filepaths> --output_dirpath <filepath_to_dump_training_files>`
 
 Structure of JSON dictionary for `--input_filepaths` flag:
 ```python
@@ -55,11 +55,11 @@ The structure of the JSON dictionary is meant to reflect the differing treatment
 Structure of `--output_dirpath` directory:
 ```bash
 <output_dirpath>
-├── timestamp for training 1 dataset
+├── timestamp of training 1 dataset
     ├── MC/Data Era 1
     ├── MC/Data Era 2
     └── etc
-└── timestamp for training 2 dataset
+└── timestamp of training 2 dataset
     ├── MC/Data Era 1
     ├── MC/Data Era 2
     └── etc
@@ -68,18 +68,18 @@ Structure of `--output_dirpath` directory:
 If you choose to use the extra `--remake_test` flag (see below), the `--output_dirpath` flag should change from the general directory, to the specific timestamp directory associated with the test dataset you want to change. The names of the training dataset directories are timestamps of when the `reasolved_BDT.py` file was run -- this means you do not know what is in the datasets by looking at them. **You must keep track of what eras, samples, and variables were used in the creation of a given dataset** I have done this using comments in the `run_training.py` file under the `training` directory, but you are free to keep track as you wish, just remember this information is not saved.
 
 There are 4 extra flags: 
-    1. `--debug` prints out debug statements
-    2. `--dryrun` runs the code without actually saving out the training files (this can be helpful for debugging)
-    3. `--plots` makes plots of the BDT input variables before and after variable standardization (useful to understand what is going into the training)
-    4. `--remake_test` is a special flag for changing the test data stored in the output. This flag should *not* be used when you are creating an initial dataset for training. Rather, the `--remake_test` flag is to be used when you have already made a dataset for training and you want to change the samples in the test datasets (e.g. you have a new process you want to evlaute on, or there's a new EFT process to be evaluated, etc). This flag allows you to change the test files *without changing the training files* and using the proper variable standardization for that training. If you use this flag, the `--output_dirpath` needs to change from the directory that stores all the various training files to the directory of the specific training files for the training you want to use. See below for a visual example
+1. `--debug` prints out debug statements
+2. `--dryrun` runs the code without actually saving out the training files (this can be helpful for debugging)
+3. `--plots` makes plots of the BDT input variables before and after variable standardization (useful to understand what is going into the training)
+4. `--remake_test` is a special flag for changing the test data stored in the output. This flag should *not* be used when you are creating an initial dataset for training. Rather, the `--remake_test` flag is to be used when you have already made a dataset for training and you want to change the samples in the test datasets (e.g. you have a new process you want to evlaute on, or there's a new EFT process to be evaluated, etc). This flag allows you to change the test files *without changing the training files* and using the proper variable standardization for that training. If you use this flag, the `--output_dirpath` needs to change from the directory that stores all the various training files to the directory of the specific training files for the training you want to use. See below for a visual example
 
 
 ## Training
-Once you have run the `preprocess.py` and `resolved_BDT.py` scripts you are ready to train a model! Lucikly, because we setup the preprocessing and variable standardization in a backwards-compatible way (and split up each training dataset into its own directory), the training itself is extremely simple. You only need to run the `run_training.py` file with the `LPC_FILEPREFIX` variable changed to the location of your `--output_dirpath` from the `resolved_BDT.py` script, and the `PARQUET_TIME` variable set to the specific training dataset you would like to use. The `VERSION` and `VARS` variables are there only to help dilineate and organize the many versions of models you will train while optimizing your BDT.
+Once you have run the `preprocess.py` and `resolved_BDT.py` scripts you are ready to train a model! Lucikly, because we setup the preprocessing and variable standardization in a backwards-compatible way (and split up each training dataset into its own directory), the training itself is extremely simple. You only need to run the `run_training.py` file (located under the `training` directory) with the `LPC_FILEPREFIX` variable changed to the location of your `--output_dirpath` from the `resolved_BDT.py` script, and the `PARQUET_TIME` variable set to the specific training dataset you would like to use. The `VERSION` and `VARS` variables are there only to help dilineate and organize the many versions of models you will train while optimizing your BDT.
 
 To run the training, use the `run_training.py` script as follows:
 
->`python run_training.py`
+`python run_training.py`
 
 By default the training files will be dumped under `HHtobbyy/MultiClassBDT_model_outputs/{VERSION}/{VARS}/{timestamp_of_training}`.
 
@@ -87,3 +87,20 @@ If you would like to also optimize the hyperparameters of your BDT (this is very
 
 
 ## Evaluation
+Once you've trained a model, the last step is evaluating your test dataset with this model. Again, like with the training, things are easy because we put so much work into our dataset creation and management. All we need is the `evaluation.py` file (located under the `evaluation` directory),
+
+To run the evaluation, use the `evaluation.py` file as follows:
+
+`python evaluation.py --training_dirpath <dirpath_to_trained_model> --base_filepath <dirpath_to_training_dataset>`
+
+The `--training_dirpath` flag is the output directory of the training, while the `--base_filepath` flag is the same `--output_dirpath` from the `resolved_BDT.py` script.
+
+There are 3 extra flags:
+1. `--test` runs the evluation of the test datasets (this is usually what you'll want to do)
+2. `--train` runs the evaluation of the train datasets (this is useful to check for overfitting)
+3. `--fold` runs the evaluation for only 1 fold of the model
+
+The folds come from the fact that our BDT is setup by-default in a special k=5 k-fold method. The special thing about our k-fold is we rotate the test dataset as well (so the test dataset for fold 0 is contained withing the train dataset for fold 1, and so-on). From the user perspective, you can mostly ignore this as well as the `--fold` evaluation flag, and instead just pretend it's one model and always evaluate all folds.
+
+
+## Plotting
