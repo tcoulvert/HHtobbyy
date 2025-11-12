@@ -104,3 +104,13 @@ The folds come from the fact that our BDT is setup by-default in a special k=5 k
 
 
 ## Plotting
+The final action you may want to take is to make various plots concerning the performance of a model. These plots are important for comparing the performance across models, as well as because these plots are the visual tools you will need to explain to others (and yourself) how well your model works. There are many different types of plots (and not all of the scripts located under the `plotting` directory are working), but the structure of how to use them is fairly uniform and can be understood for each plotting script separately.
+
+### ROCs
+One of the most important plots (and the only one I will explain how to make here) are the Receiver Operator Characteristic (ROC) curves. The ROC curves describe how well a discriminator rejects background and accepts signal. For our analysis we break our Multiclass BDT output into 2 discriminators, one called DttH (designed to discriminate the $HH$ signal from the $ttH$ background) and the other called DQCD (designed to discriminate the $HH$ signal from the $H$ and QCD backgrounds). The `plot_roc.py` script creates the ROC curves for DttH and DQCD and prints out the signal efficiency at 1 (2) background-efficiency value(s) for DttH (DQCD).
+
+To make the ROC curves, run the `plot_roc.py` script as follows:
+
+`python plot_roc.py <dirpath_to_trained_model> <dirpath_to_training_dataset>`
+
+The two input arguments for the `plot_roc.py` file are the same as the inputs for the `evaluation.py` file. Currently, the plotting scripts are not all working, and don't interface with the `evaluation` directory, but this will change in the near future in order to make things more ergonomic and compartmentalized.
