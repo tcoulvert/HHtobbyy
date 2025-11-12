@@ -14,12 +14,22 @@ from preprocessing_utils import (
 
 
 resolved_bTagWPs = {
+    # MC
     '2022*preEE': ("btagPNetB", {'L': 0.047, 'M': 0.245, 'T': 0.6734, 'XT': 0.7862, 'XXT': 0.961}),
     '2022*postEE': ("btagPNetB", {'L': 0.0499, 'M': 0.2605, 'T': 0.6915, 'XT': 0.8033, 'XXT': 0.9664}),
     '2023*preBPix': ("btagPNetB", {'L': 0.0358, 'M': 0.1917, 'T': 0.6172, 'XT': 0.7515, 'XXT': 0.9659}),
     '2023*postBPix': ("btagPNetB", {'L': 0.0359, 'M': 0.1919, 'T': 0.6133, 'XT': 0.7544, 'XXT': 0.9688}),
-    # '2024': ("btagUParTAK4B", {'L': 0.0246, 'M': 0.1272, 'T': 0.4648, 'XT': 0.6298, 'XXT': 0.9739})
-    '2024': ("btagUParTAK4B", {'L': 0.0246, 'M': 0.1272, 'T': 0.4648, 'XT': 0.6298, 'XXT': 0.9739, 'XXXT': 0.9983, 'XXXXT': 0.9987, 'XXXXXT': 0.9989})  # XMT calculated to have ggF HH kl-1p00 lead *AND* sublead bjets pass with 25% efficiency, XXXT was calculated to have ggF HH kl-1p00 lead *OR* sublead bjets pass with 25% efficiency, XXMT calculated for 35% efficiency, XXXXT calculated for 10% efficiency, XXXXXT calculated for 5% efficiency
+    '2024': ("btagUParTAK4B", {'L': 0.0246, 'M': 0.1272, 'T': 0.4648, 'XT': 0.6298, 'XXT': 0.9739, 'XXXT': 0.9983, 'XXXXT': 0.9987, 'XXXXXT': 0.9989}),  # XXXT was calculated to have ggF HH kl-1p00 lead *OR* sublead bjets pass with 25% efficiency, XXXXT calculated for 10% efficiency, XXXXXT calculated for 5% efficiency
+    # Data
+    '2022*C': ("btagPNetB", {'L': 0.047, 'M': 0.245, 'T': 0.6734, 'XT': 0.7862, 'XXT': 0.961}),
+    '2022*D': ("btagPNetB", {'L': 0.047, 'M': 0.245, 'T': 0.6734, 'XT': 0.7862, 'XXT': 0.961}),
+    '2022*E': ("btagPNetB", {'L': 0.0499, 'M': 0.2605, 'T': 0.6915, 'XT': 0.8033, 'XXT': 0.9664}),
+    '2022*F': ("btagPNetB", {'L': 0.0499, 'M': 0.2605, 'T': 0.6915, 'XT': 0.8033, 'XXT': 0.9664}),
+    '2022*G': ("btagPNetB", {'L': 0.0499, 'M': 0.2605, 'T': 0.6915, 'XT': 0.8033, 'XXT': 0.9664}),
+    '2023*C': ("btagPNetB", {'L': 0.0358, 'M': 0.1917, 'T': 0.6172, 'XT': 0.7515, 'XXT': 0.9659}),
+    '2023*D': ("btagPNetB", {'L': 0.0359, 'M': 0.1919, 'T': 0.6133, 'XT': 0.7544, 'XXT': 0.9688}),
+    '2024': ("btagUParTAK4B", {'L': 0.0246, 'M': 0.1272, 'T': 0.4648, 'XT': 0.6298, 'XXT': 0.9739, 'XXXT': 0.9983, 'XXXXT': 0.9987, 'XXXXXT': 0.9989})  # XXXT was calculated to have ggF HH kl-1p00 lead *OR* sublead bjets pass with 25% efficiency, XXXXT calculated for 10% efficiency, XXXXXT calculated for 5% efficiency
+
 }
 
 FILL_VALUE = -999

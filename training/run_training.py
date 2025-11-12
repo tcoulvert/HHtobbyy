@@ -50,7 +50,7 @@ LPC_FILEPREFIX = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parqu
 # PARQUET_TIME = "2025-10-24_20-33-36"  # 2024 WPs + XXMT + XXXT
 # PARQUET_TIME = "2025-10-23_02-31-07"  # 2024 PNet
 # PARQUET_TIME = "2025-10-21_11-17-26"  # 2022-24 WPs
-PARQUET_TIME = "2025-11-11_14-13-23"  # 2022-24 WPs + high stats
+PARQUET_TIME = "2025-11-11_14-13-23"  # 2022-24 WPs + high stats -- USE THIS ONE
 # PARQUET_TIME = ""  # 2022-24 WPs + kl + high stats
 BASE_FILEPATH = os.path.join(LPC_FILEPREFIX, PARQUET_TIME, "")
 

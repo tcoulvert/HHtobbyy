@@ -115,5 +115,22 @@
         "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/Run3_2024/sim/GluGlutoHH_kl-1p00_kt-1p00_c2-0p00_batch5/nominal/NOTAG_merged.parquet",
         "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/Run3_2024/sim/GluGlutoHH_kl-1p00_kt-1p00_c2-0p00_batch6/nominal/NOTAG_merged.parquet"
     ],
-    "test": []
+    "test": [
+        "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/Run3_2022/data/DataC_2022_NOTAG_merged.parquet",
+        "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/Run3_2022/data/DataD_2022_NOTAG_merged.parquet",
+
+
+        "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/Run3_2022/data/DataE_2022_NOTAG_merged.parquet",
+        "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/Run3_2022/data/DataF_2022_NOTAG_merged.parquet",
+        "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/Run3_2022/data/DataG_2022_NOTAG_merged.parquet",
+        
+
+        "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/Run3_2023/data/Data_EraC_NOTAG_merged.parquet",
+
+
+        "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/Run3_2023/data/Data_EraD_NOTAG_merged.parquet",
+
+
+        "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/Run3_2024/data/allData_NOTAG_merged.parquet"
+    ]
 }
