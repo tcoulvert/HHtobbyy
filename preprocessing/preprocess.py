@@ -99,7 +99,7 @@ parser.add_argument(
 parser.add_argument(
     "--output_dirpath", 
     default=None,
-    help="Full filepath on LPC for output to be dumped"
+    help="Full filepath on LPC for output to be dumped, default is for each new file to be adjacent to input files, but with slightly changed filenames."
 )
 
 ################################
