@@ -4,6 +4,8 @@
 ## Introduction
 This is a repository containing the code necessary to train and evaluate a Multiclass BDT event discrimintator for the CMS Run3 $HH \rightarrow b\bar{b}\gamma\gamma$ Analysis. The model is trained on MC and evaluated on MC and Data. The structure of the repostory has gone through multiple iterations, but currently has the following main components each split into their own sub-folder: pre-processing, training, evaluation, plotting. Lets take a look at each of them in the order they are used.
 
+The python environment necessary for this repository comes from HiggsDNA (explained below) as a conda enviroment. See the [HiggsDNA documentation](https://higgs-dna.readthedocs.io/en/latest/index.html) for instructions on how to install.
+
 
 ## Pre-processing
 ### HiggsDNA
