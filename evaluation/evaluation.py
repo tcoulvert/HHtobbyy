@@ -1,0 +1,118 @@
+# %matplotlib widget
+# Stdlib packages
+import argparse
+import datetime
+import json
+import logging
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+# HEP packages
+import gpustat
+import pyarrow.parquet as pq
+import xgboost as xgb
+
+################################
+
+GIT_REPO = (
+    subprocess.Popen(["git", "rev-parse", "--show-toplevel"], stdout=subprocess.PIPE)
+    .communicate()[0]
+    .rstrip()
+    .decode("utf-8")
+)
+sys.path.append(os.path.join(GIT_REPO, "preprocessing/"))
+sys.path.append(os.path.join(GIT_REPO, "training/"))
+
+
+import training_utils as utils
+from retrieval_utils import (
+    get_Dataframe, get_DMatrix
+)
+from evaluation_utils import (
+    get_ttH_score, get_QCD_score
+)
+
+################################
+
+
+CWD = os.getcwd()
+logger = logging.getLogger(__name__)
+parser = argparse.ArgumentParser(description="Standardize BDT inputs and save out dataframe parquets.")
+parser.add_argument(
+    "--training_dirpath", 
+    default=CWD,
+    help="Full filepath on LPC for trained model files"
+)
+parser.add_argument(
+    "--base_filepath", 
+    default='',
+    help="Full filepath on LPC for standardized dataset (train and test parquets)"
+)
+parser.add_argument(
+    "--fold", 
+    default=None,
+    help="Only evaluate a specific fold"
+)
+parser.add_argument(
+    "--train", 
+    action="store_true",
+    help="Evaluate and save out train"
+)
+parser.add_argument(
+    "--test", 
+    action="store_true",
+    help="Evaluate and save out test"
+)
+
+################################
+
+
+gpustat.print_gpustat()
+
+order = ['ggF HH', 'ttH + bbH', 'VH', 'non-res + ggFH + VBFH']
+formatted_order = [''.join(class_name.split(' ')) for class_name in order]
+
+################################
+
+
+def evaluate(training_dirpath: str, base_filepath: str, fold: int=None, dataset: str='test'):
+    training_dirpath = os.path.join(training_dirpath, "")
+    param_filepath = os.path.join(training_dirpath, f"{training_dirpath.split('/')[-2]}_best_params.json")
+    with open(param_filepath, 'r') as f:
+        param = json.load(f)
+    param = list(param.items()) + [('eval_metric', 'mlogloss')]
+
+    for fold_idx in range(5):
+        if fold is not None and fold != fold_idx: continue
+
+        booster = xgb.Booster(param)
+        booster.load_model(os.path.join(training_dirpath, f"{training_dirpath.split('/')[-2]}_BDT_fold{fold_idx}.model"))
+
+        filepaths = utils.get_filepaths_func(base_filepath)(fold_idx, dataset)
+        for i, class_name in enumerate(filepaths.keys()):
+            for filepath in filepaths[class_name]:
+                df, aux = get_Dataframe(filepath), get_Dataframe(filepath, aux=True)
+                aux['AUX_label1D'] = i
+                dm = get_DMatrix(df, aux, dataset=dataset)
+
+                preds = booster.predict(dm, iteration_range=(0, booster.best_iteration+1))
+
+                for i, class_name in enumerate(formatted_order):
+                    df[f"{class_name}_prob"] = preds[:, i]
+                df[f"DttH_prob"] = get_ttH_score(preds)
+                df[f"DQCD_prob"] = get_QCD_score(preds)
+
+                for col in aux.columns:
+                    df[col] = aux[col]
+
+                df.to_parquet(filepath)
+
+
+if __name__ == "__main__":
+    args = parser.parse_args()
+    if args.test:
+        evaluate(args.training_dirpath, args.base_filepath, args.fold)
+    if args.train:
+        evaluate(args.training_dirpath, args.base_filepath, args.fold, dataset='train')

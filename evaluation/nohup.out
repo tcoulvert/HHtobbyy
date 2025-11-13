@@ -1,0 +1,238 @@
+  File "/uscms_data/d3/tsievert/XHYbbgg/HHtobbyy/evaluation/evaluation.py", line 81
+    param_filepath = os.path.join(output_dirpath, f'{output_dirpath.split('/')[-2]}_best_params.json')
+                                                                           ^
+SyntaxError: f-string: unmatched '('
+Traceback (most recent call last):
+  File "/uscms_data/d3/tsievert/XHYbbgg/HHtobbyy/evaluation/evaluation.py", line 28, in <module>
+    import training_utils as utils
+ModuleNotFoundError: No module named 'training_utils'
+cmslpcgpu1.fnal.gov      Sat Oct 25 01:59:47 2025  555.42.06
+[0] Tesla P100-PCIE-12GB | 45°C,   0 % |  9420 / 12288 MB | ckapsiak(9418M)
+cmslpcgpu1.fnal.gov      Sat Oct 25 02:03:44 2025  555.42.06
+[0] Tesla P100-PCIE-12GB | 45°C,   0 % |  9420 / 12288 MB | ckapsiak(9418M)
+cmslpcgpu1.fnal.gov      Sat Oct 25 02:07:00 2025  555.42.06
+[0] Tesla P100-PCIE-12GB | 45°C,   0 % |  9420 / 12288 MB | ckapsiak(9418M)
+Traceback (most recent call last):
+  File "/uscms_data/d3/tsievert/XHYbbgg/HHtobbyy/evaluation/evaluation.py", line 114, in <module>
+    if not args.no_test:
+AttributeError: 'Namespace' object has no attribute 'no_test'
+cmslpcgpu1.fnal.gov      Sat Oct 25 02:07:17 2025  555.42.06
+[0] Tesla P100-PCIE-12GB | 45°C,   0 % |  9420 / 12288 MB | ckapsiak(9418M)
+{'ggF HH': ['/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/training_parquets/2025-10-21_11-17-26/Run3_2022/sim/postEE/GluGlutoHH_kl-1p00_kt-1p00_c2-0p00/nominal/NOTAG_merged_test0_2025-10-21_11-17-26.parquet', '/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/training_parquets/2025-10-21_11-17-26/Run3_2022/sim/preEE/GluGlutoHH_kl-1p00_kt-1p00_c2-0p00/nominal/NOTAG_merged_test0_2025-10-21_11-17-26.parquet', '/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/training_parquets/2025-10-21_11-17-26/Run3_2023/sim/postBPix/GluGlutoHH_kl-1p00_kt-1p00_c2-0p00/nominal/NOTAG_merged_test0_2025-10-21_11-17-26.parquet', '/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/training_parquets/2025-10-21_11-17-26/Run3_2023/sim/preBPix/GluGlutoHH_kl-1p00_kt-1p00_c2-0p00/nominal/NOTAG_merged_test0_2025-10-21_11-17-26.parquet', '/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/training_parquets/2025-10-21_11-17-26/Run3_2024/sim/GluGlutoHH_kl-1p00_kt-1p00_c2-0p00/nominal/NOTAG_merged_test0_2025-10-21_11-17-26.parquet'], 'ttH + bbH': ['/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/training_parquets/2025-10-21_11-17-26/Run3_2022/sim/postEE/bbHtoGG/nominal/NOTAG_merged_test0_2025-10-21_11-17-26.parquet', '/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/training_parquets/2025-10-21_11-17-26/Run3_2022/sim/postEE/ttHToGG/nominal/NOTAG_merged_test0_2025-10-21_11-17-26.parquet', '/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/training_parquets/2025-10-21_11-17-26/Run3_2022/sim/preEE/bbHtoGG/nominal/NOTAG_merged_test0_2025-10-21_11-17-26.parquet', '/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/training_parquets/2025-10-21_11-17-26/Run3_2022/sim/preEE/ttHtoGG/nominal/NOTAG_merged_test0_2025-10-21_11-17-26.parquet', '/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/training_parquets/2025-10-21_11-17-26/Run3_2023/sim/postBPix/bbHtoGG/nominal/NOTAG_merged_test0_2025-10-21_11-17-26.parquet', '/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/training_parquets/2025-10-21_11-17-26/Run3_2023/sim/postBPix/ttHtoGG/nominal/NOTAG_merged_test0_2025-10-21_11-17-26.parquet', '/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/training_parquets/2025-10-21_11-17-26/Run3_2023/sim/preBPix/bbHtoGG/nominal/NOTAG_merged_test0_2025-10-21_11-17-26.parquet', '/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/training_parquets/2025-10-21_11-17-26/Run3_2023/sim/preBPix/ttHtoGG/nominal/NOTAG_merged_test0_2025-10-21_11-17-26.parquet', '/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/training_parquets/2025-10-21_11-17-26/Run3_2024/sim/bbHtoGG/nominal/NOTAG_merged_test0_2025-10-21_11-17-26.parquet', '/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/training_parquets/2025-10-21_11-17-26/Run3_2024/sim/ttHtoGG/nominal/NOTAG_merged_test0_2025-10-21_11-17-26.parquet'], 'VH': ['/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/training_parquets/2025-10-21_11-17-26/Run3_2022/sim/postEE/VHtoGG/nominal/NOTAG_merged_test0_2025-10-21_11-17-26.parquet', '/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/training_parquets/2025-10-21_11-17-26/Run3_2022/sim/preEE/VHtoGG/nominal/NOTAG_merged_test0_2025-10-21_11-17-26.parquet', '/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/training_parquets/2025-10-21_11-17-26/Run3_2023/sim/postBPix/VHtoGG/nominal/NOTAG_merged_test0_2025-10-21_11-17-26.parquet', '/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/training_parquets/2025-10-21_11-17-26/Run3_2023/sim/preBPix/VHtoGG/nominal/NOTAG_merged_test0_2025-10-21_11-17-26.parquet', '/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/training_parquets/2025-10-21_11-17-26/Run3_2024/sim/WmHtoGG/nominal/NOTAG_merged_test0_2025-10-21_11-17-26.parquet', '/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/training_parquets/2025-10-21_11-17-26/Run3_2024/sim/WpHtoGG/nominal/NOTAG_merged_test0_2025-10-21_11-17-26.parquet', '/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/training_parquets/2025-10-21_11-17-26/Run3_2024/sim/ZHtoGG/nominal/NOTAG_merged_test0_2025-10-21_11-17-26.parquet'], 'nonRes + ggFH + VBFH': ['/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/training_parquets/2025-10-21_11-17-26/Run3_2022/sim/postEE/GGJets_MGG-40to80/nominal/NOTAG_merged_test0_2025-10-21_11-17-26.parquet', '/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/training_parquets/2025-10-21_11-17-26/Run3_2022/sim/postEE/GGJets_MGG-80/nominal/NOTAG_merged_test0_2025-10-21_11-17-26.parquet', '/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/training_parquets/2025-10-21_11-17-26/Run3_2022/sim/postEE/GJet_PT-20to40_DoubleEMEnriched_MGG-80/nominal/NOTAG_merged_test0_2025-10-21_11-17-26.parquet', '/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/training_parquets/2025-10-21_11-17-26/Run3_2022/sim/postEE/GJet_PT-40_DoubleEMEnriched_MGG-80/nominal/NOTAG_merged_test0_2025-10-21_11-17-26.parquet', '/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/training_parquets/2025-10-21_11-17-26/Run3_2022/sim/postEE/GluGluHtoGG/nominal/NOTAG_merged_test0_2025-10-21_11-17-26.parquet', '/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/training_parquets/2025-10-21_11-17-26/Run3_2022/sim/postEE/TTGG/nominal/NOTAG_merged_test0_2025-10-21_11-17-26.parquet', '/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/training_parquets/2025-10-21_11-17-26/Run3_2022/sim/postEE/VBFHToGG/nominal/NOTAG_merged_test0_2025-10-21_11-17-26.parquet', '/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/training_parquets/2025-10-21_11-17-26/Run3_2022/sim/preEE/GGJets_MGG-40to80/nominal/NOTAG_merged_test0_2025-10-21_11-17-26.parquet', '/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/training_parquets/2025-10-21_11-17-26/Run3_2022/sim/preEE/GGJets_MGG-80/nominal/NOTAG_merged_test0_2025-10-21_11-17-26.parquet', '/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/training_parquets/2025-10-21_11-17-26/Run3_2022/sim/preEE/GJet_PT-20to40_DoubleEMEnriched_MGG-80/nominal/NOTAG_merged_test0_2025-10-21_11-17-26.parquet', '/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/training_parquets/2025-10-21_11-17-26/Run3_2022/sim/preEE/GJet_PT-40_DoubleEMEnriched_MGG-80/nominal/NOTAG_merged_test0_2025-10-21_11-17-26.parquet', '/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/training_parquets/2025-10-21_11-17-26/Run3_2022/sim/preEE/GluGluHtoGG/nominal/NOTAG_merged_test0_2025-10-21_11-17-26.parquet', '/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/training_parquets/2025-10-21_11-17-26/Run3_2022/sim/preEE/TTGG/nominal/NOTAG_merged_test0_2025-10-21_11-17-26.parquet', '/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/training_parquets/2025-10-21_11-17-26/Run3_2022/sim/preEE/VBFHtoGG/nominal/NOTAG_merged_test0_2025-10-21_11-17-26.parquet', '/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/training_parquets/2025-10-21_11-17-26/Run3_2023/sim/postBPix/GGJets_MGG-40to80/nominal/NOTAG_merged_test0_2025-10-21_11-17-26.parquet', '/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/training_parquets/2025-10-21_11-17-26/Run3_2023/sim/postBPix/GGJets_MGG-80/nominal/NOTAG_merged_test0_2025-10-21_11-17-26.parquet', '/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/training_parquets/2025-10-21_11-17-26/Run3_2023/sim/postBPix/GJet_PT-20to40_DoubleEMEnriched_MGG-80/nominal/NOTAG_merged_test0_2025-10-21_11-17-26.parquet', '/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/training_parquets/2025-10-21_11-17-26/Run3_2023/sim/postBPix/GJet_PT-40_DoubleEMEnriched_MGG-80/nominal/NOTAG_merged_test0_2025-10-21_11-17-26.parquet', '/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/training_parquets/2025-10-21_11-17-26/Run3_2023/sim/postBPix/GluGluHtoGG/nominal/NOTAG_merged_test0_2025-10-21_11-17-26.parquet', '/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/training_parquets/2025-10-21_11-17-26/Run3_2023/sim/postBPix/TTGG/nominal/NOTAG_merged_test0_2025-10-21_11-17-26.parquet', '/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/training_parquets/2025-10-21_11-17-26/Run3_2023/sim/postBPix/VBFHtoGG/nominal/NOTAG_merged_test0_2025-10-21_11-17-26.parquet', '/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/training_parquets/2025-10-21_11-17-26/Run3_2023/sim/preBPix/GGJets_MGG-40to80/nominal/NOTAG_merged_test0_2025-10-21_11-17-26.parquet', '/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/training_parquets/2025-10-21_11-17-26/Run3_2023/sim/preBPix/GGJets_MGG-80/nominal/NOTAG_merged_test0_2025-10-21_11-17-26.parquet', '/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/training_parquets/2025-10-21_11-17-26/Run3_2023/sim/preBPix/GJet_PT-20to40_DoubleEMEnriched_MGG-80/nominal/NOTAG_merged_test0_2025-10-21_11-17-26.parquet', '/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/training_parquets/2025-10-21_11-17-26/Run3_2023/sim/preBPix/GJet_PT-40_DoubleEMEnriched_MGG-80/nominal/NOTAG_merged_test0_2025-10-21_11-17-26.parquet', '/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/training_parquets/2025-10-21_11-17-26/Run3_2023/sim/preBPix/GluGluHtoGG/nominal/NOTAG_merged_test0_2025-10-21_11-17-26.parquet', '/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/training_parquets/2025-10-21_11-17-26/Run3_2023/sim/preBPix/TTGG/nominal/NOTAG_merged_test0_2025-10-21_11-17-26.parquet', '/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/training_parquets/2025-10-21_11-17-26/Run3_2023/sim/preBPix/VBFHtoGG/nominal/NOTAG_merged_test0_2025-10-21_11-17-26.parquet', '/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/training_parquets/2025-10-21_11-17-26/Run3_2024/sim/GluGluHtoGG/nominal/NOTAG_merged_test0_2025-10-21_11-17-26.parquet', '/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/training_parquets/2025-10-21_11-17-26/Run3_2024/sim/VBFHtoGG/nominal/NOTAG_merged_test0_2025-10-21_11-17-26.parquet']}
+Traceback (most recent call last):
+  File "/uscms_data/d3/tsievert/XHYbbgg/HHtobbyy/evaluation/evaluation.py", line 115, in <module>
+    evaluate(args.output_dirpath, args.base_filepath, args.fold)
+  File "/uscms_data/d3/tsievert/XHYbbgg/HHtobbyy/evaluation/evaluation.py", line 96, in evaluate
+    df, aux = get_Dataframe(filepath), get_Dataframe(filepath, aux=True)
+  File "/uscms_data/d3/tsievert/XHYbbgg/HHtobbyy/preprocessing/retrieval_utils.py", line 36, in get_Dataframe
+    schema = pq.read_schema(filepath)
+  File "/uscms/home/tsievert/nobackup/miniforge3/envs/higgs-dna/lib/python3.10/site-packages/pyarrow/parquet/core.py", line 2342, in read_schema
+    file_ctx = where = filesystem.open_input_file(where)
+  File "pyarrow/_fs.pyx", line 789, in pyarrow._fs.FileSystem.open_input_file
+  File "pyarrow/error.pxi", line 155, in pyarrow.lib.pyarrow_internal_check_status
+  File "pyarrow/error.pxi", line 92, in pyarrow.lib.check_status
+FileNotFoundError: [Errno 2] Failed to open local file 'ggF HH'. Detail: [errno 2] No such file or directory
+cmslpcgpu1.fnal.gov      Sat Oct 25 02:08:53 2025  555.42.06
+[0] Tesla P100-PCIE-12GB | 44°C,   0 % |  9420 / 12288 MB | ckapsiak(9418M)
+Traceback (most recent call last):
+  File "/uscms/home/tsievert/nobackup/miniforge3/envs/higgs-dna/lib/python3.10/site-packages/pandas/core/indexes/base.py", line 3805, in get_loc
+    return self._engine.get_loc(casted_key)
+  File "index.pyx", line 167, in pandas._libs.index.IndexEngine.get_loc
+  File "index.pyx", line 196, in pandas._libs.index.IndexEngine.get_loc
+  File "pandas/_libs/hashtable_class_helper.pxi", line 7081, in pandas._libs.hashtable.PyObjectHashTable.get_item
+  File "pandas/_libs/hashtable_class_helper.pxi", line 7089, in pandas._libs.hashtable.PyObjectHashTable.get_item
+KeyError: 'AUX_label1D'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/uscms_data/d3/tsievert/XHYbbgg/HHtobbyy/evaluation/evaluation.py", line 115, in <module>
+    evaluate(args.output_dirpath, args.base_filepath, args.fold)
+  File "/uscms_data/d3/tsievert/XHYbbgg/HHtobbyy/evaluation/evaluation.py", line 97, in evaluate
+    dm = get_DMatrix(df, aux, dataset=dataset)
+  File "/uscms_data/d3/tsievert/XHYbbgg/HHtobbyy/preprocessing/retrieval_utils.py", line 92, in get_DMatrix
+    data=df, label=aux['AUX_label1D'], weight=np.abs(aux['AUX_eventWeightTrain'] if dataset.lower() == 'train' else aux['AUX_eventWeight']),
+  File "/uscms/home/tsievert/nobackup/miniforge3/envs/higgs-dna/lib/python3.10/site-packages/pandas/core/frame.py", line 4102, in __getitem__
+    indexer = self.columns.get_loc(key)
+  File "/uscms/home/tsievert/nobackup/miniforge3/envs/higgs-dna/lib/python3.10/site-packages/pandas/core/indexes/base.py", line 3812, in get_loc
+    raise KeyError(key) from err
+KeyError: 'AUX_label1D'
+cmslpcgpu1.fnal.gov      Sat Oct 25 02:15:12 2025  555.42.06
+[0] Tesla P100-PCIE-12GB | 44°C,   0 % |  9420 / 12288 MB | ckapsiak(9418M)
+   AUX_nonRes_HHbbggCandidate_mass  ... AUX_nonRes_resolved_BDT_mask
+0                       631.465765  ...                            1
+1                       385.931690  ...                            1
+2                       596.520206  ...                            1
+3                       438.520443  ...                            1
+4                       633.010418  ...                            1
+
+[5 rows x 11 columns]
+Traceback (most recent call last):
+  File "/uscms/home/tsievert/nobackup/miniforge3/envs/higgs-dna/lib/python3.10/site-packages/pandas/core/indexes/base.py", line 3805, in get_loc
+    return self._engine.get_loc(casted_key)
+  File "index.pyx", line 167, in pandas._libs.index.IndexEngine.get_loc
+  File "index.pyx", line 196, in pandas._libs.index.IndexEngine.get_loc
+  File "pandas/_libs/hashtable_class_helper.pxi", line 7081, in pandas._libs.hashtable.PyObjectHashTable.get_item
+  File "pandas/_libs/hashtable_class_helper.pxi", line 7089, in pandas._libs.hashtable.PyObjectHashTable.get_item
+KeyError: 'AUX_label1D'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/uscms_data/d3/tsievert/XHYbbgg/HHtobbyy/evaluation/evaluation.py", line 116, in <module>
+    evaluate(args.output_dirpath, args.base_filepath, args.fold)
+  File "/uscms_data/d3/tsievert/XHYbbgg/HHtobbyy/evaluation/evaluation.py", line 98, in evaluate
+    dm = get_DMatrix(df, aux, dataset=dataset)
+  File "/uscms_data/d3/tsievert/XHYbbgg/HHtobbyy/preprocessing/retrieval_utils.py", line 92, in get_DMatrix
+    data=df, label=aux['AUX_label1D'], weight=np.abs(aux['AUX_eventWeightTrain'] if dataset.lower() == 'train' else aux['AUX_eventWeight']),
+  File "/uscms/home/tsievert/nobackup/miniforge3/envs/higgs-dna/lib/python3.10/site-packages/pandas/core/frame.py", line 4102, in __getitem__
+    indexer = self.columns.get_loc(key)
+  File "/uscms/home/tsievert/nobackup/miniforge3/envs/higgs-dna/lib/python3.10/site-packages/pandas/core/indexes/base.py", line 3812, in get_loc
+    raise KeyError(key) from err
+KeyError: 'AUX_label1D'
+cmslpcgpu1.fnal.gov      Sat Oct 25 02:19:18 2025  555.42.06
+[0] Tesla P100-PCIE-12GB | 43°C,   0 % |  9420 / 12288 MB | ckapsiak(9418M)
+Index(['AUX_nonRes_HHbbggCandidate_mass', 'AUX_sample_name', 'AUX_event',
+       'AUX_lumi', 'AUX_hash', 'AUX_weight', 'AUX_nonRes_dijet_mass',
+       'AUX_mass', 'AUX_eventWeight', 'AUX_nonRes_max_nonbjet_btag',
+       'AUX_nonRes_resolved_BDT_mask'],
+      dtype='object')
+Traceback (most recent call last):
+  File "/uscms/home/tsievert/nobackup/miniforge3/envs/higgs-dna/lib/python3.10/site-packages/pandas/core/indexes/base.py", line 3805, in get_loc
+    return self._engine.get_loc(casted_key)
+  File "index.pyx", line 167, in pandas._libs.index.IndexEngine.get_loc
+  File "index.pyx", line 196, in pandas._libs.index.IndexEngine.get_loc
+  File "pandas/_libs/hashtable_class_helper.pxi", line 7081, in pandas._libs.hashtable.PyObjectHashTable.get_item
+  File "pandas/_libs/hashtable_class_helper.pxi", line 7089, in pandas._libs.hashtable.PyObjectHashTable.get_item
+KeyError: 'AUX_label1D'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/uscms_data/d3/tsievert/XHYbbgg/HHtobbyy/evaluation/evaluation.py", line 116, in <module>
+    evaluate(args.output_dirpath, args.base_filepath, args.fold)
+  File "/uscms_data/d3/tsievert/XHYbbgg/HHtobbyy/evaluation/evaluation.py", line 98, in evaluate
+    dm = get_DMatrix(df, aux, dataset=dataset)
+  File "/uscms_data/d3/tsievert/XHYbbgg/HHtobbyy/preprocessing/retrieval_utils.py", line 92, in get_DMatrix
+    data=df, label=aux['AUX_label1D'], weight=np.abs(aux['AUX_eventWeightTrain'] if dataset.lower() == 'train' else aux['AUX_eventWeight']),
+  File "/uscms/home/tsievert/nobackup/miniforge3/envs/higgs-dna/lib/python3.10/site-packages/pandas/core/frame.py", line 4102, in __getitem__
+    indexer = self.columns.get_loc(key)
+  File "/uscms/home/tsievert/nobackup/miniforge3/envs/higgs-dna/lib/python3.10/site-packages/pandas/core/indexes/base.py", line 3812, in get_loc
+    raise KeyError(key) from err
+KeyError: 'AUX_label1D'
+cmslpcgpu1.fnal.gov      Sat Oct 25 02:21:16 2025  555.42.06
+[0] Tesla P100-PCIE-12GB | 43°C,   0 % |  9420 / 12288 MB | ckapsiak(9418M)
+[02:21:18] WARNING: /home/conda/feedstock_root/build_artifacts/xgboost-split_1645117937192/work/src/learner.cc:576: 
+Parameters: { "device" } might not be used.
+
+  This could be a false alarm, with some parameters getting used by language bindings but
+  then being mistakenly passed down to XGBoost core, or some parameter actually being used
+  but getting flagged wrongly here. Please open an issue if you find any such cases.
+
+
+Traceback (most recent call last):
+  File "/uscms_data/d3/tsievert/XHYbbgg/HHtobbyy/evaluation/evaluation.py", line 116, in <module>
+    evaluate(args.output_dirpath, args.base_filepath, args.fold)
+  File "/uscms_data/d3/tsievert/XHYbbgg/HHtobbyy/evaluation/evaluation.py", line 102, in evaluate
+    for i, class_name in formatted_order:
+ValueError: too many values to unpack (expected 2)
+cmslpcgpu1.fnal.gov      Sat Oct 25 02:22:10 2025  555.42.06
+[0] Tesla P100-PCIE-12GB | 43°C,   0 % |  9420 / 12288 MB | ckapsiak(9418M)
+[02:22:12] WARNING: /home/conda/feedstock_root/build_artifacts/xgboost-split_1645117937192/work/src/learner.cc:576: 
+Parameters: { "device" } might not be used.
+
+  This could be a false alarm, with some parameters getting used by language bindings but
+  then being mistakenly passed down to XGBoost core, or some parameter actually being used
+  but getting flagged wrongly here. Please open an issue if you find any such cases.
+
+
+Traceback (most recent call last):
+  File "/uscms_data/d3/tsievert/XHYbbgg/HHtobbyy/evaluation/evaluation.py", line 116, in <module>
+    evaluate(args.output_dirpath, args.base_filepath, args.fold)
+  File "/uscms_data/d3/tsievert/XHYbbgg/HHtobbyy/evaluation/evaluation.py", line 103, in evaluate
+    df[f"{class_name}_prob"] = preds[f"fold_{fold_idx}"][:, i]
+IndexError: only integers, slices (`:`), ellipsis (`...`), numpy.newaxis (`None`) and integer or boolean arrays are valid indices
+cmslpcgpu1.fnal.gov      Sat Oct 25 02:23:51 2025  555.42.06
+[0] Tesla P100-PCIE-12GB | 44°C,   0 % |  9420 / 12288 MB | ckapsiak(9418M)
+[02:23:53] WARNING: /home/conda/feedstock_root/build_artifacts/xgboost-split_1645117937192/work/src/learner.cc:576: 
+Parameters: { "device" } might not be used.
+
+  This could be a false alarm, with some parameters getting used by language bindings but
+  then being mistakenly passed down to XGBoost core, or some parameter actually being used
+  but getting flagged wrongly here. Please open an issue if you find any such cases.
+
+
+[02:24:25] WARNING: /home/conda/feedstock_root/build_artifacts/xgboost-split_1645117937192/work/src/learner.cc:576: 
+Parameters: { "device" } might not be used.
+
+  This could be a false alarm, with some parameters getting used by language bindings but
+  then being mistakenly passed down to XGBoost core, or some parameter actually being used
+  but getting flagged wrongly here. Please open an issue if you find any such cases.
+
+
+[02:24:57] WARNING: /home/conda/feedstock_root/build_artifacts/xgboost-split_1645117937192/work/src/learner.cc:576: 
+Parameters: { "device" } might not be used.
+
+  This could be a false alarm, with some parameters getting used by language bindings but
+  then being mistakenly passed down to XGBoost core, or some parameter actually being used
+  but getting flagged wrongly here. Please open an issue if you find any such cases.
+
+
+[02:25:30] WARNING: /home/conda/feedstock_root/build_artifacts/xgboost-split_1645117937192/work/src/learner.cc:576: 
+Parameters: { "device" } might not be used.
+
+  This could be a false alarm, with some parameters getting used by language bindings but
+  then being mistakenly passed down to XGBoost core, or some parameter actually being used
+  but getting flagged wrongly here. Please open an issue if you find any such cases.
+
+
+[02:26:01] WARNING: /home/conda/feedstock_root/build_artifacts/xgboost-split_1645117937192/work/src/learner.cc:576: 
+Parameters: { "device" } might not be used.
+
+  This could be a false alarm, with some parameters getting used by language bindings but
+  then being mistakenly passed down to XGBoost core, or some parameter actually being used
+  but getting flagged wrongly here. Please open an issue if you find any such cases.
+
+
+cmslpcgpu1.fnal.gov      Tue Nov 11 16:09:03 2025  555.42.06
+[0] Tesla P100-PCIE-12GB | 45°C,   0 % |  9446 / 12288 MB | ckapsiak(9444M)
+[16:09:07] WARNING: /home/conda/feedstock_root/build_artifacts/xgboost-split_1645117937192/work/src/learner.cc:576: 
+Parameters: { "device" } might not be used.
+
+  This could be a false alarm, with some parameters getting used by language bindings but
+  then being mistakenly passed down to XGBoost core, or some parameter actually being used
+  but getting flagged wrongly here. Please open an issue if you find any such cases.
+
+
+[16:09:37] WARNING: /home/conda/feedstock_root/build_artifacts/xgboost-split_1645117937192/work/src/learner.cc:576: 
+Parameters: { "device" } might not be used.
+
+  This could be a false alarm, with some parameters getting used by language bindings but
+  then being mistakenly passed down to XGBoost core, or some parameter actually being used
+  but getting flagged wrongly here. Please open an issue if you find any such cases.
+
+
+[16:10:08] WARNING: /home/conda/feedstock_root/build_artifacts/xgboost-split_1645117937192/work/src/learner.cc:576: 
+Parameters: { "device" } might not be used.
+
+  This could be a false alarm, with some parameters getting used by language bindings but
+  then being mistakenly passed down to XGBoost core, or some parameter actually being used
+  but getting flagged wrongly here. Please open an issue if you find any such cases.
+
+
+[16:10:39] WARNING: /home/conda/feedstock_root/build_artifacts/xgboost-split_1645117937192/work/src/learner.cc:576: 
+Parameters: { "device" } might not be used.
+
+  This could be a false alarm, with some parameters getting used by language bindings but
+  then being mistakenly passed down to XGBoost core, or some parameter actually being used
+  but getting flagged wrongly here. Please open an issue if you find any such cases.
+
+
+[16:11:09] WARNING: /home/conda/feedstock_root/build_artifacts/xgboost-split_1645117937192/work/src/learner.cc:576: 
+Parameters: { "device" } might not be used.
+
+  This could be a false alarm, with some parameters getting used by language bindings but
+  then being mistakenly passed down to XGBoost core, or some parameter actually being used
+  but getting flagged wrongly here. Please open an issue if you find any such cases.
+
+
