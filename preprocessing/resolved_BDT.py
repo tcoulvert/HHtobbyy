@@ -41,14 +41,14 @@ BASIC_VARIABLES = lambda jet_prefix: {
     # f"{jet_prefix}lead_bjet_btagUParTAK4B",
     f"{jet_prefix}_lead_bjet_bTagWPL", f"{jet_prefix}_lead_bjet_bTagWPM", f"{jet_prefix}_lead_bjet_bTagWPT",
     f"{jet_prefix}_lead_bjet_bTagWPXT", f"{jet_prefix}_lead_bjet_bTagWPXXT",
-    f"{jet_prefix}_lead_bjet_bTagWP3XT", f"{jet_prefix}_lead_bjet_bTagWP4XT",
+    # f"{jet_prefix}_lead_bjet_bTagWP3XT", f"{jet_prefix}_lead_bjet_bTagWP4XT",
     # --------
     f'{jet_prefix}_sublead_bjet_eta', 
     # f"{jet_prefix}_sublead_bjet_btagPNetB",
     # f"{jet_prefix}sublead_bjet_btagUParTAK4B",
     f"{jet_prefix}_sublead_bjet_bTagWPL", f"{jet_prefix}_sublead_bjet_bTagWPM", f"{jet_prefix}_sublead_bjet_bTagWPT",
     f"{jet_prefix}_sublead_bjet_bTagWPXT", f"{jet_prefix}_sublead_bjet_bTagWPXXT",
-    f"{jet_prefix}_sublead_bjet_bTagWP3XT", f"{jet_prefix}_sublead_bjet_bTagWP4XT",
+    # f"{jet_prefix}_sublead_bjet_bTagWP3XT", f"{jet_prefix}_sublead_bjet_bTagWP4XT",
     
     # diphoton vars
     'eta',
@@ -99,8 +99,7 @@ AUX_VARIABLES = lambda jet_prefix: {
     'event', 'lumi', 'hash', 'sample_name', 
 
     # MC info
-    'weight', 
-    'eventWeight',
+    'weight', 'eventWeight'
 
     # mass
     'mass', 
@@ -167,6 +166,14 @@ parser.add_argument(
 
 ################################
 
+
+def argsorted(objects, **kwargs):
+    object_to_index = {}
+    for index, object in enumerate(objects):
+        object_to_index[object] = index
+    sorted_objects = sorted(objects)
+    sorted_indices = [object_to_index[object] for object in sorted_objects]
+    return sorted_indices
 
 def plot_vars(df, output_dirpath, sample_name, title="pre-std, train0"):
     std_type, df_type = tuple(title.split(", "))
@@ -320,8 +327,8 @@ def preprocess_resolved_bdt(input_filepaths, output_dirpath):
     else:
         BDT_variables = BASIC_VARIABLES(JET_PREFIX)
     AUX_variables = AUX_VARIABLES(JET_PREFIX)
-    BDT_variables, AUX_variables = list(BDT_variables), list(AUX_variables)
-        
+    BDT_variables, AUX_variables = sorted(BDT_variables), sorted(AUX_variables)
+    
     train_dfs, train_aux_dfs = get_dfs(input_filepaths['train'], BDT_variables, AUX_variables)
     test_dfs, test_aux_dfs = get_dfs(input_filepaths['test'], BDT_variables, AUX_variables)
 
@@ -342,9 +349,13 @@ def preprocess_resolved_bdt(input_filepaths, output_dirpath):
         else:
             with open(stdjson_filepath, 'r') as f:
                 stdjson = json.load(f)
-            if stdjson['col'] != BDT_variables: 
-                raise Exception("New variables do not match variables used in standardization, check std json file.")
-            x_mean, x_std = stdjson['mean'], stdjson['std']
+            if len(stdjson['col']) != len(BDT_variables):
+                raise Exception(f"Mismatch between number of new variables being used ({len(BDT_variables)}) and number of variables in dataset ({len(stdjson['col'])}), check `standardization.json` file.")
+            sort_indices = argsorted(stdjson['col'])
+            if any(sorted(stdjson['col'])[i] != BDT_variables[i] for i in range(len(BDT_variables))): 
+                raise Exception("Mismatch between new variables and variables in dataset, check `standardization.json` file.")
+            x_mean, x_std = [stdjson['mean'][i] for i in sort_indices], [stdjson['std'][i] for i in sort_indices]
+
 
 
         if not REMAKE_TEST:
@@ -403,8 +414,8 @@ def preprocess_resolved_bdt(input_filepaths, output_dirpath):
                 print('-'*60)
                 print(f"input = \n{filepath}\n{'-'*60}\noutput = \n{output_filepath}")
                 print(f"num events = {len(df)}")
-                print(f"sum of weights = {train_aux_dfs_fold[filepath].loc[:,'weight'].sum()}")
-                print(f"sum of eventWeights = {train_aux_dfs_fold[filepath].loc[:,'eventWeight'].sum()}")
+                print(f"sum of weights = {test_dfs_fold[filepath].loc[:,'weight'].sum()}")
+                print(f"sum of eventWeights = {test_aux_dfs_fold[filepath].loc[:,'eventWeight'].sum()}")
 
             cols = list(df.columns)
             df = apply_logs(df)
