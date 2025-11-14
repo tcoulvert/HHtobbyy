@@ -236,3 +236,41 @@ Parameters: { "device" } might not be used.
   but getting flagged wrongly here. Please open an issue if you find any such cases.
 
 
+cmslpcgpu1.fnal.gov      Fri Nov 14 13:01:47 2025  555.42.06
+[0] Tesla P100-PCIE-12GB | 45°C,   0 % |  9446 / 12288 MB | ckapsiak(9444M)
+usage: evaluation.py [-h] [--training_dirpath TRAINING_DIRPATH]
+                     [--base_filepath BASE_FILEPATH] [--fold FOLD] [--train]
+                     [--test]
+evaluation.py: error: unrecognized arguments: --output_dirpath /uscms/home/tsievert/nobackup/XHYbbgg/HHtobbyy/MultiClassBDT_model_outputs/v16/22to24_bTagWPbatch/2025-11-11_14-47-20
+cmslpcgpu1.fnal.gov      Fri Nov 14 13:10:09 2025  555.42.06
+[0] Tesla P100-PCIE-12GB | 45°C,   0 % |  9446 / 12288 MB | ckapsiak(9444M)
+[13:10:12] WARNING: /home/conda/feedstock_root/build_artifacts/xgboost-split_1645117937192/work/src/learner.cc:576: 
+Parameters: { "device" } might not be used.
+
+  This could be a false alarm, with some parameters getting used by language bindings but
+  then being mistakenly passed down to XGBoost core, or some parameter actually being used
+  but getting flagged wrongly here. Please open an issue if you find any such cases.
+
+
+Traceback (most recent call last):
+  File "/uscms_data/d3/tsievert/XHYbbgg/HHtobbyy/evaluation/evaluation.py", line 116, in <module>
+    evaluate(args.training_dirpath, args.base_filepath, args.fold)
+  File "/uscms_data/d3/tsievert/XHYbbgg/HHtobbyy/evaluation/evaluation.py", line 100, in evaluate
+    preds = booster.predict(dm, iteration_range=(0, booster.best_iteration+1))
+  File "/uscms/home/tsievert/nobackup/miniforge3/envs/higgs-dna/lib/python3.10/site-packages/xgboost/core.py", line 1913, in predict
+    _check_call(
+  File "/uscms/home/tsievert/nobackup/miniforge3/envs/higgs-dna/lib/python3.10/site-packages/xgboost/core.py", line 218, in _check_call
+    raise XGBoostError(py_str(_LIB.XGBGetLastError()))
+xgboost.core.XGBoostError: [13:10:12] /home/conda/feedstock_root/build_artifacts/xgboost-split_1645117937192/work/src/learner.cc:1257: Check failed: learner_model_param_.num_feature >= p_fmat->Info().num_col_ (48 vs. 54) : Number of columns does not match number of features in booster.
+Stack trace:
+  [bt] (0) /uscms/home/tsievert/nobackup/miniforge3/envs/higgs-dna/lib/libxgboost.so(+0x2b888b) [0x7f17613ff88b]
+  [bt] (1) /uscms/home/tsievert/nobackup/miniforge3/envs/higgs-dna/lib/libxgboost.so(+0x2b8dcb) [0x7f17613ffdcb]
+  [bt] (2) /uscms/home/tsievert/nobackup/miniforge3/envs/higgs-dna/lib/libxgboost.so(+0x2c2b31) [0x7f1761409b31]
+  [bt] (3) /uscms/home/tsievert/nobackup/miniforge3/envs/higgs-dna/lib/libxgboost.so(XGBoosterPredictFromDMatrix+0x5b6) [0x7f17613015e6]
+  [bt] (4) /uscms/home/tsievert/nobackup/miniforge3/envs/higgs-dna/lib/python3.10/lib-dynload/../../libffi.so.8(+0x6a4a) [0x7f182b02ea4a]
+  [bt] (5) /uscms/home/tsievert/nobackup/miniforge3/envs/higgs-dna/lib/python3.10/lib-dynload/../../libffi.so.8(+0x5fea) [0x7f182b02dfea]
+  [bt] (6) /uscms/home/tsievert/nobackup/miniforge3/envs/higgs-dna/lib/python3.10/lib-dynload/_ctypes.cpython-310-x86_64-linux-gnu.so(+0x931f) [0x7f182b03d31f]
+  [bt] (7) /uscms/home/tsievert/nobackup/miniforge3/envs/higgs-dna/lib/python3.10/lib-dynload/_ctypes.cpython-310-x86_64-linux-gnu.so(+0x864d) [0x7f182b03c64d]
+  [bt] (8) python(_PyObject_MakeTpCall+0x2d3) [0x56494d523f73]
+
+

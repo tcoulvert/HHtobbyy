@@ -100,9 +100,9 @@ def evaluate(training_dirpath: str, base_filepath: str, fold: int=None, dataset:
                 preds = booster.predict(dm, iteration_range=(0, booster.best_iteration+1))
 
                 for i, class_name in enumerate(formatted_order):
-                    df[f"{class_name}_prob"] = preds[:, i]
-                df[f"DttH_prob"] = get_ttH_score(preds)
-                df[f"DQCD_prob"] = get_QCD_score(preds)
+                    df[f"AUX_{class_name}_prob"] = preds[:, i]
+                df[f"AUX_DttH_prob"] = get_ttH_score(preds)
+                df[f"AUX_DQCD_prob"] = get_QCD_score(preds)
 
                 for col in aux.columns:
                     df[col] = aux[col]

@@ -34,7 +34,7 @@ def get_label1D(labelND):
 
 def get_Dataframe(filepath: str, aux: bool=False):
     schema = pq.read_schema(filepath)
-    vars = [var for var in schema.names if ('AUX_' not in var) ^ aux]
+    vars = [var for var in schema.names if ('AUX_' not in var and '_prob' not in var) ^ aux]
 
     df = pq.read_table(filepath, columns=vars).to_pandas()
 
