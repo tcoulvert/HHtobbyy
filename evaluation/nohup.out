@@ -274,3 +274,23 @@ Stack trace:
   [bt] (8) python(_PyObject_MakeTpCall+0x2d3) [0x56494d523f73]
 
 
+cmslpcgpu1.fnal.gov      Fri Nov 14 13:25:52 2025  555.42.06
+[0] Tesla P100-PCIE-12GB | 45°C,   0 % |  9446 / 12288 MB | ckapsiak(9444M)
+[13:25:54] WARNING: /home/conda/feedstock_root/build_artifacts/xgboost-split_1645117937192/work/src/learner.cc:576: 
+Parameters: { "device" } might not be used.
+
+  This could be a false alarm, with some parameters getting used by language bindings but
+  then being mistakenly passed down to XGBoost core, or some parameter actually being used
+  but getting flagged wrongly here. Please open an issue if you find any such cases.
+
+
+Traceback (most recent call last):
+  File "/uscms_data/d3/tsievert/XHYbbgg/HHtobbyy/evaluation/evaluation.py", line 116, in <module>
+    evaluate(args.training_dirpath, args.base_filepath, args.fold)
+  File "/uscms_data/d3/tsievert/XHYbbgg/HHtobbyy/evaluation/evaluation.py", line 100, in evaluate
+    preds = booster.predict(dm, iteration_range=(0, booster.best_iteration+1))
+  File "/uscms/home/tsievert/nobackup/miniforge3/envs/higgs-dna/lib/python3.10/site-packages/xgboost/core.py", line 1887, in predict
+    self._validate_features(data)
+  File "/uscms/home/tsievert/nobackup/miniforge3/envs/higgs-dna/lib/python3.10/site-packages/xgboost/core.py", line 2485, in _validate_features
+    raise ValueError(msg.format(self.feature_names, data.feature_names))
+ValueError: feature_names mismatch: ['nonRes_sublead_bjet_bTagWPM', 'nonRes_lead_bjet_bTagWPT', 'pt', 'nonRes_pt_balance', 'nonRes_lead_bjet_pt_over_Mjj', 'nonRes_lead_bjet_bTagWPXT', 'nonRes_chi_t0', 'lepton1_pt', 'nonRes_dijet_mass', 'nonRes_DeltaPhi_jj', 'nonRes_isr_jet_pt', 'nonRes_lead_bjet_bTagWPXXT', 'lepton1_mvaID', 'nonRes_DeltaEta_jj', 'nonRes_lead_bjet_bTagWPL', 'nonRes_DeltaPhi_isr_jet_z', 'DeltaR_b1l1', 'lead_mvaID', 'nonRes_CosThetaStar_jj', 'nonRes_chi_t1', 'nonRes_sublead_bjet_eta', 'eta', 'nonRes_DeltaPhi_j1MET', 'nonRes_sublead_bjet_bTagWPT', 'sublead_sigmaE_over_E', 'puppiMET_sumEt', 'lead_sigmaE_over_E', 'nonRes_dijet_pt', 'nonRes_lead_bjet_bTagWPM', 'nonRes_CosThetaStar_gg', 'nonRes_DeltaPhi_j2MET', 'nonRes_HHbbggCandidate_eta', 'nonRes_sublead_bjet_sigmapT_over_pT', 'nonRes_lead_bjet_pt', 'sublead_mvaID', 'nonRes_sublead_bjet_bTagWPXXT', 'nonRes_sublead_bjet_pt_over_Mjj', 'nonRes_sublead_bjet_bTagWPXT', 'nonRes_CosThetaStar_CS', 'puppiMET_pt', 'nonRes_lead_bjet_sigmapT_over_pT', 'nonRes_DeltaR_jg_min', 'nonRes_sublead_bjet_bTagWPL', 'nonRes_sublead_bjet_pt', 'nonRes_lead_bjet_eta', 'nonRes_HHbbggCandidate_pt', 'lepton1_pfIsoId', 'n_jets'] ['DeltaR_b1l1', 'eta', 'lead_mvaID', 'lead_sigmaE_over_E', 'lepton1_mvaID', 'lepton1_pfIsoId', 'lepton1_pt', 'n_jets', 'nonRes_CosThetaStar_CS', 'nonRes_CosThetaStar_gg', 'nonRes_CosThetaStar_jj', 'nonRes_DeltaEta_jj', 'nonRes_DeltaPhi_isr_jet_z', 'nonRes_DeltaPhi_j1MET', 'nonRes_DeltaPhi_j2MET', 'nonRes_DeltaPhi_jj', 'nonRes_DeltaR_jg_min', 'nonRes_HHbbggCandidate_eta', 'nonRes_HHbbggCandidate_pt', 'nonRes_chi_t0', 'nonRes_chi_t1', 'nonRes_dijet_mass', 'nonRes_dijet_pt', 'nonRes_isr_jet_pt', 'nonRes_lead_bjet_bTagWPL', 'nonRes_lead_bjet_bTagWPM', 'nonRes_lead_bjet_bTagWPT', 'nonRes_lead_bjet_bTagWPXT', 'nonRes_lead_bjet_bTagWPXXT', 'nonRes_lead_bjet_eta', 'nonRes_lead_bjet_pt', 'nonRes_lead_bjet_pt_over_Mjj', 'nonRes_lead_bjet_sigmapT_over_pT', 'nonRes_pt_balance', 'nonRes_sublead_bjet_bTagWPL', 'nonRes_sublead_bjet_bTagWPM', 'nonRes_sublead_bjet_bTagWPT', 'nonRes_sublead_bjet_bTagWPXT', 'nonRes_sublead_bjet_bTagWPXXT', 'nonRes_sublead_bjet_eta', 'nonRes_sublead_bjet_pt', 'nonRes_sublead_bjet_pt_over_Mjj', 'nonRes_sublead_bjet_sigmapT_over_pT', 'pt', 'puppiMET_pt', 'puppiMET_sumEt', 'sublead_mvaID', 'sublead_sigmaE_over_E']

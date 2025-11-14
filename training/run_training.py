@@ -46,13 +46,14 @@ LPC_FILEPREFIX = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parqu
 # PARQUET_TIME = "2025-10-24_20-33-24"  # 2024 WPs + 3XT + 4XT
 # PARQUET_TIME = "2025-10-23_02-31-07"  # 2024 PNet
 # PARQUET_TIME = "2025-10-21_11-17-26"  # 2022-24 WPs
-PARQUET_TIME = "2025-11-11_14-13-23"  # 2022-24 WPs + high stats -- USE THIS ONE
-# PARQUET_TIME = ""  # 2022-24 WPs + kl + high stats
+# PARQUET_TIME = "2025-11-11_14-13-23"  # 2022-24 WPs + high stats
+# PARQUET_TIME = "2025-11-14_13-28-53"  # 2022-24 WPs + high stats + 3XT + 4XT -- USE THIS ONE
+# PARQUET_TIME = "2025-11-14_13-31-51"  # 2022-24 WPs + high stats + 3XT + 4XT + MHH
 BASE_FILEPATH = os.path.join(LPC_FILEPREFIX, PARQUET_TIME, "")
 
 CURRENT_DIRPATH = str(Path().absolute())
-VERSION = 'v16'
-VARS = '22to24_bTagWPbatch'
+VERSION = 'v17'
+VARS = '22to24_bTagWPbatch3XT4XT'
 CURRENT_TIME = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
 
 OUTPUT_DIRPATH = os.path.join(CURRENT_DIRPATH, f"../MultiClassBDT_model_outputs", VERSION, VARS, CURRENT_TIME)

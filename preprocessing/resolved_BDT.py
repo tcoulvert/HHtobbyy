@@ -41,14 +41,14 @@ BASIC_VARIABLES = lambda jet_prefix: {
     # f"{jet_prefix}lead_bjet_btagUParTAK4B",
     f"{jet_prefix}_lead_bjet_bTagWPL", f"{jet_prefix}_lead_bjet_bTagWPM", f"{jet_prefix}_lead_bjet_bTagWPT",
     f"{jet_prefix}_lead_bjet_bTagWPXT", f"{jet_prefix}_lead_bjet_bTagWPXXT",
-    f"{jet_prefix}_lead_bjet_bTagWP3XT", f"{jet_prefix}_lead_bjet_bTagWP4XT",
+    # f"{jet_prefix}_lead_bjet_bTagWP3XT", f"{jet_prefix}_lead_bjet_bTagWP4XT",
     # --------
     f'{jet_prefix}_sublead_bjet_eta', 
     # f"{jet_prefix}_sublead_bjet_btagPNetB",
     # f"{jet_prefix}sublead_bjet_btagUParTAK4B",
     f"{jet_prefix}_sublead_bjet_bTagWPL", f"{jet_prefix}_sublead_bjet_bTagWPM", f"{jet_prefix}_sublead_bjet_bTagWPT",
     f"{jet_prefix}_sublead_bjet_bTagWPXT", f"{jet_prefix}_sublead_bjet_bTagWPXXT",
-    f"{jet_prefix}_sublead_bjet_bTagWP3XT", f"{jet_prefix}_sublead_bjet_bTagWP4XT",
+    # f"{jet_prefix}_sublead_bjet_bTagWP3XT", f"{jet_prefix}_sublead_bjet_bTagWP4XT",
     
     # diphoton vars
     'eta',
@@ -68,6 +68,9 @@ BASIC_VARIABLES = lambda jet_prefix: {
     f'{jet_prefix}_DeltaPhi_isr_jet_z',
 }
 MHH_CORRELATED_VARIABLES = lambda jet_prefix: {
+    # MHH
+    f'{jet_prefix}_HHbbggCandidate_mass',
+
     # MET variables
     'puppiMET_sumEt',  #eft
 
