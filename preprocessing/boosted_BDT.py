@@ -35,20 +35,17 @@ BASIC_VARIABLES = lambda jet_prefix: {
     # angular vars
     f'{jet_prefix}_CosThetaStar_CS', f'{jet_prefix}_CosThetaStar_jj', f'{jet_prefix}_CosThetaStar_gg',
 
-    # bjet vars
-    f'{jet_prefix}_lead_bjet_eta', # eta
-    # f"{jet_prefix}_lead_bjet_btagPNetB",
-    # f"{jet_prefix}lead_bjet_btagUParTAK4B",
-    f"{jet_prefix}_lead_bjet_bTagWPL", f"{jet_prefix}_lead_bjet_bTagWPM", f"{jet_prefix}_lead_bjet_bTagWPT",
-    f"{jet_prefix}_lead_bjet_bTagWPXT", f"{jet_prefix}_lead_bjet_bTagWPXXT",
-    # f"{jet_prefix}_lead_bjet_bTagWP3XT", f"{jet_prefix}_lead_bjet_bTagWP4XT",
-    # --------
-    f'{jet_prefix}_sublead_bjet_eta', 
-    # f"{jet_prefix}_sublead_bjet_btagPNetB",
-    # f"{jet_prefix}sublead_bjet_btagUParTAK4B",
-    f"{jet_prefix}_sublead_bjet_bTagWPL", f"{jet_prefix}_sublead_bjet_bTagWPM", f"{jet_prefix}_sublead_bjet_bTagWPT",
-    f"{jet_prefix}_sublead_bjet_bTagWPXT", f"{jet_prefix}_sublead_bjet_bTagWPXXT",
-    # f"{jet_prefix}_sublead_bjet_bTagWP3XT", f"{jet_prefix}_sublead_bjet_bTagWP4XT",
+    # # bjet vars
+    # f'{jet_prefix}_lead_bjet_eta', # eta
+    # f"{jet_prefix}_lead_bjet_bTagWPL", f"{jet_prefix}_lead_bjet_bTagWPM", f"{jet_prefix}_lead_bjet_bTagWPT",
+    # f"{jet_prefix}_lead_bjet_bTagWPXT", f"{jet_prefix}_lead_bjet_bTagWPXXT",
+    # # --------
+    # f'{jet_prefix}_sublead_bjet_eta', 
+    # f"{jet_prefix}_sublead_bjet_bTagWPL", f"{jet_prefix}_sublead_bjet_bTagWPM", f"{jet_prefix}_sublead_bjet_bTagWPT",
+    # f"{jet_prefix}_sublead_bjet_bTagWPXT", f"{jet_prefix}_sublead_bjet_bTagWPXXT",
+    
+    # fatjet vars
+    #### insert fatjet variables here! ###
     
     # diphoton vars
     'eta',
@@ -74,18 +71,18 @@ MHH_CORRELATED_VARIABLES = lambda jet_prefix: {
     # jet vars
     f'{jet_prefix}_DeltaR_jg_min',  #eft
 
-    # dijet vars
-    f'{jet_prefix}_dijet_mass' + ('' if jet_prefix == 'nonRes' else '_DNNreg'),  #eft
-    f'{jet_prefix}_dijet_pt',  #eft
+    # # dijet vars
+    # f'{jet_prefix}_dijet_mass' + ('' if jet_prefix == 'nonRes' else '_DNNreg'),  #eft
+    # f'{jet_prefix}_dijet_pt',  #eft
 
-    # bjet vars
-    f'{jet_prefix}_lead_bjet_pt', #eft
-    f'{jet_prefix}_lead_bjet_sigmapT_over_pT', #eft
-    f'{jet_prefix}_lead_bjet_pt_over_Mjj', #eft
-    # --------
-    f'{jet_prefix}_sublead_bjet_pt', #eft
-    f'{jet_prefix}_sublead_bjet_sigmapT_over_pT', #eft
-    f'{jet_prefix}_sublead_bjet_pt_over_Mjj', #eft
+    # # bjet vars
+    # f'{jet_prefix}_lead_bjet_pt', #eft
+    # f'{jet_prefix}_lead_bjet_sigmapT_over_pT', #eft
+    # f'{jet_prefix}_lead_bjet_pt_over_Mjj', #eft
+    # # --------
+    # f'{jet_prefix}_sublead_bjet_pt', #eft
+    # f'{jet_prefix}_sublead_bjet_sigmapT_over_pT', #eft
+    # f'{jet_prefix}_sublead_bjet_pt_over_Mjj', #eft
 
     # diphoton vars
     'pt',  #eft
@@ -102,15 +99,15 @@ AUX_VARIABLES = lambda jet_prefix: {
     'weight', 'eventWeight',
 
     # mass
-    'mass', 
-    f'{jet_prefix}_dijet_mass' + ('' if jet_prefix == 'nonRes' else '_DNNreg'),
+    # 'mass', 
+    # f'{jet_prefix}_dijet_mass' + ('' if jet_prefix == 'nonRes' else '_DNNreg'),
     f'{jet_prefix}_HHbbggCandidate_mass',
 
     # sculpting study
     f'{jet_prefix}_max_nonbjet_btag',
 
     # event masks
-    f'{jet_prefix}_resolved_BDT_mask',
+    # f'{jet_prefix}_resolved_BDT_mask',
 }
 
 FILL_VALUE = -999
