@@ -33,12 +33,12 @@ cross_sections = {
     # Resonant (Mgg) background #
     # Fake b-jets
     'GluGluHToGG': 52170*0.00228, 'VBFHToGG': 4075*0.00228, 'W*HToGG': 1453*0.00228,
-    'W*HTo2G': 1453*0.00228*0.6741,
+    'W*Hto2G': 1453*0.00228*0.6741,
     # Real b-jets
     'ttHToGG': 568.8*0.00228, 'bbHToGG': 525.1*0.00228,
     # Resonant b-jets
     'VHToGG': (2*1453 + 942.2)*0.00228, 'ZHToGG': 942.2*0.00228,
-    'ZH*To2G': 942.2*0.00228*0.69911,
+    'ZH*to2G': 942.2*0.00228*0.69911,
 
     # Non-resonant (Mgg) background #
     # Fake photons, fake b-jets

@@ -41,18 +41,14 @@ BASIC_VARIABLES = lambda jet_prefix: {
     # f"{jet_prefix}lead_bjet_btagUParTAK4B",
     f"{jet_prefix}_lead_bjet_bTagWPL", f"{jet_prefix}_lead_bjet_bTagWPM", f"{jet_prefix}_lead_bjet_bTagWPT",
     f"{jet_prefix}_lead_bjet_bTagWPXT", f"{jet_prefix}_lead_bjet_bTagWPXXT",
-    # f"{jet_prefix}_lead_bjet_bTagWPXXXT",
-    # f"{jet_prefix}_lead_bjet_bTagWPXXXXT",
-    # f"{jet_prefix}_lead_bjet_bTagWPXXXXXT",
+    f"{jet_prefix}_lead_bjet_bTagWP3XT", f"{jet_prefix}_lead_bjet_bTagWP4XT",
     # --------
     f'{jet_prefix}_sublead_bjet_eta', 
     # f"{jet_prefix}_sublead_bjet_btagPNetB",
     # f"{jet_prefix}sublead_bjet_btagUParTAK4B",
     f"{jet_prefix}_sublead_bjet_bTagWPL", f"{jet_prefix}_sublead_bjet_bTagWPM", f"{jet_prefix}_sublead_bjet_bTagWPT",
     f"{jet_prefix}_sublead_bjet_bTagWPXT", f"{jet_prefix}_sublead_bjet_bTagWPXXT",
-    # f"{jet_prefix}_sublead_bjet_bTagWPXXXT",
-    # f"{jet_prefix}_sublead_bjet_bTagWPXXXXT",
-    # f"{jet_prefix}_sublead_bjet_bTagWPXXXXXT",
+    f"{jet_prefix}_sublead_bjet_bTagWP3XT", f"{jet_prefix}_sublead_bjet_bTagWP4XT",
     
     # diphoton vars
     'eta',
@@ -264,6 +260,8 @@ def get_dfs(filepaths, BDT_vars, AUX_vars):
     dfs, aux_dfs = {}, {}
     for filepath in sorted(filepaths):
         pq_file = pq.ParquetFile(filepath)
+        print(filepath)
+        # print(pq_file.schema)
         for pq_batch in pq_file.iter_batches(batch_size=524_288, columns=BDT_vars+AUX_vars):
             df_batch = pq_batch.to_pandas()
             df_mask = get_df_mask(df_batch)

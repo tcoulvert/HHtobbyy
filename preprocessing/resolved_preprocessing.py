@@ -98,9 +98,6 @@ def max_nonbjet_btag(sample, prefactor='nonRes'):
 
 def add_vars_resolved(sample, filepath):
 
-    for field in sample.fields:
-        print(field)
-
     # Regressed jet kinematics #
     jet_4moms = {}
     for i in range(1, NUM_JETS+1):
