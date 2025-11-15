@@ -1,4 +1,3 @@
-# %matplotlib widget
 # Stdlib packages
 import argparse
 import datetime
@@ -26,7 +25,6 @@ sys.path.append(os.path.join(GIT_REPO, "preprocessing/"))
 sys.path.append(os.path.join(GIT_REPO, "training/"))
 
 
-import training_utils as utils
 from retrieval_utils import (
     get_Dataframe, get_DMatrix
 )
@@ -47,8 +45,8 @@ parser.add_argument(
 )
 parser.add_argument(
     "--base_filepath", 
-    default='',
-    help="Full filepath on LPC for standardized dataset (train and test parquets)"
+    default=None,
+    help="Full filepath on LPC for standardized dataset (train and test parquets), default is to use dataset in the training `get_filepaths_lambda.txt` file"
 )
 parser.add_argument(
     "--fold", 
@@ -71,18 +69,20 @@ parser.add_argument(
 
 gpustat.print_gpustat()
 
-order = ['ggF HH', 'ttH + bbH', 'VH', 'non-res + ggFH + VBFH']
-formatted_order = [''.join(class_name.split(' ')) for class_name in order]
+# order = ['ggF HH', 'ttH + bbH', 'VH', 'non-res + ggFH + VBFH']
+# formatted_order = [''.join(class_name.split(' ')) for class_name in order]
 
 ################################
 
 
-def evaluate(training_dirpath: str, base_filepath: str, fold: int=None, dataset: str='test'):
+def evaluate(training_dirpath: str, sample_filepaths: list, fold: int=None, dataset: str='test'):
     training_dirpath = os.path.join(training_dirpath, "")
     param_filepath = os.path.join(training_dirpath, f"{training_dirpath.split('/')[-2]}_best_params.json")
     with open(param_filepath, 'r') as f:
         param = json.load(f)
     param = list(param.items()) + [('eval_metric', 'mlogloss')]
+
+    
 
     for fold_idx in range(5):
         if fold is not None and fold != fold_idx: continue

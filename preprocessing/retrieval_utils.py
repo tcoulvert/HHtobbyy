@@ -1,4 +1,7 @@
-# %matplotlib widget
+# Stdlib packages
+import glob
+import os
+
 # Common Py packages
 import numpy as np
 import pandas as pd
@@ -20,6 +23,17 @@ FILL_VALUE = -999
 
 ################################
 
+
+def get_sample_filepaths(base_filepath, sample_name, syst_name, fold_idx, dataset):
+    return glob.glob(os.path.join(base_filepath, "**", sample_name, f"*{syst_name}*", f"*{dataset}{fold_idx}*.parquet"), recursive=True)
+
+def get_filepaths_func(class_sample_map: dict, base_filepath: str, syst_name: str='nominal'):
+    return lambda fold_idx, dataset: {
+        class_name: sorted(set([
+                sample_filepath for sample_name in sample_names 
+                for sample_filepath in get_sample_filepaths(base_filepath, sample_name, syst_name, fold_idx, dataset)
+        ])) for class_name, sample_names in class_sample_map.items()
+    }
 
 def get_labelND(label1D):
     """
@@ -104,3 +118,7 @@ def get_DMatrices(get_filepaths, fold_idx: int, val_split: float=0.2, **kwargs):
     test_dm = get_DMatrix(test_df, test_aux, dataset='test')
 
     return train_dm, val_dm, test_dm
+
+def get_DMatrix_from_file(filepath, dataset: str="train"):
+    df, aux = get_Dataframe(filepath), get_Dataframe(filepath, aux=True)
+    return get_DMatrix(df, aux, dataset)

@@ -2,6 +2,7 @@
 import argparse
 import copy
 import datetime
+import glob
 import json
 import logging
 import os
@@ -19,6 +20,44 @@ import matplotlib.pyplot as plt
 
 ################################
 
+
+# This map definition does not exclusively define the samples in the training/testing 
+#  datasets, rather this map defines how to split the samples into distinct 
+#  classes, as well as those classes' "true" labels as seen by the BDT. For example, 
+#  in a training involving the SM ggF HH signal and *NOT* the other kl points, the
+#  SM ggF HH signal sample might have a "true" label of 0, whereas the kl=5 
+#  sample -- while still technically an HH "signal" -- is "unlabled" according
+#  to the trained BDT because it didn't see the kl=5 sample during training.
+#
+# The structure of this map has the keys as the name of the classes, and the values
+#  as a list of wildcard sample-names (i.e. glob formatting) of that class.
+# {
+#   'class 1': ['glob*name*1*', '*globname*2', etc]
+# }
+#
+# The training dataset is defined by the intersection of this map *AND* the 
+#  samples passed under the 'train' and 'train-test' keys of the input_flepaths JSON.
+#  Therefore, if a sample is passed in the input JSON, but its glob-name is not 
+#  entered here, the sample will not be included in the training. Similarly, if a
+#  sample's glob-name is listed here, but the sample is not passed in the input JSON,
+#  it will not be included in the training.
+#
+# Beyond the training files, this mapping is important because only the samples
+#  listed in this map will be used for the baseline evaluation metrics (ROC curves,
+#  Feature Importance, Confusion Matrix, etc). All samples in the train and test
+#  datasets can be evaluated and used for plotting, but it is not the default behavior.
+CLASS_SAMPLE_MAP = {
+    'ggF HH': ["*GluGlu*HH*kl-1p00*"],
+    'ttH + bbH': ["*ttH*", "*bbH*"],
+    'VH': ["*VH*", "*ZH*", "*Wm*H*", "*Wp*H*"],
+    'nonRes + ggFH + VBFH': ["*GGJets*", "*GJet*", "*TTGG*", "*GluGluH*GG*", "*VBFH*GG*"]
+}
+TRAIN_ONLY_SAMPLES = {
+    "*Zto2Q*", "*Wto2Q*", "*batch[4-6]*"
+}
+TEST_ONLY_SAMPLES = {
+    "Data", "*GluGlu*HH*kl-0p00*", "*GluGlu*HH*kl-2p45*", "*GluGlu*HH*kl-5p00*"
+}
 
 BASIC_VARIABLES = lambda jet_prefix: {
     # MET variables
@@ -69,7 +108,7 @@ BASIC_VARIABLES = lambda jet_prefix: {
 }
 MHH_CORRELATED_VARIABLES = lambda jet_prefix: {
     # MHH
-    f'{jet_prefix}_HHbbggCandidate_mass',
+    # f'{jet_prefix}_HHbbggCandidate_mass',
 
     # MET variables
     'puppiMET_sumEt',  #eft
@@ -139,7 +178,7 @@ parser = argparse.ArgumentParser(description="Standardize BDT inputs and save ou
 parser.add_argument(
     "--input_filepaths", 
     default='',
-    help="JSON for full filepaths (separated with \',\') on LPC"
+    help="JSON for filepaths on cluster for eras"
 )
 parser.add_argument(
     "--output_dirpath", 
@@ -322,6 +361,12 @@ def preprocess_resolved_bdt(input_filepaths, output_dirpath):
         }
         - output_dirpath = <str> filepath to dump output (defaults to cwd)
     """
+    # Defining class definitions for samples #
+    if not DRYRUN:
+        class_sample_map_filepath = os.path.join(output_dirpath, 'class_sample_map.json')
+        with open(class_sample_map_filepath, 'w') as f:
+            json.dump(CLASS_SAMPLE_MAP, f)
+
     # Defining variables to use #
     if re.search('_EFT', output_dirpath) is None: 
         BDT_variables = BASIC_VARIABLES(JET_PREFIX) | MHH_CORRELATED_VARIABLES(JET_PREFIX)

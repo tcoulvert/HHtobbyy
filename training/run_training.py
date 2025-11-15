@@ -1,6 +1,7 @@
 # %matplotlib widget
 # Stdlib packages
 import datetime
+import inspect
 import json
 import os
 import subprocess
@@ -25,7 +26,7 @@ sys.path.append(os.path.join(GIT_REPO, "preprocessing/"))
 import training_utils as utils
 import optimize_hyperparams as opt
 from retrieval_utils import (
-    get_DMatrices
+    get_DMatrices, get_filepaths_func
 )
 
 ################################
@@ -34,21 +35,10 @@ from retrieval_utils import (
 gpustat.print_gpustat()
 
 LPC_FILEPREFIX = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/training_parquets/"
-# PARQUET_TIME = "2025-10-22_10-35-14"  # 2022-23 PNet
-# PARQUET_TIME = "2025-10-22_10-10-00"  # 2022-23 WPs
-# PARQUET_TIME = "2025-10-22_10-10-24"  # 2022-23 WPs w/ extra kappa lambda samples
-# PARQUET_TIME = "2025-10-22_10-34-09"  # 2022-23 WPs w/ 1 large batch sample
-# PARQUET_TIME = "2025-10-22_10-10-13"  # 2022-23 WPs w/ all large batch samples
-# PARQUET_TIME = "2025-10-22_15-52-13"  # 2022-23 WPs w/ all large batch samples + extra kappa lambda samples
 # PARQUET_TIME = "2025-11-14_12-14-01"  # 2022-23 WPs + 3XT + 4XT
-# PARQUET_TIME = "2025-10-22_10-36-34"  # 2024 UParT  
-# PARQUET_TIME = "2025-10-22_10-36-51"  # 2024 WPs
-# PARQUET_TIME = "2025-10-24_20-33-24"  # 2024 WPs + 3XT + 4XT
-# PARQUET_TIME = "2025-10-23_02-31-07"  # 2024 PNet
-# PARQUET_TIME = "2025-10-21_11-17-26"  # 2022-24 WPs
-# PARQUET_TIME = "2025-11-11_14-13-23"  # 2022-24 WPs + high stats
-# PARQUET_TIME = "2025-11-14_13-28-53"  # 2022-24 WPs + high stats + 3XT + 4XT -- USE THIS ONE
-# PARQUET_TIME = "2025-11-14_13-31-51"  # 2022-24 WPs + high stats + 3XT + 4XT + MHH
+# PARQUET_TIME = "2025-11-14_13-42-11"  # 2022-24 WPs + high stats -- USE THIS ONE
+PARQUET_TIME = "2025-11-14_13-41-30"  # 2022-24 WPs + high stats + 3XT + 4XT
+# PARQUET_TIME = "2025-11-14_13-43-00"  # 2022-24 WPs + high stats + MHH
 BASE_FILEPATH = os.path.join(LPC_FILEPREFIX, PARQUET_TIME, "")
 
 CURRENT_DIRPATH = str(Path().absolute())
@@ -80,6 +70,12 @@ param['eval_metric'] = 'merror'
 with open(param_filepath, 'w') as f:
     json.dump(param, f)
 param = list(param.items()) + [('eval_metric', 'mlogloss')]
+
+# Write out lambda function used for training to allow for changing the classes, but still evaluate a model
+get_filepaths_lambda_filepath = os.path.join(OUTPUT_DIRPATH, f'{CURRENT_TIME}_get_filepaths_lambda.txt')
+lambda_str = "".join([line.strip() for line in inspect.getsourcelines(utils.get_filepaths_func(BASE_FILEPATH))[0]]).replace("base_filepath", "\""+BASE_FILEPATH+"\"").replace("return ", "").replace(",}", "}")
+with open(get_filepaths_lambda_filepath, "w") as f:
+    f.write(lambda_str)
 
 evals_result_dict = {f"fold_{fold_idx}": dict() for fold_idx in range(N_FOLDS)}
 for fold_idx in range(N_FOLDS):
