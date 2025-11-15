@@ -42,7 +42,7 @@ PARQUET_TIME = "2025-11-14_13-41-30"  # 2022-24 WPs + high stats + 3XT + 4XT
 BASE_FILEPATH = os.path.join(LPC_FILEPREFIX, PARQUET_TIME, "")
 
 CURRENT_DIRPATH = str(Path().absolute())
-VERSION = 'v17'
+VERSION = 'v18'
 VARS = '22to24_bTagWPbatch3XT4XT'
 CURRENT_TIME = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
 
@@ -57,12 +57,16 @@ N_FOLDS = 5
 ################################
 
 
+class_sample_map_filepath = os.path.join(BASE_FILEPATH, "class_sample_map.json")
+with open(class_sample_map_filepath, "r") as f:
+    class_sample_map = json.load(f)
+
 param_filepath = os.path.join(OUTPUT_DIRPATH, f'{CURRENT_TIME}_best_params.json')
 if OPTIMIZE_SPACE:
     print('OPTIMIZING SPACE')
     
     param, num_trees = opt.optimize_hyperparams(
-        utils.get_filepaths_func(BASE_FILEPATH), param_filepath, verbose=True
+        get_filepaths_func(class_sample_map, BASE_FILEPATH), param_filepath, verbose=True
     )
 else:
     param, num_trees = opt.init_params(N_CLASSES)
@@ -82,7 +86,7 @@ for fold_idx in range(N_FOLDS):
     print(f"fold {fold_idx}")
 
     train_dm, val_dm, test_dm = get_DMatrices(
-        utils.get_filepaths_func(BASE_FILEPATH), fold_idx
+        get_filepaths_func(class_sample_map, BASE_FILEPATH), fold_idx
     )
 
     # Train bdt

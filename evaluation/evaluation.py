@@ -26,7 +26,7 @@ sys.path.append(os.path.join(GIT_REPO, "training/"))
 
 
 from retrieval_utils import (
-    get_Dataframe, get_DMatrix
+    get_Dataframe, get_DMatrix, get_filepaths_func
 )
 from evaluation_utils import (
     get_ttH_score, get_QCD_score
@@ -69,20 +69,21 @@ parser.add_argument(
 
 gpustat.print_gpustat()
 
-# order = ['ggF HH', 'ttH + bbH', 'VH', 'non-res + ggFH + VBFH']
-# formatted_order = [''.join(class_name.split(' ')) for class_name in order]
-
 ################################
 
 
-def evaluate(training_dirpath: str, sample_filepaths: list, fold: int=None, dataset: str='test'):
+def evaluate(training_dirpath: str, base_filepath: str, fold: int=None, dataset: str='test'):
+    class_sample_map_filepath = os.path.join(base_filepath, "class_sample_map.json")
+    with open(class_sample_map_filepath, "r") as f:
+        class_sample_map = json.load(f)
+    formatted_order = [''.join(class_name.split(' ')) for class_name in class_sample_map.keys()]
+    
     training_dirpath = os.path.join(training_dirpath, "")
     param_filepath = os.path.join(training_dirpath, f"{training_dirpath.split('/')[-2]}_best_params.json")
     with open(param_filepath, 'r') as f:
         param = json.load(f)
     param = list(param.items()) + [('eval_metric', 'mlogloss')]
 
-    
 
     for fold_idx in range(5):
         if fold is not None and fold != fold_idx: continue
@@ -90,7 +91,7 @@ def evaluate(training_dirpath: str, sample_filepaths: list, fold: int=None, data
         booster = xgb.Booster(param)
         booster.load_model(os.path.join(training_dirpath, f"{training_dirpath.split('/')[-2]}_BDT_fold{fold_idx}.model"))
 
-        filepaths = utils.get_filepaths_func(base_filepath)(fold_idx, dataset)
+        filepaths = get_filepaths_func(class_sample_map, base_filepath)(fold_idx, dataset)
         for i, class_name in enumerate(filepaths.keys()):
             for filepath in filepaths[class_name]:
                 df, aux = get_Dataframe(filepath), get_Dataframe(filepath, aux=True)
@@ -101,8 +102,8 @@ def evaluate(training_dirpath: str, sample_filepaths: list, fold: int=None, data
 
                 for i, class_name in enumerate(formatted_order):
                     df[f"AUX_{class_name}_prob"] = preds[:, i]
-                df[f"AUX_DttH_prob"] = get_ttH_score(preds)
-                df[f"AUX_DQCD_prob"] = get_QCD_score(preds)
+                # df[f"AUX_DttH_prob"] = get_ttH_score(preds)
+                # df[f"AUX_DQCD_prob"] = get_QCD_score(preds)
 
                 for col in aux.columns:
                     df[col] = aux[col]

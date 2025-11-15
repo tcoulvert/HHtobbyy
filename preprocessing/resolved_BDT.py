@@ -224,23 +224,20 @@ def get_input_filepaths(input_eras):
 
             glob_names = [glob_name for glob_name_list in CLASS_SAMPLE_MAP.values() for glob_name in glob_name_list] + list(TEST_ONLY_SAMPLES)
             for glob_name in glob_names:
-                if "data" in glob_name.lower(): sample_filepaths = glob.glob(os.path.join(stdline, "**", glob_name, "*preprocessed.parquet"), recursive=True)
-                else: sample_filepaths = glob.glob(os.path.join(stdline, "**", glob_name, "nominal", "*preprocessed.parquet"), recursive=True)
+                if "data" in glob_name.lower(): sample_filepaths = glob.glob(os.path.join(stdline, glob_name, "*preprocessed.parquet"))
+                else: sample_filepaths = glob.glob(os.path.join(stdline, glob_name, "nominal", "*preprocessed.parquet"))
 
                 if len(sample_filepaths) == 0:
                     logger.warning(f"Sample with glob-name {glob_name} not found for era {stdline}. Continuing with other samples.")
                     continue
-                elif len(sample_filepaths) > 1:
-                    logger.error(f"Sample with glob-name {glob_name} found multiple files for era {stdline}. Terminating preprocessing.")
-                    raise FileExistsError(f"Multiple files found for glob-path {os.path.join(stdline, "**", glob_name, "nominal", "*preprocessed.parquet")}")
                 
-                sample_filepath = sample_filepaths[0]
-                if glob_name in TEST_ONLY_SAMPLES:
-                    input_filepaths['test'].append(sample_filepath)
-                elif match_sample(sample_filepath, TRAIN_ONLY_SAMPLES) is not None: 
-                    input_filepaths['train'].append(sample_filepath)
-                else:
-                    input_filepaths['train-test'].append(sample_filepath)
+                for sample_filepath in sample_filepaths:
+                    if glob_name in TEST_ONLY_SAMPLES:
+                        input_filepaths['test'].append(sample_filepath)
+                    elif match_sample(sample_filepath, TRAIN_ONLY_SAMPLES) is not None: 
+                        input_filepaths['train'].append(sample_filepath)
+                    else:
+                        input_filepaths['train-test'].append(sample_filepath)
     return input_filepaths
 
 def plot_vars(df, output_dirpath, sample_name, title="pre-std, train0"):
@@ -387,8 +384,6 @@ def preprocess_resolved_bdt(input_filepaths, output_dirpath):
         }
         - output_dirpath = <str> filepath to dump output (defaults to cwd)
     """
-
-
     # Defining class definitions for samples #
     if not DRYRUN:
         class_sample_map_filepath = os.path.join(output_dirpath, 'class_sample_map.json')
