@@ -217,7 +217,7 @@ parser.add_argument(
 
 def get_input_filepaths(input_eras):
     input_filepaths = {'train-test': list(), 'train': list(), 'test': list()}
-    with open(args.input_eras, 'r') as f:
+    with open(input_eras, 'r') as f:
         for line in f:
             stdline = line.strip()
             if stdline[0] == "#": continue
