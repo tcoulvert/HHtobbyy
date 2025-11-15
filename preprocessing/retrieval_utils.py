@@ -35,6 +35,15 @@ def get_filepaths_func(class_sample_map: dict, base_filepath: str, syst_name: st
         ])) for class_name, sample_names in class_sample_map.items()
     }
 
+def argsorted(objects, **kwargs):
+    object_to_index = {}
+    for index, object in enumerate(objects):
+        object_to_index[object] = index
+    sorted_objects = sorted(objects)
+    sorted_indices = [object_to_index[object] for object in sorted_objects]
+    return sorted_indices
+
+
 def get_labelND(label1D):
     """
     Returns the ND label vector (one-hot encoded) from the 1D label vector (integer encoded).
@@ -45,6 +54,7 @@ def get_label1D(labelND):
     Returns the 1D label vector (integer encoded) from the ND label vector (one-hot encoded).
     """
     return np.nonzero(labelND).flatten()
+
 
 def get_Dataframe(filepath: str, aux: bool=False):
     schema = pq.read_schema(filepath)

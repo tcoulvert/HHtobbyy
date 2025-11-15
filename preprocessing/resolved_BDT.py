@@ -21,6 +21,12 @@ import matplotlib.pyplot as plt
 ################################
 
 
+from preprocessing_utils import match_sample
+from retrieval_utils import argsorted
+
+################################
+
+
 # This map definition does not exclusively define the samples in the training/testing 
 #  datasets, rather this map defines how to split the samples into distinct 
 #  classes, as well as those classes' "true" labels as seen by the BDT. For example, 
@@ -56,7 +62,7 @@ TRAIN_ONLY_SAMPLES = {
     "*Zto2Q*", "*Wto2Q*", "*batch[4-6]*"
 }
 TEST_ONLY_SAMPLES = {
-    "Data", "*GluGlu*HH*kl-0p00*", "*GluGlu*HH*kl-2p45*", "*GluGlu*HH*kl-5p00*"
+    "*Data*", "*GluGlu*HH*kl-0p00*", "*GluGlu*HH*kl-2p45*", "*GluGlu*HH*kl-5p00*"
 }
 
 BASIC_VARIABLES = lambda jet_prefix: {
@@ -176,7 +182,7 @@ REMAKE_TEST = False
 logger = logging.getLogger(__name__)
 parser = argparse.ArgumentParser(description="Standardize BDT inputs and save out dataframe parquets.")
 parser.add_argument(
-    "--input_filepaths", 
+    "--input_eras", 
     default='',
     help="JSON for filepaths on cluster for eras"
 )
@@ -209,13 +215,33 @@ parser.add_argument(
 ################################
 
 
-def argsorted(objects, **kwargs):
-    object_to_index = {}
-    for index, object in enumerate(objects):
-        object_to_index[object] = index
-    sorted_objects = sorted(objects)
-    sorted_indices = [object_to_index[object] for object in sorted_objects]
-    return sorted_indices
+def get_input_filepaths(input_eras):
+    input_filepaths = {'train-test': list(), 'train': list(), 'test': list()}
+    with open(args.input_eras, 'r') as f:
+        for line in f:
+            stdline = line.strip()
+            if stdline[0] == "#": continue
+
+            glob_names = [glob_name for glob_name_list in CLASS_SAMPLE_MAP.values() for glob_name in glob_name_list] + list(TEST_ONLY_SAMPLES)
+            for glob_name in glob_names:
+                if "data" in glob_name.lower(): sample_filepaths = glob.glob(os.path.join(stdline, "**", glob_name, "*preprocessed.parquet"), recursive=True)
+                else: sample_filepaths = glob.glob(os.path.join(stdline, "**", glob_name, "nominal", "*preprocessed.parquet"), recursive=True)
+
+                if len(sample_filepaths) == 0:
+                    logger.warning(f"Sample with glob-name {glob_name} not found for era {stdline}. Continuing with other samples.")
+                    continue
+                elif len(sample_filepaths) > 1:
+                    logger.error(f"Sample with glob-name {glob_name} found multiple files for era {stdline}. Terminating preprocessing.")
+                    raise FileExistsError(f"Multiple files found for glob-path {os.path.join(stdline, "**", glob_name, "nominal", "*preprocessed.parquet")}")
+                
+                sample_filepath = sample_filepaths[0]
+                if glob_name in TEST_ONLY_SAMPLES:
+                    input_filepaths['test'].append(sample_filepath)
+                elif match_sample(sample_filepath, TRAIN_ONLY_SAMPLES) is not None: 
+                    input_filepaths['train'].append(sample_filepath)
+                else:
+                    input_filepaths['train-test'].append(sample_filepath)
+    return input_filepaths
 
 def plot_vars(df, output_dirpath, sample_name, title="pre-std, train0"):
     std_type, df_type = tuple(title.split(", "))
@@ -361,6 +387,8 @@ def preprocess_resolved_bdt(input_filepaths, output_dirpath):
         }
         - output_dirpath = <str> filepath to dump output (defaults to cwd)
     """
+
+
     # Defining class definitions for samples #
     if not DRYRUN:
         class_sample_map_filepath = os.path.join(output_dirpath, 'class_sample_map.json')
@@ -483,8 +511,7 @@ def preprocess_resolved_bdt(input_filepaths, output_dirpath):
 if __name__ == '__main__':
     args = parser.parse_args()
 
-    with open(args.input_filepaths, 'r') as f:
-        input_filepaths = json.load(f)
+    input_filepaths = get_input_filepaths(args.input_eras)
     args_output_dirpath = os.path.normpath(args.output_dirpath)
 
     DEBUG = args.debug
