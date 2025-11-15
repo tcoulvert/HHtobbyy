@@ -25,26 +25,26 @@ FILL_VALUE = -999
 ################################
 
 
-def get_class_sample_map(dataset_filepath: str):
-    class_sample_map_filepath = os.path.join(dataset_filepath, "class_sample_map.json")
+def get_class_sample_map(dataset_dirpath: str):
+    class_sample_map_filepath = os.path.join(dataset_dirpath, "class_sample_map.json")
     with open(class_sample_map_filepath, "r") as f:
         class_sample_map = json.load(f)
     return class_sample_map
 
-def get_train_filepaths_func(dataset_filepath: str, dataset: str="train", syst_name: str='nominal'):
-    class_sample_map = get_class_sample_map(dataset_filepath)
-    get_sample_filepaths = lambda dataset_filepath, sample_name, dataset, syst_name, fold_idx: glob.glob(os.path.join(dataset_filepath, "**", sample_name, f"*{syst_name}*", f"*{dataset}{fold_idx}*.parquet"), recursive=True)
+def get_train_filepaths_func(dataset_dirpath: str, dataset: str="train", syst_name: str='nominal'):
+    class_sample_map = get_class_sample_map(dataset_dirpath)
+    get_sample_filepaths = lambda dataset_dirpath, sample_name, dataset, syst_name, fold_idx: glob.glob(os.path.join(dataset_dirpath, "**", sample_name, f"*{syst_name}*", f"*{dataset}{fold_idx}*.parquet"), recursive=True)
     return lambda fold_idx: {
         class_name: sorted(set([
             sample_filepath for sample_name in sample_names 
-            for sample_filepath in get_sample_filepaths(dataset_filepath, sample_name, dataset, syst_name, fold_idx)
+            for sample_filepath in get_sample_filepaths(dataset_dirpath, sample_name, dataset, syst_name, fold_idx)
         ])) for class_name, sample_names in class_sample_map.items()
     }
-def get_test_filepaths_func(dataset_filepath: str, syst_name: str='nominal'):
-    get_sample_filepaths = lambda dataset_filepath, syst_name, fold_idx: glob.glob(os.path.join(dataset_filepath, "**", f"*{syst_name}*", f"*test{fold_idx}*.parquet"), recursive=True)
+def get_test_filepaths_func(dataset_dirpath: str, syst_name: str='nominal'):
+    get_sample_filepaths = lambda dataset_dirpath, syst_name, fold_idx: glob.glob(os.path.join(dataset_dirpath, "**", f"*{syst_name}*", f"*test{fold_idx}*.parquet"), recursive=True)
     return lambda fold_idx: {
         'test': sorted(set(
-            get_sample_filepaths(dataset_filepath, syst_name, fold_idx)
+            get_sample_filepaths(dataset_dirpath, syst_name, fold_idx)
         ))
     }
 
@@ -76,8 +76,8 @@ def get_Dataframe(filepath: str, aux: bool=False):
     return df
 def get_Dataframes(filepath: str):
     return get_Dataframe(filepath), get_Dataframe(filepath, aux=True)
-def get_train_Dataframe(dataset_filepath: str, fold_idx: int, dataset: str="train"):
-    filepaths = get_train_filepaths_func(dataset_filepath, dataset=dataset)(fold_idx)
+def get_train_Dataframe(dataset_dirpath: str, fold_idx: int, dataset: str="train"):
+    filepaths = get_train_filepaths_func(dataset_dirpath, dataset=dataset)(fold_idx)
 
     df, aux = None, None
     for i, bdt_class in enumerate(filepaths.keys()):
@@ -123,6 +123,8 @@ def get_train_Dataframe(dataset_filepath: str, fold_idx: int, dataset: str="trai
         aux.reindex(class_shuffle_idx)
 
     return df, aux
+def get_test_Dataframe(filepath: str):
+    return pq.read_table(filepath, columns=vars).to_pandas()
 
 def get_DMatrix(df, aux, dataset: str='train', label: bool=True):
     if label: label_arg = aux['AUX_label1D']
@@ -131,13 +133,13 @@ def get_DMatrix(df, aux, dataset: str='train', label: bool=True):
         data=df, label=label_arg, weight=np.abs(aux['AUX_eventWeightTrain'] if dataset.lower() == 'train' else aux['AUX_eventWeight']),
         missing=FILL_VALUE, feature_names=list(df.columns)
     )
-def get_train_DMatrices(dataset_filepath: str, fold_idx: int, val_split: float=0.2, **kwargs):
+def get_train_DMatrices(dataset_dirpath: str, fold_idx: int, val_split: float=0.2, **kwargs):
     if 'res_bkg_rescale' in kwargs: RES_BKG_RESCALE = kwargs['res_bkg_rescale']
     if 'shuffle' in kwargs: DF_SHUFFLE = kwargs['shuffle']
 
-    tr_df, tr_aux = get_train_Dataframe(dataset_filepath, fold_idx)
+    tr_df, tr_aux = get_train_Dataframe(dataset_dirpath, fold_idx)
     train_df, val_df, train_aux, val_aux = train_test_split(tr_df, tr_aux, test_size=val_split, random_state=RNG_SEED)
-    test_df, test_aux = get_train_Dataframe(dataset_filepath, fold_idx, 'test')
+    test_df, test_aux = get_train_Dataframe(dataset_dirpath, fold_idx, 'test')
 
     train_dm = get_DMatrix(train_df, train_aux)
     val_dm = get_DMatrix(val_df, val_aux)

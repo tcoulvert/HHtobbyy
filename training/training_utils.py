@@ -46,6 +46,7 @@ def get_model_func(training_dirpath: str):
     booster = xgb.Booster(get_param(training_dirpath))
     return lambda fold_idx: booster.load_model(os.path.join(training_dirpath, f"{training_dirpath.split('/')[-2]}_BDT_fold{fold_idx}.model"))
 
+# Functions not currently used, but may be useful for tuning loss-function
 def mlogloss_binlogloss(
     predt: np.ndarray, dtrain: xgb.DMatrix, mLL=True, **kwargs
 ):

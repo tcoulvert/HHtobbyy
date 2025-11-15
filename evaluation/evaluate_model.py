@@ -88,7 +88,6 @@ def evaluate_model(training_dirpath: str, dataset_filepath: str, dataset: str="t
             for filepath in filepaths[class_name]:
 
                 evaluate_and_save(filepath, booster, formatted_classes)
-
                 
 
 if __name__ == "__main__":
@@ -96,7 +95,7 @@ if __name__ == "__main__":
 
     training_dirpath = os.path.join(args.training_dirpath, "")
     if args.dataset_filepath is None:
-        dataset_filepath = get_dataset_filepath(args.training_filepath)
+        dataset_filepath = get_dataset_filepath(args.training_dirpath)
     else:
         dataset_filepath = args.dataset_filepath
     

@@ -228,7 +228,8 @@ def get_input_filepaths(input_eras):
                 else: sample_filepaths = glob.glob(os.path.join(stdline, glob_name, "nominal", "*preprocessed.parquet"))
 
                 if len(sample_filepaths) == 0:
-                    logger.warning(f"Sample with glob-name {glob_name} not found for era {stdline}. Continuing with other samples.")
+                    if DEBUG:
+                        logger.warning(f"Sample with glob-name {glob_name} not found for era {stdline}. Continuing with other samples.")
                     continue
                 
                 for sample_filepath in sample_filepaths:
@@ -506,6 +507,9 @@ def preprocess_resolved_bdt(input_filepaths, output_dirpath):
 if __name__ == '__main__':
     args = parser.parse_args()
 
+    print('='*60)
+    print(f'Starting Resolved BDT processing at {CURRENT_TIME}')
+
     input_filepaths = get_input_filepaths(args.input_eras)
     args_output_dirpath = os.path.normpath(args.output_dirpath)
 
@@ -518,7 +522,5 @@ if __name__ == '__main__':
     if not os.path.exists(args_output_dirpath) and not DRYRUN:
         os.makedirs(args_output_dirpath)
 
-    print('='*60)
-    print(f'Starting Resolved BDT processing at {CURRENT_TIME}')
     preprocess_resolved_bdt(input_filepaths, args_output_dirpath)
     print(f'Finished Resolved BDT processing')

@@ -35,15 +35,15 @@ from retrieval_utils import (
 gpustat.print_gpustat()
 
 LPC_FILEPREFIX = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/training_parquets/"
-# PARQUET_TIME = "2025-11-14_12-14-01"  # 2022-23 WPs + 3XT + 4XT
-# PARQUET_TIME = "2025-11-14_13-42-11"  # 2022-24 WPs + high stats -- USE THIS ONE
-PARQUET_TIME = "2025-11-14_13-41-30"  # 2022-24 WPs + high stats + 3XT + 4XT
-# PARQUET_TIME = "2025-11-14_13-43-00"  # 2022-24 WPs + high stats + MHH
-DATASET_FILEPATH = os.path.join(LPC_FILEPREFIX, PARQUET_TIME, "")
+# PARQUET_TIME = ""  # 2022-23 WPs + 3XT + 4XT
+PARQUET_TIME = "2025-11-15_12-24-13"  # 2022-24 WPs + high stats -- USE THIS ONE
+# PARQUET_TIME = ""  # 2022-24 WPs + high stats + 3XT + 4XT
+# PARQUET_TIME = ""  # 2022-24 WPs + high stats + MHH
+DATASET_DIRPATH = os.path.join(LPC_FILEPREFIX, PARQUET_TIME, "")
 
 CURRENT_DIRPATH = str(Path().absolute())
 VERSION = 'v18'
-VARS = '22to24_bTagWPbatch3XT4XT'
+VARS = '22to24_bTagWPbatch'
 CURRENT_TIME = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
 
 OPTIMIZE_SPACE = False
@@ -58,14 +58,14 @@ if not os.path.exists(OUTPUT_DIRPATH):
     os.makedirs(OUTPUT_DIRPATH)
 
 # Dict defining which samples are in what classes (see `resolved_BDT.py` for more details)
-CLASS_SAMPLE_MAP = get_class_sample_map(DATASET_FILEPATH)
+CLASS_SAMPLE_MAP = get_class_sample_map(DATASET_DIRPATH)
 N_CLASSES = len(CLASS_SAMPLE_MAP)
 
 # txt file pointing to location of standardized dataset used for training
 #  and therefore the default location for testing
 dataset_filepath = os.path.join(OUTPUT_DIRPATH, "dataset_filepath.txt")
 with open (dataset_filepath, "w") as f:
-    f.write(DATASET_FILEPATH)
+    f.write(DATASET_DIRPATH)
 
 # Dict of hyperparameters for the model -- necessary to store for evaluation
 param_filepath = os.path.join(OUTPUT_DIRPATH, f'{CURRENT_TIME}_best_params.json')
@@ -73,7 +73,7 @@ if OPTIMIZE_SPACE:
     print('OPTIMIZING SPACE')
     
     param, num_trees = opt.optimize_hyperparams(
-        get_filepaths_func(CLASS_SAMPLE_MAP, DATASET_FILEPATH), param_filepath, verbose=True
+        DATASET_DIRPATH, N_CLASSES, param_filepath, verbose=True
     )
 else:
     param, num_trees = opt.init_params(N_CLASSES)
@@ -87,9 +87,7 @@ evals_result_dict = {f"fold_{fold_idx}": dict() for fold_idx in range(N_FOLDS)}
 for fold_idx in range(N_FOLDS):
     print(f"fold {fold_idx}")
 
-    train_dm, val_dm, test_dm = get_DMatrices(
-        get_filepaths_func(CLASS_SAMPLE_MAP, DATASET_FILEPATH), fold_idx
-    )
+    train_dm, val_dm, test_dm = get_train_DMatrices(DATASET_DIRPATH, fold_idx)
 
     # Train bdt
     evallist = [(train_dm, 'train'), (val_dm, 'test'), (test_dm, 'val')]
