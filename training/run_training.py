@@ -26,7 +26,7 @@ sys.path.append(os.path.join(GIT_REPO, "preprocessing/"))
 import training_utils as utils
 import optimize_hyperparams as opt
 from retrieval_utils import (
-    get_DMatrices, get_filepaths_func
+    get_train_DMatrices, get_class_sample_map
 )
 
 ################################
@@ -39,34 +39,41 @@ LPC_FILEPREFIX = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parqu
 # PARQUET_TIME = "2025-11-14_13-42-11"  # 2022-24 WPs + high stats -- USE THIS ONE
 PARQUET_TIME = "2025-11-14_13-41-30"  # 2022-24 WPs + high stats + 3XT + 4XT
 # PARQUET_TIME = "2025-11-14_13-43-00"  # 2022-24 WPs + high stats + MHH
-BASE_FILEPATH = os.path.join(LPC_FILEPREFIX, PARQUET_TIME, "")
+DATASET_FILEPATH = os.path.join(LPC_FILEPREFIX, PARQUET_TIME, "")
 
 CURRENT_DIRPATH = str(Path().absolute())
 VERSION = 'v18'
 VARS = '22to24_bTagWPbatch3XT4XT'
 CURRENT_TIME = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
 
-OUTPUT_DIRPATH = os.path.join(CURRENT_DIRPATH, f"../MultiClassBDT_model_outputs", VERSION, VARS, CURRENT_TIME)
-if not os.path.exists(OUTPUT_DIRPATH):
-    os.makedirs(OUTPUT_DIRPATH)
-
 OPTIMIZE_SPACE = False
-N_CLASSES = len(utils.get_filepaths(BASE_FILEPATH, 0, ''))
+N_CLASSES = None
 N_FOLDS = 5
 
 ################################
 
 
-class_sample_map_filepath = os.path.join(BASE_FILEPATH, "class_sample_map.json")
-with open(class_sample_map_filepath, "r") as f:
-    class_sample_map = json.load(f)
+OUTPUT_DIRPATH = os.path.join(CURRENT_DIRPATH, f"../MultiClassBDT_model_outputs", VERSION, VARS, CURRENT_TIME)
+if not os.path.exists(OUTPUT_DIRPATH):
+    os.makedirs(OUTPUT_DIRPATH)
 
+# Dict defining which samples are in what classes (see `resolved_BDT.py` for more details)
+CLASS_SAMPLE_MAP = get_class_sample_map(DATASET_FILEPATH)
+N_CLASSES = len(CLASS_SAMPLE_MAP)
+
+# txt file pointing to location of standardized dataset used for training
+#  and therefore the default location for testing
+dataset_filepath = os.path.join(OUTPUT_DIRPATH, "dataset_filepath.txt")
+with open (dataset_filepath, "w") as f:
+    f.write(DATASET_FILEPATH)
+
+# Dict of hyperparameters for the model -- necessary to store for evaluation
 param_filepath = os.path.join(OUTPUT_DIRPATH, f'{CURRENT_TIME}_best_params.json')
 if OPTIMIZE_SPACE:
     print('OPTIMIZING SPACE')
     
     param, num_trees = opt.optimize_hyperparams(
-        get_filepaths_func(class_sample_map, BASE_FILEPATH), param_filepath, verbose=True
+        get_filepaths_func(CLASS_SAMPLE_MAP, DATASET_FILEPATH), param_filepath, verbose=True
     )
 else:
     param, num_trees = opt.init_params(N_CLASSES)
@@ -75,18 +82,13 @@ with open(param_filepath, 'w') as f:
     json.dump(param, f)
 param = list(param.items()) + [('eval_metric', 'mlogloss')]
 
-# Write out lambda function used for training to allow for changing the classes, but still evaluate a model
-get_filepaths_lambda_filepath = os.path.join(OUTPUT_DIRPATH, f'{CURRENT_TIME}_get_filepaths_lambda.txt')
-lambda_str = "".join([line.strip() for line in inspect.getsourcelines(utils.get_filepaths_func(BASE_FILEPATH))[0]]).replace("base_filepath", "\""+BASE_FILEPATH+"\"").replace("return ", "").replace(",}", "}")
-with open(get_filepaths_lambda_filepath, "w") as f:
-    f.write(lambda_str)
-
+# Train the model
 evals_result_dict = {f"fold_{fold_idx}": dict() for fold_idx in range(N_FOLDS)}
 for fold_idx in range(N_FOLDS):
     print(f"fold {fold_idx}")
 
     train_dm, val_dm, test_dm = get_DMatrices(
-        get_filepaths_func(class_sample_map, BASE_FILEPATH), fold_idx
+        get_filepaths_func(CLASS_SAMPLE_MAP, DATASET_FILEPATH), fold_idx
     )
 
     # Train bdt

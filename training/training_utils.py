@@ -1,4 +1,5 @@
 # Stdlib packages
+import json
 import os
 import subprocess
 import sys
@@ -27,6 +28,23 @@ from retrieval_utils import get_labelND
 
 ################################
 
+
+def get_dataset_filepath(training_dirpath: str):
+    dataset_filepath_filepath = os.path.join(training_dirpath, "dataset_filepath.txt")
+    with open (dataset_filepath_filepath, "r") as f:
+        dataset_filepath = f.read().strip()
+    return dataset_filepath
+
+def get_param(training_dirpath: str):
+    param_filepath = os.path.join(training_dirpath, f"{training_dirpath.split('/')[-2]}_best_params.json")
+    with open(param_filepath, 'r') as f:
+        param = json.load(f)
+    param = list(param.items()) + [('eval_metric', 'mlogloss')]
+    return param
+
+def get_model_func(training_dirpath: str):
+    booster = xgb.Booster(get_param(training_dirpath))
+    return lambda fold_idx: booster.load_model(os.path.join(training_dirpath, f"{training_dirpath.split('/')[-2]}_BDT_fold{fold_idx}.model"))
 
 def mlogloss_binlogloss(
     predt: np.ndarray, dtrain: xgb.DMatrix, mLL=True, **kwargs
