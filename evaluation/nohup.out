@@ -294,3 +294,42 @@ Traceback (most recent call last):
   File "/uscms/home/tsievert/nobackup/miniforge3/envs/higgs-dna/lib/python3.10/site-packages/xgboost/core.py", line 2485, in _validate_features
     raise ValueError(msg.format(self.feature_names, data.feature_names))
 ValueError: feature_names mismatch: ['nonRes_sublead_bjet_bTagWPM', 'nonRes_lead_bjet_bTagWPT', 'pt', 'nonRes_pt_balance', 'nonRes_lead_bjet_pt_over_Mjj', 'nonRes_lead_bjet_bTagWPXT', 'nonRes_chi_t0', 'lepton1_pt', 'nonRes_dijet_mass', 'nonRes_DeltaPhi_jj', 'nonRes_isr_jet_pt', 'nonRes_lead_bjet_bTagWPXXT', 'lepton1_mvaID', 'nonRes_DeltaEta_jj', 'nonRes_lead_bjet_bTagWPL', 'nonRes_DeltaPhi_isr_jet_z', 'DeltaR_b1l1', 'lead_mvaID', 'nonRes_CosThetaStar_jj', 'nonRes_chi_t1', 'nonRes_sublead_bjet_eta', 'eta', 'nonRes_DeltaPhi_j1MET', 'nonRes_sublead_bjet_bTagWPT', 'sublead_sigmaE_over_E', 'puppiMET_sumEt', 'lead_sigmaE_over_E', 'nonRes_dijet_pt', 'nonRes_lead_bjet_bTagWPM', 'nonRes_CosThetaStar_gg', 'nonRes_DeltaPhi_j2MET', 'nonRes_HHbbggCandidate_eta', 'nonRes_sublead_bjet_sigmapT_over_pT', 'nonRes_lead_bjet_pt', 'sublead_mvaID', 'nonRes_sublead_bjet_bTagWPXXT', 'nonRes_sublead_bjet_pt_over_Mjj', 'nonRes_sublead_bjet_bTagWPXT', 'nonRes_CosThetaStar_CS', 'puppiMET_pt', 'nonRes_lead_bjet_sigmapT_over_pT', 'nonRes_DeltaR_jg_min', 'nonRes_sublead_bjet_bTagWPL', 'nonRes_sublead_bjet_pt', 'nonRes_lead_bjet_eta', 'nonRes_HHbbggCandidate_pt', 'lepton1_pfIsoId', 'n_jets'] ['DeltaR_b1l1', 'eta', 'lead_mvaID', 'lead_sigmaE_over_E', 'lepton1_mvaID', 'lepton1_pfIsoId', 'lepton1_pt', 'n_jets', 'nonRes_CosThetaStar_CS', 'nonRes_CosThetaStar_gg', 'nonRes_CosThetaStar_jj', 'nonRes_DeltaEta_jj', 'nonRes_DeltaPhi_isr_jet_z', 'nonRes_DeltaPhi_j1MET', 'nonRes_DeltaPhi_j2MET', 'nonRes_DeltaPhi_jj', 'nonRes_DeltaR_jg_min', 'nonRes_HHbbggCandidate_eta', 'nonRes_HHbbggCandidate_pt', 'nonRes_chi_t0', 'nonRes_chi_t1', 'nonRes_dijet_mass', 'nonRes_dijet_pt', 'nonRes_isr_jet_pt', 'nonRes_lead_bjet_bTagWPL', 'nonRes_lead_bjet_bTagWPM', 'nonRes_lead_bjet_bTagWPT', 'nonRes_lead_bjet_bTagWPXT', 'nonRes_lead_bjet_bTagWPXXT', 'nonRes_lead_bjet_eta', 'nonRes_lead_bjet_pt', 'nonRes_lead_bjet_pt_over_Mjj', 'nonRes_lead_bjet_sigmapT_over_pT', 'nonRes_pt_balance', 'nonRes_sublead_bjet_bTagWPL', 'nonRes_sublead_bjet_bTagWPM', 'nonRes_sublead_bjet_bTagWPT', 'nonRes_sublead_bjet_bTagWPXT', 'nonRes_sublead_bjet_bTagWPXXT', 'nonRes_sublead_bjet_eta', 'nonRes_sublead_bjet_pt', 'nonRes_sublead_bjet_pt_over_Mjj', 'nonRes_sublead_bjet_sigmapT_over_pT', 'pt', 'puppiMET_pt', 'puppiMET_sumEt', 'sublead_mvaID', 'sublead_sigmaE_over_E']
+cmslpcgpu2.fnal.gov      Sat Nov 15 16:07:21 2025  555.42.06
+[0] Tesla P100-PCIE-12GB | 40°C,   0 % |     0 / 12288 MB |
+Traceback (most recent call last):
+  File "/uscms_data/d3/tsievert/XHYbbgg/HHtobbyy/evaluation/evaluate_model.py", line 98, in <module>
+    dataset_filepath = get_dataset_filepath(args.training_filepath)
+AttributeError: 'Namespace' object has no attribute 'training_filepath'. Did you mean: 'training_dirpath'?
+cmslpcgpu2.fnal.gov      Sat Nov 15 16:09:30 2025  555.42.06
+[0] Tesla P100-PCIE-12GB | 40°C,   0 % |     0 / 12288 MB |
+Traceback (most recent call last):
+  File "/uscms_data/d3/tsievert/XHYbbgg/HHtobbyy/evaluation/evaluate_model.py", line 102, in <module>
+    evaluate_model(training_dirpath, dataset_filepath, args.dataset, args.syst_name)
+  File "/uscms_data/d3/tsievert/XHYbbgg/HHtobbyy/evaluation/evaluate_model.py", line 90, in evaluate_model
+    evaluate_and_save(filepath, booster, formatted_classes)
+  File "/uscms_data/d3/tsievert/XHYbbgg/HHtobbyy/evaluation/evaluation_utils.py", line 48, in evaluate_and_save
+    df = get_test_Dataframe(filepath)
+  File "/uscms_data/d3/tsievert/XHYbbgg/HHtobbyy/preprocessing/retrieval_utils.py", line 127, in get_test_Dataframe
+    return pq.read_table(filepath, columns=vars).to_pandas()
+  File "/uscms/home/tsievert/nobackup/miniforge3/envs/higgs-dna/lib/python3.10/site-packages/pyarrow/parquet/core.py", line 1843, in read_table
+    return dataset.read(columns=columns, use_threads=use_threads,
+  File "/uscms/home/tsievert/nobackup/miniforge3/envs/higgs-dna/lib/python3.10/site-packages/pyarrow/parquet/core.py", line 1485, in read
+    table = self._dataset.to_table(
+  File "pyarrow/_dataset.pyx", line 553, in pyarrow._dataset.Dataset.to_table
+  File "pyarrow/_dataset.pyx", line 399, in pyarrow._dataset.Dataset.scanner
+  File "pyarrow/_dataset.pyx", line 3557, in pyarrow._dataset.Scanner.from_dataset
+  File "pyarrow/_dataset.pyx", line 3475, in pyarrow._dataset.Scanner._make_scan_options
+  File "pyarrow/_dataset.pyx", line 3428, in pyarrow._dataset._populate_builder
+ValueError: Expected a list or a dict for 'columns', got <class 'builtin_function_or_method'> instead.
+cmslpcgpu2.fnal.gov      Sun Nov 16 20:04:32 2025  555.42.06
+[0] Tesla P100-PCIE-12GB | 39°C,   0 % |     0 / 12288 MB |
+Traceback (most recent call last):
+  File "/uscms_data/d3/tsievert/XHYbbgg/HHtobbyy/evaluation/evaluate_model.py", line 102, in <module>
+    evaluate_model(training_dirpath, dataset_filepath, args.dataset, args.syst_name)
+  File "/uscms_data/d3/tsievert/XHYbbgg/HHtobbyy/evaluation/evaluate_model.py", line 90, in evaluate_model
+    evaluate_and_save(filepath, booster, formatted_classes)
+  File "/uscms_data/d3/tsievert/XHYbbgg/HHtobbyy/evaluation/evaluation_utils.py", line 51, in evaluate_and_save
+    preds = evaluate(booster, dm)
+  File "/uscms_data/d3/tsievert/XHYbbgg/HHtobbyy/evaluation/evaluation_utils.py", line 45, in evaluate
+    return booster.predict(dmatrix, iteration_range=(0, booster.best_iteration))
+AttributeError: 'NoneType' object has no attribute 'predict'

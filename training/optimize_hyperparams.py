@@ -27,7 +27,7 @@ GIT_REPO = (
 )
 sys.path.append(os.path.join(GIT_REPO, "preprocessing/"))
 
-from retrieval_utils import get_DMatrices
+from retrieval_utils import get_train_DMatrices
 
 ################################
 
@@ -58,14 +58,14 @@ def init_params(n_classes: int, static_params_dict: dict=None):
 
 
 def optimize_hyperparams(
-    get_filepaths, 
+    dataset_dirpath: str, n_classes: int,
     param_filepath: str, static_params_dict: dict=None,
     verbose: bool=False, verbose_eval: bool=False, start_point: int=0,
 ):
     # order and grouping of optimization taken from: 
     #   https://www.analyticsvidhya.com/blog/2016/03/complete-guide-parameter-tuning-xgboost-with-codes-python/#:~:text=min_child_weight%20%3D%201%3A%20A%20smaller%20value,%2C%20anyways%2C%20be%20tuned%20later.
     rng = np.random.default_rng()
-    param, num_trees = init_params(len(get_filepaths(0, '')), static_params_dict=static_params_dict)
+    param, num_trees = init_params(n_classes, static_params_dict=static_params_dict)
     print("Baseline parameters: {}".format(param))
 
     score_arrs = {
@@ -103,7 +103,7 @@ def optimize_hyperparams(
 
         # randomly sample a fold to evaluate
         fold_idx = rng.integers(0, 4)
-        train_dm, val_dm, _ = get_DMatrices(get_filepaths, fold_idx)
+        train_dm, val_dm, _ = get_train_DMatrices(dataset_dirpath, fold_idx)
 
         booster = xgb.train(
             param, train_dm, num_boost_round=num_trees, 
@@ -154,7 +154,7 @@ def optimize_hyperparams(
 
         # randomly sample a fold to evaluate
         fold_idx = rng.integers(0, 4)
-        train_dm, val_dm, _ = get_DMatrices(get_filepaths, fold_idx)
+        train_dm, val_dm, _ = get_train_DMatrices(dataset_dirpath, fold_idx)
 
         booster = xgb.train(
             param, train_dm, num_boost_round=num_trees, 
@@ -200,7 +200,7 @@ def optimize_hyperparams(
 
         # randomly sample a fold to evaluate
         fold_idx = rng.integers(0, 4)
-        train_dm, val_dm, _ = get_DMatrices(get_filepaths, fold_idx)
+        train_dm, val_dm, _ = get_train_DMatrices(dataset_dirpath, fold_idx)
 
         booster = xgb.train(
             param, train_dm, num_boost_round=num_trees, 
@@ -246,7 +246,7 @@ def optimize_hyperparams(
 
         # randomly sample a fold to evaluate
         fold_idx = rng.integers(0, 4)
-        train_dm, val_dm, _ = get_DMatrices(get_filepaths, fold_idx)
+        train_dm, val_dm, _ = get_train_DMatrices(dataset_dirpath, fold_idx)
 
         booster = xgb.train(
             param, train_dm, num_boost_round=num_trees, 
@@ -291,7 +291,7 @@ def optimize_hyperparams(
 
         # randomly sample a fold to evaluate
         fold_idx = rng.integers(0, 4)
-        train_dm, val_dm, _ = get_DMatrices(get_filepaths, fold_idx)
+        train_dm, val_dm, _ = get_train_DMatrices(dataset_dirpath, fold_idx)
 
         booster = xgb.train(
             param, train_dm, num_boost_round=num_trees, 

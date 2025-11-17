@@ -125,6 +125,12 @@ def make_rocs(output_dirpath: str, base_filepath: str):
         param = json.load(f)
     param = list(param.items()) + [('eval_metric', 'mlogloss')]
 
+    get_filepaths_lambda_filepath = os.path.join(training_dirpath, f"{training_dirpath.split('/')[-2]}_get_filepaths_lambda.txt")
+    with open(get_filepaths_lambda_filepath, 'r') as f:
+        get_filepaths_lambda_str = f.read()
+    if base_filepath is None:
+        base_filepath = 
+
     # plot ROCs
     for fold_idx in range(5):
         booster = xgb.Booster(param)
