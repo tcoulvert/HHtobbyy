@@ -1,16 +1,9 @@
-# %matplotlib widget
 # Stdlib packages
-import argparse
-import datetime
-import json
-import logging
 import os
 import subprocess
 import sys
-from pathlib import Path
 
 # HEP packages
-import gpustat
 import pyarrow.parquet as pq
 import xgboost as xgb
 
@@ -50,8 +43,11 @@ def evaluate_and_save(filepath: str, booster: xgb.Booster, formatted_classes: li
 
     preds = evaluate(booster, dm)
 
-    for i, class_name in enumerate(formatted_classes):
-        df[f"AUX_{class_name}_prob"] = preds[:, i]
+    try:
+        for i, class_name in enumerate(formatted_classes):
+            df[f"AUX_{class_name}_prob"] = preds[:, i]
+    except:
+        print(f"Saving of evaluation of {filepath}, continuing with other samples.")
 
     df.to_parquet(filepath)
 

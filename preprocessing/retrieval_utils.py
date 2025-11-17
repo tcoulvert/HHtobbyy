@@ -124,7 +124,7 @@ def get_train_Dataframe(dataset_dirpath: str, fold_idx: int, dataset: str="train
 
     return df, aux
 def get_test_Dataframe(filepath: str):
-    return pq.read_table(filepath, columns=vars).to_pandas()
+    return pq.read_table(filepath).to_pandas()
 
 def get_DMatrix(df, aux, dataset: str='train', label: bool=True):
     if label: label_arg = aux['AUX_label1D']

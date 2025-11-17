@@ -43,8 +43,10 @@ def get_param(training_dirpath: str):
     return param
 
 def get_model_func(training_dirpath: str):
-    booster = xgb.Booster(get_param(training_dirpath))
-    return lambda fold_idx: booster.load_model(os.path.join(training_dirpath, f"{training_dirpath.split('/')[-2]}_BDT_fold{fold_idx}.model"))
+    return lambda fold_idx: xgb.Booster(
+        params=get_param(training_dirpath), 
+        model_file=os.path.join(training_dirpath, f"{training_dirpath.split('/')[-2]}_BDT_fold{fold_idx}.model")
+    )
 
 # Functions not currently used, but may be useful for tuning loss-function
 def mlogloss_binlogloss(

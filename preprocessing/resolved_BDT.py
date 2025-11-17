@@ -233,6 +233,8 @@ def get_input_filepaths(input_eras):
                     continue
                 
                 for sample_filepath in sample_filepaths:
+                    print(sample_filepath)
+                    print(match_sample(sample_filepath, TRAIN_ONLY_SAMPLES))
                     if glob_name in TEST_ONLY_SAMPLES:
                         input_filepaths['test'].append(sample_filepath)
                     elif match_sample(sample_filepath, TRAIN_ONLY_SAMPLES) is not None: 
@@ -511,6 +513,7 @@ if __name__ == '__main__':
     print(f'Starting Resolved BDT processing at {CURRENT_TIME}')
 
     input_filepaths = get_input_filepaths(args.input_eras)
+    print(input_filepaths)
     args_output_dirpath = os.path.normpath(args.output_dirpath)
 
     DEBUG = args.debug

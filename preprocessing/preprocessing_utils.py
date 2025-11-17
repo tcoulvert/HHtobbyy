@@ -1,5 +1,8 @@
+# Stdlib packages
 import math
+import re
 
+# HEP packages
 import awkward as ak
 import vector as vec
 vec.register_awkward()
@@ -28,5 +31,5 @@ def deltaEta(eta1, eta2):
 
 def match_sample(sample_str, regexes):
     for regex in sorted(regexes, key=len, reverse=True):
-        if all(exp.lower() in sample_str.lower() for exp in regex.split('*')): return regex
+        if all(re.search(exp.lower(), sample_str.lower()) is not None for exp in regex.split('*')): return regex
      

@@ -321,3 +321,15 @@ Traceback (most recent call last):
   File "pyarrow/_dataset.pyx", line 3475, in pyarrow._dataset.Scanner._make_scan_options
   File "pyarrow/_dataset.pyx", line 3428, in pyarrow._dataset._populate_builder
 ValueError: Expected a list or a dict for 'columns', got <class 'builtin_function_or_method'> instead.
+cmslpcgpu2.fnal.gov      Sun Nov 16 20:04:32 2025  555.42.06
+[0] Tesla P100-PCIE-12GB | 39°C,   0 % |     0 / 12288 MB |
+Traceback (most recent call last):
+  File "/uscms_data/d3/tsievert/XHYbbgg/HHtobbyy/evaluation/evaluate_model.py", line 102, in <module>
+    evaluate_model(training_dirpath, dataset_filepath, args.dataset, args.syst_name)
+  File "/uscms_data/d3/tsievert/XHYbbgg/HHtobbyy/evaluation/evaluate_model.py", line 90, in evaluate_model
+    evaluate_and_save(filepath, booster, formatted_classes)
+  File "/uscms_data/d3/tsievert/XHYbbgg/HHtobbyy/evaluation/evaluation_utils.py", line 51, in evaluate_and_save
+    preds = evaluate(booster, dm)
+  File "/uscms_data/d3/tsievert/XHYbbgg/HHtobbyy/evaluation/evaluation_utils.py", line 45, in evaluate
+    return booster.predict(dmatrix, iteration_range=(0, booster.best_iteration))
+AttributeError: 'NoneType' object has no attribute 'predict'
