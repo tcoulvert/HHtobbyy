@@ -53,13 +53,10 @@ from retrieval_utils import argsorted
 #  Feature Importance, Confusion Matrix, etc). All samples in the train and test
 #  datasets can be evaluated and used for plotting, but it is not the default behavior.
 CLASS_SAMPLE_MAP = {
-    'ggF HH': ["*GluGlu*HH*kl-1p00*"],
+    'ggF HH': ["*GluGlu*HH*kl-1p00*"],  # *!batch
     'ttH + bbH': ["*ttH*", "*bbH*"],
     'VH': ["*VH*", "*ZH*", "*Wm*H*", "*Wp*H*"],
     'nonRes + ggFH + VBFH': ["*GGJets*", "*GJet*", "*TTGG*", "*GluGluH*GG*", "*VBFH*GG*"]
-}
-TRAIN_TEST_SAMPLES = {
-    glob_name for glob_names in CLASS_SAMPLE_MAP.values() for glob_name in glob_names
 }
 TRAIN_ONLY_SAMPLES = {
     "*Zto2Q*", "*Wto2Q*", "*batch[4-6]*"
@@ -231,15 +228,19 @@ def get_input_filepaths(input_eras):
             for sample_filepath in sample_filepaths:
                 if match_sample(sample_filepath, TEST_ONLY_SAMPLES) is not None:
                     input_filepaths['test'].append(sample_filepath)
-                elif match_sample(sample_filepath, TRAIN_ONLY_SAMPLES) is not None:
+                elif (
+                    match_sample(sample_filepath, {glob_name for glob_names in CLASS_SAMPLE_MAP.values() for glob_name in glob_names}) is not None 
+                    and match_sample(sample_filepath, TRAIN_ONLY_SAMPLES) is not None
+                ):
                     input_filepaths['train'].append(sample_filepath)
-                elif match_sample(sample_filepath, TRAIN_TEST_SAMPLES) is not None:
+                elif match_sample(sample_filepath, {glob_name for glob_names in CLASS_SAMPLE_MAP.values() for glob_name in glob_names}) is not None:
                     input_filepaths['train-test'].append(sample_filepath)
                 else:
                     if DEBUG:
                         logger.warning(f"{sample_filepath} \nSample not found in any dict (TRAIN_TEST_SAMPLES, TRAIN_ONLY_SAMPLES, TEST_ONLY_SAMPLES). Continuing with other samples.")
                     continue
-
+    if DEBUG:
+        print(input_filepaths)
     return input_filepaths
 
 def plot_vars(df, output_dirpath, sample_name, title="pre-std, train0"):
@@ -428,7 +429,6 @@ def preprocess_resolved_bdt(input_filepaths, output_dirpath):
             x_mean, x_std = [stdjson['mean'][i] for i in sort_indices], [stdjson['std'][i] for i in sort_indices]
 
 
-
         if not REMAKE_TEST:
             for filepath in train_dfs.keys():
                 train_dfs_fold[filepath] = copy.deepcopy(train_dfs[filepath])
@@ -511,18 +511,16 @@ if __name__ == '__main__':
     print('='*60)
     print(f'Starting Resolved BDT processing at {CURRENT_TIME}')
 
-    input_filepaths = get_input_filepaths(args.input_eras)
-    print(input_filepaths)
-    args_output_dirpath = os.path.normpath(args.output_dirpath)
-
     DEBUG = args.debug
     DRYRUN = args.dryrun
     MAKE_PLOTS = args.plots
     REMAKE_TEST = args.remake_test
+    args_output_dirpath = os.path.normpath(args.output_dirpath)
     if REMAKE_TEST: CURRENT_TIME = args_output_dirpath[args_output_dirpath.rfind('/')+1:]
     else: args_output_dirpath = os.path.join(args_output_dirpath, CURRENT_TIME)
     if not os.path.exists(args_output_dirpath) and not DRYRUN:
         os.makedirs(args_output_dirpath)
+    input_filepaths = get_input_filepaths(args.input_eras)
 
     preprocess_resolved_bdt(input_filepaths, args_output_dirpath)
     print(f'Finished Resolved BDT processing')

@@ -38,5 +38,4 @@ def match_sample(sample_str, regexes):
                 re.search(exp[1:].lower(), sample_str.lower()) is None
             ) for exp in regex.split('*') if len(exp) > 0
         ): return regex
-        else: return None
      
