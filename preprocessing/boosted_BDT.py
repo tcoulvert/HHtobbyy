@@ -2,6 +2,7 @@
 import argparse
 import copy
 import datetime
+import glob
 import json
 import logging
 import os
@@ -20,32 +21,64 @@ import matplotlib.pyplot as plt
 ################################
 
 
+from preprocessing_utils import match_sample
+from retrieval_utils import argsorted
+
+################################
+
+
+# This map definition does not exclusively define the samples in the training/testing 
+#  datasets, rather this map defines how to split the samples into distinct 
+#  classes, as well as those classes' "true" labels as seen by the BDT. For example, 
+#  in a training involving the SM ggF HH signal and *NOT* the other kl points, the
+#  SM ggF HH signal sample might have a "true" label of 0, whereas the kl=5 
+#  sample -- while still technically an HH "signal" -- is "unlabled" according
+#  to the trained BDT because it didn't see the kl=5 sample during training.
+#
+# The structure of this map has the keys as the name of the classes, and the values
+#  as a list of wildcard sample-names (i.e. glob formatting) of that class.
+# {
+#   'class 1': ['glob*name*1*', '*globname*2', etc]
+# }
+#
+# The training dataset is defined by the intersection of this map *AND* the 
+#  samples passed under the 'train' and 'train-test' keys of the input_flepaths JSON.
+#  Therefore, if a sample is passed in the input JSON, but its glob-name is not 
+#  entered here, the sample will not be included in the training. Similarly, if a
+#  sample's glob-name is listed here, but the sample is not passed in the input JSON,
+#  it will not be included in the training.
+#
+# Beyond the training files, this mapping is important because only the samples
+#  listed in this map will be used for the baseline evaluation metrics (ROC curves,
+#  Feature Importance, Confusion Matrix, etc). All samples in the train and test
+#  datasets can be evaluated and used for plotting, but it is not the default behavior.
+CLASS_SAMPLE_MAP = {
+    'ggF HH': ["*GluGlu*HH*kl-1p00*"],
+    'ttH + bbH': ["*ttH*", "*bbH*"],
+    'VH': ["*VH*", "*ZH*", "*Wm*H*", "*Wp*H*"],
+    'nonRes + ggFH + VBFH': ["*GGJets*", "*GJet*", "*TTGG*", "*GluGluH*GG*", "*VBFH*GG*"]
+}
+TRAIN_TEST_SAMPLES = {
+    glob_name for glob_names in CLASS_SAMPLE_MAP.values() for glob_name in glob_names
+}
+TRAIN_ONLY_SAMPLES = {
+    "*Zto2Q*", "*Wto2Q*", "*batch[4-6]*"
+}
+TEST_ONLY_SAMPLES = {
+    "*Data*", "*GluGlu*HH*kl-0p00*", "*GluGlu*HH*kl-2p45*", "*GluGlu*HH*kl-5p00*"
+}
+
 BASIC_VARIABLES = lambda jet_prefix: {
     # MET variables
     'puppiMET_pt',
 
-    # jet vars
-    f'{jet_prefix}_DeltaPhi_j1MET', f'{jet_prefix}_DeltaPhi_j2MET', 
-    'n_jets', f'{jet_prefix}_chi_t0', f'{jet_prefix}_chi_t1',
-
     # lepton vars
     'lepton1_pt', 'lepton1_pfIsoId', 'lepton1_mvaID',
-    'DeltaR_b1l1',
 
     # angular vars
-    f'{jet_prefix}_CosThetaStar_CS', f'{jet_prefix}_CosThetaStar_jj', f'{jet_prefix}_CosThetaStar_gg',
+    f'{jet_prefix}_CosThetaStar_CS', f'{jet_prefix}_CosThetaStar_gg',
 
-    # # bjet vars
-    # f'{jet_prefix}_lead_bjet_eta', # eta
-    # f"{jet_prefix}_lead_bjet_bTagWPL", f"{jet_prefix}_lead_bjet_bTagWPM", f"{jet_prefix}_lead_bjet_bTagWPT",
-    # f"{jet_prefix}_lead_bjet_bTagWPXT", f"{jet_prefix}_lead_bjet_bTagWPXXT",
-    # # --------
-    # f'{jet_prefix}_sublead_bjet_eta', 
-    # f"{jet_prefix}_sublead_bjet_bTagWPL", f"{jet_prefix}_sublead_bjet_bTagWPM", f"{jet_prefix}_sublead_bjet_bTagWPT",
-    # f"{jet_prefix}_sublead_bjet_bTagWPXT", f"{jet_prefix}_sublead_bjet_bTagWPXXT",
-    
     # fatjet vars
-    #### insert fatjet variables here! ###
     
     # diphoton vars
     'eta',
@@ -59,37 +92,18 @@ BASIC_VARIABLES = lambda jet_prefix: {
     f'{jet_prefix}_HHbbggCandidate_pt', 
     f'{jet_prefix}_HHbbggCandidate_eta', 
     f'{jet_prefix}_pt_balance',
-
-    # ZH vars
-    f'{jet_prefix}_DeltaPhi_jj',
-    f'{jet_prefix}_DeltaPhi_isr_jet_z',
 }
 MHH_CORRELATED_VARIABLES = lambda jet_prefix: {
+    # MHH
+    # f'{jet_prefix}_HHbbggCandidate_mass',
+
     # MET variables
     'puppiMET_sumEt',  #eft
 
-    # jet vars
-    f'{jet_prefix}_DeltaR_jg_min',  #eft
-
-    # # dijet vars
-    # f'{jet_prefix}_dijet_mass' + ('' if jet_prefix == 'nonRes' else '_DNNreg'),  #eft
-    # f'{jet_prefix}_dijet_pt',  #eft
-
-    # # bjet vars
-    # f'{jet_prefix}_lead_bjet_pt', #eft
-    # f'{jet_prefix}_lead_bjet_sigmapT_over_pT', #eft
-    # f'{jet_prefix}_lead_bjet_pt_over_Mjj', #eft
-    # # --------
-    # f'{jet_prefix}_sublead_bjet_pt', #eft
-    # f'{jet_prefix}_sublead_bjet_sigmapT_over_pT', #eft
-    # f'{jet_prefix}_sublead_bjet_pt_over_Mjj', #eft
+    # fatjet vars
 
     # diphoton vars
     'pt',  #eft
-
-    # ZH vars
-    f'{jet_prefix}_DeltaEta_jj', #eft
-    f'{jet_prefix}_isr_jet_pt',  #eft
 }
 AUX_VARIABLES = lambda jet_prefix: {
     # identifiable event info
@@ -99,15 +113,11 @@ AUX_VARIABLES = lambda jet_prefix: {
     'weight', 'eventWeight',
 
     # mass
-    # 'mass', 
-    # f'{jet_prefix}_dijet_mass' + ('' if jet_prefix == 'nonRes' else '_DNNreg'),
+    'mass', 
     f'{jet_prefix}_HHbbggCandidate_mass',
 
-    # sculpting study
-    f'{jet_prefix}_max_nonbjet_btag',
-
     # event masks
-    # f'{jet_prefix}_resolved_BDT_mask',
+    f'{jet_prefix}_resolved_BDT_mask',
 }
 
 FILL_VALUE = -999
@@ -125,15 +135,17 @@ DRYRUN = False
 MAKE_PLOTS = False
 REMAKE_TEST = False
 
+END_FILEPATH = "preprocessed.parquet"
+
 ################################
 
 
 logger = logging.getLogger(__name__)
 parser = argparse.ArgumentParser(description="Standardize BDT inputs and save out dataframe parquets.")
 parser.add_argument(
-    "--input_filepaths", 
+    "--input_eras", 
     default='',
-    help="JSON for full filepaths (separated with \',\') on LPC"
+    help="JSON for filepaths on cluster for eras"
 )
 parser.add_argument(
     "--output_dirpath", 
@@ -164,13 +176,27 @@ parser.add_argument(
 ################################
 
 
-def argsorted(objects, **kwargs):
-    object_to_index = {}
-    for index, object in enumerate(objects):
-        object_to_index[object] = index
-    sorted_objects = sorted(objects)
-    sorted_indices = [object_to_index[object] for object in sorted_objects]
-    return sorted_indices
+def get_input_filepaths(input_eras):
+    input_filepaths = {'train-test': list(), 'train': list(), 'test': list()}
+    with open(input_eras, 'r') as f:
+        for line in f:
+            stdline = line.strip()
+            if stdline[0] == "#": continue
+
+            sample_filepaths = glob.glob(os.path.join(stdline, "**", f"*{END_FILEPATH}"), recursive=True)
+            for sample_filepath in sample_filepaths:
+                if match_sample(sample_filepath, TEST_ONLY_SAMPLES) is not None:
+                    input_filepaths['test'].append(sample_filepath)
+                elif match_sample(sample_filepath, TRAIN_ONLY_SAMPLES) is not None:
+                    input_filepaths['train'].append(sample_filepath)
+                elif match_sample(sample_filepath, TRAIN_TEST_SAMPLES) is not None:
+                    input_filepaths['train-test'].append(sample_filepath)
+                else:
+                    if DEBUG:
+                        logger.warning(f"{sample_filepath} \nSample not found in any dict (TRAIN_TEST_SAMPLES, TRAIN_ONLY_SAMPLES, TEST_ONLY_SAMPLES). Continuing with other samples.")
+                    continue
+
+    return input_filepaths
 
 def plot_vars(df, output_dirpath, sample_name, title="pre-std, train0"):
     std_type, df_type = tuple(title.split(", "))
@@ -316,6 +342,12 @@ def preprocess_resolved_bdt(input_filepaths, output_dirpath):
         }
         - output_dirpath = <str> filepath to dump output (defaults to cwd)
     """
+    # Defining class definitions for samples #
+    if not DRYRUN:
+        class_sample_map_filepath = os.path.join(output_dirpath, 'class_sample_map.json')
+        with open(class_sample_map_filepath, 'w') as f:
+            json.dump(CLASS_SAMPLE_MAP, f)
+
     # Defining variables to use #
     if re.search('_EFT', output_dirpath) is None: 
         BDT_variables = BASIC_VARIABLES(JET_PREFIX) | MHH_CORRELATED_VARIABLES(JET_PREFIX)
@@ -432,8 +464,11 @@ def preprocess_resolved_bdt(input_filepaths, output_dirpath):
 if __name__ == '__main__':
     args = parser.parse_args()
 
-    with open(args.input_filepaths, 'r') as f:
-        input_filepaths = json.load(f)
+    print('='*60)
+    print(f'Starting Resolved BDT processing at {CURRENT_TIME}')
+
+    input_filepaths = get_input_filepaths(args.input_eras)
+    print(input_filepaths)
     args_output_dirpath = os.path.normpath(args.output_dirpath)
 
     DEBUG = args.debug
@@ -445,7 +480,5 @@ if __name__ == '__main__':
     if not os.path.exists(args_output_dirpath) and not DRYRUN:
         os.makedirs(args_output_dirpath)
 
-    print('='*60)
-    print(f'Starting Resolved BDT processing at {CURRENT_TIME}')
     preprocess_resolved_bdt(input_filepaths, args_output_dirpath)
     print(f'Finished Resolved BDT processing')

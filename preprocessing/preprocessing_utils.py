@@ -31,5 +31,12 @@ def deltaEta(eta1, eta2):
 
 def match_sample(sample_str, regexes):
     for regex in sorted(regexes, key=len, reverse=True):
-        if all(re.search(exp.lower(), sample_str.lower()) is not None for exp in regex.split('*')): return regex
+        if all(
+            (
+                re.search(exp.lower(), sample_str.lower()) is not None 
+                if exp[0] != '!' else
+                re.search(exp[1:].lower(), sample_str.lower()) is None
+            ) for exp in regex.split('*') if len(exp) > 0
+        ): return regex
+        else: return None
      

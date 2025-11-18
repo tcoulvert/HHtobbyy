@@ -40,7 +40,7 @@ from plotting_utils import (
     get_ttH_score, get_QCD_score,
 )
 from retrieval_utils import (
-    get_train_DMatrices
+    get_class_sample_map, get_train_DMatrices
 )
 from training_utils import (
     get_model_func, get_dataset_filepath
@@ -132,21 +132,20 @@ def make_rocs(training_dirpath: str, dataset_dirpath: str, dataset: str="train-t
     preds, truths = {}, {}
 
     get_booster = get_model_func(training_dirpath)
+    CLASS_SAMPLE_MAP = get_class_sample_map(dataset_dirpath)
+    CLASS_NAMES = [key for key in CLASS_SAMPLE_MAP.keys()]
 
     # plot ROCs
     for fold_idx in range(5):
         booster = get_booster(fold_idx)
 
-        filepaths = get_filepaths(dataset_dirpath, dataset, syst_name)(fold_idx)
-        class_names = list(filepaths.keys())
-        if fold_idx == 0:
-            preds, truths = {class_name: list() for class_name in class_names}, {class_name: list() for class_name in class_names}
+        preds, truths = {class_name: list() for class_name in CLASS_NAMES}, {class_name: list() for class_name in CLASS_NAMES}
 
         fold_fprs_tth, fold_tprs_tth, fold_thresholds_tth, fold_auc_tth = [], [], [], []
         fold_fprs_qcd, fold_tprs_qcd, fold_thresholds_qcd, fold_auc_qcd = [], [], [], []
 
         
-        for j, class_name in enumerate(class_names):
+        for j, class_name in enumerate(CLASS_NAMES):
             train_dm, val_dm, test_dm = get_train_DMatrices(dataset_dirpath, fold_idx)
 
             if j == 0:
@@ -189,11 +188,11 @@ def make_rocs(training_dirpath: str, dataset_dirpath: str, dataset: str="train-t
 
         labels_tth = [
             f"{class_name} DttH, AUC = {fold_auc_tth[i]:.4f}" 
-            for i, class_name in enumerate(class_names)
+            for i, class_name in enumerate(CLASS_NAMES)
         ]
         labels_qcd = [
             f"{class_name} DQCD, AUC = {fold_auc_qcd[i]:.4f}" 
-            for i, class_name in enumerate(class_names)
+            for i, class_name in enumerate(CLASS_NAMES)
         ]
 
         plot_rocs(fold_fprs_tth, fold_tprs_tth, labels_tth, f"DttH_logroc_weighted_fold{fold_idx}", plot_dirpath, log='x')
@@ -201,7 +200,7 @@ def make_rocs(training_dirpath: str, dataset_dirpath: str, dataset: str="train-t
 
     fprs_tth, tprs_tth, thresholds_tth, aucs_tth = [], [], [], []
     fprs_qcd, tprs_qcd, thresholds_qcd, aucs_qcd = [], [], [], []
-    for j, class_name in enumerate(class_names):
+    for j, class_name in enumerate(CLASS_NAMES):
 
         tth_preds = get_ttH_score(np.array(preds[class_name]))
         qcd_preds = get_QCD_score(np.array(preds[class_name]))
@@ -221,10 +220,10 @@ def make_rocs(training_dirpath: str, dataset_dirpath: str, dataset: str="train-t
         fpqlooseidx = np.argmin(np.abs(fpr_qcd - 1e-3))
         fpqloosestat = sqrtNerr(np.sum(np.logical_and(signal_truths > 0, qcd_preds > threshold_tth[fpqlooseidx])), np.sum(signal_truths > 0))
 
-        head_str = ' - '.join(training_dirpath.split('/')[-3:-1])+'\n' if class_name == class_names[0] else ''
+        head_str = ' - '.join(training_dirpath.split('/')[-3:-1])+'\n' if class_name == CLASS_NAMES[0] else ''
         print_str = (
             head_str
-            + f"sig vs. {class_name if class_name != class_names[0] else 'all'}"
+            + f"sig vs. {class_name if class_name != CLASS_NAMES[0] else 'all'}"
             + '\n' + f"  * DttH - signal tpr = {tpr_tth[fptidx]:.3f}±{fptstat:.3f} @ fpr of {fpr_tth[fptidx]:.3f}"
             + '\n' + f"  * DQCD - signal tpr = {tpr_qcd[fpqlooseidx]:.4f}±{fpqloosestat:.4f} @ fpr of {fpr_qcd[fpqlooseidx]:.4f}"
             + '\n' + f"  * DQCD - signal tpr = {tpr_qcd[fpqidx]:.5f}±{fpqstat:.5f} @ fpr of {fpr_qcd[fpqidx]:.5f}"
@@ -251,11 +250,11 @@ def make_rocs(training_dirpath: str, dataset_dirpath: str, dataset: str="train-t
 
     labels_tth = [
         f"{class_name} DttH, AUC = {fold_auc_tth[i]:.4f}" 
-        for i, class_name in enumerate(class_names)
+        for i, class_name in enumerate(CLASS_NAMES)
     ]
     labels_qcd = [
         f"{class_name} DQCD, AUC = {fold_auc_qcd[i]:.4f}" 
-        for i, class_name in enumerate(class_names)
+        for i, class_name in enumerate(CLASS_NAMES)
     ]
 
     plot_rocs(fprs_tth, tprs_tth, labels_tth, f"DttH_logroc_weighted_sum", plot_dirpath, log='xy')

@@ -35,10 +35,12 @@ from retrieval_utils import (
 gpustat.print_gpustat()
 
 LPC_FILEPREFIX = "/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/training_parquets/"
-# PARQUET_TIME = ""  # 2022-23 WPs + 3XT + 4XT
-PARQUET_TIME = "2025-11-17_09-49-01"  # 2022-24 WPs + high stats -- USE THIS ONE
-# PARQUET_TIME = ""  # 2022-24 WPs + high stats + 3XT + 4XT
-# PARQUET_TIME = ""  # 2022-24 WPs + high stats + MHH
+# PARQUET_TIME = "2025-11-18_13-46-20"  # 2022-23 WPs + 3XT + 4XT
+# PARQUET_TIME = "2025-11-18_14-22-09"  # 2022-24 WPs
+# PARQUET_TIME = "2025-11-18_14-20-48"  # 2022-24 WPs + extra kl
+# PARQUET_TIME = "2025-11-17_09-49-01"  # 2022-24 WPs + high stats -- USE THIS ONE
+# PARQUET_TIME = "2025-11-18_13-48-48"  # 2022-24 WPs + high stats + 3XT + 4XT
+# PARQUET_TIME = "2025-11-18_13-48-35"  # 2022-24 WPs + high stats + MHH
 DATASET_DIRPATH = os.path.join(LPC_FILEPREFIX, PARQUET_TIME, "")
 
 CURRENT_DIRPATH = str(Path().absolute())

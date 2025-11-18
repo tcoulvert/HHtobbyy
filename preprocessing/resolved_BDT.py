@@ -58,6 +58,9 @@ CLASS_SAMPLE_MAP = {
     'VH': ["*VH*", "*ZH*", "*Wm*H*", "*Wp*H*"],
     'nonRes + ggFH + VBFH': ["*GGJets*", "*GJet*", "*TTGG*", "*GluGluH*GG*", "*VBFH*GG*"]
 }
+TRAIN_TEST_SAMPLES = {
+    glob_name for glob_names in CLASS_SAMPLE_MAP.values() for glob_name in glob_names
+}
 TRAIN_ONLY_SAMPLES = {
     "*Zto2Q*", "*Wto2Q*", "*batch[4-6]*"
 }
@@ -176,6 +179,8 @@ DRYRUN = False
 MAKE_PLOTS = False
 REMAKE_TEST = False
 
+END_FILEPATH = "preprocessed.parquet"
+
 ################################
 
 
@@ -222,25 +227,19 @@ def get_input_filepaths(input_eras):
             stdline = line.strip()
             if stdline[0] == "#": continue
 
-            glob_names = [glob_name for glob_name_list in CLASS_SAMPLE_MAP.values() for glob_name in glob_name_list] + list(TEST_ONLY_SAMPLES)
-            for glob_name in glob_names:
-                if "data" in glob_name.lower(): sample_filepaths = glob.glob(os.path.join(stdline, glob_name, "*preprocessed.parquet"))
-                else: sample_filepaths = glob.glob(os.path.join(stdline, glob_name, "nominal", "*preprocessed.parquet"))
-
-                if len(sample_filepaths) == 0:
+            sample_filepaths = glob.glob(os.path.join(stdline, "**", f"*{END_FILEPATH}"), recursive=True)
+            for sample_filepath in sample_filepaths:
+                if match_sample(sample_filepath, TEST_ONLY_SAMPLES) is not None:
+                    input_filepaths['test'].append(sample_filepath)
+                elif match_sample(sample_filepath, TRAIN_ONLY_SAMPLES) is not None:
+                    input_filepaths['train'].append(sample_filepath)
+                elif match_sample(sample_filepath, TRAIN_TEST_SAMPLES) is not None:
+                    input_filepaths['train-test'].append(sample_filepath)
+                else:
                     if DEBUG:
-                        logger.warning(f"Sample with glob-name {glob_name} not found for era {stdline}. Continuing with other samples.")
+                        logger.warning(f"{sample_filepath} \nSample not found in any dict (TRAIN_TEST_SAMPLES, TRAIN_ONLY_SAMPLES, TEST_ONLY_SAMPLES). Continuing with other samples.")
                     continue
-                
-                for sample_filepath in sample_filepaths:
-                    print(sample_filepath)
-                    print(match_sample(sample_filepath, TRAIN_ONLY_SAMPLES))
-                    if glob_name in TEST_ONLY_SAMPLES:
-                        input_filepaths['test'].append(sample_filepath)
-                    elif match_sample(sample_filepath, TRAIN_ONLY_SAMPLES) is not None: 
-                        input_filepaths['train'].append(sample_filepath)
-                    else:
-                        input_filepaths['train-test'].append(sample_filepath)
+
     return input_filepaths
 
 def plot_vars(df, output_dirpath, sample_name, title="pre-std, train0"):
