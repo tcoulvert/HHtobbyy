@@ -63,12 +63,12 @@ def plot_filepath(plot_name, plot_dirpath, plot_prefix, plot_postfix, format='pn
     plot_filepath = os.path.join(plot_dirpath, plot_name)
     return plot_filepath
 
-def get_ttH_score(multibdt_output):
+def get_ttH_score(multibdt_output, class_names=None):
     ttH_preds = multibdt_output[:, 0] / (multibdt_output[:, 0] + multibdt_output[:, 1])
     ttH_preds[np.isnan(ttH_preds)] = 0
     return ttH_preds
 
-def get_QCD_score(multibdt_output):
+def get_QCD_score(multibdt_output, class_names=None):
     QCD_preds = multibdt_output[:, 0] / (multibdt_output[:, 0] + multibdt_output[:, 2] + multibdt_output[:, 3])
     QCD_preds[np.isnan(QCD_preds)] = 0
     return QCD_preds

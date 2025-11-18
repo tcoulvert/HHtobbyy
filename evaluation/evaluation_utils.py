@@ -29,8 +29,10 @@ from retrieval_utils import (
 def get_filepaths(dataset_dirpath: str, dataset: str, syst_name: str):
     if dataset == "test":
         return get_test_filepaths_func(dataset_dirpath, syst_name=syst_name)
-    if dataset == "train":
+    elif dataset == "train":
         return get_train_filepaths_func(dataset_dirpath, syst_name=syst_name)
+    elif dataset == "train-test":
+        return get_train_filepaths_func(dataset_dirpath, dataset='test', syst_name=syst_name)
     else:
         return lambda fold_idx: get_train_filepaths_func(dataset_dirpath, syst_name=syst_name)(fold_idx) | get_test_filepaths_func(dataset_dirpath, syst_name=syst_name)(fold_idx)
 

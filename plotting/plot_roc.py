@@ -1,42 +1,25 @@
-# %matplotlib widget
 # Stdlib packages
-import copy
-import datetime
-import glob
+import argparse
 import json
+import logging
 import os
 import re
 import subprocess
 import sys
-import warnings
-from pathlib import Path
 
 # Common Py packages
-import awkward as ak
 import numpy as np
-import pandas as pd
 from matplotlib import pyplot as plt
-from prettytable import PrettyTable
-from scipy.special import logit as inverse_sigmoid
 
 # HEP packages
 import gpustat
-import h5py
-import hist
 import mplhep as hep
 import xgboost as xgb
 from cycler import cycler
 
 # ML packages
-from sklearn.model_selection import train_test_split
 from sklearn.metrics import auc, roc_curve
-from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay, fbeta_score
-from sklearn.metrics import log_loss
 from scipy.integrate import trapezoid
-from scipy.optimize import curve_fit
-from skopt import gp_minimize
-from skopt.space import Real, Integer
-from skopt.utils import use_named_args
 
 ################################
 
@@ -49,18 +32,50 @@ GIT_REPO = (
 )
 sys.path.append(os.path.join(GIT_REPO, "preprocessing/"))
 sys.path.append(os.path.join(GIT_REPO, "training/"))
+sys.path.append(os.path.join(GIT_REPO, "evaluation/"))
 
 # Module packages
 from plotting_utils import (
     plot_filepath, 
     get_ttH_score, get_QCD_score,
-    cat_mask
 )
 from retrieval_utils import (
-    get_DMatrices
+    get_train_DMatrices
 )
 from training_utils import (
-    get_filepaths_func
+    get_model_func, get_dataset_filepath
+)
+from evaluation_utils import (
+    get_filepaths, evaluate
+)
+
+################################
+
+
+CWD = os.getcwd()
+logger = logging.getLogger(__name__)
+parser = argparse.ArgumentParser(description="Standardize BDT inputs and save out dataframe parquets.")
+parser.add_argument(
+    "--training_dirpath", 
+    default=CWD,
+    help="Full filepath on LPC for trained model files"
+)
+parser.add_argument(
+    "--dataset_dirpath", 
+    default=None,
+    help="Full filepath on LPC for standardized dataset (train and test parquets), default is to use dataset in the training `dataset_dirpath.txt` file"
+)
+parser.add_argument(
+    "--dataset", 
+    choices=["train", "test", "train-test", "all"], 
+    default="train-test",
+    help="Evaluate and save out evaluation for what dataset"
+)
+parser.add_argument(
+    "--syst_name", 
+    choices=["nominal", "all"], 
+    default="nominal",
+    help="Evaluate and save out evaluation for what systematic of a dataset"
 )
 
 ################################
@@ -72,8 +87,6 @@ plt.style.use(hep.style.CMS)
 plt.rcParams.update({'font.size': 20})
 cmap_petroff10 = ["#3f90da", "#ffa90e", "#bd1f01", "#94a4a2", "#832db6", "#a96b59", "#e76300", "#b9ac70", "#717581", "#92dadd"]
 plt.rcParams.update({"axes.prop_cycle": cycler("color", cmap_petroff10)})
-
-order = ['ggF HH', 'ttH + bbH', 'VH', 'non-res + ggFH + VBFH']
 
 ################################
 
@@ -110,40 +123,31 @@ def plot_rocs(
     if close:
         plt.close()
 
-def make_rocs(output_dirpath: str, base_filepath: str):
-    output_dirpath = os.path.join(output_dirpath, "")
-
-    plot_dirpath = os.path.join(output_dirpath, "plots", "2D_ROCs")
+def make_rocs(training_dirpath: str, dataset_dirpath: str, dataset: str="train-test", syst_name: str="nominal"):
+    plot_dirpath = os.path.join(training_dirpath, "plots", "2D_ROCs")
     if not os.path.exists(plot_dirpath):
         os.makedirs(plot_dirpath)
 
     base_tpr = np.linspace(0, 1, 5000)
-    preds, truths, weights = {sample_name: list() for sample_name in order}, {sample_name: list() for sample_name in order}, {sample_name: list() for sample_name in order}
+    preds, truths = {}, {}
 
-    param_filepath = os.path.join(output_dirpath, f"{output_dirpath.split('/')[-2]}_best_params.json")
-    with open(param_filepath, 'r') as f:
-        param = json.load(f)
-    param = list(param.items()) + [('eval_metric', 'mlogloss')]
-
-    get_filepaths_lambda_filepath = os.path.join(training_dirpath, f"{training_dirpath.split('/')[-2]}_get_filepaths_lambda.txt")
-    with open(get_filepaths_lambda_filepath, 'r') as f:
-        get_filepaths_lambda_str = f.read()
-    if base_filepath is None:
-        base_filepath = 
+    get_booster = get_model_func(training_dirpath)
 
     # plot ROCs
     for fold_idx in range(5):
-        booster = xgb.Booster(param)
-        booster.load_model(os.path.join(output_dirpath, f"{output_dirpath.split('/')[-2]}_BDT_fold{fold_idx}.model"))
+        booster = get_booster(fold_idx)
+
+        filepaths = get_filepaths(dataset_dirpath, dataset, syst_name)(fold_idx)
+        class_names = list(filepaths.keys())
+        if fold_idx == 0:
+            preds, truths = {class_name: list() for class_name in class_names}, {class_name: list() for class_name in class_names}
 
         fold_fprs_tth, fold_tprs_tth, fold_thresholds_tth, fold_auc_tth = [], [], [], []
         fold_fprs_qcd, fold_tprs_qcd, fold_thresholds_qcd, fold_auc_qcd = [], [], [], []
 
-        _, _, test_dm = get_DMatrices(
-            get_filepaths_func(base_filepath), fold_idx
-        )
-
-        for j, sample_name in enumerate(order):
+        
+        for j, class_name in enumerate(class_names):
+            train_dm, val_dm, test_dm = get_train_DMatrices(dataset_dirpath, fold_idx)
 
             if j == 0:
                 event_mask = (test_dm.get_label() > -1)
@@ -153,50 +157,43 @@ def make_rocs(output_dirpath: str, base_filepath: str):
                     test_dm.get_label() == j
                 )
 
-            full_preds = booster.predict(
-                test_dm, iteration_range=(0, booster.best_iteration+1)
-            )[event_mask]
-            preds[sample_name].extend(full_preds.tolist())
-
-            tth_preds = get_ttH_score(full_preds)
-            qcd_preds = get_QCD_score(full_preds)
+            ROC_preds = evaluate(booster, test_dm)[event_mask]
+            tth_preds = get_ttH_score(ROC_preds)
+            qcd_preds = get_QCD_score(ROC_preds)
 
             signal_truths = (test_dm.get_label() == 0)[event_mask]
-            truths[sample_name].extend(test_dm.get_label()[event_mask].tolist())
 
-            # weights[sample_name].extend(weights_plot_test[f"fold_{fold_idx}"][event_mask].tolist())
-
-            # fpr_tth, tpr_tth, threshold_tth = roc_curve(signal_truths, tth_preds, sample_weight=weights_plot_test[f"fold_{fold_idx}"][event_mask])
-            # fpr_qcd, tpr_qcd, threshold_qcd = roc_curve(signal_truths, qcd_preds, sample_weight=weights_plot_test[f"fold_{fold_idx}"][event_mask])
-
+            # ttH ROC curve
             fpr_tth, tpr_tth, threshold_tth = roc_curve(signal_truths, tth_preds)
-            fpr_qcd, tpr_qcd, threshold_qcd = roc_curve(signal_truths, qcd_preds)
-
             fpr_tth = np.interp(base_tpr, tpr_tth, fpr_tth)
             threshold_tth = np.interp(base_tpr, tpr_tth, threshold_tth)
             auc_tth = float(trapezoid(base_tpr, fpr_tth))
-
-            fpr_qcd = np.interp(base_tpr, tpr_qcd, fpr_qcd)
-            threshold_qcd = np.interp(base_tpr, tpr_qcd, threshold_qcd)
-            auc_qcd = float(trapezoid(base_tpr, fpr_qcd))
-
             fold_fprs_tth.append(fpr_tth)
             fold_tprs_tth.append(base_tpr)
             fold_thresholds_tth.append(threshold_tth)
             fold_auc_tth.append(auc_tth)
 
+            # QCD ROC curve
+            fpr_qcd, tpr_qcd, threshold_qcd = roc_curve(signal_truths, qcd_preds)
+            fpr_qcd = np.interp(base_tpr, tpr_qcd, fpr_qcd)
+            threshold_qcd = np.interp(base_tpr, tpr_qcd, threshold_qcd)
+            auc_qcd = float(trapezoid(base_tpr, fpr_qcd))
             fold_fprs_qcd.append(fpr_qcd)
             fold_tprs_qcd.append(base_tpr)
             fold_thresholds_qcd.append(threshold_qcd)
             fold_auc_qcd.append(auc_qcd)
 
+            # Add preds to full list for cross-fold evaluation
+            preds[class_name].extend(ROC_preds.tolist())
+            truths[class_name].extend(test_dm.get_label()[event_mask].tolist())
+
         labels_tth = [
-            f"{sample_name} DttH, AUC = {fold_auc_tth[i]:.4f}" 
-            for i, sample_name in enumerate(order)
+            f"{class_name} DttH, AUC = {fold_auc_tth[i]:.4f}" 
+            for i, class_name in enumerate(class_names)
         ]
         labels_qcd = [
-            f"{sample_name} DQCD, AUC = {fold_auc_qcd[i]:.4f}" 
-            for i, sample_name in enumerate(order)
+            f"{class_name} DQCD, AUC = {fold_auc_qcd[i]:.4f}" 
+            for i, class_name in enumerate(class_names)
         ]
 
         plot_rocs(fold_fprs_tth, fold_tprs_tth, labels_tth, f"DttH_logroc_weighted_fold{fold_idx}", plot_dirpath, log='x')
@@ -204,12 +201,12 @@ def make_rocs(output_dirpath: str, base_filepath: str):
 
     fprs_tth, tprs_tth, thresholds_tth, aucs_tth = [], [], [], []
     fprs_qcd, tprs_qcd, thresholds_qcd, aucs_qcd = [], [], [], []
-    for j, sample_name in enumerate(order):
+    for j, class_name in enumerate(class_names):
 
-        tth_preds = get_ttH_score(np.array(preds[sample_name]))
-        qcd_preds = get_QCD_score(np.array(preds[sample_name]))
+        tth_preds = get_ttH_score(np.array(preds[class_name]))
+        qcd_preds = get_QCD_score(np.array(preds[class_name]))
 
-        signal_truths = (np.array(truths[sample_name]) == 0)
+        signal_truths = (np.array(truths[class_name]) == 0)
 
         fpr_tth, tpr_tth, threshold_tth = roc_curve(signal_truths, tth_preds)
         fpr_qcd, tpr_qcd, threshold_qcd = roc_curve(signal_truths, qcd_preds)
@@ -224,10 +221,10 @@ def make_rocs(output_dirpath: str, base_filepath: str):
         fpqlooseidx = np.argmin(np.abs(fpr_qcd - 1e-3))
         fpqloosestat = sqrtNerr(np.sum(np.logical_and(signal_truths > 0, qcd_preds > threshold_tth[fpqlooseidx])), np.sum(signal_truths > 0))
 
-        head_str = ' - '.join(output_dirpath.split('/')[-3:-1])+'\n' if sample_name == order[0] else ''
+        head_str = ' - '.join(training_dirpath.split('/')[-3:-1])+'\n' if class_name == class_names[0] else ''
         print_str = (
             head_str
-            + f"sig vs. {sample_name if sample_name != order[0] else 'all'}"
+            + f"sig vs. {class_name if class_name != class_names[0] else 'all'}"
             + '\n' + f"  * DttH - signal tpr = {tpr_tth[fptidx]:.3f}±{fptstat:.3f} @ fpr of {fpr_tth[fptidx]:.3f}"
             + '\n' + f"  * DQCD - signal tpr = {tpr_qcd[fpqlooseidx]:.4f}±{fpqloosestat:.4f} @ fpr of {fpr_qcd[fpqlooseidx]:.4f}"
             + '\n' + f"  * DQCD - signal tpr = {tpr_qcd[fpqidx]:.5f}±{fpqstat:.5f} @ fpr of {fpr_qcd[fpqidx]:.5f}"
@@ -253,16 +250,24 @@ def make_rocs(output_dirpath: str, base_filepath: str):
         aucs_qcd.append(auc_qcd)
 
     labels_tth = [
-        f"{sample_name} DttH, AUC = {fold_auc_tth[i]:.4f}" 
-        for i, sample_name in enumerate(order)
+        f"{class_name} DttH, AUC = {fold_auc_tth[i]:.4f}" 
+        for i, class_name in enumerate(class_names)
     ]
     labels_qcd = [
-        f"{sample_name} DQCD, AUC = {fold_auc_qcd[i]:.4f}" 
-        for i, sample_name in enumerate(order)
+        f"{class_name} DQCD, AUC = {fold_auc_qcd[i]:.4f}" 
+        for i, class_name in enumerate(class_names)
     ]
 
     plot_rocs(fprs_tth, tprs_tth, labels_tth, f"DttH_logroc_weighted_sum", plot_dirpath, log='xy')
     plot_rocs(fprs_qcd, tprs_qcd, labels_qcd, f"DQCD_logroc_weighted_sum", plot_dirpath, log='xy')
 
 if __name__ == "__main__":
-    make_rocs(sys.argv[1], sys.argv[2])
+    args = parser.parse_args()
+
+    training_dirpath = os.path.join(args.training_dirpath, "")
+    if args.dataset_dirpath is None:
+        dataset_dirpath = get_dataset_filepath(args.training_dirpath)
+    else:
+        dataset_dirpath = args.dataset_dirpath
+
+    make_rocs(training_dirpath, dataset_dirpath, args.dataset, args.syst_name)
