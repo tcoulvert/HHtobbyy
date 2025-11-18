@@ -7,6 +7,8 @@ import json
 import logging
 import os
 import re
+import subprocess
+import sys
 
 # Common Py packages
 import numpy as np  
@@ -20,9 +22,17 @@ import matplotlib.pyplot as plt
 
 ################################
 
+GIT_REPO = (
+    subprocess.Popen(["git", "rev-parse", "--show-toplevel"], stdout=subprocess.PIPE)
+    .communicate()[0]
+    .rstrip()
+    .decode("utf-8")
+)
+sys.path.append(os.path.join(GIT_REPO, "plotting/"))
 
 from preprocessing_utils import match_sample
 from retrieval_utils import argsorted
+# from plot_vars import plot_vars
 
 ################################
 
@@ -53,7 +63,7 @@ from retrieval_utils import argsorted
 #  Feature Importance, Confusion Matrix, etc). All samples in the train and test
 #  datasets can be evaluated and used for plotting, but it is not the default behavior.
 CLASS_SAMPLE_MAP = {
-    'ggF HH': ["*GluGlu*HH*kl-1p00*"],  # *!batch
+    'ggF HH': ["*GluGlu*HH*kl-1p00*!batch*"],  # 
     'ttH + bbH': ["*ttH*", "*bbH*"],
     'VH': ["*VH*", "*ZH*", "*Wm*H*", "*Wp*H*"],
     'nonRes + ggFH + VBFH': ["*GGJets*", "*GJet*", "*TTGG*", "*GluGluH*GG*", "*VBFH*GG*"]
@@ -243,51 +253,26 @@ def get_input_filepaths(input_eras):
         print(input_filepaths)
     return input_filepaths
 
-def plot_vars(df, output_dirpath, sample_name, title="pre-std, train0"):
-    std_type, df_type = tuple(title.split(", "))
-    plot_dirpath = os.path.join(output_dirpath, "plots", "_".join([std_type.replace('-', ''), df_type]))
-    if not os.path.exists(plot_dirpath): os.makedirs(plot_dirpath)
+def no_standardize(column):
+    no_std_terms = {
+        'phi', 'eta',  # angular
+        'id',  # IDs
+        'btag'  # bTags
+    }
+    return any(no_std_term in column.lower() for no_std_term in no_std_terms)
 
-    if "pre" in std_type: apply_logs(df)
+def log_standardize(column):
+    log_std_terms = {
+        'pt', 'chi',
+    }
+    return any(log_std_term in column for log_std_term in log_std_terms)
 
-    if DEBUG:
-        print('='*60+'\n'+'='*60)
-        print(output_dirpath)
-
-    for var in df.columns:
-        if log_standardize(var): var_label = f"ln({var})"
-        else: var_label = var
-
-        var_mask = (
-            (df[var] != FILL_VALUE)
-            & np.isfinite(df[var])
-        )
-        good_var_bool = np.any(var_mask) and np.min(df.loc[var_mask, var]) != np.max(df.loc[var_mask, var])
-
-        max_val = np.max(df.loc[var_mask, var]) if good_var_bool else 0.
-        min_val = np.min(df.loc[var_mask, var]) if good_var_bool else 1.
-
-        if DEBUG:
-            print('-'*60)
-            print(var)
-            print(f"min = {min_val}, max = {max_val}")
-
-        var_hist = hist.Hist(
-            hist.axis.Regular(100, min_val, max_val, name="var", label=var_label, growth=True), 
-        ).fill(var=df.loc[var_mask, var])
-
-        fig, ax = plt.subplots()
-        hep.cms.lumitext(f"Run3" + r" (13.6 TeV)", ax=ax)
-        hep.cms.text("Simulation", ax=ax)
-
-        hep.histplot(var_hist, ax=ax, histtype="step", yerr=True, label=" - ".join([sample_name, title]))
-        plt.legend()
-        plt.yscale('log')
-
-        plt.savefig(os.path.join(plot_dirpath, f"{var}_{std_type.replace('-', '')}_{df_type}.pdf"), bbox_inches='tight')
-        plt.savefig(os.path.join(plot_dirpath, f"{var}_{std_type.replace('-', '')}_{df_type}.png"), bbox_inches='tight')
-        plt.close()
-
+def apply_logs(df):
+    for col in df.columns:
+        if log_standardize(col):
+            mask = (df[col].to_numpy() > 0)
+            df.loc[mask, col] = np.log(df.loc[mask, col])
+    return df
 
 def make_output_filepath(filepath, base_output_dirpath, extra_text):
     filename = filepath[filepath.rfind('/')+1:]
@@ -309,27 +294,6 @@ def get_df_mask(df):
         return (df[f'{JET_PREFIX}_resolved_BDT_mask'] > 0)
     else:
         raise NotImplementedError(f"Mask method {DF_MASK} not yet implemented, use \'default\'.")
-
-def no_standardize(column):
-    no_std_terms = {
-        'phi', 'eta',  # angular
-        'id',  # IDs
-        'btag'  # bTags
-    }
-    return any(no_std_term in column.lower() for no_std_term in no_std_terms)
-
-def log_standardize(column):
-    log_std_terms = {
-        'pt', 'chi',
-    }
-    return any(log_std_term in column for log_std_term in log_std_terms)
-
-def apply_logs(df):
-    for col in df.columns:
-        if log_standardize(col):
-            mask = (df[col].to_numpy() > 0)
-            df.loc[mask, col] = np.log(df.loc[mask, col])
-    return df
 
 def get_dfs(filepaths, BDT_vars, AUX_vars):
     dfs, aux_dfs = {}, {}

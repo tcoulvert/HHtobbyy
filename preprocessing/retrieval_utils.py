@@ -78,6 +78,7 @@ def get_Dataframes(filepath: str):
     return get_Dataframe(filepath), get_Dataframe(filepath, aux=True)
 def get_train_Dataframe(dataset_dirpath: str, fold_idx: int, dataset: str="train"):
     filepaths = get_train_filepaths_func(dataset_dirpath, dataset=dataset)(fold_idx)
+    print(filepaths)
 
     df, aux = None, None
     for i, bdt_class in enumerate(filepaths.keys()):

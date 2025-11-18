@@ -2,12 +2,22 @@
 import math
 import re
 
+# Common Py packages
+import numpy as np
+
 # HEP packages
 import awkward as ak
 import vector as vec
+
+################################
+
+
 vec.register_awkward()
 
 FILL_VALUE = -999
+
+################################
+
 
 def ak_sign(ak_array, inverse=False):
     if not inverse:
