@@ -39,7 +39,7 @@ def deltaPhi(phi1, phi2):
 def deltaEta(eta1, eta2):
     return ak_abs(eta1 - eta2)
 
-def match_sample(sample_str, regexes, remove_excl: bool=False):
+def match_sample(sample_str, regexes):
     for regex in sorted(regexes, key=len, reverse=True):
         regex_bools = []
         match_str = sample_str
@@ -52,6 +52,5 @@ def match_sample(sample_str, regexes, remove_excl: bool=False):
                 regex_bools.append(True)
                 match_str = match_str[re.search(exp.lower(), match_str.lower()).end()+1:]
         if all(regex_bools):
-            if not remove_excl: return regex
-            else: return '*'.join([exp for exp in regex.split('*') if len(exp) == 0 or exp[0] != '!'])
+            return regex
      

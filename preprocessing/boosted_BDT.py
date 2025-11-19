@@ -5,19 +5,16 @@ import datetime
 
 
 CLASS_SAMPLE_MAP = {
-    'ggF HH': ["*GluGlu*HH*kl-1p00*"],
-    'ttH + bbH': ["*ttH*", "*bbH*"],
-    'VH': ["*VH*", "*ZH*", "*Wm*H*", "*Wp*H*"],
-    'nonRes + ggFH + VBFH': ["*GGJets*", "*GJet*", "*TTGG*", "*GluGluH*GG*", "*VBFH*GG*"]
-}
-TRAIN_TEST_SAMPLES = {
-    glob_name for glob_names in CLASS_SAMPLE_MAP.values() for glob_name in glob_names
+    'ggF HH': ["GluGlu*HH*kl-1p00"],
+    'ttH + bbH': ["ttH", "bbH"],
+    'VH': ["VH", "ZH", "Wm*H", "Wp*H"],
+    'nonRes + ggFH + VBFH': ["GGJets", "GJet", "TTGG", "GluGluH*GG", "VBFH*GG"]
 }
 TRAIN_ONLY_SAMPLES = {
-    "*Zto2Q*", "*Wto2Q*", "*batch[4-6]*"
+    "Zto2Q", "Wto2Q", "batch[4-6]"
 }
 TEST_ONLY_SAMPLES = {
-    "*Data*", "*GluGlu*HH*kl-0p00*", "*GluGlu*HH*kl-2p45*", "*GluGlu*HH*kl-5p00*"
+    "Data", "GluGlu*HH*kl-0p00", "GluGlu*HH*kl-2p45", "GluGlu*HH*kl-5p00"
 }
 
 BASIC_VARIABLES = lambda jet_prefix: {

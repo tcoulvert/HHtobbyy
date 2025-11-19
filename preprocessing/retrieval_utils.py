@@ -16,6 +16,10 @@ from sklearn.model_selection import train_test_split
 
 ################################
 
+from preprocessing_utils import match_sample
+
+################################
+
 
 RES_BKG_RESCALE = 100
 DF_SHUFFLE = True
@@ -33,19 +37,32 @@ def get_class_sample_map(dataset_dirpath: str):
 
 def get_train_filepaths_func(dataset_dirpath: str, dataset: str="train", syst_name: str='nominal'):
     class_sample_map = get_class_sample_map(dataset_dirpath)
-    get_sample_filepaths = lambda dataset_dirpath, sample_name, dataset, syst_name, fold_idx: glob.glob(os.path.join(dataset_dirpath, "**", sample_name, f"*{syst_name}*", f"*{dataset}{fold_idx}*.parquet"), recursive=True)
     return lambda fold_idx: {
-        class_name: sorted(set([
-            sample_filepath for sample_name in sample_names 
-            for sample_filepath in get_sample_filepaths(dataset_dirpath, sample_name, dataset, syst_name, fold_idx)
-        ])) for class_name, sample_names in class_sample_map.items()
+        class_name: sorted(
+            set(
+                [
+                    sample_filepath 
+                    for sample_filepath in glob.glob(
+                        os.path.join(
+                            dataset_dirpath, "**", f"*{syst_name}*", f"*{dataset}{fold_idx}*.parquet"
+                        ), recursive=True
+                    )
+                    if match_sample(sample_filepath, sample_names) is not None
+                ]
+            )
+        ) for class_name, sample_names in class_sample_map.items()
     }
 def get_test_filepaths_func(dataset_dirpath: str, syst_name: str='nominal'):
-    get_sample_filepaths = lambda dataset_dirpath, syst_name, fold_idx: glob.glob(os.path.join(dataset_dirpath, "**", f"*{syst_name}*", f"*test{fold_idx}*.parquet"), recursive=True)
     return lambda fold_idx: {
-        'test': sorted(set(
-            get_sample_filepaths(dataset_dirpath, syst_name, fold_idx)
-        ))
+        'test': sorted(
+            set(
+                glob.glob(
+                    os.path.join(
+                        dataset_dirpath, "**", f"*{syst_name}*", f"*test{fold_idx}*.parquet"
+                    ), recursive=True
+                )
+            )
+        )
     }
 
 def argsorted(objects, **kwargs):
