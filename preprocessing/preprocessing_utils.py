@@ -44,10 +44,10 @@ def match_sample(sample_str, regexes):
         regex_bools = []
         match_str = sample_str
         for exp in regex.split('*'):
-            if len(exp) > 0: continue
+            if len(exp) == 0: continue
             if (
                 (exp[0] != '!' and re.search(exp.lower(), match_str.lower()) is not None)
-                or (exp[0] == '!' and re.search(exp.lower(), match_str.lower()) is None)
+                or (exp[0] == '!' and re.search(exp[1:].lower(), match_str.lower()) is None)
             ):
                 regex_bools.append(True)
                 match_str = match_str[re.search(exp.lower(), match_str.lower()).end()+1:]
