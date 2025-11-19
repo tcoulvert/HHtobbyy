@@ -39,23 +39,36 @@ MC/Data era 1
 By default the `preprocess.py` file will create a new `.parquet` file adjacent to each input file.
 
 ### Variable Standardization
-After running the `preprocess.py` script, all the necessary variables have been added to the input `.parquet` files, and you are almost ready to begin training. The final step is to run the `resolved_BDT.py` script in order to create lightweight training (and testing) files that have the minimal necessary variables for training and evaluating, with the proper variable standardization. The reason for making these lightweight files is two-fold: to save storage space on the cluster by not duplicating unecessary columns, and to ensure the training files are static. Saving storrage space is important because disk space is fundamentally a limited resource and it is easy (especially in ML contexts) to run out quickly. An added benefit of saving disk space with lightweight files, is that this makes parallel training of multiple models much easier because the required RAM is much smaller due to the lightweight files. Currently, this repositry doesn't make use of any parallelization (multi-processng, multi-threading, etc) but by setting things up the way we have, this would be an easy feature to implement. Keeping the training the training files static is important for an even more fundamental reason: backwards compatibility. If we always keep a copy of the data used to train a model -- and we separate the variable-dependent dataset creation from the model training code -- we can cross-check a model's training data, evaluate on new data, or even re-train a model at any time. This lets us quickly and easily create many different versions of our BDT model and we can compare the performance across versions *without changing any code*.
+After running the `preprocess.py` script, all the necessary variables have been added to the input `.parquet` files, and you are almost ready to begin training. The final step is to run the `BDT_preprocessing.py` script in order to create lightweight training (and testing) files that have the minimal necessary variables for training and evaluating, with the proper variable standardization. The reason for making these lightweight files is two-fold: to save storage space on the cluster by not duplicating unecessary columns, and to ensure the training files are static. Saving storrage space is important because disk space is fundamentally a limited resource and it is easy (especially in ML contexts) to run out quickly. An added benefit of saving disk space with lightweight files, is that this makes parallel training of multiple models much easier because the required RAM is much smaller due to the lightweight files. Currently, this repositry doesn't make use of any parallelization (multi-processng, multi-threading, etc) but by setting things up the way we have, this would be an easy feature to implement. Keeping the training the training files static is important for an even more fundamental reason: backwards compatibility. If we always keep a copy of the data used to train a model -- and we separate the variable-dependent dataset creation from the model training code -- we can cross-check a model's training data, evaluate on new data, or even re-train a model at any time. This lets us quickly and easily create many different versions of our BDT model and we can compare the performance across versions *without changing any code*.
 
-To run the variable standardization and training dataset creatin, use the `resolved_BDT.py` script as follows:
+To run the variable standardization and training dataset creatin, use the `BDT_preprocessing.py` script as follows:
 
-`python resolved_BDT.py --input_filepaths <filepath_to_JSON_dictionary_of_filepaths> --output_dirpath <filepath_to_dump_training_files>`
+`python BDT_preprocessing.py <filepath_to_txt_of_input_eras> <filepath_to_BDT_config_py_file> <filepath_to_dump_output_files>`
 
-Structure of JSON dictionary for `--input_filepaths` flag:
+#### Structure of JSON dictionary for `input_eras` input:
+```
+# MC
+<path_to_2022_preEE>
+<path_to_2022_postEE>
+# <path_to_2023_preBPix>  -- this line is skipped due to the '#' character at the front
+```
+
+#### Structure of BDT_config.py file
+The CLASS_SAMPLE_MAP in the BDT_CONFIG file exclusively defines the samples in the training datasets, as well as how to split the samples into distinct classes.
+The structure of this map has the keys as the name of the classes, and the values as a list of wildcard sample-names (i.e. regex-like formatting) of that class.
 ```python
 {
-    'train-test': ['<filepath_to_process_1>', '<filepath_to_process_2>', etc],
-    'train': ['<filepath_to_process_1>', '<filepath_to_process_2>', etc],
-    'test': ['<filepath_to_process_1>', '<filepath_to_process_2>', etc]
+  'class 1': ['glob*name*1*', '*globname*2', etc]
 }
 ```
-The structure of the JSON dictionary is meant to reflect the differing treatment of processes depending on the process and analysis: `'train-test'` refers to processes that will be used for training *and* testing (this is the majority of processes), `'train'` refers to processes used *only* for training (this is for extra samples to e.g. add statistics for training, but they could be private production and therefore not fit for evaluation), `'test'` refers to processes used *only* for testing (this is for samples to e.g. do EFT evaluations, or Data samples).
+The regex-like expressions are used to find the appropriate files for each of the classes and dataset types. The files are found by splitting the wildcard sample-names at the '*' characters, and selecting any samples that have *ALL* (with 1 exception) of the sub-strings. For example, the wildcard sample-name '*ttH*' matches to any filepath that contains the substring 'ttH'. 
 
-Structure of `--output_dirpath` directory:
+The matching for finding samples to put into the datasets is done using the `re` module, so all the normal regex rules are available. The order of the different substrings matters, and the matching will look for them in the order they appear (although the distance between two matches does not matter). 
+The exception to the *ALL* matching comes from the '!' symbol, which allows users to anti-match a substring. Anti-matching in this case means you can specify a substring that -- if matched to a filepath -- indicates you want to exclude that filepath. For example, the wildcard sample-name '*ttH*!Htobb*' indicates that you want to match all samples that contain 'ttH' but do *not* contain 'Htobb' afterwards.
+After being used to find the samples, the found samples are then processed through this file into the lightweight training and testing files for the BDT. The wildcard sample-names are then used again any time users want to load the training or train-testing files for downstream tasks (I define train-testing to mean the test files of the train samples). These downstream loading tasks are done with the same function, which allows full use of regex tools. Leading and trailing '*' are therefore redundant.
+The other necessary sets are the TRAIN_ONLY_SAMPLES and TEST_ONLY_SAMPLES. These sets define samples that should only be used for training or testing (as compared to the default behavior of the training files which is to be split into training and testing). The training-only samples should be contained in the CLASS_SAMPLE_MAP and should therefore be a subset of the training samples. There is a check that requires samples that match to TRAIN_ONLY_SAMPLES to also match to the CLASS_SAMPLE_MAP. The TEST_ONLY_SAMPLES, on the other hand, should be disjoint from the training, there is a check to ensure the samples *don't* match to CLASS_SAMPLE_MAP.
+
+#### Structure of `--output_dirpath` directory:
 ```bash
 <output_dirpath>
 ├── timestamp of training 1 dataset
@@ -68,7 +81,7 @@ Structure of `--output_dirpath` directory:
     └── etc
 └── etc
 ```
-If you choose to use the extra `--remake_test` flag (see below), the `--output_dirpath` flag should change from the general directory, to the specific timestamp directory associated with the test dataset you want to change. The names of the training dataset directories are timestamps of when the `reasolved_BDT.py` file was run -- this means you do not know what is in the datasets by looking at them. **You must keep track of what eras, samples, and variables were used in the creation of a given dataset** I have done this using comments in the `run_training.py` file under the `training` directory, but you are free to keep track as you wish, just remember this information is not saved.
+If you choose to use the extra `--remake_test` flag (see below), the `--output_dirpath` flag should change from the general directory, to the specific timestamp directory associated with the test dataset you want to change. The names of the training dataset directories are timestamps of when the `BDT_preprocessing.py` file was run -- this means you do not know what is in the datasets by looking at them. **You must keep track of what eras, samples, and variables were used in the creation of a given dataset** I have done this using comments in the `run_training.py` file under the `training` directory, but you are free to keep track as you wish, just remember this information is not saved.
 
 There are 4 extra flags: 
 1. `--debug` prints out debug statements
@@ -78,7 +91,7 @@ There are 4 extra flags:
 
 
 ## Training
-Once you have run the `preprocess.py` and `resolved_BDT.py` scripts you are ready to train a model! Lucikly, because we setup the preprocessing and variable standardization in a backwards-compatible way (and split up each training dataset into its own directory), the training itself is extremely simple. You only need to run the `run_training.py` file (located under the `training` directory) with the `LPC_FILEPREFIX` variable changed to the location of your `--output_dirpath` from the `resolved_BDT.py` script, and the `PARQUET_TIME` variable set to the specific training dataset you would like to use. The `VERSION` and `VARS` variables are there only to help dilineate and organize the many versions of models you will train while optimizing your BDT.
+Once you have run the `preprocess.py` and `BDT_preprocessing.py` scripts you are ready to train a model! Lucikly, because we setup the preprocessing and variable standardization in a backwards-compatible way (and split up each training dataset into its own directory), the training itself is extremely simple. You only need to run the `run_training.py` file (located under the `training` directory) with the `LPC_FILEPREFIX` variable changed to the location of your `--output_dirpath` from the `BDT_preprocessing.py` script, and the `PARQUET_TIME` variable set to the specific training dataset you would like to use. The `VERSION` and `VARS` variables are there only to help dilineate and organize the many versions of models you will train while optimizing your BDT.
 
 To run the training, use the `run_training.py` script as follows:
 
@@ -90,20 +103,17 @@ If you would like to also optimize the hyperparameters of your BDT (this is very
 
 
 ## Evaluation
-Once you've trained a model, the last step is evaluating your test dataset with this model. Again, like with the training, things are easy because we put so much work into our dataset creation and management. All we need is the `evaluation.py` file (located under the `evaluation` directory),
+Once you've trained a model, the last step is evaluating your test dataset with this model. Again, like with the training, things are easy because we put so much work into our dataset creation and management. All we need is the `evaluate_model.py` file (located under the `evaluation` directory),
 
-To run the evaluation, use the `evaluation.py` file as follows:
+To run the evaluation, use the `evaluate_model.py` file as follows:
 
-`python evaluation.py --training_dirpath <dirpath_to_trained_model> --base_filepath <dirpath_to_training_dataset>`
+`python evaluate_model.py <dirpath_to_trained_model> --dataset_dirpath <dirpath_to_training_dataset>`
 
-The `--training_dirpath` flag is the output directory of the training, while the `--base_filepath` flag is the same `--output_dirpath` from the `resolved_BDT.py` script.
+The `training_dirpath` argument is the output directory of the training, while the `--dataset_dirpath` flag is optional -- it defaults to the same `--output_dirpath` from the `BDT_preprocessing.py` script used for the training specified in the `training_dirpath` flag.
 
 There are 3 extra flags:
-1. `--test` runs the evluation of the test datasets (this is usually what you'll want to do)
-2. `--train` runs the evaluation of the train datasets (this is useful to check for overfitting)
-3. `--fold` runs the evaluation for only 1 fold of the model
-
-The folds come from the fact that our BDT is setup by-default in a special k=5 k-fold method. The special thing about our k-fold is we rotate the test dataset as well (so the test dataset for fold 0 is contained withing the train dataset for fold 1, and so-on). From the user perspective, you can mostly ignore this as well as the `--fold` evaluation flag, and instead just pretend it's one model and always evaluate all folds.
+1. `--dataset` runs the evluation of the train, test, train-test, or all datasets (defaults to test)
+2. `--syst_name` runs the evaluation of the the nominal or all systematics for the specified datasets
 
 
 ## Plotting
@@ -114,6 +124,6 @@ One of the most important plots (and the only one I will explain how to make her
 
 To make the ROC curves, run the `plot_roc.py` script as follows:
 
-`python plot_roc.py <dirpath_to_trained_model> <dirpath_to_training_dataset>`
+`python plot_roc.py <dirpath_to_trained_model> --dataset_dirpath <dirpath_to_training_dataset>`
 
-The two input arguments for the `plot_roc.py` file are the same as the inputs for the `evaluation.py` file. Currently, the plotting scripts are not all working, and don't interface with the `evaluation` directory, but this will change in the near future in order to make things more ergonomic and compartmentalized.
+The two input arguments for the `plot_roc.py` file are the same as the inputs for the `evaluate_model.py` file. Currently, the plotting scripts are not all working, but this will change in the near future.
