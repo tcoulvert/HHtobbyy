@@ -93,9 +93,15 @@ Once you have run the `preprocess.py` and `BDT_preprocessing.py` scripts you are
 
 To run the training, use the `run_training.py` script as follows:
 
-`python run_training.py`
+`python run_training.py <path_to_dataset_dirpath>`
 
-By default the training files will be dumped under `HHtobbyy/MultiClassBDT_model_outputs/{VERSION}/{VARS}/{timestamp_of_training}`.
+Extra arguments:
+1. `--output_dirpath` changes the dump location fo the trained model files, by default the training files will be dumped under `HHtobbyy/MultiClassBDT_model_outputs/{VERSION}/{VARS}/{timestamp_of_training}`
+2. `--eos_dirpath` changes the path for the eos space for intermediate files to be placed in, by default the path is `root://cmseos.fnal.gov//store/user/<username>/condor_train`, but this will obviously not work for people using LXPLUS or other Tier 1-3 clusters
+3. `--fold` restricts the training to only perform one fold -- this is only important for batch jobs. If you are training a model with only 1 fold, you can specify that with N_FOLDS in the `BDT_preprocessing.py` script
+4. `--batch` allows for selection of normal submission (`iterative`) or batch submission (currently only `condor`), see the `<batch_type>_training.py` files for details on how this is impemented
+5. `--memory` changes the memory requested in the batch job
+6. `--queue` changes the queue requested in the batch job
 
 If you would like to also optimize the hyperparameters of your BDT (this is very computationally expensive and should only be done *after* you've finalized your input variables and dataset eras and processes), simply set the `OPTIMIZE_SPACE = True` boolean in the `run_training.py` file. This will call the `optimize_hyperparams.py` file, but everything is handled under-the-hood. If you would like to understand how the hyperparameters are optimized, you can read that file and the corresponding blog-post its implemented from.
 
@@ -109,7 +115,7 @@ To run the evaluation, use the `evaluate_model.py` file as follows:
 
 The `training_dirpath` argument is the output directory of the training, while the `--dataset_dirpath` flag is optional -- it defaults to the same `--output_dirpath` from the `BDT_preprocessing.py` script used for the training specified in the `training_dirpath` flag.
 
-There are 3 extra flags:
+Extra arguments:
 1. `--dataset` runs the evluation of the train, test, train-test, or all datasets (defaults to test)
 2. `--syst_name` runs the evaluation of the the nominal or all systematics for the specified datasets
 

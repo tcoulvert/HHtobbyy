@@ -9,7 +9,6 @@ import sys
 from pathlib import Path
 
 # HEP packages
-import gpustat
 import xgboost as xgb
 
 ################################
@@ -91,7 +90,7 @@ parser.add_argument(
 
 CURRENT_DIRPATH = str(Path().absolute())
 VERSION = 'v18'
-VARS = '22to24_bTagWPbatch3XT4XT'
+VARS = '22to24_bTagWPbatchMHH'
 CURRENT_TIME = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
 
 OPTIMIZE_SPACE = False
