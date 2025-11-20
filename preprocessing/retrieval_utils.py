@@ -2,6 +2,7 @@
 import glob
 import json
 import os
+import re
 
 # Common Py packages
 import numpy as np
