@@ -28,7 +28,7 @@ from retrieval_utils import (
     get_class_sample_map, get_n_folds, format_class_names
 )
 from training_utils import (
-    get_dataset_filepath, get_model_func
+    get_dataset_dirpath, get_model_func
 )
 from evaluation_utils import (
     get_filepaths, evaluate_and_save, 
@@ -88,7 +88,7 @@ if __name__ == "__main__":
 
     training_dirpath = os.path.join(args.training_dirpath, "")
     if args.dataset_dirpath is None:
-        dataset_dirpath = get_dataset_filepath(args.training_dirpath)
+        dataset_dirpath = get_dataset_dirpath(args.training_dirpath)
     else:
         dataset_dirpath = args.dataset_dirpath
     

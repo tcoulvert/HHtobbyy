@@ -29,11 +29,11 @@ from retrieval_utils import get_labelND
 ################################
 
 
-def get_dataset_filepath(training_dirpath: str):
+def get_dataset_dirpath(training_dirpath: str):
     dataset_filepath_filepath = os.path.join(training_dirpath, "dataset_filepath.txt")
     with open (dataset_filepath_filepath, "r") as f:
         dataset_filepath = f.read().strip()
-    return dataset_filepath
+    return os.path.join(dataset_filepath, '')
 
 def get_param(training_dirpath: str):
     param_filepath = os.path.join(training_dirpath, f"{training_dirpath.split('/')[-2]}_best_params.json")
