@@ -37,7 +37,7 @@ def get_class_sample_map(dataset_dirpath: str):
     return class_sample_map
 
 def get_n_folds(dataset_dirpath: str):
-    filepaths = glob.glob(os.path.join(dataset_dirpath, "**", f"*train*.parquet"))
+    filepaths = glob.glob(os.path.join(dataset_dirpath, "**", f"*train*.parquet"), recursive=True)
     max_fold = max([
         int(filepath[re.search('train[0-9]', filepath).end()-1]) for filepath in filepaths
     ])  # only works for up to 10 folds -- currently using 5, not likely to increase due to low-stats
