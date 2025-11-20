@@ -50,7 +50,9 @@ def match_sample(sample_str, regexes):
                 or (exp[0] == '!' and re.search(exp[1:].lower(), match_str.lower()) is None)
             ):
                 regex_bools.append(True)
-                match_str = match_str[re.search(exp.lower(), match_str.lower()).end()+1:]
+                match_str = match_str[re.search(exp.lower(), match_str.lower()).end():]
+            else:
+                regex_bools.append(False)
         if all(regex_bools):
             return regex
      

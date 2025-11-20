@@ -42,7 +42,7 @@ parser.add_argument(
 parser.add_argument(
     "--output_dirpath", 
     type=str,
-    default=os.path.join(GIT_REPO, "MultiClassBDT_model_outputs", "")
+    default=os.path.join(GIT_REPO, "MultiClassBDT_model_outputs", ""),
     help="Full filepath to BDT output directory"
 )
 parser.add_argument(
@@ -140,9 +140,9 @@ def run_training(
     eval_result_filename = f'{CURRENT_TIME}_BDT_eval_result'
 
     # Train the model
-    if args.batch == "iterative":
+    if batch == "iterative":
         for fold_idx in range(N_FOLDS):
-            if args.fold is not None and args.fold != fold_idx: continue
+            if fold is not None and fold != fold_idx: continue
             print(f"fold {fold_idx}")
 
             train_dm, val_dm, test_dm = get_train_DMatrices(dataset_dirpath, fold_idx)
@@ -163,7 +163,7 @@ def run_training(
             # Print perf on test dataset
             print(booster.eval(test_dm, name='test', iteration=booster.best_iteration))
             print('='*100)
-    elif args.batch == "condor":
+    elif batch == "condor":
         # Runs condor submission script
         submit(dataset_dirpath, OUTPUT_DIRPATH, eos_dirpath, N_FOLDS, memory=memory, queue=queue)
 

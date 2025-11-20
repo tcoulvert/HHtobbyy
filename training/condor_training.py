@@ -64,9 +64,9 @@ def submit(
     eos_dirpath: str,  n_folds: int, 
     memory: str="10GB", queue: str='workday'
 ):
-"""
-A method to submit all the jobs in the jobs_dir to the cluster
-"""
+    """
+    A method to submit all the jobs in the jobs_dir to the cluster
+    """
     # Commits and pushes newest version of model to github so condor can pull directly from github
     subprocess.run(['git', 'commit', '-a', '-m', f'Commit before training at {CURRENT_TIME}'], check=True)
     subprocess.run(['git', 'push'], check=True)
@@ -129,7 +129,7 @@ A method to submit all the jobs in the jobs_dir to the cluster
         executable_file.write("echo \"Running training processing\"\n")
         executable_file.write("echo \"-------------------------------------\"\n")
         executable_file.write("cd /srv/HHtobbyy/training\n")
-        for job_idx in range(n_jobs):
+        for job_idx in range(n_folds):
             executable_file.write(f"if [ $1 -eq {i} ]; then\n")
             executable_file.write(f"    python run_training.py {dataset_srvdirpath} --fold {i}\n")
             executable_file.write("fi\n")
@@ -141,7 +141,7 @@ A method to submit all the jobs in the jobs_dir to the cluster
         executable_file.write("echo \"-------------------------------------\"\n")
         executable_file.write(f"ls {output_srvdirpath}\n")
         executable_file.write("echo \"-------------------------------------\"\n")
-        executable_file.write(f"ls {os.path.join(output_srvdirpath '*BDT*')} | cut -c {len(output_srvdirpath)+1}- > output_files.txt\n")
+        executable_file.write(f"ls {os.path.join(output_srvdirpath, '*BDT*')} | cut -c {len(output_srvdirpath)+1}- > output_files.txt\n")
         executable_file.write("cat output_files.txt\n")
         executable_file.write("echo \"-------------------------------------\"\n")
         executable_file.write(f"while IFS= read -r line; do\n")
@@ -169,10 +169,10 @@ A method to submit all the jobs in the jobs_dir to the cluster
         submit_file.write('on_exit_remove = (ExitBySignal == False) && (ExitCode == 0)\n')
         submit_file.write('max_retries = 0\n')
         # submit_file.write('requirements = Machine =!= LastRemoteHost\n')
-        submit_file.write(f"queue {n_jobs}\n")
+        submit_file.write(f"queue {n_folds}\n")
     
     # Submits the condor jobs
-    if current_dir.startswith("/eos"):
+    if CWD.startswith("/eos"):
         # see https://batchdocs.web.cern.ch/troubleshooting/eos.html#no-eos-submission-allowed
         output = subprocess.run(["condor_submit", "-spool", CONDOR_FILEPATHS['submission']], capture_output=True, text=True, check=True)
     else:
@@ -180,7 +180,7 @@ A method to submit all the jobs in the jobs_dir to the cluster
 
     cluster_id = int(re.search(r'\d+', output.stdout).group(0)[::-1])
     print(cluster_id)
-    while true:
+    while True:
         output = subprocess.run(['condor_q', '-constraint', '\"ClusterId == ${CLUSTER_ID} && (JobStatus == 1 || JobStatus == 2)\"', '-af', 'ClusterId' '|' 'wc' '-l'], capture_output=True, text=True, check=True)
         if output.stdout == 0:
             print(f"Finished running condor jobs, running postprocessing.")
@@ -188,6 +188,3 @@ A method to submit all the jobs in the jobs_dir to the cluster
             break
         else:
             time.sleep(60)
-
-
-return None
