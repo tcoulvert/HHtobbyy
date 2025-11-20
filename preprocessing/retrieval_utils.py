@@ -30,6 +30,9 @@ FILL_VALUE = -999
 ################################
 
 
+def format_class_names(class_names):
+    return [''.join(class_name.split(' ')) for class_name in class_names]
+
 def get_class_sample_map(dataset_dirpath: str):
     class_sample_map_filepath = os.path.join(dataset_dirpath, "class_sample_map.json")
     with open(class_sample_map_filepath, "r") as f:
@@ -42,6 +45,7 @@ def get_n_folds(dataset_dirpath: str):
         int(filepath[re.search('train[0-9]', filepath).end()-1]) for filepath in filepaths
     ])  # only works for up to 10 folds -- currently using 5, not likely to increase due to low-stats
     return max_fold + 1
+    
 
 def get_train_filepaths_func(dataset_dirpath: str, dataset: str="train", syst_name: str='nominal'):
     class_sample_map = get_class_sample_map(dataset_dirpath)

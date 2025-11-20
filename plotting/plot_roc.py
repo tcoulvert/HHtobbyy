@@ -1,6 +1,5 @@
 # Stdlib packages
 import argparse
-import json
 import logging
 import os
 import re
@@ -13,11 +12,10 @@ from matplotlib import pyplot as plt
 
 # HEP packages
 import mplhep as hep
-import xgboost as xgb
 from cycler import cycler
 
 # ML packages
-from sklearn.metrics import auc, roc_curve
+from sklearn.metrics import roc_curve
 from scipy.integrate import trapezoid
 
 ################################
@@ -39,7 +37,7 @@ from plotting_utils import (
     get_ttH_score, get_QCD_score,
 )
 from retrieval_utils import (
-    get_class_sample_map, get_train_DMatrices
+    get_class_sample_map, get_n_folds, get_train_DMatrices
 )
 from training_utils import (
     get_model_func, get_dataset_filepath
@@ -55,8 +53,7 @@ CWD = os.getcwd()
 logger = logging.getLogger(__name__)
 parser = argparse.ArgumentParser(description="Standardize BDT inputs and save out dataframe parquets.")
 parser.add_argument(
-    "--training_dirpath", 
-    default=CWD,
+    "training_dirpath",
     help="Full filepath on LPC for trained model files"
 )
 parser.add_argument(
@@ -66,15 +63,9 @@ parser.add_argument(
 )
 parser.add_argument(
     "--dataset", 
-    choices=["train", "test", "train-test", "all"], 
+    choices=["train", "train-test"], 
     default="train-test",
-    help="Evaluate and save out evaluation for what dataset"
-)
-parser.add_argument(
-    "--syst_name", 
-    choices=["nominal", "all"], 
-    default="nominal",
-    help="Evaluate and save out evaluation for what systematic of a dataset"
+    help="Make ROC curves for what dataset"
 )
 
 ################################
@@ -120,7 +111,7 @@ def plot_rocs(
     if close:
         plt.close()
 
-def make_rocs(training_dirpath: str, dataset_dirpath: str, dataset: str="train-test", syst_name: str="nominal"):
+def make_rocs(training_dirpath: str, dataset_dirpath: str, dataset: str="train-test"):
     plot_dirpath = os.path.join(training_dirpath, "plots", "2D_ROCs")
     if not os.path.exists(plot_dirpath):
         os.makedirs(plot_dirpath)
@@ -133,7 +124,7 @@ def make_rocs(training_dirpath: str, dataset_dirpath: str, dataset: str="train-t
     CLASS_NAMES = [key for key in CLASS_SAMPLE_MAP.keys()]
 
     # plot ROCs
-    for fold_idx in range(5):
+    for fold_idx in range(get_n_folds(dataset_dirpath)):
         booster = get_booster(fold_idx)
 
         preds, truths = {class_name: list() for class_name in CLASS_NAMES}, {class_name: list() for class_name in CLASS_NAMES}
@@ -143,21 +134,24 @@ def make_rocs(training_dirpath: str, dataset_dirpath: str, dataset: str="train-t
 
         
         for j, class_name in enumerate(CLASS_NAMES):
-            train_dm, val_dm, test_dm = get_train_DMatrices(dataset_dirpath, fold_idx)
+            train_dm, _, test_dm = get_train_DMatrices(dataset_dirpath, fold_idx)
+
+            if dataset == "train-test": dm = test_dm
+            elif dataset == "train": dm = train_dm
 
             if j == 0:
-                event_mask = (test_dm.get_label() > -1)
+                event_mask = (dm.get_label() > -1)
             else:
                 event_mask = np.logical_or(
-                    test_dm.get_label() == 0,
-                    test_dm.get_label() == j
+                    dm.get_label() == 0,
+                    dm.get_label() == j
                 )
 
-            ROC_preds = evaluate(booster, test_dm)[event_mask]
+            ROC_preds = evaluate(booster, dm)[event_mask]
             tth_preds = get_ttH_score(ROC_preds)
             qcd_preds = get_QCD_score(ROC_preds)
 
-            signal_truths = (test_dm.get_label() == 0)[event_mask]
+            signal_truths = (dm.get_label() == 0)[event_mask]
 
             # ttH ROC curve
             fpr_tth, tpr_tth, threshold_tth = roc_curve(signal_truths, tth_preds)
@@ -181,7 +175,7 @@ def make_rocs(training_dirpath: str, dataset_dirpath: str, dataset: str="train-t
 
             # Add preds to full list for cross-fold evaluation
             preds[class_name].extend(ROC_preds.tolist())
-            truths[class_name].extend(test_dm.get_label()[event_mask].tolist())
+            truths[class_name].extend(dm.get_label()[event_mask].tolist())
 
         labels_tth = [
             f"{class_name} DttH, AUC = {fold_auc_tth[i]:.4f}" 
@@ -192,8 +186,8 @@ def make_rocs(training_dirpath: str, dataset_dirpath: str, dataset: str="train-t
             for i, class_name in enumerate(CLASS_NAMES)
         ]
 
-        plot_rocs(fold_fprs_tth, fold_tprs_tth, labels_tth, f"DttH_logroc_weighted_fold{fold_idx}", plot_dirpath, log='x')
-        plot_rocs(fold_fprs_qcd, fold_tprs_qcd, labels_qcd, f"DQCD_logroc_weighted_fold{fold_idx}", plot_dirpath, log='x')
+        plot_rocs(fold_fprs_tth, fold_tprs_tth, labels_tth, f"DttH_logroc_fold{fold_idx}", plot_dirpath, log='x')
+        plot_rocs(fold_fprs_qcd, fold_tprs_qcd, labels_qcd, f"DQCD_logroc_fold{fold_idx}", plot_dirpath, log='x')
 
     fprs_tth, tprs_tth, thresholds_tth, aucs_tth = [], [], [], []
     fprs_qcd, tprs_qcd, thresholds_qcd, aucs_qcd = [], [], [], []
@@ -254,8 +248,8 @@ def make_rocs(training_dirpath: str, dataset_dirpath: str, dataset: str="train-t
         for i, class_name in enumerate(CLASS_NAMES)
     ]
 
-    plot_rocs(fprs_tth, tprs_tth, labels_tth, f"DttH_logroc_weighted_sum", plot_dirpath, log='xy')
-    plot_rocs(fprs_qcd, tprs_qcd, labels_qcd, f"DQCD_logroc_weighted_sum", plot_dirpath, log='xy')
+    plot_rocs(fprs_tth, tprs_tth, labels_tth, f"DttH_logroc_sum", plot_dirpath, log='xy')
+    plot_rocs(fprs_qcd, tprs_qcd, labels_qcd, f"DQCD_logroc_sum", plot_dirpath, log='xy')
 
 if __name__ == "__main__":
     args = parser.parse_args()
@@ -266,4 +260,4 @@ if __name__ == "__main__":
     else:
         dataset_dirpath = args.dataset_dirpath
 
-    make_rocs(training_dirpath, dataset_dirpath, args.dataset, args.syst_name)
+    make_rocs(training_dirpath, dataset_dirpath, args.dataset)

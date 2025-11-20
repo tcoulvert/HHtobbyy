@@ -25,7 +25,7 @@ sys.path.append(os.path.join(GIT_REPO, "training/"))
 
 
 from retrieval_utils import (
-    get_class_sample_map, get_n_folds
+    get_class_sample_map, get_n_folds, format_class_names
 )
 from training_utils import (
     get_dataset_filepath, get_model_func
@@ -67,7 +67,7 @@ parser.add_argument(
 
 def evaluate_model(training_dirpath: str, dataset_dirpath: str, dataset: str="test", syst_name="nominal"):
     class_sample_map = get_class_sample_map(dataset_dirpath)
-    formatted_classes = [''.join(class_name.split(' ')) for class_name in class_sample_map.keys()]
+    formatted_classes = format_class_names(class_sample_map.keys())
     
     get_booster = get_model_func(training_dirpath)
 

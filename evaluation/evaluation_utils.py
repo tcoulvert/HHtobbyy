@@ -3,8 +3,10 @@ import os
 import subprocess
 import sys
 
+# Common Py packages
+import numpy as np
+
 # HEP packages
-import pyarrow.parquet as pq
 import xgboost as xgb
 
 ################################
@@ -19,9 +21,18 @@ sys.path.append(os.path.join(GIT_REPO, "preprocessing/"))
 
 
 from retrieval_utils import (
+    format_class_names,
     get_test_Dataframe, get_test_DMatrix,
     get_train_filepaths_func, get_test_filepaths_func
 )
+
+################################
+
+
+TRANSFORM_PREDS = [
+    {'name' = 'nD', 'output': lambda class_names: format_class_names(class_names), 'func': lambda multibdt_output: mutlidbt_output},
+    {'name' = 'DttH-DQCD', 'output': lambda class_names: ['DttH', 'DQCD'], 'func': lambda multibdt_output: np.array([DttH(multibdt_output), DQCD(multibdt_output)])},
+]
 
 ################################
 
@@ -54,8 +65,22 @@ def evaluate_and_save(filepath: str, booster: xgb.Booster, formatted_classes: li
     df.to_parquet(filepath)
 
 
-def get_ttH_score(multibdt_output):
-    return multibdt_output[:, 0] / (multibdt_output[:, 0] + multibdt_output[:, 1])
+def transform_preds_options():
+    return [transformation['name'] for transformation in TRANSFORM_PREDS]
 
-def get_QCD_score(multibdt_output):
-    return multibdt_output[:, 0] / (multibdt_output[:, 0] + multibdt_output[:, 2] + multibdt_output[:, 3])
+def transform_preds_func(class_names: list, transform_name: str):
+    if transform_name not in transform_preds_options():
+        raise KeyError(f"Output transformation {transform_name} not implemented, try one of {transform_preds_options()}")
+    
+    output, func = [(transformation['output'](class_names), transformation['func']) for transformation in TRANSFORM_PREDS if transform_name == transformation['name']][0]
+    return output, func
+
+def DttH(multibdt_output):
+    DttH_preds = multibdt_output[:, 0] / (multibdt_output[:, 0] + multibdt_output[:, 1])
+    DttH_preds[np.isnan(DttH_preds)] = 0
+    return DttH_preds
+
+def DQCD(multibdt_output):
+    DQCD_preds = multibdt_output[:, 0] / (multibdt_output[:, 0] + multibdt_output[:, 2] + multibdt_output[:, 3])
+    DQCD_preds[np.isnan(DQCD_preds)] = 0
+    return DQCD_preds

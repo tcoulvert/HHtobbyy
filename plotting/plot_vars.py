@@ -10,7 +10,6 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 # HEP packages
-import gpustat
 import mplhep as hep
 import hist
 from cycler import cycler
@@ -64,8 +63,6 @@ FILL_VALUE = -999
 
 ################################
 
-
-gpustat.print_gpustat()
 
 plt.style.use(hep.style.CMS)
 plt.rcParams.update({'font.size': 20})
