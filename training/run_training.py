@@ -165,13 +165,13 @@ def run_training(
             print('='*100)
     elif args.batch == "condor":
         # Runs condor submission script
-        submit(dataset_dirpath, OUTPUT_DIRPATH, N_FOLDS, memory=memory, queue=queue)
+        submit(dataset_dirpath, OUTPUT_DIRPATH, eos_dirpath, N_FOLDS, memory=memory, queue=queue)
 
     # Merge the eval results dict into one dict
     for fold_idx in range(N_FOLDS):
         with open(os.path.join(OUTPUT_DIRPATH, f'{eval_result_filename}{fold_idx}.json'), 'r') as f:
             evals_result_dict[f"fold_{fold_idx}"] = json.load(f)
-        subprocess.run(['rm', os.path.join(OUTPUT_DIRPATH, f'{eval_result_filename}{fold_idx}.json')])
+        subprocess.run(['rm', os.path.join(OUTPUT_DIRPATH, f'{eval_result_filename}{fold_idx}.json')], check=True)
     with open(os.path.join(OUTPUT_DIRPATH, f'{eval_result_filename}.json'), 'w') as f:
         json.dump(evals_result_dict, f)
 

@@ -57,6 +57,7 @@ def postprocessing(output_dirpath: str, eos_dirpath: str):
         for line in f:
             stdline = line.strip()
             subprocess.run(['xrdcp', os.path.join(eos_dirpath, stdline), os.path.join(output_dirpath, stdline)], check=True)
+    subprocess.run(['rm', 'output_files.txt'], check=True)
 
 def submit(
     dataset_dirpath: str, output_dirpath: str, 
@@ -173,14 +174,14 @@ A method to submit all the jobs in the jobs_dir to the cluster
     # Submits the condor jobs
     if current_dir.startswith("/eos"):
         # see https://batchdocs.web.cern.ch/troubleshooting/eos.html#no-eos-submission-allowed
-        output = subprocess.run(["condor_submit", "-spool", CONDOR_FILEPATHS['submission']], capture_output=True, text=True)
+        output = subprocess.run(["condor_submit", "-spool", CONDOR_FILEPATHS['submission']], capture_output=True, text=True, check=True)
     else:
-        output = subprocess.run("condor_submit {}".format(CONDOR_FILEPATHS['submission']), capture_output=True, text=True, shell=True)
+        output = subprocess.run("condor_submit {}".format(CONDOR_FILEPATHS['submission']), capture_output=True, text=True, shell=True, check=True)
 
     cluster_id = int(re.search(r'\d+', output.stdout).group(0)[::-1])
-
+    print(cluster_id)
     while true:
-        output = subprocess.run(['condor_q', '-constraint', '\"ClusterId == ${CLUSTER_ID} && (JobStatus == 1 || JobStatus == 2)\"', '-af', 'ClusterId' '|' 'wc' '-l'], capture_output=True, text=True)
+        output = subprocess.run(['condor_q', '-constraint', '\"ClusterId == ${CLUSTER_ID} && (JobStatus == 1 || JobStatus == 2)\"', '-af', 'ClusterId' '|' 'wc' '-l'], capture_output=True, text=True, check=True)
         if output.stdout == 0:
             print(f"Finished running condor jobs, running postprocessing.")
             postprocessing(output_dirpath, eos_dirpath)
