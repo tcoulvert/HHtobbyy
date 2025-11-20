@@ -9,6 +9,7 @@ import sys
 import numpy as np
 
 # HEP packages
+import gpustat
 import xgboost as xgb
 
 # ML packages
@@ -41,11 +42,17 @@ def init_params(n_classes: int, static_params_dict: dict=None):
     param['colsample_bytree'] = 0.6        # fraction of features to train tree on
     param['num_class']        = n_classes  # num classes for multi-class training
     param['min_child_weight'] = 0.25
-    param['device']           = 'cuda'
-    param['tree_method']      = 'gpu_hist'
+    try:
+        gpustat.print_gpustat()
+        param['device']           = 'cuda'
+        param['tree_method']      = 'gpu_hist'
+        param['sampling_method']  = 'gradient_based'
+    except:
+        param['device']           = 'cpu'
+        param['tree_method']      = 'hist'
+        param['sampling_method']  = 'uniform'
     param['max_bin']          = 512
     param['grow_policy']      = 'lossguide'
-    param['sampling_method']  = 'gradient_based'
     # Learning task parameters
     param['objective']   = 'multi:softprob'   # objective function
     param['eval_metric'] = 'mlogloss'         # evaluation metric for cross validation

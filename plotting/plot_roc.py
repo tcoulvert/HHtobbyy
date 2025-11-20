@@ -12,7 +12,6 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 # HEP packages
-import gpustat
 import mplhep as hep
 import xgboost as xgb
 from cycler import cycler
@@ -80,8 +79,6 @@ parser.add_argument(
 
 ################################
 
-
-gpustat.print_gpustat()
 
 plt.style.use(hep.style.CMS)
 plt.rcParams.update({'font.size': 20})
