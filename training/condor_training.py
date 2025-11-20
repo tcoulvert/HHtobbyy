@@ -1,13 +1,10 @@
 # Stdlib packages
-import json
+import glob
 import logging
 import os
 import re
 import subprocess
-import sys
 import time
-from pathlib import Path
-from copy import deepcopy
 
 
 ################################
@@ -38,6 +35,7 @@ CONDOR_FILEPATHS = {
     'err': lambda jobs_dir: os.path.join(jobs_dir, f"{BASE_NAME}.$(ClusterId).$(ProcId).err"),
     'log': lambda jobs_dir: os.path.join(jobs_dir, f"{BASE_NAME}.$(ClusterId).log")
 }
+CURRENT_TIME = None
 
 ################################
 
@@ -52,21 +50,22 @@ def make_condor_sub_dirpath(condor_sub_dirpath: str):
     for ext in CONDOR_FILEPATHS.keys():
         CONDOR_FILEPATHS[ext] = CONDOR_FILEPATHS[ext](CONDOR_JOBS_DIRPATH)
 
-def postprocessing(output_dirpath: str, eos_dirpath: str):
-    with open('output_files.txt', 'r') as f:
-        for line in f:
-            stdline = line.strip()
-            subprocess.run(['xrdcp', os.path.join(eos_dirpath, stdline), os.path.join(output_dirpath, stdline)], check=True)
-    subprocess.run(['rm', 'output_files.txt'], check=True)
+def postprocessing(output_dirpath: str):
+    cluster_filepaths = glob.glob(CWD, f"{CURRENT_TIME}*BDT*")
+    for filepath in cluster_filepaths:
+        subprocess.run(['mv', filepath, os.path.join(output_dirpath, filepath.split('/')[-1])])
 
 def submit(
     dataset_dirpath: str, output_dirpath: str, 
     eos_dirpath: str,  n_folds: int, 
+    eval_result_filename: str, model_filename: str,
     memory: str="10GB", queue: str='workday'
 ):
     """
     A method to submit all the jobs in the jobs_dir to the cluster
     """
+    output_dirpath = os.path.join(output_dirpath, '')
+    CURRENT_TIME = output_dirpath.split('/')[-2]
     # Commits and pushes newest version of model to github so condor can pull directly from github
     subprocess.run(['git', 'commit', '-a', '-m', f'Commit before training at {CURRENT_TIME}'], check=True)
     subprocess.run(['git', 'push'], check=True)
@@ -77,7 +76,7 @@ def submit(
     subprocess.run(['conda', 'env', 'export', '--from-history', '>', conda_filepath], check=True)
 
     # Zips the datset for easy transfer to condor nodes
-    lightweight_tarfilename = 'lightweight_dataset.tar.gz'
+    lightweight_tarfilename = f'{CURRENT_TIME}_lightweight_dataset.tar.gz'
     lighweight_tarfilepath = os.path.join(GIT_REPO, lightweight_tarfilename)
     lighweight_EOStarfilepath = os.path.join(eos_dirpath, lightweight_tarfilename)
     subprocess.run(['tar', '-zcf', lighweight_tarfilepath, dataset_dirpath], check=True)
@@ -103,7 +102,7 @@ def submit(
         executable_file.write("echo \"Building miniforge conda\"\n")
         executable_file.write("bash Miniforge3.sh -b -p \"${HOME}/conda\"\n")
         executable_file.write("source \"${HOME}/conda/etc/profile.d/conda.sh\"\n")
-        executable_file.write("conda activate\n")
+        executable_file.write("conda activate && rm /srv/Miniforge3.sh\n")
         executable_file.write("echo \"-------------------------------------\"\n")
 
         executable_file.write("echo \"Pulling training code from github\"\n")
@@ -115,40 +114,27 @@ def submit(
 
         executable_file.write("echo \"Pulling training dataset from EOS\"\n")
         executable_file.write(f"xrdcp {lighweight_EOStarfilepath} .\n")
-        executable_file.write(f"tar -xzf {lighweight_EOStarfilepath}\n")
+        executable_file.write(f"tar -xzf {lighweight_EOStarfilepath} && rm {lighweight_EOStarfilepath}\n")
         executable_file.write("echo \"-------------------------------------\"\n")
         executable_file.write("ls -la\n")
         executable_file.write("echo \"-------------------------------------\"\n")
         executable_file.write("cd\n")
 
-        executable_file.write(f"echo \"Building conda env\"\n")
-        executable_file.write(f"conda env create -f {conda_srvfilename}\n")
-        executable_file.write("conda activate higgs-dna\n")
+        executable_file.write("echo \"Building conda env\"\n")
+        executable_file.write(f"conda env create -f {conda_srvfilename} -n train_env\n")
+        executable_file.write("conda activate train_env\n")
         executable_file.write("echo \"-------------------------------------\"\n")
         
         executable_file.write("echo \"Running training processing\"\n")
         executable_file.write("echo \"-------------------------------------\"\n")
         executable_file.write("cd /srv/HHtobbyy/training\n")
         for job_idx in range(n_folds):
-            executable_file.write(f"if [ $1 -eq {i} ]; then\n")
-            executable_file.write(f"    python run_training.py {dataset_srvdirpath} --fold {i}\n")
+            executable_file.write(f"if [ $1 -eq {job_idx} ]; then\n")
+            executable_file.write(f"    python run_training.py {dataset_srvdirpath} --fold {job_idx}\n")
+            executable_file.write(f"    mv {os.path.join(output_srvdirpath, f'{model_filename}{job_idx}.model')} /srv\n")
+            executable_file.write(f"    mv {os.path.join(output_srvdirpath, f'{eval_result_filename}{job_idx}.json')} /srv\n")
             executable_file.write("fi\n")
         executable_file.write("cd /srv\n")
-
-        executable_file.write("echo \"Transfering output to EOS\"\n")
-        executable_file.write("echo \"-------------------------------------\"\n")
-        executable_file.write("ls /srv\n")
-        executable_file.write("echo \"-------------------------------------\"\n")
-        executable_file.write(f"ls {output_srvdirpath}\n")
-        executable_file.write("echo \"-------------------------------------\"\n")
-        executable_file.write(f"ls {os.path.join(output_srvdirpath, '*BDT*')} | cut -c {len(output_srvdirpath)+1}- > output_files.txt\n")
-        executable_file.write("cat output_files.txt\n")
-        executable_file.write("echo \"-------------------------------------\"\n")
-        executable_file.write(f"while IFS= read -r line; do\n")
-        executable_file.write(f"    if [ -f {output_srvdirpath}\"${{line}}\" ]; then\n")
-        executable_file.write(f"        xrdcp {output_srvdirpath}\"${{line}}\" {eos_dirpath}\"${{line}}\"\n")
-        executable_file.write(f"    fi \n")
-        executable_file.write("done < output_files.txt\n")
     subprocess.run(['chmod', '775', CONDOR_FILEPATHS['executable']], check=True)
 
     # Makes the submission file
@@ -163,7 +149,7 @@ def submit(
         submit_file.write(f'+JobFlavour = "{queue}"\n')
         submit_file.write(f"should_transfer_files = YES\n")
         submit_file.write(f"Transfer_Input_Files = {conda_filepath}\n")
-        submit_file.write(f"Transfer_Output_Files = output_files.txt\n")
+        submit_file.write(f"Transfer_Output_Files = \n")
         submit_file.write(f'when_to_transfer_output = ON_EXIT\n')
 
         submit_file.write('on_exit_remove = (ExitBySignal == False) && (ExitCode == 0)\n')

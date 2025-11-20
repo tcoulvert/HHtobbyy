@@ -139,7 +139,8 @@ def run_training(
     param = list(param.items()) + [('eval_metric', 'mlogloss')]
 
     evals_result_dict = {f"fold_{fold_idx}": dict() for fold_idx in range(N_FOLDS)}
-    eval_result_filename = f'{CURRENT_TIME}_BDT_eval_result'
+    eval_result_filename = f'{CURRENT_TIME}_BDT_eval_result_fold'
+    model_filename = f'{CURRENT_TIME}_BDT_fold'
 
     # Train the model
     if batch == "iterative":
@@ -157,7 +158,7 @@ def run_training(
                 verbose_eval=25, evals_result=evals_result_dict[f"fold_{fold_idx}"],
             )
 
-            booster.save_model(os.path.join(OUTPUT_DIRPATH, f'{CURRENT_TIME}_BDT_fold{fold_idx}.model'))
+            booster.save_model(os.path.join(OUTPUT_DIRPATH, f'{model_filename}{fold_idx}.model'))
 
             with open(os.path.join(OUTPUT_DIRPATH, f'{eval_result_filename}{fold_idx}.json'), 'w') as f:
                 json.dump(evals_result_dict[f"fold_{fold_idx}"], f)
@@ -167,14 +168,18 @@ def run_training(
             print('='*100)
     elif batch == "condor":
         # Runs condor submission script
-        submit(dataset_dirpath, OUTPUT_DIRPATH, eos_dirpath, N_FOLDS, memory=memory, queue=queue)
+        submit(
+            dataset_dirpath, OUTPUT_DIRPATH, eos_dirpath, N_FOLDS, 
+            eval_result_filename, model_filename,
+            memory=memory, queue=queue
+        )
 
     # Merge the eval results dict into one dict
     for fold_idx in range(N_FOLDS):
         with open(os.path.join(OUTPUT_DIRPATH, f'{eval_result_filename}{fold_idx}.json'), 'r') as f:
             evals_result_dict[f"fold_{fold_idx}"] = json.load(f)
         subprocess.run(['rm', os.path.join(OUTPUT_DIRPATH, f'{eval_result_filename}{fold_idx}.json')], check=True)
-    with open(os.path.join(OUTPUT_DIRPATH, f'{eval_result_filename}.json'), 'w') as f:
+    with open(os.path.join(OUTPUT_DIRPATH, f'{eval_result_filename.replace("_fold", "")}.json'), 'w') as f:
         json.dump(evals_result_dict, f)
 
 if __name__ == "__main__":
