@@ -1,51 +1,44 @@
-# %matplotlib widget
 # Stdlib packages
-import copy
-import datetime
-import glob
+import argparse
 import json
+import logging
 import os
-import re
+import subprocess
 import sys
-import warnings
-from pathlib import Path
 
 # Common Py packages
-import awkward as ak
 import numpy as np
-import pandas as pd
 from matplotlib import pyplot as plt
-from prettytable import PrettyTable
-from scipy.special import logit as inverse_sigmoid
 
 # HEP packages
-import gpustat
-import h5py
-import hist
 import mplhep as hep
-import xgboost as xgb
 from cycler import cycler
 
-# ML packages
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import auc, roc_curve
-from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay, fbeta_score
-from sklearn.metrics import log_loss
-from scipy.integrate import trapezoid
-from scipy.optimize import curve_fit
-from skopt import gp_minimize
-from skopt.space import Real, Integer
-from skopt.utils import use_named_args
+################################
+
 
 # Module packages
 from plotting_utils import (
-    plot_filepath, pad_list
+    plot_filepath, pad_list, make_plot_dirpath
 )
 
 ################################
 
 
-gpustat.print_gpustat()
+logger = logging.getLogger(__name__)
+parser = argparse.ArgumentParser(description="Standardize BDT inputs and save out dataframe parquets.")
+parser.add_argument(
+    "training_dirpath",
+    help="Full filepath on LPC for trained model files"
+)
+
+################################
+
+
+CWD = os.getcwd()
+args = parser.parse_args()
+TRAINING_DIRPATH = os.path.join(args.training_dirpath, "")
+PLOT_TYPE = 'loss'
 
 plt.style.use(hep.style.CMS)
 plt.rcParams.update({'font.size': 20})
@@ -99,14 +92,10 @@ def plot_train_val_losses(
     plt.close()
 
 
-def make_losses(output_dirpath: str):
-    output_dirpath = os.path.join(output_dirpath, "")
+def make_losses(training_dirpath: str):
+    plot_dirpath = make_plot_dirpath(training_dirpath, PLOT_TYPE)
 
-    plot_dirpath = os.path.join(output_dirpath, "plots", "losses")
-    if not os.path.exists(plot_dirpath):
-        os.makedirs(plot_dirpath)
-
-    with open(os.path.join(output_dirpath, f"{output_dirpath.split('/')[-2]}_BDT_eval_result.json"), 'r') as f:
+    with open(os.path.join(training_dirpath, f"{training_dirpath.split('/')[-2]}_BDT_eval_result.json"), 'r') as f:
         evals_result_dict = json.load(f)
 
     # plot train/val/test losses
@@ -136,4 +125,4 @@ def make_losses(output_dirpath: str):
     )
 
 if __name__ == "__main__":
-    make_losses(sys.argv[1])
+    make_losses(TRAINING_DIRPATH)

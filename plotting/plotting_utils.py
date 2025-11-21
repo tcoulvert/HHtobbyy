@@ -36,6 +36,12 @@ from evaluation_utils import (
 ################################
 
 
+def make_plot_dirpath(training_dirpath: str, plot_type: str):
+    plot_dirpath = os.path.join(training_dirpath, "plots", plot_type)
+    if not os.path.exists(plot_dirpath):
+        os.makedirs(plot_dirpath)
+    return plot_dirpath
+
 def pad_list(list_of_lists):
     max_length = np.max([len(list_i) for list_i in list_of_lists])
     for list_i in list_of_lists:
@@ -75,9 +81,7 @@ def make_plot_data(
     dataset: str, discriminator: str, plot_type: str,
     plot_func: function, project_1D: bool=False
 ):
-    plot_dirpath = os.path.join(training_dirpath, "plots", plot_type)
-    if not os.path.exists(plot_dirpath):
-        os.makedirs(plot_dirpath)
+    plot_dirpath = make_plot_dirpath(training_dirpath, plot_type)
 
     get_booster = get_model_func(training_dirpath)
     CLASS_SAMPLE_MAP = get_class_sample_map(dataset_dirpath)
