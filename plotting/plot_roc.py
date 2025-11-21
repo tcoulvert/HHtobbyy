@@ -105,7 +105,8 @@ LOGX = args.logx
 LOGY = args.logy
 BINS = args.bins
 ROCTYPE = args.ROCtype
-PLOT_TYPE = f'ROC_{ROCTYPE}'
+DISCRIMINATOR = args.discriminator
+PLOT_TYPE = f'ROC_{ROCTYPE}_{DISCRIMINATOR}'
 
 BASE_TPR = np.linspace(0, 1, 5000)
 
@@ -176,7 +177,7 @@ def ROC_OnevsRest(
         )
         fprs.append(np.interp(BASE_TPR, tpr, fpr))
         tprs.append(BASE_TPR)
-        plot_labels.append(f"{class_name} vs. Rest, AUC = {float(trapezoid(fprs[-1], tprs[-1]))}")
+        plot_labels.append(f"{class_name} vs. Rest, AUC = {float(trapezoid(fprs[-1], tprs[-1])):.3f}")
 
     plot_rocs(fprs, tprs, plot_labels, plot_dirpath, plot_prefix=plot_prefix, plot_postfix=plot_postfix)
 

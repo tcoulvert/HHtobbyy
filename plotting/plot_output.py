@@ -95,7 +95,8 @@ WEIGHTS = args.weights
 DENSITY = args.density
 LOGY = args.logy
 BINS = args.bins
-PLOT_TYPE = 'output'
+DISCRIMINATOR = args.discriminator
+PLOT_TYPE = f'output_{DISCRIMINATOR}'
 
 plt.style.use(hep.style.CMS)
 plt.rcParams.update({'font.size': 20})
