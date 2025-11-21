@@ -3,6 +3,12 @@ __pycache__/
 *.py[codz]
 *$py.class
 
+# Nohup outputs
+*nohup.out
+
+# BDT trainings
+MultiClassBDT_model_outputs/
+
 # C extensions
 *.so
 
