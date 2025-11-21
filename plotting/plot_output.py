@@ -107,7 +107,7 @@ plt.rcParams.update({"axes.prop_cycle": cycler("color", cmap_petroff10)})
 
 
 def plot_output_scores(
-    plot_data: dict, plot_dirpath: str,
+    plot_data: dict, plot_dirpath: str, pred_idx: int,
     plot_prefix: str='', plot_postfix: str=''
 ):
     if WEIGHTS:

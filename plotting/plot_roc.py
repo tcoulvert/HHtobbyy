@@ -27,6 +27,7 @@ GIT_REPO = (
     .decode("utf-8")
 )
 sys.path.append(os.path.join(GIT_REPO, "training/"))
+sys.path.append(os.path.join(GIT_REPO, "preprocessing/"))
 sys.path.append(os.path.join(GIT_REPO, "evaluation/"))
 
 # Module packages
@@ -34,7 +35,10 @@ from plotting_utils import (
     plot_filepath, make_plot_data, combine_prepostfix
 )
 from training_utils import get_dataset_dirpath
-from evaluation_utils import transform_preds_options
+from retrieval_utils import get_class_sample_map
+from evaluation_utils import (
+    transform_preds_options, transform_preds_bkgeffs
+)
 
 ################################
 
@@ -89,12 +93,6 @@ parser.add_argument(
     default=transform_preds_options()[0],
     help="Defines the discriminator to use for output scores, discriminators are implemented in evaluation_utils"
 )
-parser.add_argument(
-    "--bkgeff", 
-    type=float,
-    default=1e-3,
-    help="Background efficiency used to calculate signal efficiency for performance of model"
-)
 
 ################################
 
@@ -112,7 +110,7 @@ LOGY = args.logy
 BINS = args.bins
 ROCTYPE = args.ROCtype
 DISCRIMINATOR = args.discriminator
-BKGEFF = args.bkgeff
+BKGEFF = transform_preds_bkgeffs([key for key in get_class_sample_map(DATASET_DIRPATH).keys()], DISCRIMINATOR)
 PLOT_TYPE = f'ROC_{ROCTYPE}_{DISCRIMINATOR}'
 
 BASE_TPR = np.linspace(0, 1, 5000)
@@ -166,8 +164,8 @@ def plot_rocs(
     plt.close()
 
 
-def sigeff_at_bkgeff(sig, fpr, threshold):
-    idx = np.argmin(np.abs(fpr - BKGEFF))
+def sigeff_at_bkgeff(sig, fpr, threshold, pred_idx):
+    idx = np.argmin(np.abs(fpr - BKGEFF[pred_idx]))
 
     num = sig['weights'][(sig['preds'] > threshold[idx])]
     denom = sig['weights']
@@ -178,7 +176,7 @@ def sigeff_at_bkgeff(sig, fpr, threshold):
 
 
 def ROC_OnevsRest(
-    plot_data: dict, plot_dirpath: str,
+    plot_data: dict, plot_dirpath: str, pred_idx: int,
     plot_prefix: str='', plot_postfix: str=''
 ):
     fprs, tprs, plot_labels = list(), list(), list()
@@ -196,13 +194,13 @@ def ROC_OnevsRest(
         fprs.append(np.interp(BASE_TPR, tpr, fpr))
         tprs.append(BASE_TPR)
         
-        epsilon_sig, sigma_epsilon_sig = sigeff_at_bkgeff({data_name: data[roc_data['labels'] == j] for data_name, data in roc_data.items()}, fpr, threshold)
+        epsilon_sig, sigma_epsilon_sig = sigeff_at_bkgeff({data_name: data[roc_data['labels'] == j] for data_name, data in roc_data.items()}, fpr, threshold, pred_idx)
         plot_labels.append(f"{class_name} vs. Rest - AUC = {float(trapezoid(tprs[-1], fprs[-1])):.3f}; $\epsilon_{{{class_name}}}$ = {epsilon_sig:.3f}±{sigma_epsilon_sig:.3f} @ $\epsilon_{{Rest}}$ = {BKGEFF:e}")
 
     plot_rocs(fprs, tprs, plot_labels, plot_dirpath, plot_prefix=plot_prefix, plot_postfix=plot_postfix)
 
 def ROC_OnevsOne(
-    plot_data: dict, plot_dirpath: str,
+    plot_data: dict, plot_dirpath: str, pred_idx: int,
     plot_prefix: str='', plot_postfix: str=''
 ):
     fprs, tprs, plot_labels = list(), list(), list()
@@ -221,7 +219,7 @@ def ROC_OnevsOne(
             fprs.append(np.interp(BASE_TPR, tpr, fpr))
             tprs.append(BASE_TPR)
 
-            epsilon_sig, sigma_epsilon_sig = sigeff_at_bkgeff({data_name: data[roc_data['labels'] == j] for data_name, data in roc_data.items()}, fpr, threshold)
+            epsilon_sig, sigma_epsilon_sig = sigeff_at_bkgeff({data_name: data[roc_data['labels'] == j] for data_name, data in roc_data.items()}, fpr, threshold, pred_idx)
             plot_labels.append(f"{class_name} vs. {_class_name_} - AUC = {float(trapezoid(tprs[-1], fprs[-1]))}; $\epsilon_{{{class_name}}}$ = {epsilon_sig:.3f}±{sigma_epsilon_sig:.3f} @ $\epsilon_{{{_class_name_}}}$ = {BKGEFF:e}")
 
     plot_rocs(fprs, tprs, plot_labels, plot_dirpath, plot_prefix=plot_prefix, plot_postfix=plot_postfix)

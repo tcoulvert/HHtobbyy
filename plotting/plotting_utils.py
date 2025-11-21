@@ -84,7 +84,7 @@ def project_1D_output(
         }
         new_plot_prefix = combine_prepostfix(plot_prefix, pred_label, fixtype='prefix')
         plot_func(
-            plot_data_1D, plot_dirpath, plot_prefix=new_plot_prefix, plot_postfix=plot_postfix
+            plot_data_1D, plot_dirpath, pred_idx, plot_prefix=new_plot_prefix, plot_postfix=plot_postfix
         )
 
 def make_plot_data(

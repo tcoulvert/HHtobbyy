@@ -30,8 +30,18 @@ from retrieval_utils import (
 
 
 TRANSFORM_PREDS = [
-    {'name': 'nD', 'output': lambda class_names: ['D'+ formatted_class_name for formatted_class_name in format_class_names(class_names)], 'func': lambda multibdt_output: multibdt_output},
-    {'name': 'DttH-DQCD', 'output': lambda class_names: ['DttH', 'DQCD'], 'func': lambda multibdt_output: np.column_stack([DttH(multibdt_output), DQCD(multibdt_output)])},
+    {
+        'name': 'nD', 
+        'output': lambda class_names: ['D'+ formatted_class_name for formatted_class_name in format_class_names(class_names)], 
+        'ROC_bkgeffs': lambda class_names: [1e-3 for _ in class_names],
+        'func': lambda multibdt_output: multibdt_output
+    },
+    {
+        'name': 'DttH-DQCD', 
+        'output': lambda class_names: ['DttH', 'DQCD'], 
+        'ROC_bkgeffs': lambda class_names: [1e-2, 1e-3],
+        'func': lambda multibdt_output: np.column_stack([DttH(multibdt_output), DQCD(multibdt_output)])
+    },
 ]
 
 ################################
@@ -50,6 +60,13 @@ def get_filepaths(dataset_dirpath: str, dataset: str, syst_name: str):
 
 def transform_preds_options():
     return [transformation['name'] for transformation in TRANSFORM_PREDS]
+
+def transform_preds_bkgeffs(class_names: list, transform_name: str):
+    if transform_name not in transform_preds_options():
+        raise KeyError(f"Output transformation {transform_name} not implemented, try one of {transform_preds_options()}")
+    
+    ROC_bkgeffs = [transformation['ROC_bkgeffs'](class_names) for transformation in TRANSFORM_PREDS if transform_name == transformation['name']][0]
+    return ROC_bkgeffs
 
 def transform_preds_func(class_names: list, transform_name: str):
     if transform_name not in transform_preds_options():
