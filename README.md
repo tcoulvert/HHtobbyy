@@ -43,7 +43,7 @@ To run the variable standardization and training dataset creatin, use the `BDT_p
 
 `python BDT_preprocessing.py <filepath_to_txt_of_input_eras> <filepath_to_BDT_config_py_file> <filepath_to_dump_output_files>`
 
-#### Structure of JSON dictionary for `input_eras` input:
+#### Structure of `input_eras` .txt input:
 ```
 # MC
 <path_to_2022_preEE>
