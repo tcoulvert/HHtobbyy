@@ -47,23 +47,6 @@ def get_filepaths(dataset_dirpath: str, dataset: str, syst_name: str):
     else:
         return lambda fold_idx: get_train_filepaths_func(dataset_dirpath, syst_name=syst_name)(fold_idx) | get_test_filepaths_func(dataset_dirpath, syst_name=syst_name)(fold_idx)
 
-def evaluate(booster: xgb.Booster, dmatrix: xgb.DMatrix):
-    return booster.predict(dmatrix, iteration_range=(0, booster.best_iteration))
-
-def evaluate_and_save(filepath: str, booster: xgb.Booster, formatted_classes: list):
-    df = get_test_Dataframe(filepath)
-    dm = get_test_DMatrix(filepath)
-
-    preds = evaluate(booster, dm)
-
-    try:
-        for i, class_name in enumerate(formatted_classes):
-            df[f"AUX_{class_name}_prob"] = preds[:, i]
-    except:
-        print(f"Saving of evaluation of {filepath}, continuing with other samples.")
-
-    df.to_parquet(filepath)
-
 
 def transform_preds_options():
     return [transformation['name'] for transformation in TRANSFORM_PREDS]
@@ -84,3 +67,22 @@ def DQCD(multibdt_output):
     DQCD_preds = multibdt_output[:, 0] / (multibdt_output[:, 0] + multibdt_output[:, 2] + multibdt_output[:, 3])
     DQCD_preds[np.isnan(DQCD_preds)] = 0
     return DQCD_preds
+
+
+def evaluate(booster: xgb.Booster, dmatrix: xgb.DMatrix):
+    return booster.predict(dmatrix, iteration_range=(0, booster.best_iteration))
+
+def evaluate_and_save(filepath: str, booster: xgb.Booster, class_names: list, transform_name: str):
+    transform_labels, transform_preds = transform_preds_func(class_names, transform_name)
+
+    df = get_test_Dataframe(filepath)
+    dm = get_test_DMatrix(filepath)
+
+    preds = evaluate(booster, dm)
+    transformed_preds = transform_preds(preds)
+
+    for i, transform_label in enumerate(transform_labels):
+        df[f"AUX_{transform_label}_prob"] = transformed_preds[:, i]
+    df.to_parquet(filepath)
+
+    assert all(f'AUX_{transform_label}_prob' in get_test_Dataframe(filepath).columns for transform_label in transform_labels), f"{filepath.split('/')[-3:]} - evaluation and saving did not work properly"

@@ -54,11 +54,7 @@ def get_train_filepaths_func(dataset_dirpath: str, dataset: str="train", syst_na
             set(
                 [
                     sample_filepath 
-                    for sample_filepath in glob.glob(
-                        os.path.join(
-                            dataset_dirpath, "**", f"*{syst_name}*", f"*{dataset}{fold_idx}*.parquet"
-                        ), recursive=True
-                    )
+                    for sample_filepath in glob.glob(os.path.join(dataset_dirpath, "**", f"*{syst_name}*", f"*{dataset}{fold_idx}*.parquet"), recursive=True)
                     if match_sample(sample_filepath, sample_names) is not None
                 ]
             )
@@ -68,11 +64,10 @@ def get_test_filepaths_func(dataset_dirpath: str, syst_name: str='nominal'):
     return lambda fold_idx: {
         'test': sorted(
             set(
-                glob.glob(
-                    os.path.join(
-                        dataset_dirpath, "**", f"*{syst_name}*", f"*test{fold_idx}*.parquet"
-                    ), recursive=True
-                )
+                glob.glob(os.path.join(dataset_dirpath, "**", f"*{syst_name}*", f"*test{fold_idx}*.parquet"), recursive=True)
+            ) | (
+                set(glob.glob(os.path.join(dataset_dirpath, "**", f"Data*test{fold_idx}*.parquet"), recursive=True))
+                if syst_name == "nominal" else set()
             )
         )
     }

@@ -24,7 +24,7 @@ from training_utils import (
     get_dataset_dirpath, get_model_func
 )
 from evaluation_utils import (
-    get_filepaths, evaluate_and_save, 
+    get_filepaths, evaluate_and_save, transform_preds_options
 )
 
 ################################
@@ -54,13 +54,21 @@ parser.add_argument(
     default="nominal",
     help="Evaluate and save out evaluation for what systematic of a dataset"
 )
+parser.add_argument(
+    "--discriminator", 
+    choices=transform_preds_options(),
+    default=transform_preds_options()[0],
+    help="Defines the discriminator to use for output scores, discriminators are implemented in evaluation_utils"
+)
 
 ################################
 
 
-def evaluate_model(training_dirpath: str, dataset_dirpath: str, dataset: str="test", syst_name="nominal"):
+def evaluate_model(
+    training_dirpath: str, dataset_dirpath: str, discriminator: str, 
+    dataset: str="test", syst_name: str="nominal"
+):
     class_sample_map = get_class_sample_map(dataset_dirpath)
-    formatted_classes = format_class_names(class_sample_map.keys())
     
     get_booster = get_model_func(training_dirpath)
 
@@ -70,10 +78,10 @@ def evaluate_model(training_dirpath: str, dataset_dirpath: str, dataset: str="te
 
         filepaths = get_filepaths(dataset_dirpath, dataset, syst_name)(fold_idx)
 
-        for i, class_name in enumerate(filepaths.keys()):
-            for filepath in filepaths[class_name]:
+        for class_name, class_filepaths in filepaths.items():
+            for filepath in class_filepaths:
 
-                evaluate_and_save(filepath, booster, formatted_classes)
+                evaluate_and_save(filepath, booster, class_sample_map.keys(), discriminator)
                 
 
 if __name__ == "__main__":
@@ -85,4 +93,4 @@ if __name__ == "__main__":
     else:
         dataset_dirpath = args.dataset_dirpath
     
-    evaluate_model(training_dirpath, dataset_dirpath, args.dataset, args.syst_name)
+    evaluate_model(training_dirpath, dataset_dirpath, args.discriminator, args.dataset, args.syst_name)
