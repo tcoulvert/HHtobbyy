@@ -89,6 +89,12 @@ parser.add_argument(
     default=transform_preds_options()[0],
     help="Defines the discriminator to use for output scores, discriminators are implemented in evaluation_utils"
 )
+parser.add_argument(
+    "--bkgeff", 
+    type=float,
+    default=1e-3,
+    help="Background efficiency used to calculate signal efficiency for performance of model"
+)
 
 ################################
 
@@ -106,6 +112,7 @@ LOGY = args.logy
 BINS = args.bins
 ROCTYPE = args.ROCtype
 DISCRIMINATOR = args.discriminator
+BKGEFF = args.bkgeff
 PLOT_TYPE = f'ROC_{ROCTYPE}_{DISCRIMINATOR}'
 
 BASE_TPR = np.linspace(0, 1, 5000)
@@ -137,8 +144,8 @@ def plot_rocs(
         plt.plot(fpr, tpr, label=label, linestyle='solid')
 
     plt.legend(bbox_to_anchor=(1, 1))
-    plt.xlabel('Background contamination')
-    plt.ylabel('Signal efficiency')
+    plt.xlabel('Background efficiency ($\epsilon_{{bkg}}$)')
+    plt.ylabel('Signal efficiency ($\epsilon_{{sig}}$)')
     plt.xlim((0., 1.))
     plt.ylim((0., 1.))
     if LOGX:
@@ -159,6 +166,17 @@ def plot_rocs(
     plt.close()
 
 
+def sigeff_at_bkgeff(sig, fpr, threshold):
+    idx = np.argmin(np.abs(fpr - BKGEFF))
+
+    num = sig['weights'][(sig['preds'] > threshold[idx])]
+    denom = sig['weights']
+
+    sig_eff = np.sum(num) / np.sum(denom)
+    sig_eff_err = np.sqrt( (np.sum(num**2) / np.sum(denom)**2) + (np.sum(num)**2 * np.sum(denom**2) / np.sum(denom)**4) )
+    return sig_eff, sig_eff_err
+
+
 def ROC_OnevsRest(
     plot_data: dict, plot_dirpath: str,
     plot_prefix: str='', plot_postfix: str=''
@@ -172,12 +190,14 @@ def ROC_OnevsRest(
                 for data_name in class_data.keys()
             }
 
-        fpr, tpr, _ = roc_curve(
+        fpr, tpr, threshold = roc_curve(
             roc_data['labels'], roc_data['preds'], pos_label=j, sample_weight=roc_data['weights'] if WEIGHTS else None
         )
         fprs.append(np.interp(BASE_TPR, tpr, fpr))
         tprs.append(BASE_TPR)
-        plot_labels.append(f"{class_name} vs. Rest, AUC = {float(trapezoid(tprs[-1], fprs[-1])):.3f}")
+        
+        epsilon_sig, sigma_epsilon_sig = sigeff_at_bkgeff({data_name: data[roc_data['labels'] == j] for data_name, data in roc_data.items()}, fpr, threshold)
+        plot_labels.append(f"{class_name} vs. Rest - AUC = {float(trapezoid(tprs[-1], fprs[-1])):.3f}; $\epsilon_{{{class_name}}}$ = {epsilon_sig:.3f}±{sigma_epsilon_sig:.3f} @ $\epsilon_{{Rest}}$ = {BKGEFF:e}")
 
     plot_rocs(fprs, tprs, plot_labels, plot_dirpath, plot_prefix=plot_prefix, plot_postfix=plot_postfix)
 
@@ -195,12 +215,14 @@ def ROC_OnevsOne(
                 for data_name in class_data.keys()
             }
 
-            fpr, tpr, _ = roc_curve(
+            fpr, tpr, threshold = roc_curve(
                 roc_data['labels'], roc_data['preds'], pos_label=j, sample_weight=roc_data['weights'] if WEIGHTS else None
             )
             fprs.append(np.interp(BASE_TPR, tpr, fpr))
             tprs.append(BASE_TPR)
-        plot_labels.append(f"{class_name} vs. {_class_name_}, AUC = {float(trapezoid(tprs[-1], fprs[-1]))}")
+
+            epsilon_sig, sigma_epsilon_sig = sigeff_at_bkgeff({data_name: data[roc_data['labels'] == j] for data_name, data in roc_data.items()}, fpr, threshold)
+            plot_labels.append(f"{class_name} vs. {_class_name_} - AUC = {float(trapezoid(tprs[-1], fprs[-1]))}; $\epsilon_{{{class_name}}}$ = {epsilon_sig:.3f}±{sigma_epsilon_sig:.3f} @ $\epsilon_{{{_class_name_}}}$ = {BKGEFF:e}")
 
     plot_rocs(fprs, tprs, plot_labels, plot_dirpath, plot_prefix=plot_prefix, plot_postfix=plot_postfix)
 
