@@ -62,13 +62,13 @@ parser.add_argument(
     "--normalize", 
     choices=["true", "pred", "all"], 
     default="true",
-    help="Boolean to make plots density"
+    help="Boolean to nomralize confusion matrix scores"
 )
 parser.add_argument(
     "--beta", 
     type=float, 
     default=1.,
-    help="Boolean to make plots density"
+    help="Beta value to compute Fβ score with"
 )
 
 ################################
@@ -95,6 +95,27 @@ plt.rcParams.update({"axes.prop_cycle": cycler("color", cmap_petroff10)})
 
 
 def plot_confusion_matrix(
+    conf_matrix, display_labels, fbeta, plot_dirpath: str,
+    plot_prefix: str='', plot_postfix: str=''
+):
+    plt.figure(figsize=(9,7))
+
+    disp = ConfusionMatrixDisplay(confusion_matrix=conf_matrix, display_labels=display_labels)
+    disp.plot(im_kw={'norm': 'log'})
+    plt.title(f"Confusion Matrix with Binary signal Fβ score of {fbeta}")
+
+    plt.savefig(
+        plot_filepath(PLOT_TYPE, plot_dirpath, plot_prefix, plot_postfix), 
+        bbox_inches='tight'
+    )
+    plt.savefig(
+        plot_filepath(PLOT_TYPE, plot_dirpath, plot_prefix, plot_postfix, format='pdf'), 
+        bbox_inches='tight'
+    )
+    plt.close()
+
+
+def make_confusion_matrix(
     plot_data: dict, plot_dirpath: str,
     plot_prefix: str='', plot_postfix: str=''
 ):
@@ -116,20 +137,11 @@ def plot_confusion_matrix(
         beta=BETA, sample_weight=conf_data['weights'] if WEIGHTS else None
     )
 
-    plt.figure(figsize=(9,7))
-    disp = ConfusionMatrixDisplay(confusion_matrix=conf_matrix, display_labels=[class_name for class_name in plot_data.keys()])
-    disp.plot(im_kw={'norm': 'log'})
-    plt.title(f"Confusion Matrix with Binary signal Fβ score of {fbeta}")
-    plt.savefig(
-        plot_filepath(PLOT_TYPE, plot_dirpath, plot_prefix, plot_postfix), 
-        bbox_inches='tight'
+    plot_confusion_matrix(
+        conf_matrix, [class_name for class_name in plot_data.keys()], fbeta, plot_dirpath,
+        plot_prefix=plot_prefix, plot_postfix=plot_postfix
     )
-    plt.savefig(
-        plot_filepath(PLOT_TYPE, plot_dirpath, plot_prefix, plot_postfix, format='pdf'), 
-        bbox_inches='tight'
-    )
-    plt.close()
 
 
 if __name__ == "__main__":
-    make_plot_data(TRAINING_DIRPATH, DATASET_DIRPATH, args.dataset, transform_preds_options()[0], PLOT_TYPE, plot_confusion_matrix)
+    make_plot_data(TRAINING_DIRPATH, DATASET_DIRPATH, args.dataset, transform_preds_options()[0], PLOT_TYPE, make_confusion_matrix)

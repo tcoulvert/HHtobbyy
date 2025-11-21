@@ -22,15 +22,14 @@ sys.path.append(os.path.join(GIT_REPO, "training/"))
 sys.path.append(os.path.join(GIT_REPO, "evaluation/"))
 
 # Module packages
-from plotting_utils import plot_filepath
 from retrieval_utils import (
     get_class_sample_map, get_n_folds, get_train_DMatrices
 )
 from training_utils import (
-    get_model_func, get_dataset_filepath
+    get_model_func
 )
 from evaluation_utils import (
-    evaluate, transform_preds_func, transform_preds_options
+    evaluate, transform_preds_func
 )
 
 ################################

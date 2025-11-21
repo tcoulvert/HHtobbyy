@@ -17,10 +17,23 @@ from cycler import cycler
 ################################
 
 
+GIT_REPO = (
+    subprocess.Popen(["git", "rev-parse", "--show-toplevel"], stdout=subprocess.PIPE)
+    .communicate()[0]
+    .rstrip()
+    .decode("utf-8")
+)
+sys.path.append(os.path.join(GIT_REPO, "training/"))
+sys.path.append(os.path.join(GIT_REPO, "preprocessing/"))
+
 # Module packages
 from plotting_utils import (
     plot_filepath, pad_list, make_plot_dirpath
 )
+from training_utils import (
+    get_dataset_dirpath, get_model_func
+)
+from retrieval_utils import get_n_folds
 
 ################################
 
@@ -38,6 +51,7 @@ parser.add_argument(
 CWD = os.getcwd()
 args = parser.parse_args()
 TRAINING_DIRPATH = os.path.join(args.training_dirpath, "")
+DATASET_DIRPATH = get_dataset_dirpath(TRAINING_DIRPATH)
 PLOT_TYPE = 'loss'
 
 plt.style.use(hep.style.CMS)
@@ -92,15 +106,15 @@ def plot_train_val_losses(
     plt.close()
 
 
-def make_losses(training_dirpath: str):
-    plot_dirpath = make_plot_dirpath(training_dirpath, PLOT_TYPE)
+def make_losses():
+    plot_dirpath = make_plot_dirpath(TRAINING_DIRPATH, PLOT_TYPE)
 
-    with open(os.path.join(training_dirpath, f"{training_dirpath.split('/')[-2]}_BDT_eval_result.json"), 'r') as f:
+    with open(os.path.join(TRAINING_DIRPATH, f"{TRAINING_DIRPATH.split('/')[-2]}_BDT_eval_result.json"), 'r') as f:
         evals_result_dict = json.load(f)
 
     # plot train/val/test losses
     all_train, all_val, all_test = [], [], []
-    for fold_idx in range(len(evals_result_dict)):
+    for fold_idx in range(get_n_folds(DATASET_DIRPATH)):
         all_train.append(evals_result_dict[f"fold_{fold_idx}"]['train']['mlogloss'])
         all_val.append(evals_result_dict[f"fold_{fold_idx}"]['val']['mlogloss'])
         all_test.append(evals_result_dict[f"fold_{fold_idx}"]['test']['mlogloss'])
@@ -125,4 +139,4 @@ def make_losses(training_dirpath: str):
     )
 
 if __name__ == "__main__":
-    make_losses(TRAINING_DIRPATH)
+    make_losses()
