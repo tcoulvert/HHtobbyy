@@ -29,7 +29,7 @@ sys.path.append(os.path.join(GIT_REPO, "preprocessing/"))
 
 # Module packages
 from plotting_utils import (
-    plot_filepath, make_plot_dirpath
+    plot_filepath, make_plot_dirpath, combine_prepostfix
 )
 from training_utils import (
     get_dataset_dirpath, get_model_func
@@ -80,6 +80,10 @@ def plot_feature_importance(
     feature_scores, feature_names, plot_dirpath, 
     plot_prefix='', plot_postfix='', 
 ):
+    if LOGY:
+        plot_postfix = combine_prepostfix(plot_postfix, 'logy', fixtype='postfix')
+    plot_postfix = combine_prepostfix(plot_postfix, f'IMPTYPE{IMPORTANCE_TYPE}', fixtype='postfix')
+    
     plt.figure(figsize=(18,14))
 
     plt.barh(

@@ -28,7 +28,8 @@ sys.path.append(os.path.join(GIT_REPO, "preprocessing/"))
 
 # Module packages
 from plotting_utils import (
-    plot_filepath, pad_list, make_plot_dirpath
+    plot_filepath, pad_list, make_plot_dirpath, 
+    combine_prepostfix
 )
 from training_utils import (
     get_dataset_dirpath, get_model_func

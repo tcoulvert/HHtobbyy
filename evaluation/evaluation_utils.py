@@ -30,8 +30,8 @@ from retrieval_utils import (
 
 
 TRANSFORM_PREDS = [
-    {'name' = 'nD', 'output': lambda class_names: format_class_names(class_names), 'func': lambda multibdt_output: mutlidbt_output},
-    {'name' = 'DttH-DQCD', 'output': lambda class_names: ['DttH', 'DQCD'], 'func': lambda multibdt_output: np.array([DttH(multibdt_output), DQCD(multibdt_output)])},
+    {'name': 'nD', 'output': lambda class_names: ['D'+ formatted_class_name for formatted_class_name in format_class_names(class_names)], 'func': lambda multibdt_output: multibdt_output},
+    {'name': 'DttH-DQCD', 'output': lambda class_names: ['DttH', 'DQCD'], 'func': lambda multibdt_output: np.array([DttH(multibdt_output), DQCD(multibdt_output)])},
 ]
 
 ################################

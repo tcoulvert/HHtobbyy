@@ -333,3 +333,43 @@ Traceback (most recent call last):
   File "/uscms_data/d3/tsievert/XHYbbgg/HHtobbyy/evaluation/evaluation_utils.py", line 45, in evaluate
     return booster.predict(dmatrix, iteration_range=(0, booster.best_iteration))
 AttributeError: 'NoneType' object has no attribute 'predict'
+[10:08:04] WARNING: /home/conda/feedstock_root/build_artifacts/xgboost-split_1645117937192/work/src/learner.cc:576: 
+Parameters: { "device" } might not be used.
+
+  This could be a false alarm, with some parameters getting used by language bindings but
+  then being mistakenly passed down to XGBoost core, or some parameter actually being used
+  but getting flagged wrongly here. Please open an issue if you find any such cases.
+
+
+[10:08:56] WARNING: /home/conda/feedstock_root/build_artifacts/xgboost-split_1645117937192/work/src/learner.cc:576: 
+Parameters: { "device" } might not be used.
+
+  This could be a false alarm, with some parameters getting used by language bindings but
+  then being mistakenly passed down to XGBoost core, or some parameter actually being used
+  but getting flagged wrongly here. Please open an issue if you find any such cases.
+
+
+[10:10:12] WARNING: /home/conda/feedstock_root/build_artifacts/xgboost-split_1645117937192/work/src/learner.cc:576: 
+Parameters: { "device" } might not be used.
+
+  This could be a false alarm, with some parameters getting used by language bindings but
+  then being mistakenly passed down to XGBoost core, or some parameter actually being used
+  but getting flagged wrongly here. Please open an issue if you find any such cases.
+
+
+[10:10:48] WARNING: /home/conda/feedstock_root/build_artifacts/xgboost-split_1645117937192/work/src/learner.cc:576: 
+Parameters: { "device" } might not be used.
+
+  This could be a false alarm, with some parameters getting used by language bindings but
+  then being mistakenly passed down to XGBoost core, or some parameter actually being used
+  but getting flagged wrongly here. Please open an issue if you find any such cases.
+
+
+[10:11:22] WARNING: /home/conda/feedstock_root/build_artifacts/xgboost-split_1645117937192/work/src/learner.cc:576: 
+Parameters: { "device" } might not be used.
+
+  This could be a false alarm, with some parameters getting used by language bindings but
+  then being mistakenly passed down to XGBoost core, or some parameter actually being used
+  but getting flagged wrongly here. Please open an issue if you find any such cases.
+
+

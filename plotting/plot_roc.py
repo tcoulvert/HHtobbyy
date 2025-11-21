@@ -30,7 +30,9 @@ sys.path.append(os.path.join(GIT_REPO, "training/"))
 sys.path.append(os.path.join(GIT_REPO, "evaluation/"))
 
 # Module packages
-from plotting_utils import plot_filepath, make_plot_data
+from plotting_utils import (
+    plot_filepath, make_plot_data, combine_prepostfix
+)
 from training_utils import get_dataset_dirpath
 from evaluation_utils import transform_preds_options
 
@@ -58,11 +60,6 @@ parser.add_argument(
     "--weights", 
     action="store_true",
     help="Boolean to make plots using MC weights"
-)
-parser.add_argument(
-    "--density", 
-    action="store_true",
-    help="Boolean to make plots density"
 )
 parser.add_argument(
     "--logx", 
@@ -104,7 +101,6 @@ if args.dataset_dirpath is None:
 else:
     DATASET_DIRPATH = os.path.join(args.dataset_dirpath, '')
 WEIGHTS = args.weights
-DENSITY = args.density
 LOGX = args.logx
 LOGY = args.logy
 BINS = args.bins
@@ -125,7 +121,17 @@ def plot_rocs(
     fprs, tprs, labels, plot_dirpath: str,
     plot_prefix: str='', plot_postfix: str=''
 ):
+    if WEIGHTS:
+        plot_postfix = combine_prepostfix(plot_postfix, 'MCweight', fixtype='postfix')
+    if LOGX and LOGY:
+        plot_postfix = combine_prepostfix(plot_postfix, 'logXY', fixtype='postfix')
+    if LOGX: 
+        plot_postfix = combine_prepostfix(plot_postfix, 'logX', fixtype='postfix')
+    if LOGY: 
+        plot_postfix = combine_prepostfix(plot_postfix, 'logY', fixtype='postfix')
+
     plt.figure(figsize=(9,7))
+
     for fpr, tpr, label in zip(fprs, tprs, labels):
         plt.plot(fpr, tpr, label=label, linestyle='solid')
 
@@ -149,6 +155,7 @@ def plot_rocs(
         plot_filepath(PLOT_TYPE, plot_dirpath, plot_prefix, plot_postfix, format='pdf'), 
         bbox_inches='tight'
     )
+    plt.close()
 
 
 def ROC_OnevsRest(

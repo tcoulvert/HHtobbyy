@@ -29,7 +29,10 @@ sys.path.append(os.path.join(GIT_REPO, "training/"))
 sys.path.append(os.path.join(GIT_REPO, "evaluation/"))
 
 # Module packages
-from plotting_utils import plot_filepath, make_plot_data
+from plotting_utils import (
+    plot_filepath, make_plot_data, combine_prepostfix,
+    float_to_str
+)
 from training_utils import get_dataset_dirpath
 from evaluation_utils import transform_preds_options
 
@@ -98,6 +101,10 @@ def plot_confusion_matrix(
     conf_matrix, display_labels, fbeta, plot_dirpath: str,
     plot_prefix: str='', plot_postfix: str=''
 ):
+    if WEIGHTS:
+        plot_postfix = combine_prepostfix(plot_postfix, 'MCweight', fixtype='postfix')
+    plot_postfix = combine_prepostfix(plot_postfix, f'NORM{NORMALIZE}_BETA{float_to_str(BETA)}', fixtype='postfix')
+
     plt.figure(figsize=(9,7))
 
     disp = ConfusionMatrixDisplay(confusion_matrix=conf_matrix, display_labels=display_labels)
@@ -116,7 +123,7 @@ def plot_confusion_matrix(
 
 
 def make_confusion_matrix(
-    plot_data: dict, plot_dirpath: str,
+    plot_data: dict, transform_labels: list, plot_dirpath: str,
     plot_prefix: str='', plot_postfix: str=''
 ):
     conf_data = None

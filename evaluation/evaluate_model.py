@@ -1,16 +1,9 @@
 # Stdlib packages
 import argparse
-import datetime
-import json
 import logging
 import os
 import subprocess
 import sys
-from pathlib import Path
-
-# HEP packages
-import pyarrow.parquet as pq
-import xgboost as xgb
 
 ################################
 

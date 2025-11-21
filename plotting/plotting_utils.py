@@ -1,12 +1,11 @@
 # Stdlib packages
+import copy
 import os
 import subprocess
 import sys
-from pathlib import Path
 
 # Common Py packages
 import numpy as np
-from matplotlib import pyplot as plt
 
 ################################
 
@@ -57,10 +56,22 @@ def plot_filepath(plot_name, plot_dirpath, plot_prefix, plot_postfix, format='pn
     plot_filepath = os.path.join(plot_dirpath, plot_name)
     return plot_filepath
 
+def combine_prepostfix(old_plot_prepostfix: str, new_substr: str, fixtype: str):
+    if fixtype not in ['prefix', 'postfix']: raise KeyError(f"Type {fixtype} not in allowed types: {['prefix', 'postfix']}")
+    elif fixtype == 'prefix':
+        plot_fix = old_plot_prepostfix + ('_' if old_plot_prepostfix != '' else '') + new_substr
+    elif fixtype == 'postfix':
+        plot_fix = old_plot_prepostfix + ('_' if old_plot_prepostfix != '' else '') + new_substr
+    return plot_fix
+
+def float_to_str(floating_point: float):
+    new_str = f"{floating_point:.2f}"
+    new_str.replace('.', 'p')
+    return new_str
+
 
 def project_1D_output(
-    plot_data: dict, transform_labels: list, plot_dirpath: str, 
-    plot_func: function,
+    plot_data: dict, transform_labels: list, plot_dirpath: str, plot_func,
     plot_prefix: str='', plot_postfix: str=''
 ):
     for pred_idx, pred_label in enumerate(transform_labels):
@@ -71,14 +82,15 @@ def project_1D_output(
                 'weights': class_data['weights']
             } for class_name, class_data in plot_data.items()
         }
+        plot_prefix = combine_prepostfix(plot_prefix, pred_label, fixtype='prefix')
         plot_func(
-            plot_data_1D, plot_dirpath, plot_prefix=f"{plot_prefix + ('_' if plot_prefix != '' else '')}{pred_label}", plot_postfix=plot_postfix
+            plot_data_1D, plot_dirpath, plot_prefix=plot_prefix, plot_postfix=plot_postfix
         )
 
 def make_plot_data(
     training_dirpath: str, dataset_dirpath: str, 
-    dataset: str, discriminator: str, plot_type: str,
-    plot_func: function, project_1D: bool=False
+    dataset: str, discriminator: str, plot_type: str, plot_func, 
+    project_1D: bool=False
 ):
     plot_dirpath = make_plot_dirpath(training_dirpath, plot_type)
 
@@ -89,7 +101,7 @@ def make_plot_data(
     transform_labels, transform_preds = transform_preds_func(CLASS_NAMES, discriminator)
 
     plot_data = {
-        class_name: {'preds': np.array([]), 'labels': np.array([]), 'weights': np.array([])}
+        class_name: {'preds': None, 'labels': None, 'weights': None}
         for class_name in CLASS_NAMES
     }
 
@@ -117,7 +129,10 @@ def make_plot_data(
             fold_plot_data[class_name]['labels'] = dm.get_label()[event_mask]
             fold_plot_data[class_name]['weights'] = dm.get_weight()[event_mask]
             for data_name, data in fold_plot_data[class_name].items():
-                plot_data[class_name][data_name] = np.concatenate(plot_data[class_name][data_name], data)
+                if plot_data[class_name][data_name] is None:
+                    plot_data[class_name][data_name] = copy.deepcopy(data)
+                else:
+                    plot_data[class_name][data_name] = np.concatenate([plot_data[class_name][data_name], data])
 
         if not project_1D: plot_func(fold_plot_data, transform_labels, plot_dirpath, plot_postfix=f'fold{fold_idx}')
         else: project_1D_output(fold_plot_data, transform_labels, plot_dirpath, plot_func, plot_postfix=f'fold{fold_idx}')
