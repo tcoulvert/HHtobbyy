@@ -177,7 +177,7 @@ def ROC_OnevsRest(
         )
         fprs.append(np.interp(BASE_TPR, tpr, fpr))
         tprs.append(BASE_TPR)
-        plot_labels.append(f"{class_name} vs. Rest, AUC = {float(trapezoid(fprs[-1], tprs[-1])):.3f}")
+        plot_labels.append(f"{class_name} vs. Rest, AUC = {float(trapezoid(tprs[-1], fprs[-1])):.3f}")
 
     plot_rocs(fprs, tprs, plot_labels, plot_dirpath, plot_prefix=plot_prefix, plot_postfix=plot_postfix)
 
@@ -200,7 +200,7 @@ def ROC_OnevsOne(
             )
             fprs.append(np.interp(BASE_TPR, tpr, fpr))
             tprs.append(BASE_TPR)
-        plot_labels.append(f"{class_name} vs. {_class_name_}, AUC = {float(trapezoid(fprs[-1], tprs[-1]))}")
+        plot_labels.append(f"{class_name} vs. {_class_name_}, AUC = {float(trapezoid(tprs[-1], fprs[-1]))}")
 
     plot_rocs(fprs, tprs, plot_labels, plot_dirpath, plot_prefix=plot_prefix, plot_postfix=plot_postfix)
 
