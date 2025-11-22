@@ -1,12 +1,10 @@
 # Stdlib packages
 import argparse
 import copy
-import datetime
 import glob
 import json
 import logging
 import os
-import re
 import subprocess
 import sys
 
@@ -30,17 +28,13 @@ from BDT_preprocessing_utils import (
     no_standardize, apply_logs
 )
 from retrieval_utils import argsorted
-from plot_vars import plot_vars
+# from plot_vars import plot_vars
 
 ################################
 
 
 logger = logging.getLogger(__name__)
 parser = argparse.ArgumentParser(description="Standardize BDT inputs and save out dataframe parquets.")
-parser.add_argument(
-    "input_eras", 
-    help="JSON for filepaths on cluster for eras"
-)
 parser.add_argument(
     "BDT_config",
     help="Full filepath on cluster `.py` config file for BDT"
@@ -77,31 +71,27 @@ exec(f"from {BDT_CONFIG} import *")
 ################################
 
 
-def get_input_filepaths(input_eras):
+def get_input_filepaths():
     input_filepaths = {'train-test': list(), 'train': list(), 'test': list()}
-    with open(input_eras, 'r') as f:
-        for line in f:
-            stdline = line.strip()
-            if stdline[0] == "#": continue
-
-            sample_filepaths = glob.glob(os.path.join(stdline, "**", f"*{END_FILEPATH}"), recursive=True)
-            for sample_filepath in sample_filepaths:
-                if (
-                    match_sample(sample_filepath, TEST_ONLY_SAMPLES) is not None
-                    and match_sample(sample_filepath, {glob_name for glob_names in CLASS_SAMPLE_MAP.values() for glob_name in glob_names}) is None
-                ):
-                    input_filepaths['test'].append(sample_filepath)
-                elif (
-                    match_sample(sample_filepath, {glob_name for glob_names in CLASS_SAMPLE_MAP.values() for glob_name in glob_names}) is not None 
-                    and match_sample(sample_filepath, TRAIN_ONLY_SAMPLES) is not None
-                ):
-                    input_filepaths['train'].append(sample_filepath)
-                elif match_sample(sample_filepath, {glob_name for glob_names in CLASS_SAMPLE_MAP.values() for glob_name in glob_names}) is not None:
-                    input_filepaths['train-test'].append(sample_filepath)
-                else:
-                    if DEBUG:
-                        logger.warning(f"{sample_filepath} \nSample not found in any dict (TRAIN_TEST_SAMPLES, TRAIN_ONLY_SAMPLES, TEST_ONLY_SAMPLES). Continuing with other samples.")
-                    continue
+    for era in INPUT_ERAS:
+        sample_filepaths = glob.glob(os.path.join(era, "**", f"*{END_FILEPATH}"), recursive=True)
+        for sample_filepath in sample_filepaths:
+            if (
+                match_sample(sample_filepath, TEST_ONLY_SAMPLES) is not None
+                and match_sample(sample_filepath, {glob_name for glob_names in CLASS_SAMPLE_MAP.values() for glob_name in glob_names}) is None
+            ):
+                input_filepaths['test'].append(sample_filepath)
+            elif (
+                match_sample(sample_filepath, {glob_name for glob_names in CLASS_SAMPLE_MAP.values() for glob_name in glob_names}) is not None 
+                and match_sample(sample_filepath, TRAIN_ONLY_SAMPLES) is not None
+            ):
+                input_filepaths['train'].append(sample_filepath)
+            elif match_sample(sample_filepath, {glob_name for glob_names in CLASS_SAMPLE_MAP.values() for glob_name in glob_names}) is not None:
+                input_filepaths['train-test'].append(sample_filepath)
+            else:
+                if DEBUG:
+                    logger.warning(f"{sample_filepath} \nSample not found in any dict (TRAIN_TEST_SAMPLES, TRAIN_ONLY_SAMPLES, TEST_ONLY_SAMPLES). Continuing with other samples.")
+                continue
     
     return input_filepaths
 
@@ -305,10 +295,10 @@ if __name__ == '__main__':
     REMAKE_TEST = args.remake_test
     args_output_dirpath = os.path.normpath(args.output_dirpath)
     if REMAKE_TEST: CURRENT_TIME = args_output_dirpath[args_output_dirpath.rfind('/')+1:]
-    else: args_output_dirpath = os.path.join(args_output_dirpath, CURRENT_TIME)
+    else: args_output_dirpath = os.path.join(args_output_dirpath, f"{DATASET_TAG}_{CURRENT_TIME}")
     if not os.path.exists(args_output_dirpath) and not DRYRUN:
         os.makedirs(args_output_dirpath)
-    input_filepaths = get_input_filepaths(args.input_eras)
+    input_filepaths = get_input_filepaths()
 
     preprocess_resolved_bdt(input_filepaths, args_output_dirpath)
     print(f'Finished Resolved BDT processing')

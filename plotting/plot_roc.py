@@ -195,7 +195,7 @@ def ROC_OnevsRest(
         tprs.append(BASE_TPR)
         
         epsilon_sig, sigma_epsilon_sig = sigeff_at_bkgeff({data_name: data[roc_data['labels'] == j] for data_name, data in roc_data.items()}, fpr, threshold, pred_idx)
-        plot_labels.append(f"{class_name} vs. Rest - AUC = {float(trapezoid(tprs[-1], fprs[-1])):.3f}; $\epsilon_{{{class_name}}}$ = {epsilon_sig:.3f}±{sigma_epsilon_sig:.3f} @ $\epsilon_{{Rest}}$ = {BKGEFF:e}")
+        plot_labels.append(f"{class_name} vs. Rest - AUC = {float(trapezoid(tprs[-1], fprs[-1])):.3f}; $\epsilon_{{{class_name}}}$ = {epsilon_sig:.3f}±{sigma_epsilon_sig:.3f} @ $\epsilon_{{Rest}}$ = {BKGEFF[pred_idx]:e}")
 
     plot_rocs(fprs, tprs, plot_labels, plot_dirpath, plot_prefix=plot_prefix, plot_postfix=plot_postfix)
 
@@ -220,7 +220,7 @@ def ROC_OnevsOne(
             tprs.append(BASE_TPR)
 
             epsilon_sig, sigma_epsilon_sig = sigeff_at_bkgeff({data_name: data[roc_data['labels'] == j] for data_name, data in roc_data.items()}, fpr, threshold, pred_idx)
-            plot_labels.append(f"{class_name} vs. {_class_name_} - AUC = {float(trapezoid(tprs[-1], fprs[-1]))}; $\epsilon_{{{class_name}}}$ = {epsilon_sig:.3f}±{sigma_epsilon_sig:.3f} @ $\epsilon_{{{_class_name_}}}$ = {BKGEFF:e}")
+            plot_labels.append(f"{class_name} vs. {_class_name_} - AUC = {float(trapezoid(tprs[-1], fprs[-1]))}; $\epsilon_{{{class_name}}}$ = {epsilon_sig:.3f}±{sigma_epsilon_sig:.3f} @ $\epsilon_{{{_class_name_}}}$ = {BKGEFF[pred_idx]:e}")
 
     plot_rocs(fprs, tprs, plot_labels, plot_dirpath, plot_prefix=plot_prefix, plot_postfix=plot_postfix)
 

@@ -41,18 +41,14 @@ After running the `preprocess.py` script, all the necessary variables have been 
 
 To run the variable standardization and training dataset creatin, use the `BDT_preprocessing.py` script as follows:
 
-`python BDT_preprocessing.py <filepath_to_txt_of_input_eras> <filepath_to_BDT_config_py_file> <filepath_to_dump_output_files>`
+`python BDT_preprocessing.py <filepath_to_BDT_config_py_file> <filepath_to_dump_output_files>`
 
-#### Structure of `input_eras` .txt input:
-```
-# MC
-<path_to_2022_preEE>
-<path_to_2022_postEE>
-# <path_to_2023_preBPix>  -- this line is skipped due to the '#' character at the front
-```
+#### Structure of *BDT_config.py file
+The `INPUT_ERAS` variable in the `*BDT_config.py` file defines what eras of MC and Data to use for training and validation. Typically you will uase as many MC eras as are available to get the best statistics during training, but it can be helpful to restrict the eras for debugging or testing new features.
 
-#### Structure of BDT_config.py file
-The CLASS_SAMPLE_MAP in the BDT_CONFIG file exclusively defines the samples in the training datasets, as well as how to split the samples into distinct classes.
+the `DATASET_TAG` variable is a short string that will be included in the name of the lightweight dataset and should be treated as a concise way of converying the most important properties of that dataset. I typically include the eras of the dataset and a short description of the variables that *differ from normal* -- what counts as differing from normal is up to you. It's important that you change this variable whenever you change the config file as this variable is your main way of tracking what is in a dataset.
+
+The `CLASS_SAMPLE_MAP` variable exclusively defines the samples in the training datasets, as well as how to split the samples into distinct classes.
 The structure of this map has the keys as the name of the classes, and the values as a list of wildcard sample-names (i.e. regex-like formatting) of that class.
 ```python
 {
@@ -98,12 +94,11 @@ To run the training, use the `run_training.py` script as follows:
 Extra arguments:
 1. `--output_dirpath` changes the dump location fo the trained model files, by default the training files will be dumped under `HHtobbyy/MultiClassBDT_model_outputs/{VERSION}/{VARS}/{timestamp_of_training}`
 2. `--eos_dirpath` changes the path for the eos space for intermediate files to be placed in, by default the path is `root://cmseos.fnal.gov//store/user/<username>/condor_train`, but this will obviously not work for people using LXPLUS or other Tier 1-3 clusters
-3. `--fold` restricts the training to only perform one fold -- this is only important for batch jobs. If you are training a model with only 1 fold, you can specify that with N_FOLDS in the `BDT_preprocessing.py` script
-4. `--batch` allows for selection of normal submission (`iterative`) or batch submission (currently only `condor`), see the `<batch_type>_training.py` files for details on how this is impemented
-5. `--memory` changes the memory requested in the batch job
-6. `--queue` changes the queue requested in the batch job
-
-If you would like to also optimize the hyperparameters of your BDT (this is very computationally expensive and should only be done *after* you've finalized your input variables and dataset eras and processes), simply set the `OPTIMIZE_SPACE = True` boolean in the `run_training.py` file. This will call the `optimize_hyperparams.py` file, but everything is handled under-the-hood. If you would like to understand how the hyperparameters are optimized, you can read that file and the corresponding blog-post its implemented from.
+3. `--optimize_space` will toggle on the hyperparameter optimization (this is very computationally expensive and should only be done *after* you've finalized your input variables and dataset eras and processes) -- if you would like to understand how the hyperparameters are optimized, you can read the `optimize_hyperparams.py` file and the corresponding blog-post its implemented from
+4. `--fold` restricts the training to only perform one fold -- this is only important for batch jobs. If you are training a model with only 1 fold, you can specify that with N_FOLDS in the `BDT_preprocessing.py` script
+5. `--batch` allows for selection of normal submission (`iterative`) or batch submission (currently only `condor`), see the `<batch_type>_training.py` files for details on how this is impemented
+6. `--memory` changes the memory requested in the batch job
+7. `--queue` changes the queue requested in the batch job
 
 
 ## Evaluation

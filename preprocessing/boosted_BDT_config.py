@@ -4,6 +4,21 @@ import datetime
 ################################
 
 
+INPUT_ERAS = {
+    # MC
+    '/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/Run3_2022/sim/preEE',
+    '/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/Run3_2022/sim/postEE',
+    '/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/Run3_2023/sim/preBPix',
+    '/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/Run3_2023/sim/postBPix',
+    '/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/Run3_2024/sim',
+    # Data
+    '/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/Run3_2022/data',
+    '/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/Run3_2023/data',
+    '/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/Run3_2024/data',
+}
+
+DATASET_TAG = "22to24_bTagWPbatch"
+
 CLASS_SAMPLE_MAP = {
     'ggF HH': ["GluGlu*HH*kl-1p00"],
     'ttH + bbH': ["ttH", "bbH"],
