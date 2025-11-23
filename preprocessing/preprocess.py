@@ -11,7 +11,7 @@ vec.register_awkward()
 
 from resolved_preprocessing import  add_vars_resolved
 from boosted_preprocessing import add_vars_boosted
-from preprocessing_utils import match_sample
+from preprocessing_utils import match_sample, get_era_filepaths
 
 
 ################################
@@ -87,14 +87,8 @@ NEW_END_FILEPATH = "*preprocessed.parquet"
 logger = logging.getLogger(__name__)
 parser = argparse.ArgumentParser(description="Preprocess data to add necessary BDT variables.")
 parser.add_argument(
-    "--sim_era_filepaths", 
-    default=None,
-    help="Full filepath(s) (separated with \',\') on LPC for MC era(s)"
-)
-parser.add_argument(
-    "--data_era_filepaths", 
-    default=None,
-    help="Full filepath(s) (separated with \',\') on LPC for data era(s)"
+    "input_eras",
+    help="File for input eras to run processing"
 )
 parser.add_argument(
     "--output_dirpath", 
@@ -214,12 +208,14 @@ def make_data(data_eras=None, output=None):
 if __name__ == '__main__':
     args = parser.parse_args()
 
+    SIM_ERAS, DATA_ERAS = get_era_filepaths(args.input_eras, split_data_mc_eras=True)
+
     sim_eras = {
-            os.path.join(era, ''): list() for era in args.sim_era_filepaths.split(',')
+            os.path.join(era, ''): list() for era in SIM_ERAS
     } if args.sim_era_filepaths is not None else None
     make_mc(sim_eras=sim_eras, output=args.output_dirpath)
 
     data_eras = {
-            os.path.join(era, ''): list() for era in args.data_era_filepaths.split(',')
+            os.path.join(era, ''): list() for era in DATA_ERAS
     } if args.data_era_filepaths is not None else None
     make_data(data_eras=data_eras, output=args.output_dirpath)

@@ -42,8 +42,7 @@ CWD = os.getcwd()
 logger = logging.getLogger(__name__)
 parser = argparse.ArgumentParser(description="Standardize BDT inputs and save out dataframe parquets.")
 parser.add_argument(
-    "--training_dirpath", 
-    default=CWD,
+    "training_dirpath", 
     help="Full filepath on LPC for trained model files"
 )
 parser.add_argument(

@@ -19,6 +19,19 @@ FILL_VALUE = -999
 ################################
 
 
+def get_era_filepaths(input_eras: str, split_data_mc_eras: bool=False):
+    MC_eras, Data_eras = set(), set()
+    with open(input_eras, 'r') as f:
+        for line in f:
+            stdline = line.strip()
+            if len(stdline) == 0 or stdline[0] == '#': continue
+
+            if 'sim' in stdline.lower(): MC_eras.add(stdline)
+            elif 'data' in stdline.lower(): Data_eras.add(stdline)
+            else: raise KeyError(f"Era {stdline} does not seem to be MC or Data, check the filepath is correct")
+    if split_data_mc_eras: return MC_eras, Data_eras
+    else: return (MC_eras | Data_eras)
+
 def ak_sign(ak_array, inverse=False):
     if not inverse:
         return ak.where(ak_array < 0, -1, 1)

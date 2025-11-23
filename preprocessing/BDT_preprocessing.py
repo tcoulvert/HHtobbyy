@@ -23,7 +23,7 @@ GIT_REPO = (
 )
 sys.path.append(os.path.join(GIT_REPO, "plotting/"))
 
-from preprocessing_utils import match_sample
+from preprocessing_utils import match_sample, get_era_filepaths
 from BDT_preprocessing_utils import (
     no_standardize, apply_logs
 )
@@ -35,6 +35,10 @@ from retrieval_utils import argsorted
 
 logger = logging.getLogger(__name__)
 parser = argparse.ArgumentParser(description="Standardize BDT inputs and save out dataframe parquets.")
+parser.add_argument(
+    "input_eras",
+    help="File for input eras to run processing"
+)
 parser.add_argument(
     "BDT_config",
     help="Full filepath on cluster `.py` config file for BDT"
@@ -71,9 +75,12 @@ exec(f"from {BDT_CONFIG} import *")
 ################################
 
 
-def get_input_filepaths():
+def get_input_filepaths(input_eras: str):
     input_filepaths = {'train-test': list(), 'train': list(), 'test': list()}
-    for era in INPUT_ERAS:
+
+    ERAS = get_era_filepaths(args.input_eras)
+    
+    for era in ERAS:
         sample_filepaths = glob.glob(os.path.join(era, "**", f"*{END_FILEPATH}"), recursive=True)
         for sample_filepath in sample_filepaths:
             if (
@@ -119,6 +126,7 @@ def get_df_mask(df):
 def get_dfs(filepaths, BDT_vars, AUX_vars):
     dfs, aux_dfs = {}, {}
     for filepath in sorted(filepaths):
+        print(filepath)
         pq_file = pq.ParquetFile(filepath)
         for pq_batch in pq_file.iter_batches(batch_size=524_288, columns=BDT_vars+AUX_vars):
             df_batch = pq_batch.to_pandas()
@@ -298,7 +306,7 @@ if __name__ == '__main__':
     else: args_output_dirpath = os.path.join(args_output_dirpath, f"{DATASET_TAG}_{CURRENT_TIME}")
     if not os.path.exists(args_output_dirpath) and not DRYRUN:
         os.makedirs(args_output_dirpath)
-    input_filepaths = get_input_filepaths()
+    input_filepaths = get_input_filepaths(args.input_eras)
 
     preprocess_resolved_bdt(input_filepaths, args_output_dirpath)
     print(f'Finished Resolved BDT processing')
