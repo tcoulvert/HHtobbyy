@@ -4,7 +4,7 @@ import datetime
 ################################
 
 
-DATASET_TAG = "24_bTagWPbatch"
+DATASET_TAG = "24_bTagWP"
 
 CLASS_SAMPLE_MAP = {
     'ggF HH': ["GluGlu*HH*kl-1p00"],  # !batch
@@ -37,14 +37,14 @@ BASIC_VARIABLES = lambda jet_prefix: {
     # bjet vars
     f'{jet_prefix}_lead_bjet_eta', # eta
     # f"{jet_prefix}_lead_bjet_btagPNetB",
-    # f"{jet_prefix}lead_bjet_btagUParTAK4B",
+    # f"{jet_prefix}_lead_bjet_btagUParTAK4B",
     f"{jet_prefix}_lead_bjet_bTagWPL", f"{jet_prefix}_lead_bjet_bTagWPM", f"{jet_prefix}_lead_bjet_bTagWPT",
     f"{jet_prefix}_lead_bjet_bTagWPXT", f"{jet_prefix}_lead_bjet_bTagWPXXT",
     # f"{jet_prefix}_lead_bjet_bTagWP3XT", f"{jet_prefix}_lead_bjet_bTagWP4XT",
     # --------
     f'{jet_prefix}_sublead_bjet_eta', 
     # f"{jet_prefix}_sublead_bjet_btagPNetB",
-    # f"{jet_prefix}sublead_bjet_btagUParTAK4B",
+    # f"{jet_prefix}_sublead_bjet_btagUParTAK4B",
     f"{jet_prefix}_sublead_bjet_bTagWPL", f"{jet_prefix}_sublead_bjet_bTagWPM", f"{jet_prefix}_sublead_bjet_bTagWPT",
     f"{jet_prefix}_sublead_bjet_bTagWPXT", f"{jet_prefix}_sublead_bjet_bTagWPXXT",
     # f"{jet_prefix}_sublead_bjet_bTagWP3XT", f"{jet_prefix}_sublead_bjet_bTagWP4XT",
