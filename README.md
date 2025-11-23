@@ -15,9 +15,20 @@ Assuming you have `.parquet` files from HiggsDNA, the first steo in this reposit
 
 To run the pre-processing, use the `preprocess.py` script as follows:
 
-`python preprocess.py --sim_era_filepaths <filepath_for_MC_era_1>,<filepath_for_MC_era_2>,etc --data_era_filepaths <filepath_for_Data_era_1>,<filepath_for_Data_era_2>,etc --output_dirpath <path_to_output_directory>`
+`python preprocess.py <filepath_to_input_eras> --output_dirpath <path_to_output_directory>`
 
-The `--sim_era_filepaths` (`--data_era_filepaths`) flag is expecting a directory whose immediate children are all the MC (Data) samples for that era. For example, the directory structure for the filepaths flags would look something like the following:
+#### Structure of `input_eras` file
+The `input_eras` file defines what eras of MC and Data to use for training and validation. Typically you will use as many MC eras as are available to get the best statistics during training, but it can be helpful to restrict the eras for debugging or testing new features.
+```
+# MC
+/path/to/MC/era/1
+/path/to/MC/era/2
+# /path/to/unused/MC/era/3
+# Data
+/path/to/Data/era/1
+```
+
+The `input_eras` filepaths are expecting a directory whose immediate children are all the MC (Data) samples for that era. For example, the directory structure for the filepaths flags would look something like the following:
 ```bash
 MC/Data era 1
 ├── process 1
@@ -41,11 +52,11 @@ After running the `preprocess.py` script, all the necessary variables have been 
 
 To run the variable standardization and training dataset creatin, use the `BDT_preprocessing.py` script as follows:
 
-`python BDT_preprocessing.py <filepath_to_BDT_config_py_file> <filepath_to_dump_output_files>`
+`python BDT_preprocessing.py <filepath_to_input_eras> <filepath_to_BDT_config_py_file> <filepath_to_dump_output_files>`
+
+The `input_eras` file is the same as the one used for the `preprocess.py` file.
 
 #### Structure of *BDT_config.py file
-The `INPUT_ERAS` variable in the `*BDT_config.py` file defines what eras of MC and Data to use for training and validation. Typically you will uase as many MC eras as are available to get the best statistics during training, but it can be helpful to restrict the eras for debugging or testing new features.
-
 the `DATASET_TAG` variable is a short string that will be included in the name of the lightweight dataset and should be treated as a concise way of converying the most important properties of that dataset. I typically include the eras of the dataset and a short description of the variables that *differ from normal* -- what counts as differing from normal is up to you. It's important that you change this variable whenever you change the config file as this variable is your main way of tracking what is in a dataset.
 
 The `CLASS_SAMPLE_MAP` variable exclusively defines the samples in the training datasets, as well as how to split the samples into distinct classes.
