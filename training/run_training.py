@@ -92,7 +92,7 @@ BASE_DIRPATH = os.path.join(args.output_dirpath, "")
 EOS_DIRPATH = os.path.join(args.eos_dirpath, "")
 OPTIMIZE_SPACE = args.optimize_space
 FOLD = args.fold
-BATCH = args.BATCH
+BATCH = args.batch
 MEMORY = args.memory
 QUEUE = args.queue
 
@@ -100,7 +100,7 @@ CLASS_SAMPLE_MAP = get_class_sample_map(DATASET_DIRPATH)
 N_CLASSES = len(CLASS_SAMPLE_MAP)
 N_FOLDS = get_n_folds(DATASET_DIRPATH)
 
-VERSION = 'v18'
+VERSION = 'v19'
 VARS = '_'.join(DATASET_DIRPATH.split('/')[-2].split('_')[:-2])
 CURRENT_TIME = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
 OUTPUT_DIRPATH = os.path.join(BASE_DIRPATH, VERSION, VARS, CURRENT_TIME)
