@@ -189,7 +189,7 @@ def submit(
     submit_result = schedd.submit(htcondor2.Submit(submit_dict), spool=CWD.startswith("/eos"))
 
     while True:
-        jobs = submit_result.query(constraint=f"ClusterId == {submit_result.cluster()}", projection=["ClusterId", "ProcId", "JobStatus", "RequestMemory"])
+        jobs = schedd.query(constraint=f"ClusterId == {submit_result.cluster()}", projection=["ClusterId", "ProcId", "JobStatus", "RequestMemory"])
         if len(jobs) == 0:
             print(f"Finished running condor jobs, running postprocessing.")
             postprocessing(output_dirpath, eos_dirpath)
