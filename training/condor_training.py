@@ -178,13 +178,12 @@ def submit(
     submit_dict = {}
     with open(CONDOR_FILEPATHS['submission'], "r") as submit_file:
         for line in submit_file:
-            stdline = line.strip()
             try:
-                key, value = stdline.split(' = ')[0], stdline.split(' = ')[1]
+                key, value = line.split(' = ')[0].strip(), line.split(' = ')[1].strip()
                 submit_dict[key] = value
             except IndexError as e:
-                if "queue" not in stdline: 
-                    logger.error(f"Making submission dictionary failed with line {stdline}")
+                if "queue" not in line: 
+                    logger.error(f"Making submission dictionary failed with line {line}")
                     raise e
     # see https://batchdocs.web.cern.ch/troubleshooting/eos.html#no-eos-submission-allowed
     submit_result = schedd.submit(htcondor2.Submit(submit_dict), spool=CWD.startswith("/eos"))
