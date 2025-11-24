@@ -87,6 +87,7 @@ def submit(
         subprocess.run(['xrdfs', EOS_redirector, 'ls', dataset_EOStarfilepath.replace(EOS_redirector, '')], check=True, capture_output=True, text=True)
     except subprocess.CalledProcessError as e:
         print(e.stdout)
+        print('-'*60)
         print(e.stderr)
         if 'No such file or directory'.lower() not in e.stdout.lower(): raise e
         else:
