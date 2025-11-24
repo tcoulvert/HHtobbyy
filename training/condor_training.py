@@ -85,10 +85,11 @@ def submit(
     dataset_EOStarfilepath = os.path.join(eos_dirpath, f"{dataset_dirname}.tar.gz")
     try:
         subprocess.run(['xrdfs', EOS_redirector, 'ls', dataset_EOStarfilepath.replace(EOS_redirector, '')], check=True, capture_output=True, text=True)
-        subprocess.run(['tar', '-zcf', dataset_tarfilepath, dataset_dirpath], check=True, capture_output=True, text=True)
-        subprocess.run(['xrdcp', dataset_tarfilepath, eos_dirpath], check=True, capture_output=True, text=True)
-    except Exception as e:
+    except subprocess.CalledProcessError as e:
         if 'No such file or directory'.lower() not in e.stdout.lower(): raise e
+        else:
+            subprocess.run(['tar', '-zcf', dataset_tarfilepath, dataset_dirpath], check=True, capture_output=True, text=True)
+            subprocess.run(['xrdcp', dataset_tarfilepath, eos_dirpath], check=True, capture_output=True, text=True)
 
     # Makes directories on submitter machine for reviewing outputs/errors
     make_condor_sub_dirpath('/'.join(output_dirpath.split('/')[-5:]))
