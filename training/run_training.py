@@ -48,7 +48,7 @@ parser.add_argument(
 )
 parser.add_argument(
     "--eos_dirpath",  
-    default=os.path.join('root://cmseos.fnal.gov//', 'store', 'user', subprocess.run(['whoami'], capture_output=True, text=True).stdout, 'condor_train'),
+    default=os.path.join('root://cmseos.fnal.gov//', 'store', 'user', subprocess.run(['whoami'], capture_output=True, text=True).stdout.strip(), 'condor_train'),
     help="Dirpath for EOS space to store intermediate files onto"
 )
 parser.add_argument(
