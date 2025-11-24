@@ -74,8 +74,11 @@ def submit(
         subprocess.run(['git', 'commit', '-a', '-m', f'Commit before training at {CURRENT_TIME}'], check=True, capture_output=True, text=True)
         subprocess.run(['git', 'push'], check=True)
     except subprocess.CalledProcessError as e:
-        if 'Your branch is up to date with'.lower() not in e.stderr.lower(): raise e
-        else: logger.log(1, f"Git commit failed because branch is already up to date on remote. Continuing with batch submission")
+        if 'Your branch is up to date with'.lower() not in e.stderr.lower(): 
+            logger.error(f"Committing and pushing to git failed")
+            raise e
+        else: 
+            logger.log(1, f"Git commit failed because branch is already up to date on remote. Continuing with batch submission")
 
     # Zips the datset for easy transfer to condor nodes
     dataset_dirname = dataset_dirpath.split('/')[-2]
@@ -85,7 +88,9 @@ def submit(
     try:
         subprocess.run(['xrdfs', EOS_redirector, 'ls', dataset_EOStarfilepath.replace(EOS_redirector, '')], check=True, capture_output=True, text=True)
     except subprocess.CalledProcessError as e:
-        if 'No such file or directory'.lower() not in e.stderr.lower(): raise e
+        if 'No such file or directory'.lower() not in e.stderr.lower(): 
+            logger.error(f"Looking for tar file on EOS failed")
+            raise e
         else:
             logger.log(1, f"{dataset_dirname} tar file not on EOS yet, making tar file and trasferring now")
             subprocess.run(['tar', '-zcf', dataset_tarfilepath, dataset_dirpath], check=True, capture_output=True, text=True)
@@ -176,7 +181,9 @@ def submit(
                 key, value = stdline.split(' = ')[0], stdline.split(' = ')[1]
                 submit_dict[key] = value
             except IndexError as e:
-                if "queue" not in stdline: raise e
+                if "queue" not in stdline: 
+                    logger.error(f"Making submission dictionary failed with line {stdline}")
+                    raise e
     # see https://batchdocs.web.cern.ch/troubleshooting/eos.html#no-eos-submission-allowed
     submit_result = schedd.submit(htcondor2.Submit(submit_dict), spool=CWD.startswith("/eos"))
 
