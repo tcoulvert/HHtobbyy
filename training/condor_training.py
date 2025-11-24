@@ -71,7 +71,7 @@ def submit(
         subprocess.run(['git', 'commit', '-a', '-m', f'Commit before training at {CURRENT_TIME}'], check=True, capture_output=True, text=True)
         subprocess.run(['git', 'push'], check=True)
     except subprocess.CalledProcessError as e:
-        if 'Your branch is up to date with'.lower() not in e.stdout.lower(): raise e
+        if 'Your branch is up to date with'.lower() not in e.stderr.lower(): raise e
 
     # Exports conda env information
     conda_filename = 'environment.yml'
@@ -86,10 +86,7 @@ def submit(
     try:
         subprocess.run(['xrdfs', EOS_redirector, 'ls', dataset_EOStarfilepath.replace(EOS_redirector, '')], check=True, capture_output=True, text=True)
     except subprocess.CalledProcessError as e:
-        print(e.stdout)
-        print('-'*60)
-        print(e.stderr)
-        if 'No such file or directory'.lower() not in e.stdout.lower(): raise e
+        if 'No such file or directory'.lower() not in e.stderr.lower(): raise e
         else:
             subprocess.run(['tar', '-zcf', dataset_tarfilepath, dataset_dirpath], check=True, capture_output=True, text=True)
             subprocess.run(['xrdcp', dataset_tarfilepath, eos_dirpath], check=True, capture_output=True, text=True)
