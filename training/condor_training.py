@@ -1,11 +1,14 @@
 # Stdlib packages
 import glob
+import json
 import logging
 import os
 import re
 import subprocess
 import time
 
+# Condor job management
+import htcondor2
 
 ################################
 
@@ -74,11 +77,6 @@ def submit(
         if 'Your branch is up to date with'.lower() not in e.stderr.lower(): raise e
         else: logger.log(1, f"Git commit failed because branch is already up to date on remote. Continuing with batch submission")
 
-    # Exports conda env information
-    conda_filename = 'environment.yml'
-    conda_filepath = os.path.join(GIT_REPO, conda_filename)
-    assert os.path.exists(conda_filepath), f"Conda env file {conda_filepath} does not exist, please create before running batch jobs"
-
     # Zips the datset for easy transfer to condor nodes
     dataset_dirname = dataset_dirpath.split('/')[-2]
     dataset_tarfilepath = os.path.join(GIT_REPO, f"{dataset_dirname}.tar.gz")
@@ -92,6 +90,7 @@ def submit(
             logger.log(1, f"{dataset_dirname} tar file not on EOS yet, making tar file and trasferring now")
             subprocess.run(['tar', '-zcf', dataset_tarfilepath, dataset_dirpath], check=True, capture_output=True, text=True)
             subprocess.run(['xrdcp', dataset_tarfilepath, eos_dirpath], check=True, capture_output=True, text=True)
+            subprocess.run(['rm', dataset_tarfilepath], check=True, capture_output=True, text=True)
 
     # Makes directories on submitter machine for reviewing outputs/errors
     make_condor_sub_dirpath('/'.join(output_dirpath.split('/')[-5:]))
@@ -99,7 +98,6 @@ def submit(
     # srv dirpaths
     dataset_srvdirpath = os.path.join('/srv', dataset_dirpath)
     output_srvdirpath = os.path.join('/srv', output_dirpath)
-    conda_srvfilename = os.path.join('/srv', conda_filename)
 
     # Makes the executable file
     with open(CONDOR_FILEPATHS['executable'], "w") as executable_file:
@@ -132,7 +130,7 @@ def submit(
         executable_file.write("cd\n")
 
         executable_file.write("echo \"Building conda env\"\n")
-        executable_file.write(f"conda env create -f {conda_srvfilename} -n train_env\n")
+        executable_file.write(f"conda env create -f HHtobbyy/environment.yml -n train_env\n")
         executable_file.write("conda activate train_env\n")
         executable_file.write("echo \"-------------------------------------\"\n")
         
@@ -159,7 +157,7 @@ def submit(
         submit_file.write("getenv = True\n")
         submit_file.write(f'+JobFlavour = "{queue}"\n')
         submit_file.write(f"should_transfer_files = YES\n")
-        submit_file.write(f"Transfer_Input_Files = {conda_filepath}\n")
+        submit_file.write(f"Transfer_Input_Files = \n")
         submit_file.write(f"Transfer_Output_Files = \n")
         submit_file.write(f'when_to_transfer_output = ON_EXIT\n')
 
@@ -168,20 +166,24 @@ def submit(
         # submit_file.write('requirements = Machine =!= LastRemoteHost\n')
         submit_file.write(f"queue {n_folds}\n")
     
-    # Submits the condor jobs
-    if CWD.startswith("/eos"):
+    # Submit the condor jobs
+    schedd = htcondor2.Schedd()
+    with open(CONDOR_FILEPATHS['submission'], "r") as submit_file:
         # see https://batchdocs.web.cern.ch/troubleshooting/eos.html#no-eos-submission-allowed
-        output = subprocess.run(["condor_submit", "-spool", CONDOR_FILEPATHS['submission']], capture_output=True, text=True, check=True)
-    else:
-        output = subprocess.run("condor_submit {}".format(CONDOR_FILEPATHS['submission']), capture_output=True, text=True, shell=True, check=True)
+        submit_result = schedd.submit(htcondor2.Submit(json.load(submit_file)), spool=CWD.startswith("/eos"))
 
-    cluster_id = int(re.search(r'\d+', output.stdout).group(0)[::-1])
-    logger.log(1, f"clusterid = {cluster_id}")
     while True:
-        output = subprocess.run(['condor_q', '-constraint', '\"ClusterId == ${CLUSTER_ID} && (JobStatus == 1 || JobStatus == 2)\"', '-af', 'ClusterId' '|' 'wc' '-l'], capture_output=True, text=True, check=True)
-        if output.stdout == 0:
+        jobs = submit_result.query(constraint=f"ClusterId == {submit_result.cluster()}", projection=["ClusterId", "ProcId", "JobStatus", "RequestMemory"])
+        if len(jobs) == 0:
             print(f"Finished running condor jobs, running postprocessing.")
             postprocessing(output_dirpath, eos_dirpath)
             break
         else:
+            if any(job['JobStatus'] == 5 for job in jobs):
+                old_memory = jobs[0]["RequestMemory"]
+                new_memory = int(
+                    int(re.search(r'\d+', old_memory).group()) * 1.5
+                )
+                memory_units = old_memory[re.search(r'\d+', old_memory).end():]
+                schedd.edit(f"ClusterId == {submit_result.cluster()}", "RequestMemory", f"\"{new_memory}{memory_units}\"")
             time.sleep(60)
