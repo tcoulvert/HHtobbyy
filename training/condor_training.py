@@ -80,20 +80,21 @@ def submit(
 
     # Zips the datset for easy transfer to condor nodes
     dataset_dirname = dataset_dirpath.split('/')[-2]
-    dataset_EOSdirpath = os.path.join(eos_dirpath, dataset_dirname)
-    EOS_redirector = dataset_EOSdirpath.split('/store')[0]
+    dataset_tarfilepath = os.path.join(GIT_REPO, f"{dataset_dirname}.tar.gz")
+    EOS_redirector = eos_dirpath.split('/store')[0]
     dataset_EOStarfilepath = os.path.join(eos_dirpath, f"{dataset_dirname}.tar.gz")
     try:
-        subprocess.run(['xrdcp', '-r', dataset_dirpath, eos_dirpath], check=True, capture_output=True, text=True)
-        subprocess.run(['xrdfs', EOS_redirector, 'tar', '-zcf', dataset_EOStarfilepath.replace(EOS_redirector, ''), dataset_EOSdirpath.replace(EOS_redirector, '')], check=True, capture_output=True, text=True)
-    except OSError as e:
-        if 'File exists'.lower() not in e.stdout.lower(): raise e
+        subprocess.run(['xrdfs', EOS_redirector, 'ls', dataset_EOStarfilepath.replace(EOS_redirector, '')], check=True, capture_output=True, text=True)
+        subprocess.run(['tar', '-zcf', dataset_tarfilepath, dataset_dirpath], check=True, capture_output=True, text=True)
+        subprocess.run(['xrdcp', dataset_tarfilepath, eos_dirpath], check=True, capture_output=True, text=True)
+    except Exception as e:
+        if 'No such file or directory'.lower() not in e.stdout.lower(): raise e
 
     # Makes directories on submitter machine for reviewing outputs/errors
     make_condor_sub_dirpath('/'.join(output_dirpath.split('/')[-5:]))
 
     # srv dirpaths
-    dataset_srvdirpath = os.path.join('/srv', dataset_EOSdirpath)
+    dataset_srvdirpath = os.path.join('/srv', dataset_dirpath)
     output_srvdirpath = os.path.join('/srv', output_dirpath)
     conda_srvfilename = os.path.join('/srv', conda_filename)
 
