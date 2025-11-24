@@ -184,12 +184,12 @@ def submit(
                     logger.error(f"Making submission dictionary failed with line {line}")
                     raise e
     # see https://batchdocs.web.cern.ch/troubleshooting/eos.html#no-eos-submission-allowed
-    submit_result = schedd.submit(htcondor2.Submit(submit_dict), spool=CWD.startswith("/eos"))
+    submit_result = schedd.submit(htcondor2.Submit(submit_dict), spool=CWD.startswith("/eos"), queue=str(n_folds))
 
     while True:
         jobs = schedd.query(constraint=f"ClusterId == {submit_result.cluster()}", projection=["ClusterId", "ProcId", "JobStatus", "RequestMemory"])
         if len(jobs) == 0:
-            print(f"Finished running condor jobs, running postprocessing.")
+            logger.log(1, f"Finished running condor jobs, running postprocessing.")
             postprocessing(output_dirpath, eos_dirpath)
             break
         else:
