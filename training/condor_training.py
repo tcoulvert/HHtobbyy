@@ -67,8 +67,11 @@ def submit(
     output_dirpath = os.path.join(output_dirpath, '')
     CURRENT_TIME = output_dirpath.split('/')[-2]
     # Commits and pushes newest version of model to github so condor can pull directly from github
-    subprocess.run(['git', 'commit', '-a', '-m', f'Commit before training at {CURRENT_TIME}'], check=True)
-    subprocess.run(['git', 'push'], check=True)
+    try:
+        subprocess.run(['git', 'commit', '-a', '-m', f'Commit before training at {CURRENT_TIME}'], check=True, capture_output=True, text=True)
+        subprocess.run(['git', 'push'], check=True)
+    except subprocess.CalledProcessError as e:
+        if 'Your branch is up to date with' not in e.stdout: raise e
 
     # Exports conda env information
     conda_filename = 'environment.yml'
