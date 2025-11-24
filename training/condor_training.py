@@ -86,7 +86,6 @@ def submit(
     subprocess.run(['xrdcp', lighweight_tarfilepath, lighweight_EOStarfilepath], check=True)
     subprocess.run(['rm', '-f', lighweight_tarfilepath], check=True)
 
-
     # Makes directories on submitter machine for reviewing outputs/errors
     make_condor_sub_dirpath('/'.join(output_dirpath.split('/')[-5:]))
 
