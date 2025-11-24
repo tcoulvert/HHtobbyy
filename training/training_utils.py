@@ -8,6 +8,7 @@ import sys
 import numpy as np
 
 # HEP packages
+import gpustat
 import xgboost as xgb
 
 # ML packages
@@ -39,6 +40,15 @@ def get_param(training_dirpath: str):
     param_filepath = os.path.join(training_dirpath, f"{training_dirpath.split('/')[-2]}_best_params.json")
     with open(param_filepath, 'r') as f:
         param = json.load(f)
+    try:
+        gpustat.print_gpustat()
+        param['device']           = 'cuda'
+        param['tree_method']      = 'gpu_hist'
+        param['sampling_method']  = 'gradient_based'
+    except:
+        param['device']           = 'cpu'
+        param['tree_method']      = 'hist'
+        param['sampling_method']  = 'uniform'
     param = list(param.items()) + [('eval_metric', 'mlogloss')]
     return param
 

@@ -96,7 +96,7 @@ There are 4 extra flags:
 
 
 ## Training
-Once you have run the `preprocess.py` and `BDT_preprocessing.py` scripts you are ready to train a model! Lucikly, because we setup the preprocessing and variable standardization in a backwards-compatible way (and split up each training dataset into its own directory), the training itself is extremely simple. You only need to run the `run_training.py` file (located under the `training` directory) with the `LPC_FILEPREFIX` variable changed to the location of your `--output_dirpath` from the `BDT_preprocessing.py` script, and the `PARQUET_TIME` variable set to the specific training dataset you would like to use. The `VERSION` and `VARS` variables are there only to help dilineate and organize the many versions of models you will train while optimizing your BDT.
+Once you have run the `preprocess.py` and `BDT_preprocessing.py` scripts you are ready to train a model! Lucikly, because we setup the preprocessing and variable standardization in a backwards-compatible way (and split up each training dataset into its own directory), the training itself is extremely simple. You only need to run the `run_training.py` file (located under the `training` directory) with the `LPC_FILEPREFIX` variable changed to the location of your `--output_dirpath` from the `BDT_preprocessing.py` script, and the `PARQUET_TIME` variable set to the specific training dataset you would like to use. The `VERSION` and `VARS` variables are there only to help dilineate and organize the many versions of models you will train while optimizing your BDT, with the `VERSION` vairbale being taken from the lightweight dataset's `DATASET_TAG` variable.
 
 To run the training, use the `run_training.py` script as follows:
 
