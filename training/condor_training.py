@@ -12,13 +12,13 @@ import htcondor2
 
 ################################
 
+
 GIT_REPO = (
     subprocess.Popen(["git", "rev-parse", "--show-toplevel"], stdout=subprocess.PIPE)
     .communicate()[0]
     .rstrip()
     .decode("utf-8")
 )
-
 
 ################################
 
@@ -155,22 +155,30 @@ def submit(
         submit_file.write(f"log = {CONDOR_FILEPATHS['log']}\n")
         submit_file.write(f"request_memory = {memory}\n")
         submit_file.write("getenv = True\n")
-        submit_file.write(f'+JobFlavour = "{queue}"\n')
+        submit_file.write(f"+JobFlavour = \"{queue}\"\n")
         submit_file.write(f"should_transfer_files = YES\n")
         submit_file.write(f"Transfer_Input_Files = \n")
         submit_file.write(f"Transfer_Output_Files = \n")
         submit_file.write(f'when_to_transfer_output = ON_EXIT\n')
 
-        submit_file.write('on_exit_remove = (ExitBySignal == False) && (ExitCode == 0)\n')
-        submit_file.write('max_retries = 0\n')
+        submit_file.write("on_exit_remove = (ExitBySignal == False) && (ExitCode == 0)\n")
+        submit_file.write("max_retries = 0\n")
         # submit_file.write('requirements = Machine =!= LastRemoteHost\n')
         submit_file.write(f"queue {n_folds}\n")
     
     # Submit the condor jobs
     schedd = htcondor2.Schedd()
+    submit_dict = {}
     with open(CONDOR_FILEPATHS['submission'], "r") as submit_file:
-        # see https://batchdocs.web.cern.ch/troubleshooting/eos.html#no-eos-submission-allowed
-        submit_result = schedd.submit(htcondor2.Submit(json.load(submit_file)), spool=CWD.startswith("/eos"))
+        for line in submit_file:
+            stdline = line.strip()
+            try:
+                key, value = stdline.split(' = ')[0], stdline.split(' = ')[1]
+                submit_dict[key] = value
+            except IndexError as e:
+                if "queue" not in stdline: raise e
+    # see https://batchdocs.web.cern.ch/troubleshooting/eos.html#no-eos-submission-allowed
+    submit_result = schedd.submit(htcondor2.Submit(submit_dict), spool=CWD.startswith("/eos"))
 
     while True:
         jobs = submit_result.query(constraint=f"ClusterId == {submit_result.cluster()}", projection=["ClusterId", "ProcId", "JobStatus", "RequestMemory"])
