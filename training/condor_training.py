@@ -71,7 +71,7 @@ def submit(
         subprocess.run(['git', 'commit', '-a', '-m', f'Commit before training at {CURRENT_TIME}'], check=True, capture_output=True, text=True)
         subprocess.run(['git', 'push'], check=True)
     except subprocess.CalledProcessError as e:
-        if 'Your branch is up to date with' not in e.stdout: raise e
+        if 'Your branch is up to date with'.lower() not in e.stdout.lower(): raise e
 
     # Exports conda env information
     conda_filename = 'environment.yml'
@@ -79,18 +79,21 @@ def submit(
     assert os.path.exists(conda_filepath), f"Conda env file {conda_filepath} does not exist, please create before running batch jobs"
 
     # Zips the datset for easy transfer to condor nodes
-    lightweight_tarfilename = f'{CURRENT_TIME}_lightweight_dataset.tar.gz'
-    lighweight_tarfilepath = os.path.join(GIT_REPO, lightweight_tarfilename)
-    lighweight_EOStarfilepath = os.path.join(eos_dirpath, lightweight_tarfilename)
-    subprocess.run(['tar', '-zcf', lighweight_tarfilepath, dataset_dirpath], check=True)
-    subprocess.run(['xrdcp', lighweight_tarfilepath, lighweight_EOStarfilepath], check=True)
-    subprocess.run(['rm', '-f', lighweight_tarfilepath], check=True)
+    dataset_dirname = dataset_dirpath.split('/')[-2]
+    dataset_EOSdirpath = os.path.join(eos_dirpath, dataset_dirname)
+    EOS_redirector = dataset_EOSdirpath.split('/store')[0]
+    dataset_EOStarfilepath = os.path.join(eos_dirpath, f"{dataset_dirname}.tar.gz")
+    try:
+        subprocess.run(['xrdcp', '-r', dataset_dirpath, dataset_EOSdirpath], check=True, capture_output=True, text=True)
+        subprocess.run(['xrdfs', EOS_redirector, 'tar', '-zcf', dataset_EOStarfilepath], check=True, capture_output=True, text=True)
+    except Error as e:
+        if 'File exists'.lower() not in e.stdout.lower(): raise e
 
     # Makes directories on submitter machine for reviewing outputs/errors
     make_condor_sub_dirpath('/'.join(output_dirpath.split('/')[-5:]))
 
     # srv dirpaths
-    dataset_srvdirpath = os.path.join('/srv', dataset_dirpath)
+    dataset_srvdirpath = os.path.join('/srv', dataset_EOSdirpath)
     output_srvdirpath = os.path.join('/srv', output_dirpath)
     conda_srvfilename = os.path.join('/srv', conda_filename)
 
@@ -117,8 +120,8 @@ def submit(
         executable_file.write("cd\n")
 
         executable_file.write("echo \"Pulling training dataset from EOS\"\n")
-        executable_file.write(f"xrdcp {lighweight_EOStarfilepath} .\n")
-        executable_file.write(f"tar -xzf {lighweight_EOStarfilepath} && rm {lighweight_EOStarfilepath}\n")
+        executable_file.write(f"xrdcp {dataset_EOStarfilepath} .\n")
+        executable_file.write(f"tar -xzf {dataset_EOStarfilepath} && rm {dataset_EOStarfilepath}\n")
         executable_file.write("echo \"-------------------------------------\"\n")
         executable_file.write("ls -la\n")
         executable_file.write("echo \"-------------------------------------\"\n")
