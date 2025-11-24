@@ -75,6 +75,7 @@ def submit(
         subprocess.run(['git', 'push'], check=True)
     except subprocess.CalledProcessError as e:
         print(e.stderr)
+        print(e.stdout)
         print('Your branch is up to date with'.lower() not in e.stderr.lower())
         if 'Your branch is up to date with'.lower() not in e.stderr.lower(): 
             logger.error(f"Committing and pushing to git failed")
