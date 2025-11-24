@@ -83,7 +83,9 @@ def submit(
     lighweight_tarfilepath = os.path.join(GIT_REPO, lightweight_tarfilename)
     lighweight_EOStarfilepath = os.path.join(eos_dirpath, lightweight_tarfilename)
     subprocess.run(['tar', '-zcf', lighweight_tarfilepath, dataset_dirpath], check=True)
-    subprocess.run(['xrdcp', '-f', lighweight_tarfilepath, lighweight_EOStarfilepath], check=True)
+    subprocess.run(['xrdcp', lighweight_tarfilepath, lighweight_EOStarfilepath], check=True)
+    subprocess.run(['rm', '-f', lighweight_tarfilepath], check=True)
+
 
     # Makes directories on submitter machine for reviewing outputs/errors
     make_condor_sub_dirpath('/'.join(output_dirpath.split('/')[-5:]))
