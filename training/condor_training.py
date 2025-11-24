@@ -73,8 +73,7 @@ def submit(
     # Exports conda env information
     conda_filename = 'environment.yml'
     conda_filepath = os.path.join(GIT_REPO, conda_filename)
-    subprocess.run(['conda', 'env', 'export', '--from-history', '>', conda_filename], check=True)
-    subprocess.run(['mv', conda_filename, conda_filepath], check=True)
+    assert os.path.exists(conda_filepath), f"Conda env file {conda_filepath} does not exist, please create before running batch jobs"
 
     # Zips the datset for easy transfer to condor nodes
     lightweight_tarfilename = f'{CURRENT_TIME}_lightweight_dataset.tar.gz'

@@ -1,0 +1,43 @@
+name: higgs-dna
+channels:
+  - conda-forge
+dependencies:
+  - breathe
+  - captum
+  - coffea[version='<2023']
+  - conda-pack
+  - dask
+  - dask-jobqueue
+  - distributed
+  - gpustat
+  - h5py
+  - ipykernel
+  - ipython
+  - ipywidgets
+  - jinja2[version='>=3.0.3']
+  - jupyter
+  - jupyterlab
+  - matplotlib
+  - nbconvert[version='>=5.5.0']
+  - nbsphinx
+  - numba
+  - pandas
+  - pandoc
+  - pip
+  - prettytable
+  - py-xgboost
+  - pyaml
+  - pyarrow
+  - python[version='>=3.6']
+  - rich
+  - scikit-optimize
+  - sphinx
+  - sphinx-argparse
+  - sphinx_rtd_theme
+  - tqdm
+  - vector[version='<1.4.0']
+  - xgboost==1.5.1
+  - xrootd
+  - setuptools=69.0.3
+  - root
+prefix: /uscms/home/tsievert/nobackup/miniforge3/envs/higgs-dna
