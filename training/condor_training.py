@@ -72,6 +72,7 @@ def submit(
         subprocess.run(['git', 'push'], check=True)
     except subprocess.CalledProcessError as e:
         if 'Your branch is up to date with'.lower() not in e.stderr.lower(): raise e
+        else: logger.log(1, f"Git commit failed because branch is already up to date on remote. Continuing with batch submission")
 
     # Exports conda env information
     conda_filename = 'environment.yml'
@@ -88,6 +89,7 @@ def submit(
     except subprocess.CalledProcessError as e:
         if 'No such file or directory'.lower() not in e.stderr.lower(): raise e
         else:
+            logger.log(1, f"{dataset_dirname} tar file not on EOS yet, making tar file and trasferring now")
             subprocess.run(['tar', '-zcf', dataset_tarfilepath, dataset_dirpath], check=True, capture_output=True, text=True)
             subprocess.run(['xrdcp', dataset_tarfilepath, eos_dirpath], check=True, capture_output=True, text=True)
 
@@ -174,7 +176,7 @@ def submit(
         output = subprocess.run("condor_submit {}".format(CONDOR_FILEPATHS['submission']), capture_output=True, text=True, shell=True, check=True)
 
     cluster_id = int(re.search(r'\d+', output.stdout).group(0)[::-1])
-    print(cluster_id)
+    logger.log(1, f"clusterid = {cluster_id}")
     while True:
         output = subprocess.run(['condor_q', '-constraint', '\"ClusterId == ${CLUSTER_ID} && (JobStatus == 1 || JobStatus == 2)\"', '-af', 'ClusterId' '|' 'wc' '-l'], capture_output=True, text=True, check=True)
         if output.stdout == 0:
