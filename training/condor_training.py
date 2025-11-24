@@ -86,7 +86,7 @@ def submit(
     try:
         subprocess.run(['xrdcp', '-r', dataset_dirpath, dataset_EOSdirpath], check=True, capture_output=True, text=True)
         subprocess.run(['xrdfs', EOS_redirector, 'tar', '-zcf', dataset_EOStarfilepath], check=True, capture_output=True, text=True)
-    except Error as e:
+    except OSError as e:
         if 'File exists'.lower() not in e.stdout.lower(): raise e
 
     # Makes directories on submitter machine for reviewing outputs/errors
