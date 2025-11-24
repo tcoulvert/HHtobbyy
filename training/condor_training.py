@@ -84,8 +84,8 @@ def submit(
     EOS_redirector = dataset_EOSdirpath.split('/store')[0]
     dataset_EOStarfilepath = os.path.join(eos_dirpath, f"{dataset_dirname}.tar.gz")
     try:
-        subprocess.run(['xrdcp', '-r', dataset_dirpath, dataset_EOSdirpath], check=True, capture_output=True, text=True)
-        subprocess.run(['xrdfs', EOS_redirector, 'tar', '-zcf', dataset_EOStarfilepath], check=True, capture_output=True, text=True)
+        subprocess.run(['xrdcp', '-r', dataset_dirpath, eos_dirpath], check=True, capture_output=True, text=True)
+        subprocess.run(['xrdfs', EOS_redirector, 'tar', '-zcf', dataset_EOStarfilepath, dataset_EOSdirpath], check=True, capture_output=True, text=True)
     except OSError as e:
         if 'File exists'.lower() not in e.stdout.lower(): raise e
 
