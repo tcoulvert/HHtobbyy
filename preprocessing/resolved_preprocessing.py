@@ -1,5 +1,6 @@
 # Stdlib packages
 import copy
+import re
 
 # Common Py packages
 import numpy as np
@@ -104,7 +105,7 @@ def max_nonbjet_btag(sample, prefactor='nonRes'):
     return max_btag_score
 
 def add_vars_resolved(sample, filepath):
-    prefactors = [prefactor for prefactor in PREFACTORS if any(prefactor in field for field in sample.fields)]
+    prefactors = [prefactor for prefactor in PREFACTORS if any(match_sample(field, PREFACTORS) == prefactor for field in sample.fields)]
 
     # Regressed jet kinematics #
     jet_4moms = {}

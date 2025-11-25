@@ -135,7 +135,7 @@ def get_files(eras, type='MC'):
         glob_dirs_set = lambda end_filepath: set(
             glob.glob(os.path.join(era, "**", f"*{end_filepath}"), recursive=True)
         )
-        all_dirs_set = set([elem for end_filepath in END_FILEPATHS for elem in glob_dirs_set(end_filepath)])
+        all_dirs_set = set(elem for end_filepath in END_FILEPATHS for elem in glob_dirs_set(end_filepath))
         ran_dirs_set = glob_dirs_set(NEW_END_FILEPATH)
 
         # Remove bad dirs
@@ -144,7 +144,7 @@ def get_files(eras, type='MC'):
             if match_sample(item, BAD_DIRS) is None
         )
         if not FORCE:
-            all_dirs_set = all_dirs_set - ran_dirs_set
+            all_dirs_set = all_dirs_set - set(elem.replace(NEW_END_FILEPATH, end_filepath) for elem in ran_dirs_set for end_filepath in END_FILEPATHS)
 
         # Remove non-necessary MC samples
         if type.upper() == 'MC' and not RUN_ALL_MC:
@@ -162,10 +162,6 @@ def make_dataset(filepath, era, type='MC'):
     print('======================== \n', 'Starting \n', filepath)
     pq_file = pq.ParquetFile(filepath)
     schema = pq.read_schema(filepath)
-    # if 'VBFHH' not in filepath: return None
-    # for name in schema.names:
-    #     if 'VBF' not in name and "nonRes" not in name: continue
-    #     print("-"*60+'\n'+name)
     columns = [
         field for field in schema.names if not (
             'nonResReg' in field and 'nonResReg_DNNpair' not in field
@@ -200,7 +196,7 @@ def make_dataset(filepath, era, type='MC'):
         table_batch = ak.to_arrow_table(ak_batch)
         if pq_writer is None:
             pq_writer = pq.ParquetWriter(output_filepath, schema=table_batch.schema)
-        # pq_writer.write_table(table_batch)
+        pq_writer.write_table(table_batch)
     print('Finished \n', '========================')
 
 def make_mc(sim_eras: dict):

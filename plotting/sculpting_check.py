@@ -1,6 +1,10 @@
 # Stdlib packages
 import argparse
+import json
 import logging
+import os
+import subprocess
+import sys
 
 # Common Py packages
 import matplotlib.pyplot as plt
@@ -13,7 +17,22 @@ import scipy as scp
 ################################
 
 
-from plotting_utils import make_plot_dirpath
+GIT_REPO = (
+    subprocess.Popen(["git", "rev-parse", "--show-toplevel"], stdout=subprocess.PIPE)
+    .communicate()[0]
+    .rstrip()
+    .decode("utf-8")
+)
+sys.path.append(os.path.join(GIT_REPO, "training/"))
+sys.path.append(os.path.join(GIT_REPO, "evaluation/"))
+
+# Module packages
+from plotting_utils import (
+    make_plot_dirpath, plot_filepath, 
+    make_plot_data, combine_prepostfix
+)
+from training_utils import get_dataset_dirpath
+from evaluation_utils import transform_preds_options
 
 ################################
 
@@ -22,14 +41,42 @@ logger = logging.getLogger(__name__)
 parser = argparse.ArgumentParser(description="Standardize BDT inputs and save out dataframe parquets.")
 parser.add_argument(
     "training_dirpath",
-    help="Full filepath on LPC for trained model files"
+    help="Full filepath for trained model files"
+)
+parser.add_argument(
+    "sculpting_cuts",
+    help="JSON file that defines the discriminator(s) to use and the cuts to apply for the sculpting check"
+)
+parser.add_argument(
+    "--resample",
+    type=int,
+    default=10,
+    help="Number of times to resample each event to try and get a \"good\" event"
+)
+parser.add_argument(
+    "--resample",
+    type=int,
+    default=10,
+    help="Number of times to resample each event to try and get a \"good\" event"
 )
 
 ################################
 
 
+args = parser.parse_args()
+TRAINING_DIRPATH = os.path.join(args.training_dirpath, "")
+SCULPTING_CUTS_FILEPATH = args.sculpting_cuts
+with open(SCULPTING_CUTS_FILEPATH, 'r') as f:
+    SCULPTING_CUTS = json.load(f)
+DISCRIMINATOR = SCULPTING_CUTS.pop('discriminator')
+assert DISCRIMINATOR in transform_preds_options(), f"Trying to use a discriminator ({DISCRIMINATOR}) that isn't implemented in evaluation_utils. Use one of {transform_preds_options()} or implement your own"
+RESAMPLE = args.resample
+PLOT_TYPE = "resample_sculpting"
+
 N_BINS = 80
 RANGE = (100, 180)
+
+################################
 
 
 def resample_from_var(
@@ -83,166 +130,162 @@ def resample_grow_pd(var, bool_arr, n_duplicates_per_event):
 
 
 
+def sculpting_check():
+    make_plot_dirpath(TRAINING_DIRPATH, PLOT_TYPE)
+
+    score_cuts = [0.0, 0.7, 0.99, 0.9955]
+    label_arr = [f'score above {score_cut}' for score_cut in score_cuts]
+    plot_vars = ['mass', 'dijet_mass', 'HHbbggCandidate_mass']
 
 
+    BDT_perf_resample = [
+        {
+            f'preds{score_cut}': copy.deepcopy({plot_var: list() for plot_var in plot_vars+['event']}) for score_cut in score_cuts
+        } for fold_idx in range(len(bdt_train_dict))
+    ]
 
-resample_ = 10
-RESAMPLE = 100  # Set to False for no resampling, otherwise sets the number of times to duplicate gjet data for resampling
+    for fold_idx in range(len(bdt_train_dict)):
+        booster = xgb.Booster(param)
+        booster.load_model(os.path.join(OUTPUT_DIRPATH, f'{CURRENT_TIME}_BDT_fold{fold_idx}.model'))
 
-plot_dirpath = os.path.join(OUTPUT_DIRPATH, "plots", "mass_sculpting_resample_single")
-if not os.path.exists(plot_dirpath):
-    os.makedirs(plot_dirpath)
+        nonres_bool = (data_test_aux_dict[f"fold_{fold_idx}"].loc[:, 'sample_name'] == "GGJets") | (data_test_aux_dict[f"fold_{fold_idx}"].loc[:, 'sample_name'] == "GJetPt20To40") | (data_test_aux_dict[f"fold_{fold_idx}"].loc[:, 'sample_name'] == "GJetPt40")
 
-score_cuts = [0.0, 0.7, 0.99, 0.9955]
-label_arr = [f'score above {score_cut}' for score_cut in score_cuts]
-plot_vars = ['mass', 'dijet_mass', 'HHbbggCandidate_mass']
+        data_hlf_test = resample_grow_np(data_hlf_test_dict[f"fold_{fold_idx}"], nonres_bool, resample_)
+        data_test_aux = resample_grow_pd(data_test_aux_dict[f"fold_{fold_idx}"], nonres_bool, resample_)
+        weight_test = resample_grow_np(weight_test_dict[f"fold_{fold_idx}"], nonres_bool, resample_)
+        weights_plot = resample_grow_np(weights_plot_test[f"fold_{fold_idx}"], nonres_bool, resample_)
+        xgb_label_test = resample_grow_np(xgb_label_test_dict[f"fold_{fold_idx}"], nonres_bool, resample_)
 
-
-BDT_perf_resample = [
-    {
-        f'preds{score_cut}': copy.deepcopy({plot_var: list() for plot_var in plot_vars+['event']}) for score_cut in score_cuts
-    } for fold_idx in range(len(bdt_train_dict))
-]
-
-for fold_idx in range(len(bdt_train_dict)):
-    booster = xgb.Booster(param)
-    booster.load_model(os.path.join(OUTPUT_DIRPATH, f'{CURRENT_TIME}_BDT_fold{fold_idx}.model'))
-
-    nonres_bool = (data_test_aux_dict[f"fold_{fold_idx}"].loc[:, 'sample_name'] == "GGJets") | (data_test_aux_dict[f"fold_{fold_idx}"].loc[:, 'sample_name'] == "GJetPt20To40") | (data_test_aux_dict[f"fold_{fold_idx}"].loc[:, 'sample_name'] == "GJetPt40")
-
-    data_hlf_test = resample_grow_np(data_hlf_test_dict[f"fold_{fold_idx}"], nonres_bool, resample_)
-    data_test_aux = resample_grow_pd(data_test_aux_dict[f"fold_{fold_idx}"], nonres_bool, resample_)
-    weight_test = resample_grow_np(weight_test_dict[f"fold_{fold_idx}"], nonres_bool, resample_)
-    weights_plot = resample_grow_np(weights_plot_test[f"fold_{fold_idx}"], nonres_bool, resample_)
-    xgb_label_test = resample_grow_np(xgb_label_test_dict[f"fold_{fold_idx}"], nonres_bool, resample_)
-
-    gg_bool = (data_test_aux.loc[:, 'sample_name'] == "GGJets")
-    tth_bool = (data_test_aux.loc[:, 'sample_name'] == "ttHToGG")
-    gj_bool = (data_test_aux.loc[:, 'sample_name'] == "GJetPt20To40") | (data_test_aux.loc[:, 'sample_name'] == "GJetPt40")
-    nonres_bool = (data_test_aux.loc[:, 'sample_name'] == "GGJets") | (data_test_aux.loc[:, 'sample_name'] == "GJetPt20To40") | (data_test_aux.loc[:, 'sample_name'] == "GJetPt40")
+        gg_bool = (data_test_aux.loc[:, 'sample_name'] == "GGJets")
+        tth_bool = (data_test_aux.loc[:, 'sample_name'] == "ttHToGG")
+        gj_bool = (data_test_aux.loc[:, 'sample_name'] == "GJetPt20To40") | (data_test_aux.loc[:, 'sample_name'] == "GJetPt40")
+        nonres_bool = (data_test_aux.loc[:, 'sample_name'] == "GGJets") | (data_test_aux.loc[:, 'sample_name'] == "GJetPt20To40") | (data_test_aux.loc[:, 'sample_name'] == "GJetPt40")
 
 
-    for _ in range(RESAMPLE // resample_):
+        for _ in range(RESAMPLE // resample_):
 
-        for particle_type in ['lead', 'sublead']:
+            for particle_type in ['lead', 'sublead']:
 
-            gg_mvaID = data_hlf_test[
-                gg_bool, 
-                hlf_vars_columns_dict[f"fold_{fold_idx}"][f"{particle_type}_mvaID"]
-            ]
-            data_hlf_test[
-                gj_bool, 
-                hlf_vars_columns_dict[f"fold_{fold_idx}"][f"{particle_type}_mvaID"]
-            ] = resample_from_var(
-                gg_mvaID, 
-                weights_plot[gg_bool],
-                np.sum(gj_bool),
-                bins=190
-            )
+                gg_mvaID = data_hlf_test[
+                    gg_bool, 
+                    hlf_vars_columns_dict[f"fold_{fold_idx}"][f"{particle_type}_mvaID"]
+                ]
+                data_hlf_test[
+                    gj_bool, 
+                    hlf_vars_columns_dict[f"fold_{fold_idx}"][f"{particle_type}_mvaID"]
+                ] = resample_from_var(
+                    gg_mvaID, 
+                    weights_plot[gg_bool],
+                    np.sum(gj_bool),
+                    bins=190
+                )
 
-            tth_pNetB = data_hlf_test[
-                tth_bool, 
-                hlf_vars_columns_dict[f"fold_{fold_idx}"][f"{particle_type}_bjet_btagPNetB"]
-            ]
-            data_hlf_test[
-                nonres_bool, 
-                hlf_vars_columns_dict[f"fold_{fold_idx}"][f"{particle_type}_bjet_btagPNetB"]
-            ] = resample_from_var(
-                tth_pNetB, 
-                np.abs(weights_plot[tth_bool]),
-                np.sum(nonres_bool),
-                bins=100,
-                min_value=data_test_aux.loc[nonres_bool, "max_nonbjet_btag"].to_numpy()
-            )
+                tth_pNetB = data_hlf_test[
+                    tth_bool, 
+                    hlf_vars_columns_dict[f"fold_{fold_idx}"][f"{particle_type}_bjet_btagPNetB"]
+                ]
+                data_hlf_test[
+                    nonres_bool, 
+                    hlf_vars_columns_dict[f"fold_{fold_idx}"][f"{particle_type}_bjet_btagPNetB"]
+                ] = resample_from_var(
+                    tth_pNetB, 
+                    np.abs(weights_plot[tth_bool]),
+                    np.sum(nonres_bool),
+                    bins=100,
+                    min_value=data_test_aux.loc[nonres_bool, "max_nonbjet_btag"].to_numpy()
+                )
 
-        nonres_ggf_preds = booster.predict(
-            xgb.DMatrix(
-                data=data_hlf_test[nonres_bool], label=xgb_label_test[nonres_bool], 
-                weight=np.abs(weight_test)[nonres_bool],
-                missing=-999.0, feature_names=list(hlf_vars_columns_dict[f"fold_{fold_idx}"])
-            ), 
-            iteration_range=(0, booster.best_iteration+1)
-        )[:, 0]
-        
-        for score_cut in score_cuts:
-            if (
-                len(BDT_perf_resample[fold_idx][f'preds{score_cut}'][plot_vars[0]]) > 0 
-                and len(np.concatenate(BDT_perf_resample[fold_idx][f'preds{score_cut}'][plot_vars[0]])) >= 1000
-            ):
-                continue
-
-            new_unique_eventNumber = np.setdiff1d(
-                data_test_aux.loc[nonres_bool, "event"].to_numpy()[nonres_ggf_preds > score_cut],
-                BDT_perf_resample[fold_idx][f'preds{score_cut}']["event"]
-            )
+            nonres_ggf_preds = booster.predict(
+                xgb.DMatrix(
+                    data=data_hlf_test[nonres_bool], label=xgb_label_test[nonres_bool], 
+                    weight=np.abs(weight_test)[nonres_bool],
+                    missing=-999.0, feature_names=list(hlf_vars_columns_dict[f"fold_{fold_idx}"])
+                ), 
+                iteration_range=(0, booster.best_iteration+1)
+            )[:, 0]
             
-            if len(new_unique_eventNumber) > 0:
-                BDT_perf_resample[fold_idx][f'preds{score_cut}']["event"].extend(new_unique_eventNumber.tolist())
+            for score_cut in score_cuts:
+                if (
+                    len(BDT_perf_resample[fold_idx][f'preds{score_cut}'][plot_vars[0]]) > 0 
+                    and len(np.concatenate(BDT_perf_resample[fold_idx][f'preds{score_cut}'][plot_vars[0]])) >= 1000
+                ):
+                    continue
 
-                intersect, comm1, comm2 = np.intersect1d(
+                new_unique_eventNumber = np.setdiff1d(
                     data_test_aux.loc[nonres_bool, "event"].to_numpy()[nonres_ggf_preds > score_cut],
-                    new_unique_eventNumber,
-                    return_indices=True
+                    BDT_perf_resample[fold_idx][f'preds{score_cut}']["event"]
                 )
+                
+                if len(new_unique_eventNumber) > 0:
+                    BDT_perf_resample[fold_idx][f'preds{score_cut}']["event"].extend(new_unique_eventNumber.tolist())
 
-                intersect_bool = np.zeros_like(
-                    data_test_aux.loc[nonres_bool, "event"].to_numpy()[nonres_ggf_preds > score_cut], 
-                    dtype=bool
-                )
-                for index in comm1:
-                    intersect_bool[index] = True
-                
-                for var_idx, plot_var in enumerate(plot_vars):
-                    BDT_perf_resample[fold_idx][f'preds{score_cut}'][plot_var].append(
-                        data_test_aux.loc[nonres_bool, plot_var].to_numpy()[nonres_ggf_preds > score_cut][intersect_bool]
+                    intersect, comm1, comm2 = np.intersect1d(
+                        data_test_aux.loc[nonres_bool, "event"].to_numpy()[nonres_ggf_preds > score_cut],
+                        new_unique_eventNumber,
+                        return_indices=True
                     )
-                
+
+                    intersect_bool = np.zeros_like(
+                        data_test_aux.loc[nonres_bool, "event"].to_numpy()[nonres_ggf_preds > score_cut], 
+                        dtype=bool
+                    )
+                    for index in comm1:
+                        intersect_bool[index] = True
+                    
+                    for var_idx, plot_var in enumerate(plot_vars):
+                        BDT_perf_resample[fold_idx][f'preds{score_cut}'][plot_var].append(
+                            data_test_aux.loc[nonres_bool, plot_var].to_numpy()[nonres_ggf_preds > score_cut][intersect_bool]
+                        )
+                    
+        for var_idx, plot_var in enumerate(plot_vars):
+
+            plot_dirpath_ = os.path.join(plot_dirpath, plot_var)
+            if not os.path.exists(plot_dirpath_):
+                os.makedirs(plot_dirpath_)
+
+            for score_cut in score_cuts:
+                with open(f"resampled_{plot_var}_at{str(score_cut).replace('.', 'p')}_fold{fold_idx}.npy", "wb") as f:
+                    np.save(f, BDT_perf_resample[fold_idx][f'preds{score_cut}'][plot_var])
+            
+            test_hists = [hist.Hist(VARIABLES[plot_var]).fill(var=np.concatenate(BDT_perf_resample[fold_idx][f'preds{score_cut}'][plot_var])) for score_cut in score_cuts]
+            make_input_plot(
+                plot_dirpath_, plot_var,
+                test_hists, 
+                fold_idx=fold_idx, labels=label_arr, 
+                plot_prefix='test_non-res_scoreCut_'
+            )
+
     for var_idx, plot_var in enumerate(plot_vars):
 
         plot_dirpath_ = os.path.join(plot_dirpath, plot_var)
         if not os.path.exists(plot_dirpath_):
             os.makedirs(plot_dirpath_)
 
+        concat_samples = {
+            score_cut: np.concatenate(
+                [np.concatenate(BDT_perf_resample[fold_idx][f'preds{score_cut}'][plot_var]) for fold_idx in range(len(BDT_perf_resample))]
+            ) for score_cut in score_cuts
+        }
         for score_cut in score_cuts:
-            with open(f"resampled_{plot_var}_at{str(score_cut).replace('.', 'p')}_fold{fold_idx}.npy", "wb") as f:
-                np.save(f, BDT_perf_resample[fold_idx][f'preds{score_cut}'][plot_var])
-        
-        test_hists = [hist.Hist(VARIABLES[plot_var]).fill(var=np.concatenate(BDT_perf_resample[fold_idx][f'preds{score_cut}'][plot_var])) for score_cut in score_cuts]
+            with open(f"resampled_{plot_var}_at{str(score_cut).replace('.', 'p')}_all.npy", "wb") as f:
+                np.save(f, concat_samples[score_cut])
+
+        test_hists = [hist.Hist(VARIABLES[plot_var]).fill(
+            var=np.concatenate(
+                [np.concatenate(BDT_perf_resample[fold_idx][f'preds{score_cut}'][plot_var]) for fold_idx in range(len(BDT_perf_resample))]
+            )
+        ) for score_cut in score_cuts]
         make_input_plot(
             plot_dirpath_, plot_var,
             test_hists, 
-            fold_idx=fold_idx, labels=label_arr, 
+            fold_idx=None, labels=label_arr, 
             plot_prefix='test_non-res_scoreCut_'
         )
 
-for var_idx, plot_var in enumerate(plot_vars):
-
-    plot_dirpath_ = os.path.join(plot_dirpath, plot_var)
-    if not os.path.exists(plot_dirpath_):
-        os.makedirs(plot_dirpath_)
-
-    concat_samples = {
-        score_cut: np.concatenate(
-            [np.concatenate(BDT_perf_resample[fold_idx][f'preds{score_cut}'][plot_var]) for fold_idx in range(len(BDT_perf_resample))]
-        ) for score_cut in score_cuts
-    }
-    for score_cut in score_cuts:
-        with open(f"resampled_{plot_var}_at{str(score_cut).replace('.', 'p')}_all.npy", "wb") as f:
-            np.save(f, concat_samples[score_cut])
-
-    test_hists = [hist.Hist(VARIABLES[plot_var]).fill(
-        var=np.concatenate(
-            [np.concatenate(BDT_perf_resample[fold_idx][f'preds{score_cut}'][plot_var]) for fold_idx in range(len(BDT_perf_resample))]
-        )
-    ) for score_cut in score_cuts]
-    make_input_plot(
-        plot_dirpath_, plot_var,
-        test_hists, 
-        fold_idx=None, labels=label_arr, 
-        plot_prefix='test_non-res_scoreCut_'
-    )
 
 
+if __name__ == "__main__":
+    pass
 
 
 
