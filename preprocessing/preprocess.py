@@ -134,7 +134,7 @@ def get_files(eras, type='MC'):
         glob_dirs_set = lambda end_filepath: set(
             glob.glob(os.path.join(era, "**", f"*{end_filepath}"), recursive=True)
         )
-        all_dirs_set = set(glob_dirs_set(end_filepath) for end_filepath in END_FILEPATHS)
+        all_dirs_set = set([elem for end_filepath in END_FILEPATHS for elem in glob_dirs_set(end_filepath)])
         ran_dirs_set = glob_dirs_set(NEW_END_FILEPATH)
 
         # Remove bad dirs
