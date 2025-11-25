@@ -2,9 +2,6 @@
 import math
 import re
 
-# Common Py packages
-import numpy as np
-
 # HEP packages
 import awkward as ak
 import vector as vec

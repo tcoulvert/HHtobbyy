@@ -1,20 +1,64 @@
+# Stdlib packages
 import argparse
 import glob
 import logging
-import os, subprocess
+import os
 
-import awkward as ak
+# Common Py packages
 import numpy as np
+
+# HEP packages
+import awkward as ak
 import pyarrow.parquet as pq
 import vector as vec
 vec.register_awkward()
+
+################################
+
 
 from resolved_preprocessing import  add_vars_resolved
 from boosted_preprocessing import add_vars_boosted
 from preprocessing_utils import match_sample, get_era_filepaths
 
+################################
+
+
+logger = logging.getLogger(__name__)
+parser = argparse.ArgumentParser(description="Preprocess data to add necessary BDT variables.")
+parser.add_argument(
+    "input_eras",
+    help="File for input eras to run processing"
+)
+parser.add_argument(
+    "--output_dirpath", 
+    default=None,
+    help="Full filepath on LPC for output to be dumped, default is for each new file to be adjacent to input files, but with slightly changed filenames."
+)
+parser.add_argument(
+    "--force", 
+    action="store_true",
+    help="Boolean flag to rerun processing on files that already exist, defaults to only running on files that haven't been run"
+)
+parser.add_argument(
+    "--run_all_mc", 
+    action="store_true",
+    help="Boolean flag to run processing on all MC files, defaults to only running files matching keys in `cross_sections` dict"
+)
 
 ################################
+
+
+args = parser.parse_args()
+INPUT_ERAS = args.input_eras
+OUTPUT_DIRPATH = args.output_dirpath
+if OUTPUT_DIRPATH is not None and not os.path.exists(OUTPUT_DIRPATH):
+    os.makedirs(OUTPUT_DIRPATH)
+FORCE = args.force
+RUN_ALL_MC = args.run_all_mc
+
+BAD_DIRS = {'outdated'}
+END_FILEPATHS = ["merged.parquet", "Rescaled.parquet"]
+NEW_END_FILEPATH = "preprocessed.parquet"
 
 # MC Era: total era luminosity [fb^-1] #
 luminosities = {
@@ -49,6 +93,9 @@ cross_sections = {
     'GGJets*40to80': 318100., 'GGJets*80': 88750.,
     # Real b-jets
     'TTGG': 16.96,
+
+    # Data-driven background #
+    'DDQCDGJets': 1.,
 }
 sample_name_map = {
     # Signal #
@@ -72,44 +119,31 @@ sample_name_map = {
     # Real b-jets
     'TTGG',
 
+    # Data-driven background #
+    'DDQCDGJets',
+
     # Data #
     'Data'
 }
-BAD_DIRS = {'outdated'}
-
-RUN_ALL_MC = False
-END_FILEPATH = "*merged.parquet"
-NEW_END_FILEPATH = "*preprocessed.parquet"
-
-################################
-
-
-logger = logging.getLogger(__name__)
-parser = argparse.ArgumentParser(description="Preprocess data to add necessary BDT variables.")
-parser.add_argument(
-    "input_eras",
-    help="File for input eras to run processing"
-)
-parser.add_argument(
-    "--output_dirpath", 
-    default=None,
-    help="Full filepath on LPC for output to be dumped, default is for each new file to be adjacent to input files, but with slightly changed filenames."
-)
 
 ################################
 
 
 def get_files(eras, type='MC'):
     for era in eras.keys():
-        all_dirs_set = set(
-            glob.glob(os.path.join(era, "**", END_FILEPATH), recursive=True)
+        glob_dirs_set = lambda end_filepath: set(
+            glob.glob(os.path.join(era, "**", f"*{end_filepath}"), recursive=True)
         )
+        all_dirs_set = set(glob_dirs_set(end_filepath) for end_filepath in END_FILEPATHS)
+        ran_dirs_set = glob_dirs_set(NEW_END_FILEPATH)
 
         # Remove bad dirs
         all_dirs_set = set(
             item for item in all_dirs_set 
             if match_sample(item, BAD_DIRS) is None
         )
+        if not FORCE:
+            all_dirs_set = all_dirs_set - ran_dirs_set
 
         # Remove non-necessary MC samples
         if type.upper() == 'MC' and not RUN_ALL_MC:
@@ -117,14 +151,11 @@ def get_files(eras, type='MC'):
                 item for item in all_dirs_set 
                 if match_sample(item, cross_sections.keys()) is not None
             )
-        
 
         eras[era] = sorted(all_dirs_set)
 
 def get_output_filepath(input_filepath: str):
-    keep_substr = input_filepath[:input_filepath.rfind(END_FILEPATH[1:])]
-    new_substr = NEW_END_FILEPATH[1:]
-    return keep_substr+new_substr
+    return input_filepath.replace(match_sample(input_filepath, END_FILEPATHS), NEW_END_FILEPATH)
 
 def make_dataset(filepath, era, type='MC'):
     print('======================== \n', 'Starting \n', filepath)
@@ -168,18 +199,11 @@ def make_dataset(filepath, era, type='MC'):
         if pq_writer is None:
             pq_writer = pq.ParquetWriter(output_filepath, schema=table_batch.schema)
         pq_writer.write_table(table_batch)
-    # subprocess.run(["rm", "-f", filepath])
-    # subprocess.run(["mv", output_filepath, filepath])
     print('Finished \n', '========================')
 
-def make_mc(sim_eras=None, output=None):
+def make_mc(sim_eras: dict):
     if sim_eras is None:
-        logger.exception(
-            "Not processing any MC files, returning with status code 1"
-        )
-        return 1
-    if output is not None and not os.path.exists(output):
-        os.makedirs(output)
+        logger.log(1, "Not processing any MC files")
     
     # Pull MC sample dir_list
     get_files(sim_eras)
@@ -190,12 +214,9 @@ def make_mc(sim_eras=None, output=None):
             if match_sample(filepath, {'_up/', '_down/'}) is not None: continue
             make_dataset(filepath, sim_era)
 
-def make_data(data_eras=None, output=None):
+def make_data(data_eras: dict):
     if data_eras is None:
-        logger.exception(
-            "Not processing any Data files, returning with status code 1"
-        )
-        return 1
+        logger.log(1, "Not processing any Data files")
     
     # Pull Data sample dir_list
     get_files(data_eras, type='Data')
@@ -206,16 +227,14 @@ def make_data(data_eras=None, output=None):
             make_dataset(filepath, data_era, type='Data')
 
 if __name__ == '__main__':
-    args = parser.parse_args()
-
-    SIM_ERAS, DATA_ERAS = get_era_filepaths(args.input_eras, split_data_mc_eras=True)
+    SIM_ERAS, DATA_ERAS = get_era_filepaths(INPUT_ERAS, split_data_mc_eras=True)
 
     sim_eras = {
             os.path.join(era, ''): list() for era in SIM_ERAS
-    } if args.sim_era_filepaths is not None else None
-    make_mc(sim_eras=sim_eras, output=args.output_dirpath)
+    } if len(SIM_ERAS) > 0 else None
+    make_mc(sim_eras)
 
     data_eras = {
             os.path.join(era, ''): list() for era in DATA_ERAS
-    } if args.data_era_filepaths is not None else None
-    make_data(data_eras=data_eras, output=args.output_dirpath)
+    } if len(DATA_ERAS) > 0 else None
+    make_data(data_eras)
