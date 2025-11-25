@@ -73,7 +73,7 @@ luminosities = {
 cross_sections = {
     # Signal #
     'GluGluToHH': 34.43*0.0026, 
-    # 'VBFHH': 1.870*0.0026,
+    'VBFHH': 1.870*0.0026,
 
     # Resonant (Mgg) background #
     # Fake b-jets
@@ -100,7 +100,7 @@ cross_sections = {
 }
 sample_name_map = {
     # Signal #
-    'GluGluToHH', 'VBFToHH',
+    'GluGluToHH', 'VBFHH',
 
     # Resonant (Mgg) background #
     # Fake b-jets
