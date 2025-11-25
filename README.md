@@ -5,6 +5,11 @@ This is a repository containing the code necessary to train and evaluate a Multi
 
 The python environment necessary for this repository comes from HiggsDNA (explained below) as a conda enviroment. See the [HiggsDNA documentation](https://higgs-dna.readthedocs.io/en/latest/index.html) for instructions on how to install.
 
+## TO-DO:
+The framework is mostly settled, but there are a couple of useful things that should be implemented.
+1. Fix the `plotting/plot_vars.py` script and merge it with the `plotting/sample_comparison.py` in order to facilitate making input variable plots and Data/MC comparison plots inside the repo. The code should all be there, just needs to be fixed, combined, and cleaned.
+2. Fix the `plotting/sculpting_check.py` function in order to allow for checking for sculpting in the output distributions using the re-sampling technique when necessary. The code should all be there, just needs to be fixed, combined, and cleaned.
+3. Add code to the `fitting/parquet_to_root.py` script to cross-check outputs from resolved BDT and boosted BDT and output separate `.ROOT` files for the various resolved and boosted categories for downstream fitting. This requires making use of the `AUX_hash` column, but it should be straightforward to implement.
 
 ## Pre-processing
 ### HiggsDNA
