@@ -11,7 +11,6 @@ import numpy as np
 import awkward as ak
 import pyarrow.parquet as pq
 import vector as vec
-vec.register_awkward()
 
 ################################
 
@@ -47,6 +46,8 @@ parser.add_argument(
 
 ################################
 
+
+vec.register_awkward()
 
 args = parser.parse_args()
 INPUT_ERAS = args.input_eras
