@@ -162,12 +162,13 @@ def make_dataset(filepath, era, type='MC'):
     print('======================== \n', 'Starting \n', filepath)
     pq_file = pq.ParquetFile(filepath)
     schema = pq.read_schema(filepath)
+    if 'VBFHH' not in filepath: return None
+    for name in schema.names:
+        if 'VBF' not in name and "nonRes" not in name: continue
+        print("-"*60+'\n'+name)
     columns = [
-        field for field in schema.names if (
-            'VBF' not in field
-            and not (
-                'nonResReg' in field and 'nonResReg_DNNpair' not in field
-            )
+        field for field in schema.names if not (
+            'nonResReg' in field and 'nonResReg_DNNpair' not in field
         )
     ]
 
@@ -199,7 +200,7 @@ def make_dataset(filepath, era, type='MC'):
         table_batch = ak.to_arrow_table(ak_batch)
         if pq_writer is None:
             pq_writer = pq.ParquetWriter(output_filepath, schema=table_batch.schema)
-        pq_writer.write_table(table_batch)
+        # pq_writer.write_table(table_batch)
     print('Finished \n', '========================')
 
 def make_mc(sim_eras: dict):

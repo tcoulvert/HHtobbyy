@@ -1,9 +1,15 @@
+# Stdlib packages
 import copy
 
-import awkward as ak
+# Common Py packages
 import numpy as np
+
+# HEP packages
+import awkward as ak
 import vector as vec
-vec.register_awkward()
+
+################################
+
 
 from preprocessing_utils import (
     deltaPhi, deltaEta, 
@@ -12,6 +18,8 @@ from preprocessing_utils import (
 
 ################################
 
+
+vec.register_awkward()
 
 resolved_bTagWPs = {
     # MC
@@ -33,8 +41,7 @@ resolved_bTagWPs = {
 
 FILL_VALUE = -999
 NUM_JETS = 10
-# PREFACTORS = ['nonRes', 'nonResReg', 'nonResReg_DNNpair']
-PREFACTORS = ['nonRes', 'nonResReg_DNNpair']  # 'nonResReg'
+PREFACTORS = ['nonRes', 'nonResReg', 'nonResReg_DNNpair']
 
 ################################
 
@@ -97,6 +104,8 @@ def max_nonbjet_btag(sample, prefactor='nonRes'):
     return max_btag_score
 
 def add_vars_resolved(sample, filepath):
+    for prefactor in PREFACTORS:
+        if all(prefactor not in field for field in sample.fields): PREFACTORS.remove(prefactor)
 
     # Regressed jet kinematics #
     jet_4moms = {}

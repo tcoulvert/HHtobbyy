@@ -1,6 +1,32 @@
-import numpy as np
-import scipy as scp
+# Stdlib packages
+import argparse
+import logging
+
+# Common Py packages
 import matplotlib.pyplot as plt
+
+# HEP packages
+import numpy as np
+import pandas as pd
+import scipy as scp
+
+################################
+
+
+from plotting_utils import make_plot_dirpath
+
+################################
+
+
+logger = logging.getLogger(__name__)
+parser = argparse.ArgumentParser(description="Standardize BDT inputs and save out dataframe parquets.")
+parser.add_argument(
+    "training_dirpath",
+    help="Full filepath on LPC for trained model files"
+)
+
+################################
+
 
 N_BINS = 80
 RANGE = (100, 180)
@@ -43,6 +69,7 @@ def resample_grow_np(var, bool_arr, n_duplicates_per_event):
         new_rows_shape
     )
     return np.concatenate([var, new_rows])
+
 def resample_grow_pd(var, bool_arr, n_duplicates_per_event):
     new_rows = pd.DataFrame(
         np.tile(
@@ -60,7 +87,7 @@ def resample_grow_pd(var, bool_arr, n_duplicates_per_event):
 
 
 resample_ = 10
-RESAMPLE = (resample_) * 10  # Set to False for no resampling, otherwise sets the number of times to duplicate gjet data for resampling
+RESAMPLE = 100  # Set to False for no resampling, otherwise sets the number of times to duplicate gjet data for resampling
 
 plot_dirpath = os.path.join(OUTPUT_DIRPATH, "plots", "mass_sculpting_resample_single")
 if not os.path.exists(plot_dirpath):
@@ -69,6 +96,7 @@ if not os.path.exists(plot_dirpath):
 score_cuts = [0.0, 0.7, 0.99, 0.9955]
 label_arr = [f'score above {score_cut}' for score_cut in score_cuts]
 plot_vars = ['mass', 'dijet_mass', 'HHbbggCandidate_mass']
+
 
 BDT_perf_resample = [
     {
@@ -231,7 +259,7 @@ files = [
     'resampled_mass_at0p0_fold2.npy',  'resampled_mass_at0p9955_fold2.npy',
     'resampled_mass_at0p0_fold3.npy',  'resampled_mass_at0p9955_fold3.npy',
     'resampled_mass_at0p0_fold4.npy',  'resampled_mass_at0p9955_fold4.npy',
-    'resampled_mass_at0p7_all.npy',  'resampled_mass_at0p99_all.npy',
+    'resampled_mass_at0p7_all.npy',    'resampled_mass_at0p99_all.npy',
     'resampled_mass_at0p7_fold0.npy',  'resampled_mass_at0p99_fold0.npy',
     'resampled_mass_at0p7_fold1.npy',  'resampled_mass_at0p99_fold1.npy',
     'resampled_mass_at0p7_fold2.npy',  'resampled_mass_at0p99_fold2.npy',
