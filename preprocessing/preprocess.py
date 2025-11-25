@@ -162,10 +162,10 @@ def make_dataset(filepath, era, type='MC'):
     print('======================== \n', 'Starting \n', filepath)
     pq_file = pq.ParquetFile(filepath)
     schema = pq.read_schema(filepath)
-    if 'VBFHH' not in filepath: return None
-    for name in schema.names:
-        if 'VBF' not in name and "nonRes" not in name: continue
-        print("-"*60+'\n'+name)
+    # if 'VBFHH' not in filepath: return None
+    # for name in schema.names:
+    #     if 'VBF' not in name and "nonRes" not in name: continue
+    #     print("-"*60+'\n'+name)
     columns = [
         field for field in schema.names if not (
             'nonResReg' in field and 'nonResReg_DNNpair' not in field

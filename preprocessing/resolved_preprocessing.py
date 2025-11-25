@@ -104,8 +104,7 @@ def max_nonbjet_btag(sample, prefactor='nonRes'):
     return max_btag_score
 
 def add_vars_resolved(sample, filepath):
-    for prefactor in PREFACTORS:
-        if all(prefactor not in field for field in sample.fields): PREFACTORS.remove(prefactor)
+    prefactors = [prefactor for prefactor in PREFACTORS if any(prefactor in field for field in sample.fields)]
 
     # Regressed jet kinematics #
     jet_4moms = {}
@@ -119,7 +118,7 @@ def add_vars_resolved(sample, filepath):
             }, with_name='Momentum4D'
         )
 
-    for prefactor in PREFACTORS:
+    for prefactor in prefactors:
 
         good_bjets = ak.zip({
             'lead': (sample[f'{prefactor}_lead_bjet_pt'] != FILL_VALUE),
