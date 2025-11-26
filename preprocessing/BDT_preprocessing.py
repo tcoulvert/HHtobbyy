@@ -126,13 +126,16 @@ def get_df_mask(df):
 def get_dfs(filepaths, BDT_vars, AUX_vars):
     dfs, aux_dfs = {}, {}
     for filepath in sorted(filepaths):
-        print(filepath)
         pq_file = pq.ParquetFile(filepath)
         for pq_batch in pq_file.iter_batches(batch_size=524_288, columns=BDT_vars+AUX_vars):
             df_batch = pq_batch.to_pandas()
             df_mask = get_df_mask(df_batch)
-            dfs[filepath] = df_batch.loc[df_mask, BDT_vars].reset_index(drop=True)
-            aux_dfs[filepath] = df_batch.loc[df_mask, AUX_vars].reset_index(drop=True)
+            if filepath not in dfs:
+                dfs[filepath] = df_batch.loc[df_mask, BDT_vars].reset_index(drop=True)
+                aux_dfs[filepath] = df_batch.loc[df_mask, AUX_vars].reset_index(drop=True)
+            else:
+                dfs[filepath] = pd.concat([dfs[filepath], df_batch.loc[df_mask, BDT_vars].reset_index(drop=True)])
+                aux_dfs[filepath] = pd.concat([aux_dfs[filepath], df_batch.loc[df_mask, AUX_vars].reset_index(drop=True)])
 
     return dfs, aux_dfs
 

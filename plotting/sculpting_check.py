@@ -29,9 +29,8 @@ sys.path.append(os.path.join(GIT_REPO, "training/"))
 sys.path.append(os.path.join(GIT_REPO, "evaluation/"))
 
 # Module packages
-from plotting_utils import (
-    make_plot_dirpath, plot_filepath, 
-    make_plot_data, combine_prepostfix
+from plot_hists import (
+    plot_1dhist
 )
 from retrieval_utils import (
     get_class_sample_map, get_n_folds, 
@@ -175,9 +174,31 @@ def resample_grow_pd(var, n_duplicates_per_event):
     return pd.concat([var, new_rows], ignore_index=True)
 
 
-def sculpting_check():
-    make_plot_dirpath(TRAINING_DIRPATH, PLOT_TYPE)
+def exp_plus_gauss(x, A, tau, B, sigma, C):
+    exp = A * np.exp(-x * tau)
+    gauss = B * np.exp(-0.5 * ((x - 125) / sigma)**2)
+    return exp + gauss + C
 
+def fit_tightest(np_arr, plot_var, subplots):
+
+    np_hist, bin_edges = np.histogram(np_arr, bins=plot_var['bins'], range=plot_var['range'], density=True)
+    bin_centers = [(bin_edges[i] + bin_edges[i+1])/2 for i in range(len(np_hist))]
+
+    popt, pcov = scp.optimize.curve_fit(exp_plus_gauss, bin_centers, np_hist, p0=[10, 1/70, 1, 2, 0])
+    perr = np.sqrt(np.diag(pcov))
+
+    for i, param in enumerate(['Exp Amp', 'Exp tau', 'Gauss Amp', 'Gauss sigma', 'Y-intercept']):
+        print(f"{param} = {popt[i]:.4f}±{perr[i]:.4f}")
+
+    x_trial = np.linspace(100, 180, 1000)
+    y_fit = exp_plus_gauss(x_trial, *popt)
+
+    fig, ax = subplots
+    ax.plot(x_trial, y_fit, color='blue', label=f"Fit - Exponential + Gaussian@125GeV (A={popt[2]:.2f}±{perr[2]:.2f})")
+    return fig, ax
+
+
+def sculpting_check():
     get_booster = get_model_func(TRAINING_DIRPATH)
 
     transform_labels, transform_preds = transform_preds_func(CLASS_NAMES, DISCRIMINATOR)
@@ -235,7 +256,7 @@ def sculpting_check():
                 if np.sum(cut_mask) == 0: break
 
                 pass_cut_df = pd.concat([
-                    nonRes_df.loc[cut_mask, [match_regex(var['name'], nonRes_df.columns) for var in PLOT_VARS]],
+                    nonRes_df.loc[cut_mask, [match_regex(plot_var['name'], nonRes_df.columns) for plot_var in PLOT_VARS]],
                     nonRes_aux.loc[cut_mask, ['AUX_hash', 'AUX_eventWeight']]
                 ])
             
@@ -258,40 +279,40 @@ def sculpting_check():
                     
                     fold_hists[hist_name] = pd.concat([fold_hists[hist_name], pass_cut_df.loc[intersect_bool]])
         
+        for plot_var in PLOT_VARS:
+            tightest_hist = fold_hists[list(fold_hists.keys())[-1]]
+            var = match_regex(plot_var['name'], tightest_hist.columns)
+
+            fig, ax = plt.subplots()
+            plot_1dhist(
+                [hist.loc[:, var].to_numpy() for hist in fold_hists], TRAINING_DIRPATH, PLOT_TYPE, var, 
+                weights=[hist.loc[:, 'AUX_eventWeight'].to_numpy() for hist in fold_hists] 
+                if WEIGHTS else [np.ones_like(hist.loc[:, 'AUX_eventWeight']) for hist in fold_hists],
+                subplots=(fig, ax), labels=list(fold_hists.keys()), plot_prefix=DISCRIMINATOR, plot_postfix=f"fold{fold_idx}"
+            )
+            if FIT:
+                fit_tightest(tightest_hist.loc[:, var].to_numpy(), var, (fig, ax))
+            plt.close()
+        
         for hist_name, hist in hists.items():
             if hist is None: hist = copy.deepcopy(fold_hists[hist_name])
             else: hist = pd.concat([hist, fold_hists[hist_name]])
-
-
-def exp_plus_gauss(x, A, tau, B, sigma, C):
-    exp = A * np.exp(-x * tau)
-    gauss = B * np.exp(-0.5 * ((x - 125) / sigma)**2)
-    return exp + gauss + C
-
-def fit_tightest(df: pd.DataFrame):
+    
     for plot_var in PLOT_VARS:
-        np_hist, bin_edges = np.histogram(np_arr, bins=N_BINS, range=RANGE, density=True)
-        bin_centers = [(bin_edges[i] + bin_edges[i+1])/2 for i in range(len(np_hist))]
+        tightest_hist = hists[list(hists.keys())[-1]]
+        var = match_regex(plot_var['name'], tightest_hist.columns)
 
-        popt, pcov = scp.optimize.curve_fit(exp_plus_gauss, bin_centers, np_hist, p0=[10, 1/70, 1, 2, 0])
-        perr = np.sqrt(np.diag(pcov))
-
-        print('-'*60)
-        print(file)
-        for i, param in enumerate(['Exp Amp', 'Exp tau', 'Gauss Amp', 'Gauss sigma', 'Y-intercept']):
-            print(f"{param} = {popt[i]:.4f}±{perr[i]:.4f}")
-
-        x_trial = np.linspace(100, 180, 1000)
-        y_fit = exp_plus_gauss(x_trial, *popt)
-        plt.hist(np_arr, bins=N_BINS, range=RANGE, density=True, histtype='step', color='red', label='Resampled nonResonant MC')
-        #plt.errorbar(bin_centers, np_hist, yerr=np.sqrt(np_hist), color='red', marker='')
-        plt.plot(x_trial, y_fit, color='blue', label='Fit - Exponential + Gaussian@125GeV')
-        plt.legend()
-        plt.savefig(file[:-3]+'png')
+        fig, ax = plt.subplots()
+        plot_1dhist(
+            [hist.loc[:, var].to_numpy() for hist in hists], TRAINING_DIRPATH, PLOT_TYPE, var, 
+            weights=[hist.loc[:, 'AUX_eventWeight'].to_numpy() for hist in hists] 
+            if WEIGHTS else [np.ones_like(hist.loc[:, 'AUX_eventWeight']) for hist in hists],
+            subplots=(fig, ax), labels=list(hists.keys()), plot_prefix=DISCRIMINATOR
+        )
+        if FIT:
+            fit_tightest(tightest_hist.loc[:, var].to_numpy(), var, (fig, ax))
         plt.close()
 
 
 if __name__ == "__main__":
     sculpting_check()
-    if FIT: 
-        fit_tightest()
