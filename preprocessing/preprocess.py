@@ -3,6 +3,7 @@ import argparse
 import glob
 import logging
 import os
+import re
 
 # Common Py packages
 import numpy as np
@@ -34,6 +35,11 @@ parser.add_argument(
     help="Full filepath on LPC for output to be dumped, default is for each new file to be adjacent to input files, but with slightly changed filenames."
 )
 parser.add_argument(
+    "--base_filepath", 
+    default='Run3_202',
+    help="Regex string for splitting filepath if using a new output_dirpath"
+)
+parser.add_argument(
     "--force", 
     action="store_true",
     help="Boolean flag to rerun processing on files that already exist, defaults to only running on files that haven't been run"
@@ -54,6 +60,7 @@ INPUT_ERAS = args.input_eras
 OUTPUT_DIRPATH = args.output_dirpath
 if OUTPUT_DIRPATH is not None and not os.path.exists(OUTPUT_DIRPATH):
     os.makedirs(OUTPUT_DIRPATH)
+BASE_FILEPATH = args.base_filepath
 FORCE = args.force
 RUN_ALL_MC = args.run_all_mc
 
@@ -156,7 +163,15 @@ def get_files(eras, type='MC'):
         eras[era] = sorted(all_dirs_set)
 
 def get_output_filepath(input_filepath: str):
-    return input_filepath.replace(match_sample(input_filepath, END_FILEPATHS), NEW_END_FILEPATH)
+    if OUTPUT_DIRPATH is None:
+        return input_filepath.replace(match_sample(input_filepath, END_FILEPATHS), NEW_END_FILEPATH)
+    else:
+        return os.path.join(
+            OUTPUT_DIRPATH, 
+            input_filepath[
+                re.search(BASE_FILEPATH, input_filepath).start():
+            ].replace(match_sample(input_filepath, END_FILEPATHS), NEW_END_FILEPATH)
+        )
 
 def make_dataset(filepath, era, type='MC'):
     print('======================== \n', 'Starting \n', filepath)
