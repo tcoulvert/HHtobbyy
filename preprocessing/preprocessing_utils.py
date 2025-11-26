@@ -64,4 +64,20 @@ def match_sample(sample_str, regexes):
                 regex_bools.append(False)
         if all(regex_bools):
             return regex
+        
+def match_regex(regex, sample_strs):
+    for sample_str in sorted(sample_strs, key=len):
+        regex_bools = []
+        match_str = sample_str
+        for exp in regex.split('*'):
+            if len(exp) == 0: continue
+            if (exp[0] != '!' and re.search(exp.lower(), match_str.lower()) is not None):
+                regex_bools.append(True)
+                match_str = match_str[re.search(exp.lower(), match_str.lower()).end():]
+            elif (exp[0] == '!' and re.search(exp[1:].lower(), match_str.lower()) is None):
+                regex_bools.append(True)
+            else:
+                regex_bools.append(False)
+        if all(regex_bools):
+            return sample_str
      
