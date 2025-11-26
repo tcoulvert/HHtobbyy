@@ -23,6 +23,7 @@ GIT_REPO = (
     .rstrip()
     .decode("utf-8")
 )
+sys.path.append(os.path.join(GIT_REPO, "preprocessing/"))
 sys.path.append(os.path.join(GIT_REPO, "training/"))
 sys.path.append(os.path.join(GIT_REPO, "evaluation/"))
 
@@ -31,8 +32,17 @@ from plotting_utils import (
     make_plot_dirpath, plot_filepath, 
     make_plot_data, combine_prepostfix
 )
-from training_utils import get_dataset_dirpath
-from evaluation_utils import transform_preds_options
+from retrieval_utils import (
+    get_class_sample_map, get_n_folds, match_sample,
+    get_Dataframe, get_DMatrix
+)
+from training_utils import (
+    get_dataset_dirpath, get_model_func
+)
+from evaluation_utils import (
+    evaluate, transform_preds_options, transform_preds_func,
+    get_filepaths
+)
 
 ################################
 
@@ -45,7 +55,33 @@ parser.add_argument(
 )
 parser.add_argument(
     "sculpting_cuts",
-    help="JSON file that defines the discriminator(s) to use and the cuts to apply for the sculpting check"
+    help="JSON file that defines the discriminator(s) to use, the cuts to apply, and other configurations for the sculpting check"
+)
+parser.add_argument(
+    "--dataset_dirpath", 
+    default=None,
+    help="Full filepath on LPC for standardized dataset (train and test parquets), default is to use dataset in the training `dataset_dirpath.txt` file"
+)
+parser.add_argument(
+    "--dataset", 
+    choices=["train", "train-test"], 
+    default="train-test",
+    help="Make output score distributions for what dataset"
+)
+parser.add_argument(
+    "--weights", 
+    action="store_true",
+    help="Boolean to make plots using MC weights"
+)
+parser.add_argument(
+    "--density", 
+    action="store_true",
+    help="Boolean to make plots density"
+)
+parser.add_argument(
+    "--logy", 
+    action="store_true",
+    help="Boolean to make plots log-scale on y-axis"
 )
 parser.add_argument(
     "--resample",
@@ -54,10 +90,14 @@ parser.add_argument(
     help="Number of times to resample each event to try and get a \"good\" event"
 )
 parser.add_argument(
-    "--resample",
-    type=int,
-    default=10,
-    help="Number of times to resample each event to try and get a \"good\" event"
+    "--syst_name", 
+    default="nominal",
+    help="Name of systemaic to evaluate sculpting over, generally this should just stay as \"nominal\""
+)
+parser.add_argument(
+    "--seed", 
+    default=21,
+    help="Seed for RNG"
 )
 
 ################################
@@ -65,33 +105,43 @@ parser.add_argument(
 
 args = parser.parse_args()
 TRAINING_DIRPATH = os.path.join(args.training_dirpath, "")
-SCULPTING_CUTS_FILEPATH = args.sculpting_cuts
-with open(SCULPTING_CUTS_FILEPATH, 'r') as f:
+if args.dataset_dirpath is None:
+    DATASET_DIRPATH = get_dataset_dirpath(args.training_dirpath)
+else:
+    DATASET_DIRPATH = os.path.join(args.dataset_dirpath, '')
+DATASET = args.dataset
+WEIGHTS = args.weights
+DENSITY = args.density
+LOGY = args.logy
+RESAMPLE = args.resample
+SYST_NAME = args.syst_name
+SEED = args.seed
+
+CLASS_SAMPLE_MAP = get_class_sample_map(DATASET_DIRPATH)
+CLASS_NAMES = [key for key in CLASS_SAMPLE_MAP.keys()]
+PLOT_TYPE = "resample_sculpting"
+
+with open(args.sculpting_cuts, 'r') as f:
     SCULPTING_CUTS = json.load(f)
 DISCRIMINATOR = SCULPTING_CUTS.pop('discriminator')
 assert DISCRIMINATOR in transform_preds_options(), f"Trying to use a discriminator ({DISCRIMINATOR}) that isn't implemented in evaluation_utils. Use one of {transform_preds_options()} or implement your own"
-RESAMPLE = args.resample
-PLOT_TYPE = "resample_sculpting"
-
-N_BINS = 80
-RANGE = (100, 180)
+NONRES_SAMPLES = SCULPTING_CUTS.pop('nonRes_samples')
+PLOT_VARS = SCULPTING_CUTS.pop('plot_vars')
 
 ################################
 
 
 def resample_from_var(
-    sample_var, sample_weight, n_events, 
-    min_value=None,
-    n_samples_per_event=1, bins=100, seed=None
+    arr, weight, n_events, min_value=None, bins=100
 ):
-    resample_rng = np.random.default_rng(seed=seed)
+    resample_rng = np.random.default_rng(seed=SEED)
 
-    np_hist, bin_edges = np.histogram(sample_var, bins=bins, weights=sample_weight, density=True)
+    np_hist, bin_edges = np.histogram(arr, bins=bins, weights=weight, density=True)
     np_hist /= np.sum(np_hist)
 
-    bin_choices = resample_rng.choice(np.arange(len(np_hist)), size=n_events*n_samples_per_event, p=np_hist)
+    bin_choices = resample_rng.choice(np.arange(len(np_hist)), size=n_events, p=np_hist)
 
-    value_choices = (bin_edges[bin_choices+1] - bin_edges[bin_choices]) * resample_rng.random(size=n_events*n_samples_per_event) + bin_edges[bin_choices]
+    value_choices = (bin_edges[bin_choices+1] - bin_edges[bin_choices]) * resample_rng.random(size=n_events) + bin_edges[bin_choices]
 
     if min_value is None or np.all(value_choices > min_value):
         return value_choices
@@ -100,7 +150,7 @@ def resample_from_var(
 
         largest_min_value = np.max(min_value[bad_choices_bool])
 
-        np_hist, bin_edges = np.histogram(sample_var[sample_var > largest_min_value], bins=bins, weights=sample_weight[sample_var > largest_min_value], density=True)
+        np_hist, bin_edges = np.histogram(arr[arr > largest_min_value], bins=bins, weights=arr[arr > largest_min_value], density=True)
         np_hist /= np.sum(np_hist)
 
         bin_choices = resample_rng.choice(np.arange(len(np_hist)), size=np.sum(bad_choices_bool), p=np_hist)
@@ -117,14 +167,11 @@ def resample_grow_np(var, bool_arr, n_duplicates_per_event):
     )
     return np.concatenate([var, new_rows])
 
-def resample_grow_pd(var, bool_arr, n_duplicates_per_event):
+def resample_grow_pd(var, n_duplicates_per_event):
     new_rows = pd.DataFrame(
-        np.tile(
-            ( var.loc[bool_arr] ).to_numpy(),
-            (n_duplicates_per_event, 1)
-        ),
-        columns=var.columns
+        np.tile(var.to_numpy(), (n_duplicates_per_event, 1)), columns=var.columns
     )
+    new_rows['AUX_resampled'] = np.ones_like(new_rows['AUX_hash'].to_numpy(), dtype=bool)
     return pd.concat([var, new_rows], ignore_index=True)
         
 
@@ -133,16 +180,58 @@ def resample_grow_pd(var, bool_arr, n_duplicates_per_event):
 def sculpting_check():
     make_plot_dirpath(TRAINING_DIRPATH, PLOT_TYPE)
 
-    score_cuts = [0.0, 0.7, 0.99, 0.9955]
-    label_arr = [f'score above {score_cut}' for score_cut in score_cuts]
-    plot_vars = ['mass', 'dijet_mass', 'HHbbggCandidate_mass']
+    get_booster = get_model_func(TRAINING_DIRPATH)
+
+    transform_labels, transform_preds = transform_preds_func(CLASS_NAMES, DISCRIMINATOR)
+
+    hists = {hist_name: None for hist_name in SCULPTING_CUTS.keys()}
+
+    for fold_idx in range(get_n_folds(DATASET_DIRPATH)):
+        booster = get_booster(fold_idx)
+
+        get_resample_filepaths = lambda nonres_samples_key: [
+            filepath for filepath in get_filepaths(DATASET_DIRPATH, DATASET, SYST_NAME)(fold_idx) 
+            if match_sample(filepath, [sample[nonres_samples_key] for sample in NONRES_SAMPLES]) is not None
+        ]
+        nonRes_filepaths = get_resample_filepaths('name')
+
+        nonRes_df, nonRes_aux = pd.concat([get_Dataframe(filepath) for filepath in nonRes_filepaths]), pd.concat([get_Dataframe(filepath, aux=True) for filepath in nonRes_filepaths])
+        nonRes_aux['AUX_resampled'] = np.zeros_like(nonRes_aux['AUX_hash'].to_numpy(), dtype=bool)
+        nonRes_df, nonRes_aux = resample_grow_pd(nonRes_df, RESAMPLE), resample_grow_pd(nonRes_aux, RESAMPLE)
+
+        Res_filepaths = get_resample_filepaths('resample_from')
+        Res_df, Res_aux = pd.concat([get_Dataframe(filepath) for filepath in Res_filepaths]), pd.concat([get_Dataframe(filepath, aux=True) for filepath in Res_filepaths])
+
+        while True:
+
+            for nonRes_sample in NONRES_SAMPLES:
+                nonRes_mask = np.logical_and(
+                    nonRes_aux.loc[:, "AUX_sample_name"] == nonRes_sample["name"],
+                    nonRes_aux.loc[:, "AUX_resampled"]
+                )
+                Res_mask = (Res_aux.loc[:, "AUX_sample_name"] == nonRes_sample["resample_from"])
+
+                for resample_var in nonRes_sample["resample_vars"]:
+                    try:
+                        variable = [field for field in sorted(nonRes_df.fields, key=len) if match_sample(field, {resample_var}) is not None][0]
+                    except IndexError as e:
+                        logger.error(f"Variable with regex string {resample_var} does not exist in Dataframe, check if the regex string is correct")
+                        raise e
+                    nonRes_df.loc[nonRes_mask, variable] = resample_from_var(
+                        Res_df.loc[Res_mask, variable], weight=Res_aux.loc[Res_mask, "AUX_eventWeight"] if WEIGHTS else np.ones(np.sum(Res_mask)),
+                        n_events=np.sum(nonRes_mask), min_value=nonRes_df.loc[nonRes_mask, "AUX_max_nonbjet_btag"] if "btag" in variable and "WP" not in variable else None
+                    )
+
+            nonRes_dm = get_DMatrix(nonRes_df, nonRes_aux, dataset='test', label=False)
+            nonRes_preds = evaluate(booster, nonRes_dm)
+            transformed_preds = transform_preds(nonRes_preds)
+
+            for hist_name, cut_dict in SCULPTING_CUTS.items():
+                if hists[hist_name] is not None and len(hists[hist_name]) > 1000: continue
+
+                
 
 
-    BDT_perf_resample = [
-        {
-            f'preds{score_cut}': copy.deepcopy({plot_var: list() for plot_var in plot_vars+['event']}) for score_cut in score_cuts
-        } for fold_idx in range(len(bdt_train_dict))
-    ]
 
     for fold_idx in range(len(bdt_train_dict)):
         booster = xgb.Booster(param)
