@@ -170,33 +170,28 @@ def submit(
         # submit_file.write('requirements = Machine =!= LastRemoteHost\n')
         submit_file.write(f"queue {n_folds}\n")
     
-    # Submit the condor jobs
-    schedd = htcondor2.Schedd()
-    submit_dict = {}
-    with open(CONDOR_FILEPATHS['submission'], "r") as submit_file:
-        for line in submit_file:
-            try:
-                key, value = line.split(' = ')[0].strip(), line.split(' = ')[1].strip()
-                submit_dict[key] = value
-            except IndexError as e:
-                if "queue" not in line: 
-                    logger.error(f"Making submission dictionary failed with line {line}")
-                    raise e
+    # Submits the condor jobs
     # see https://batchdocs.web.cern.ch/troubleshooting/eos.html#no-eos-submission-allowed
-    submit_result = schedd.submit(htcondor2.Submit(submit_dict), spool=CWD.startswith("/eos"), queue=str(n_folds))
+    os.system(f"condor_submit {'-spool ' if CWD.startswith('/eos') else ''}{CONDOR_FILEPATHS['submission']} > {CURRENT_TIME}_submission_output.txt")
 
+    with open(f"{CURRENT_TIME}_submission_output.txt", 'r') as f:
+        cluster_id = int(re.search(r'\d+', f.read()[::-1]).group(0)[::-1])
+    os.system(f"rm {CURRENT_TIME}_submission_output.txt")
     while True:
-        jobs = schedd.query(constraint=f"ClusterId == {submit_result.cluster()}", projection=["ClusterId", "ProcId", "JobStatus", "RequestMemory"])
-        if len(jobs) == 0:
+        os.system(f"condor_q -constraint \"ClusterId == {cluster_id}\" -af JobId JobStatus RequestMemory | wc -l > {CURRENT_TIME}_job_info.txt")
+        if os.path.getsize(f"{CURRENT_TIME}_job_info.txt") == 0:
             logger.log(1, f"Finished running condor jobs, running postprocessing.")
+            os.system(f"rm {CURRENT_TIME}_job_info.txt")
             postprocessing(output_dirpath, eos_dirpath)
             break
-        else:
-            if any(job['JobStatus'] == 5 for job in jobs):
-                old_memory = jobs[0]["RequestMemory"]
-                new_memory = int(
-                    int(re.search(r'\d+', old_memory).group()) * 1.5
-                )
-                memory_units = old_memory[re.search(r'\d+', old_memory).end():]
-                schedd.edit(f"ClusterId == {submit_result.cluster()}", "RequestMemory", f"\"{new_memory}{memory_units}\"")
-            time.sleep(60)
+        with open(f"{CURRENT_TIME}_job_info.txt", 'r') as f:
+            for line in f:
+                job_info = line.strip().split()
+                assert len(job_info) == 3, f"condor_q command is wrong, fix"
+                JobId, JobStatus, RequestMemory = int(job_info[0]), int(job_info[1]), job_info[2]
+                if JobStatus == 5:
+                    new_RequestMemory = f"{int( int(re.search(r'\d+', RequestMemory).group()) * 1.5 )}{RequestMemory[re.search(r'\d+', RequestMemory).end():]}"
+                    os.system(f"condor_qedit {JobId} RequestMemory={new_RequestMemory}")
+                    logger.log(1, f"JobId {JobId} held, requesting 1.5x memory and resubmitting.")
+        time.sleep(60)
+                
