@@ -40,20 +40,9 @@ plt.rcParams.update({"axes.prop_cycle": cycler("color", cmap_petroff10)})
 ################################
 
 
-def plot_1dhist(
-    np_arrs, training_dirpath: str, plot_type: str, var_label: str,
-    weights=None,
-    subplots: tuple = None, stack: bool=False,
-    labels: list=None, plot_prefix: str=None,  plot_postfix: str=None
-):
-    close = not (subplots is None)
-    plot_dirpath = make_plot_dirpath(training_dirpath, plot_type)
-
-    if len(np.shape(np_arrs)) == 1: np_arrs = [np_arrs]
-    elif len(np.shape(np_arrs)) > 2: raise IndexError(f"Input array should be either a 1D numpy array or a list of 1D numpy arrays, your shape is {np.shape(np_arr)}")
-    
+def make_hists(arrs: list, var_label: str, weights: list=None):
     hists = []
-    for i, arr in enumerate(np_arrs):
+    for i, arr in enumerate(arrs):
         var_mask = (
             (arr != FILL_VALUE)
             & np.isfinite(arr)
@@ -68,6 +57,97 @@ def plot_1dhist(
             storage='weight'
         ).fill(var=arr[var_mask], weight=weights[i] if weights is not None else np.ones_like(arr[var_mask]))
         hists.append(var_hist)
+    return hists
+
+
+def plot_ratio(
+    arrs1: list|np.ndarray, arrs2: list|np.ndarray, var_label: str, subplots: tuple,
+    training_dirpath: str, plot_type: str, close: bool=False,
+    weights1: list|np.ndarray=None, weights2: list|np.ndarray=None, 
+    yerr: bool=True, central_value=1.0, color='black', lw=2.,
+    plot_prefix: str=None,  plot_postfix: str=None
+):
+    """
+    Does the ratio plot (code copied from Hist.plot_ratio_array b/c they don't
+      do what we need.)
+    """
+    plot_dirpath = make_plot_dirpath(training_dirpath, plot_type)
+
+    for arrs, weights in [(arrs1, weights1), (arrs2, weights2)]:
+        if len(np.shape(arrs)) == 1: arrs = [arrs]; weights = [weights]
+        elif len(np.shape(arrs)) > 2: raise IndexError(f"Input array should be either a 1D numpy array or a list of 1D numpy arrays, your shape is {np.shape(arrs)}")
+
+    hists1 = make_hists(arrs1, var_label, weights=weights1)
+    hists2 = make_hists(arrs2, var_label, weights=weights2)
+
+    ratio = np.sum([hist1.values() for hist1 in hists1], axis=1) / np.sum([hist2.values() for hist2 in hists2], axis=1)
+    numer_err, denom_err = np.sum([hist1.variances() for hist1 in hists1], axis=1), np.sum([hist2.variances() for hist2 in hists2], axis=1)
+    for arr in [ratio, numer_err, denom_err]:  # Set 0 and inf to nan to hide during plotting
+        arr[arr == 0] = np.nan  
+        arr[np.isinf(arr)] = np.nan
+
+    fig, axs = subplots[0], subplots[1]
+
+    axs[1].set_ylim(0., 2.5)
+    if np.min(ratio - numer_err) > 0.8 and np.max(ratio + numer_err) < 1.2:
+        axs[1].set_ylim(0.8, 1.2)
+    axs[1].axhline(
+        central_value, color="black", linestyle="solid", lw=1.
+    )
+    axs[1].stairs(
+        ratio, edges=hists1[0].axis.edges[0], fill=False, 
+        baseline=1., lw=lw, color=color, alpha=0.8
+    )
+
+    if yerr:
+        axs[1].errorbar(
+            hists1[0].axis.centers[0], ratio, yerr=numer_err, 
+            fmt='none', lw=lw, color=color, alpha=0.8
+        )
+        axs[1].bar(
+            hists1[0].axis.centers[0], height=denom_err * 2, width=(hists1[0].axis.centers[0][1] - hists1[0].axis.centers[0][0]), 
+            bottom=(central_value - denom_err), color="green", alpha=0.5, hatch='//'
+        )
+
+    fig.subplots_adjust(hspace=0.05)
+    axs[1].set_xlabel(axs[0].get_xlabel())
+    axs[0].set_xlabel('')
+
+    plt.savefig(
+        plot_filepath(plot_type, plot_dirpath, plot_prefix, plot_postfix), 
+        bbox_inches='tight'
+    )
+    plt.savefig(
+        plot_filepath(plot_type, plot_dirpath, plot_prefix, plot_postfix, format='pdf'), 
+        bbox_inches='tight'
+    )
+    if close: plt.close()
+
+def ratio_error(numer_values, denom_values, numer_err, denom_err):
+    ratio_err =  np.sqrt(
+        np.power(denom_values, -2) * (
+            np.power(numer_err, 2) + (
+                np.power(numer_values / denom_values, 2) * np.power(denom_err, 2)
+            )
+        )
+    )
+    return ratio_err
+
+
+def plot_1dhist(
+    arrs: list|np.ndarray, training_dirpath: str, plot_type: str, var_label: str,
+    weights: list|np.ndarray=None, yerr: bool=False, subplots: tuple = None, 
+    histtype: str="step", stack: bool=False, labels: list|str=None, 
+    logy: bool=False, density: bool=False,
+    plot_prefix: str=None,  plot_postfix: str=None
+):
+    close = not (subplots is None)
+    plot_dirpath = make_plot_dirpath(training_dirpath, plot_type)
+
+    if len(np.shape(arrs)) == 1: arrs = [arrs]; weights = [weights]
+    elif len(np.shape(arrs)) > 2: raise IndexError(f"Input array should be either a 1D numpy array or a list of 1D numpy arrays, your shape is {np.shape(arrs)}")
+    
+    hists = make_hists(arrs, var_label)
 
     if subplots is None: fig, ax = plt.subplots()
     else: fig, ax = subplots
@@ -75,12 +155,15 @@ def plot_1dhist(
     hep.cms.lumitext(f"Run3" + r" (13.6 TeV)", ax=ax)
     hep.cms.text("Simulation", ax=ax)
 
+    w2 = None if weights is None else np.sum([var_hist.variances() for var_hist in hists], axis=1)
+
     if stack:
-        hep.histplot(hists, ax=ax, histtype="step", yerr=True, label=labels, stack=stack)
+        hep.histplot(hists, ax=ax, histtype=histtype, yerr=yerr, label=labels, stack=stack, w2=w2, density=density)
     else:
-        for hist, label in zip(hists, labels): hep.histplot(hists, ax=ax, histtype="step", yerr=True, label=label)
+        for hist, label in zip(hists, labels): hep.histplot(hists, ax=ax, histtype=histtype, yerr=yerr, label=label, w2=w2, density=density)
+    
     plt.legend()
-    plt.yscale('log')
+    if logy: plt.yscale('log')
 
     plt.savefig(
         plot_filepath(plot_type, plot_dirpath, plot_prefix, plot_postfix), 

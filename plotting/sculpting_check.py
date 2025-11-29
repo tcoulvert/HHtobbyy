@@ -278,6 +278,8 @@ def sculpting_check():
                     for index in comm1: intersect_bool[index] = True
                     
                     fold_hists[hist_name] = pd.concat([fold_hists[hist_name], pass_cut_df.loc[intersect_bool]])
+            
+            if all(len(fold_hist) for fold_hist in fold_hists.values() > 1000): break
         
         for plot_var in PLOT_VARS:
             tightest_hist = fold_hists[list(fold_hists.keys())[-1]]

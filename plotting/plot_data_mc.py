@@ -1,18 +1,19 @@
 # Stdlib packages
 import argparse
+import copy
+import json
 import logging
 import os
 import subprocess
 import sys
 
 # Common Py packages
-import numpy as np
-from matplotlib import pyplot as plt
+import matplotlib.pyplot as plt
 
 # HEP packages
-import mplhep as hep
-import hist
-from cycler import cycler
+import numpy as np
+import pandas as pd
+import scipy as scp
 
 ################################
 
@@ -23,24 +24,36 @@ GIT_REPO = (
     .rstrip()
     .decode("utf-8")
 )
-sys.path.append(os.path.join(GIT_REPO, "training/"))
 sys.path.append(os.path.join(GIT_REPO, "preprocessing/"))
+sys.path.append(os.path.join(GIT_REPO, "training/"))
+sys.path.append(os.path.join(GIT_REPO, "evaluation/"))
 
 # Module packages
 from plot_hists import (
-    plot_1dhist
+    plot_1dhist, plot_ratio
 )
-from training_utils import get_dataset_dirpath
+from plotting_utils import combine_prepostfix
+from retrieval_utils import (
+    get_class_sample_map, get_n_folds, 
+    match_sample, match_regex,
+    get_Dataframe, get_DMatrix
+)
+from training_utils import (
+    get_dataset_dirpath, get_model_func
+)
+from evaluation_utils import (
+    evaluate, transform_preds_options, transform_preds_func,
+    get_filepaths
+)
 
 ################################
 
 
-CWD = os.getcwd()
 logger = logging.getLogger(__name__)
 parser = argparse.ArgumentParser(description="Standardize BDT inputs and save out dataframe parquets.")
 parser.add_argument(
-    "training_dirpath", 
-    help="Full filepath on LPC for trained model files"
+    "training_dirpath",
+    help="Full filepath for trained model files"
 )
 parser.add_argument(
     "--dataset_dirpath", 
@@ -49,42 +62,115 @@ parser.add_argument(
 )
 parser.add_argument(
     "--dataset", 
-    choices=["train", "test", "train-test", "all"], 
-    default="train-test",
-    help="Evaluate and save out evaluation for what dataset"
+    choices=["test"], 
+    default="test",
+    help="Make output score distributions for what dataset"
+)
+parser.add_argument(
+    "--density", 
+    action="store_true",
+    help="Boolean to make plots density"
+)
+parser.add_argument(
+    "--liny", 
+    action="store_true",
+    help="Boolean to make plots linear-scale on y-axis"
 )
 parser.add_argument(
     "--syst_name", 
-    choices=["nominal", "all"], 
     default="nominal",
-    help="Evaluate and save out evaluation for what systematic of a dataset"
+    help="Name of systemaic to evaluate sculpting over, generally this should just stay as \"nominal\""
 )
-
-FILL_VALUE = -999
+parser.add_argument(
+    "--seed", 
+    default=21,
+    help="Seed for RNG"
+)
+parser.add_argument(
+    "--discriminator", 
+    choices=transform_preds_options(),
+    default=None,
+    help="Defines the discriminator to use for output scores, discriminators are implemented in evaluation_utils"
+)
 
 ################################
 
 
-CWD = os.getcwd()
 args = parser.parse_args()
 TRAINING_DIRPATH = os.path.join(args.training_dirpath, "")
 if args.dataset_dirpath is None:
     DATASET_DIRPATH = get_dataset_dirpath(args.training_dirpath)
 else:
     DATASET_DIRPATH = os.path.join(args.dataset_dirpath, '')
-WEIGHTS = args.weights
+DATASET = args.dataset
+DENSITY = args.density
+LINY = args.liny
 SYST_NAME = args.syst_name
-PLOT_TYPE = 'vars'
+SEED = args.seed
+DISCRIMINATOR = args.discriminator
 
-plt.style.use(hep.style.CMS)
-plt.rcParams.update({'font.size': 20})
-cmap_petroff10 = ["#3f90da", "#ffa90e", "#bd1f01", "#94a4a2", "#832db6", "#a96b59", "#e76300", "#b9ac70", "#717581", "#92dadd"]
-plt.rcParams.update({"axes.prop_cycle": cycler("color", cmap_petroff10)})
+CLASS_SAMPLE_MAP = get_class_sample_map(DATASET_DIRPATH)
+CLASS_NAMES = [key for key in CLASS_SAMPLE_MAP.keys()]
+PLOT_TYPE = "Data_MC"
 
 ################################
 
 
+def sideband_cuts(aux: pd.DataFrame):
+    event_mask = np.logical_and(
+        np.logical_or(aux['AUX_mass'] < 110, aux['AUX_mass'] > 140),
+        aux['AUX_nonRes_resolved_BDT_mask']
+    )
+    return event_mask
 
+def data_mc_comparison():
+    get_booster = get_model_func(TRAINING_DIRPATH)
+
+    if DISCRIMINATOR is not None:
+        transform_labels, transform_preds = transform_preds_func(CLASS_NAMES, DISCRIMINATOR)
+
+    get_filepaths_func = get_filepaths(DATASET_DIRPATH, DATASET, SYST_NAME)
+
+    for fold_idx in range(get_n_folds(DATASET_DIRPATH)):
+        booster = get_booster(fold_idx)
+
+        Data_filepaths = [filepath for filepath in get_filepaths_func(fold_idx) if 'data' in filepath.lower()]
+        MC_filepaths = [filepath for filepath in get_filepaths_func(fold_idx) if 'sim' in filepath.lower()]
+        assert len(set(get_filepaths_func(fold_idx))) == len(set(Data_filepaths) | set(MC_filepaths)), f"Some files are not being found as data or sim, please check that data filepaths contain \"data\" (not case sensitive) and sim filepaths contain \"sim\""
+        
+        Data_df, Data_aux = pd.concat([get_Dataframe(filepath) for filepath in Data_filepaths]), pd.concat([get_Dataframe(filepath, aux=True) for filepath in Data_filepaths])
+        MC_dfs, MC_auxs = [get_Dataframe(filepath) for filepath in MC_filepaths], [get_Dataframe(filepath, aux=True) for filepath in MC_filepaths]
+        MC_labels = [MC_aux.loc[:, 'AUX_sample_name'][0] for MC_aux in MC_auxs]
+
+        Data_mask, MC_masks = sideband_cuts(Data_aux), [sideband_cuts(MC_aux) for MC_aux in MC_auxs]
+
+        assert all(all(sorted(Data_df.columns[i]) == sorted(MC_df.columns[i]) for i in range(len(Data_df))) for MC_df in MC_dfs), f"Data and MC have different variables"
+        for col in Data_df.columns:
+            fig, axs = plt.subplots(2, 1, sharex=True, height_ratios=[4,1], figsize=(10, 8))
+
+            Data_arr = Data_df.loc[Data_mask, col].to_numpy()
+            plot_1dhist(
+                Data_arr, TRAINING_DIRPATH, PLOT_TYPE, col,
+                weights=np.ones_like(Data_arr), errorbars=True, subplots=(fig, axs[0]),
+                histtype="errorbar", labels='Data', logy=not LINY, density=DENSITY,
+            )
+
+            MC_arrs = [MC_dfs[i].loc[MC_masks[i], col].to_numpy() for i in range(len(MC_dfs))]
+            MC_weights = [MC_auxs[i].loc[MC_masks[i], 'AUX_eventWeight'].to_numpy() for i in range(len(MC_dfs))]
+            plot_1dhist(
+                MC_arrs, TRAINING_DIRPATH, PLOT_TYPE, col,
+                weights=MC_weights, errorbars=True, subplots=(fig, axs[0]),
+                labels=MC_labels, logy=not LINY, density=DENSITY, stack=not DENSITY,
+            )
+
+            plot_ratio(
+                Data_arr, MC_arrs, col, subpots=(fig, axs), 
+                training_dirpath=TRAINING_DIRPATH, plot_type=PLOT_TYPE,
+                weights1=np.ones_like(Data_arr), weights2=MC_weights,
+                close=True,
+                plot_postfix=combine_prepostfix(f"fold{fold_idx}", 'density' if DENSITY else '')
+            )
+            
         
 if __name__ == "__main__":
-    pass
+    data_mc_comparison()

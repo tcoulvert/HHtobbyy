@@ -57,6 +57,7 @@ def plot_filepath(plot_name, plot_dirpath, plot_prefix, plot_postfix, format='pn
     return plot_filepath
 
 def combine_prepostfix(old_plot_prepostfix: str, new_substr: str, fixtype: str):
+    if new_substr == '': return old_plot_prepostfix
     if fixtype not in ['prefix', 'postfix']: raise KeyError(f"Type {fixtype} not in allowed types: {['prefix', 'postfix']}")
     elif fixtype == 'prefix':
         plot_fix = old_plot_prepostfix + ('_' if old_plot_prepostfix != '' else '') + new_substr
