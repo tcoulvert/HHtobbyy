@@ -72,6 +72,8 @@ args = parser.parse_args()
 BDT_CONFIG = args.BDT_config.replace('.py', '')
 exec(f"from {BDT_CONFIG} import *")
 
+EARLY_STOP = False # only process the first fold
+
 ################################
 
 
@@ -295,6 +297,8 @@ def preprocess_resolved_bdt(input_filepaths, output_dirpath):
                 df[f"AUX_{aux_col}"] = test_aux_dfs_fold[filepath].loc[:,aux_col]
 
             if not DRYRUN: df.to_parquet(output_filepath)
+        if EARLY_STOP:
+            break
 
 if __name__ == '__main__':
     print('='*60)
