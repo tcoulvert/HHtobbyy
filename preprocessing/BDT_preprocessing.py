@@ -134,8 +134,8 @@ def get_dfs(filepaths, BDT_vars, AUX_vars):
                 dfs[filepath] = df_batch.loc[df_mask, BDT_vars].reset_index(drop=True)
                 aux_dfs[filepath] = df_batch.loc[df_mask, AUX_vars].reset_index(drop=True)
             else:
-                dfs[filepath] = pd.concat([dfs[filepath], df_batch.loc[df_mask, BDT_vars].reset_index(drop=True)])
-                aux_dfs[filepath] = pd.concat([aux_dfs[filepath], df_batch.loc[df_mask, AUX_vars].reset_index(drop=True)])
+                dfs[filepath] = pd.concat([dfs[filepath], df_batch.loc[df_mask, BDT_vars].reset_index(drop=True)]).reset_index(drop=True)
+                aux_dfs[filepath] = pd.concat([aux_dfs[filepath], df_batch.loc[df_mask, AUX_vars].reset_index(drop=True)]).reset_index(drop=True)
 
     return dfs, aux_dfs
 

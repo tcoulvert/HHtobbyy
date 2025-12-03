@@ -190,7 +190,7 @@ def submit(
                 assert len(job_info) == 3, f"condor_q command is wrong, fix"
                 JobId, JobStatus, RequestMemory = int(job_info[0]), int(job_info[1]), job_info[2]
                 if JobStatus == 5:
-                    new_RequestMemory = f"{int( int(re.search(r'\d+', RequestMemory).group()) * 1.5 )}{RequestMemory[re.search(r'\d+', RequestMemory).end():]}"
+                    new_RequestMemory = str(int( int(re.search(r'\d+', RequestMemory).group()) * 1.5 ))+str(RequestMemory[re.search(r'\d+', RequestMemory).end():])
                     os.system(f"condor_qedit {JobId} RequestMemory={new_RequestMemory}")
                     logger.log(1, f"JobId {JobId} held, requesting 1.5x memory and resubmitting.")
         time.sleep(60)

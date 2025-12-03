@@ -247,3 +247,4 @@ if __name__ == '__main__':
             os.path.join(era, ''): list() for era in DATA_ERAS
     } if len(DATA_ERAS) > 0 else None
     make_data(data_eras)
+
