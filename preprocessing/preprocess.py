@@ -177,11 +177,7 @@ def make_dataset(filepath, era, type='MC'):
     print('======================== \n', 'Starting \n', filepath)
     pq_file = pq.ParquetFile(filepath)
     schema = pq.read_schema(filepath)
-    columns = [
-        field for field in schema.names if not (
-            'nonResReg' in field and 'nonResReg_DNNpair' not in field
-        )
-    ]
+    columns = [field for field in schema.names]
 
     output_filepath = get_output_filepath(filepath)
     pq_writer = None
