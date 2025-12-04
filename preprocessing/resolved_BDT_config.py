@@ -4,7 +4,7 @@ import datetime
 ################################
 
 
-DATASET_TAG = "22to24_bTagWPbatch3XT4XTMHH"
+DATASET_TAG = "22to24_bTagWPbatch3XT4XT"
 
 CLASS_SAMPLE_MAP = {
     'ggF HH': ["GluGlu*HH*kl-1p00"],  # *!batch 
@@ -70,7 +70,7 @@ BASIC_VARIABLES = lambda jet_prefix: {
 }
 MHH_CORRELATED_VARIABLES = lambda jet_prefix: {
     # MHH
-    f'{jet_prefix}_HHbbggCandidate_mass',
+    # f'{jet_prefix}_HHbbggCandidate_mass',
 
     # MET variables
     'puppiMET_sumEt',  #eft
