@@ -9,7 +9,10 @@ import sys
 import numpy as np
 
 # HEP packages
-import gpustat
+try:
+    import gpustat
+except ImportError:
+    pass
 import xgboost as xgb
 
 # ML packages

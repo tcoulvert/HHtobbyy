@@ -27,6 +27,9 @@ DF_SHUFFLE = True
 RNG_SEED = 21
 FILL_VALUE = -999
 
+using_resolution_var = False
+do_reweight = False
+reweight_var = 'sigma_m_over_m_smeared_decorr'
 ################################
 
 
@@ -96,12 +99,19 @@ def get_Dataframe(filepath: str, aux: bool=False):
     schema = pq.read_schema(filepath)
     vars = [var for var in schema.names if ('AUX_' not in var) ^ aux]
 
+    if aux and do_reweight:
+        vars += [reweight_var]
+        
     df = pq.read_table(filepath, columns=vars).to_pandas()
 
     return df
 def get_Dataframes(filepath: str):
     return get_Dataframe(filepath), get_Dataframe(filepath, aux=True)
 def get_train_Dataframe(dataset_dirpath: str, fold_idx: int, dataset: str="train"):
+    import inspect
+    caller_frame = inspect.currentframe().f_back
+    caller_filepath = caller_frame.f_code.co_filename
+    caller_filename = os.path.basename(caller_filepath)
     filepaths = get_train_filepaths_func(dataset_dirpath, dataset=dataset)(fold_idx)
 
     df, aux = None, None
@@ -126,6 +136,44 @@ def get_train_Dataframe(dataset_dirpath: str, fold_idx: int, dataset: str="train
         else:
             df = pd.concat([df, class_df], ignore_index=True)
             aux = pd.concat([aux, class_aux], ignore_index=True)
+    
+    plot_mode = False
+    if 'plot' in caller_filename.lower():
+        plot_mode = True
+    
+    if do_reweight and not plot_mode:
+        # from AUX_sample_name column get all of the available sample names
+        sample_names = aux['AUX_sample_name'].unique().tolist()
+        for sample_name in sample_names:
+            sample_mask = aux['AUX_sample_name'].eq(sample_name)
+            sum_of_weights = aux.loc[sample_mask, 'AUX_eventWeightTrain'].sum()
+            # import deepcopy
+            import copy
+            reweighted_events = copy.deepcopy(aux.loc[sample_mask, reweight_var])
+            # set the FILL_VALUE entries to 1 to avoid division by zero
+            # and this value is standardized before training so we need to invert the standardization first
+            invalid_mask = reweighted_events < (FILL_VALUE+2)
+            var_mean = 0.014581804722822288
+            var_std = 0.0064496533424058715
+            original_values = reweighted_events * var_std + var_mean
+            original_values[invalid_mask] = 1.0  # set invalid entries to 1.0
+            original_values[original_values <= 0] = 1.0  # avoid division by zero
+            aux.loc[sample_mask, 'AUX_eventWeightTrain'] = aux.loc[sample_mask, 'AUX_eventWeightTrain'] / original_values
+            new_sum_of_weights = aux.loc[sample_mask, 'AUX_eventWeightTrain'].sum()
+            _reweight_factor = sum_of_weights / new_sum_of_weights
+            aux.loc[sample_mask, 'AUX_eventWeightTrain'] = aux.loc[sample_mask, 'AUX_eventWeightTrain'] * _reweight_factor
+            print(f"Applied reweighting using {reweight_var} for sample {sample_name} with factor {_reweight_factor} (just for check)")
+        # remove reweight_var column from df
+        df = df.drop(columns=[reweight_var])
+
+    if not using_resolution_var:
+        # remove resolution variable from df
+        if reweight_var in df.columns:
+            df = df.drop(columns=[reweight_var])
+
+    if reweight_var in aux.columns:
+        aux = aux.drop(columns=[reweight_var])
+
 
     # Upweight resonant background and signal samples for training #
     # Non-Resonant background #
