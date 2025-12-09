@@ -1,7 +1,5 @@
 # Stdlib packages
 import argparse
-import copy
-import json
 import logging
 import os
 import subprocess
@@ -13,7 +11,6 @@ import matplotlib.pyplot as plt
 # HEP packages
 import numpy as np
 import pandas as pd
-import scipy as scp
 
 ################################
 
@@ -34,15 +31,14 @@ from plot_hists import (
 )
 from plotting_utils import combine_prepostfix
 from retrieval_utils import (
-    get_class_sample_map, get_n_folds, 
-    match_sample, match_regex,
-    get_Dataframe, get_DMatrix
+    get_class_sample_map, get_n_folds,
+    get_Dataframe
 )
 from training_utils import (
     get_dataset_dirpath, get_model_func
 )
 from evaluation_utils import (
-    evaluate, transform_preds_options, transform_preds_func,
+    transform_preds_options, transform_preds_func,
     get_filepaths
 )
 
@@ -134,9 +130,9 @@ def data_mc_comparison():
     for fold_idx in range(get_n_folds(DATASET_DIRPATH)):
         booster = get_booster(fold_idx)
 
-        Data_filepaths = [filepath for filepath in get_filepaths_func(fold_idx) if 'data' in filepath.lower()]
-        MC_filepaths = [filepath for filepath in get_filepaths_func(fold_idx) if 'sim' in filepath.lower()]
-        assert len(set(get_filepaths_func(fold_idx))) == len(set(Data_filepaths) | set(MC_filepaths)), f"Some files are not being found as data or sim, please check that data filepaths contain \"data\" (not case sensitive) and sim filepaths contain \"sim\""
+        Data_filepaths = [filepath for filepath in get_filepaths_func(fold_idx)[DATASET] if 'data' in filepath.lower()]
+        MC_filepaths = [filepath for filepath in get_filepaths_func(fold_idx)[DATASET] if 'sim' in filepath.lower()]
+        assert len(set(get_filepaths_func(fold_idx)[DATASET])) == len(set(Data_filepaths) | set(MC_filepaths)), f"Some files are not being found as data or sim, please check that data filepaths contain \"data\" (not case sensitive) and sim filepaths contain \"sim\""
         
         Data_df, Data_aux = pd.concat([get_Dataframe(filepath) for filepath in Data_filepaths]), pd.concat([get_Dataframe(filepath, aux=True) for filepath in Data_filepaths])
         MC_dfs, MC_auxs = [get_Dataframe(filepath) for filepath in MC_filepaths], [get_Dataframe(filepath, aux=True) for filepath in MC_filepaths]
@@ -144,14 +140,14 @@ def data_mc_comparison():
 
         Data_mask, MC_masks = sideband_cuts(Data_aux), [sideband_cuts(MC_aux) for MC_aux in MC_auxs]
 
-        assert all(all(sorted(Data_df.columns[i]) == sorted(MC_df.columns[i]) for i in range(len(Data_df))) for MC_df in MC_dfs), f"Data and MC have different variables"
+        assert all(all(sorted(Data_df.columns[i]) == sorted(MC_df.columns[i]) for i in range(len(Data_df.columns))) for MC_df in MC_dfs), f"Data and MC have different variables"
         for col in Data_df.columns:
             fig, axs = plt.subplots(2, 1, sharex=True, height_ratios=[4,1], figsize=(10, 8))
 
             Data_arr = Data_df.loc[Data_mask, col].to_numpy()
             plot_1dhist(
                 Data_arr, TRAINING_DIRPATH, PLOT_TYPE, col,
-                weights=np.ones_like(Data_arr), errorbars=True, subplots=(fig, axs[0]),
+                weights=np.ones_like(Data_arr), yerr=True, subplots=(fig, axs[0]),
                 histtype="errorbar", labels='Data', logy=not LINY, density=DENSITY,
             )
 
@@ -159,7 +155,7 @@ def data_mc_comparison():
             MC_weights = [MC_auxs[i].loc[MC_masks[i], 'AUX_eventWeight'].to_numpy() for i in range(len(MC_dfs))]
             plot_1dhist(
                 MC_arrs, TRAINING_DIRPATH, PLOT_TYPE, col,
-                weights=MC_weights, errorbars=True, subplots=(fig, axs[0]),
+                weights=MC_weights, yerr=True, subplots=(fig, axs[0]),
                 labels=MC_labels, logy=not LINY, density=DENSITY, stack=not DENSITY,
             )
 

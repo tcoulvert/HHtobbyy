@@ -74,7 +74,8 @@ luminosities = {
     '2022*postEE': 26.6717,
     '2023*preBPix': 17.794,
     '2023*postBPix': 9.451,
-    '2024': 109.08
+    '2024': 109.08,
+    '*****DQCDGJets*****': 1.
 }
 # Name: cross section [fb] @ sqrrt{s}=13.6 TeV & m_H=125.09 GeV #
 cross_sections = {
@@ -190,11 +191,14 @@ def make_dataset(filepath, era, type='MC'):
         if type.upper() == 'MC':
             print(f"lumi match = {match_sample(filepath, luminosities.keys())}")
             print(f"xs match = {match_sample(filepath, cross_sections.keys())}")
-            ak_batch['eventWeight'] = (
-                ak_batch['weight'] 
-                * luminosities[match_sample(filepath, luminosities.keys())] 
-                * cross_sections[match_sample(filepath, cross_sections.keys())]
-            )
+            if match_sample(filepath, cross_sections.keys()) != 'DDQCDGJets':
+                ak_batch['eventWeight'] = (
+                    ak_batch['weight'] 
+                    * luminosities[match_sample(filepath, luminosities.keys())] 
+                    * cross_sections[match_sample(filepath, cross_sections.keys())]
+                )
+            else: 
+                ak_batch['eventWeight'] = ak_batch['weight']
         else: 
             ak_batch['weight'] =  ak.ones_like(ak_batch['pt'])
             ak_batch['eventWeight'] =  ak.ones_like(ak_batch['pt'])
@@ -220,6 +224,7 @@ def make_mc(sim_eras: dict):
     # Perform the variable calculation and merging
     for sim_era, filepaths in sim_eras.items():
         for filepath in filepaths:
+            if match_sample(filepath, cross_sections.keys()) != 'DDQCDGJets': continue
             if match_sample(filepath, {'_up/', '_down/'}) is not None: continue
             make_dataset(filepath, sim_era)
 

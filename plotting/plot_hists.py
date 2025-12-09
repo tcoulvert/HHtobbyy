@@ -155,12 +155,12 @@ def plot_1dhist(
     hep.cms.lumitext(f"Run3" + r" (13.6 TeV)", ax=ax)
     hep.cms.text("Simulation", ax=ax)
 
-    w2 = None if weights is None else np.sum([var_hist.variances() for var_hist in hists], axis=1)
+    w2s = [None for var_hist in hists] if weights is None else [var_hist.variances() for var_hist in hists]
 
     if stack:
-        hep.histplot(hists, ax=ax, histtype=histtype, yerr=yerr, label=labels, stack=stack, w2=w2, density=density)
+        hep.histplot(hists, ax=ax, histtype=histtype, yerr=np.sum(w2s, axs=1) if yerr else False, label=labels, stack=stack, density=density)
     else:
-        for hist, label in zip(hists, labels): hep.histplot(hists, ax=ax, histtype=histtype, yerr=yerr, label=label, w2=w2, density=density)
+        for hist, w2, label in zip(hists, w2s, labels): hep.histplot(hist, ax=ax, histtype=histtype, yerr=w2 if yerr else False, label=label, density=density)
     
     plt.legend()
     if logy: plt.yscale('log')
