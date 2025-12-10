@@ -227,7 +227,6 @@ def make_mc(sim_eras: dict):
     # Perform the variable calculation and merging
     for sim_era, filepaths in sim_eras.items():
         for filepath in filepaths:
-            if match_sample(filepath, cross_sections.keys()) != 'DDQCDGJets': continue
             if match_sample(filepath, {'_up/', '_down/'}) is not None: continue
             make_dataset(filepath, sim_era)
 
