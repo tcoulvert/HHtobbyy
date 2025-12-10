@@ -165,14 +165,17 @@ def get_files(eras, type='MC'):
 
 def get_output_filepath(input_filepath: str):
     if OUTPUT_DIRPATH is None:
-        return input_filepath.replace(match_sample(input_filepath, END_FILEPATHS), NEW_END_FILEPATH)
+        output_filepath = input_filepath.replace(match_sample(input_filepath, END_FILEPATHS), NEW_END_FILEPATH)
     else:
-        return os.path.join(
+        output_filepath = os.path.join(
             OUTPUT_DIRPATH, 
             input_filepath[
                 re.search(BASE_FILEPATH, input_filepath).start():
             ].replace(match_sample(input_filepath, END_FILEPATHS), NEW_END_FILEPATH)
         )
+    if not os.path.exists('/'.join(output_filepath.split('/')[:-1])):
+        os.makedirs('/'.join(output_filepath.split('/')[:-1]))
+    return output_filepath
 
 def make_dataset(filepath, era, type='MC'):
     print('======================== \n', 'Starting \n', filepath)
