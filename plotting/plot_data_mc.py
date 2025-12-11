@@ -89,6 +89,11 @@ parser.add_argument(
     default=None,
     help="Defines the discriminator to use for output scores, discriminators are implemented in evaluation_utils"
 )
+parser.add_argument(
+    "--fold",
+    default='none',
+    help="Make plots for specific fold. \'none\' only plots merged, \'all\' plots all folds. Otherwise passing an int plots the fold with that index (index starting at 0)"
+)
 
 ################################
 
@@ -105,6 +110,8 @@ LINY = args.liny
 SYST_NAME = args.syst_name
 SEED = args.seed
 DISCRIMINATOR = args.discriminator
+FOLD_TO_PLOT = args.fold
+assert FOLD_TO_PLOT in ['none', 'all']+list(range(get_n_folds(DATASET_DIRPATH))), f"The option passed to \'--fold\' ({FOLD_TO_PLOT}) is not allowed, for this dataset your options are: {['none', 'all']+list(range(get_n_folds(DATASET_DIRPATH)))}"
 
 CLASS_SAMPLE_MAP = get_class_sample_map(DATASET_DIRPATH)
 CLASS_NAMES = [key for key in CLASS_SAMPLE_MAP.keys()]
@@ -113,7 +120,7 @@ PLOT_TYPE = f"Data_MC_{DATASET}"
 ################################
 
 
-def sideband_cuts(aux_: pd.DataFrame):
+def sideband_cuts(aux: pd.DataFrame):
     event_mask = np.logical_and(
         np.logical_or(aux['AUX_mass'] < 110, aux['AUX_mass'] > 140),
         aux['AUX_nonRes_resolved_BDT_mask']
@@ -149,28 +156,61 @@ def data_mc_comparison():
 
         Data_mask, MC_masks = sideband_cuts(Data_aux), [sideband_cuts(MC_aux) for MC_aux in MC_auxs]
 
-        if fold_idx == 0:
-            full_Data_df, full_Data_aux = copy.deepcopy(Data_df.loc[Data_mask]), copy.deepcopy(Data_aux.loc[Data_mask])
-            full_MC_dfs, full_MC_auxs, full_MC_labels = (
-                copy.deepcopy([MC_dfs[i].loc[MC_masks[i]] for i in range(len(MC_labels))]),
-                copy.deepcopy([MC_auxs[i].loc[MC_masks[i]] for i in range(len(MC_labels))]),
-                MC_labels
-            )
-        else:
-            full_Data_df, full_Data_aux = (
-                pd.concat([full_Data_df, Data_df.loc[Data_mask]]).reset_index(drop=True), 
-                pd.concat([full_Data_aux, Data_aux.loc[Data_mask]]).reset_index(drop=True)
-            )
-            full_MC_dfs, full_MC_auxs = (
-                [pd.concat([full_MC_dfs[i], MC_dfs[i].loc[MC_masks[i]]]) for i in range(len(MC_labels))],
-                [pd.concat([full_MC_auxs[i], MC_auxs[i].loc[MC_masks[i]]]) for i in range(len(MC_labels))]
-            )
-
         assert all(all(sorted(Data_df.columns[i]) == sorted(MC_df.columns[i]) for i in range(len(Data_df.columns))) for MC_df in MC_dfs), f"Data and MC have different variables"
-        for col in Data_df.columns:
+
+        if FOLD_TO_PLOT == 'all' or FOLD_TO_PLOT == 'none':
+            if fold_idx == 0:
+                full_Data_df, full_Data_aux = copy.deepcopy(Data_df.loc[Data_mask]), copy.deepcopy(Data_aux.loc[Data_mask])
+                full_MC_dfs, full_MC_auxs, full_MC_labels = (
+                    copy.deepcopy([MC_dfs[i].loc[MC_masks[i]] for i in range(len(MC_labels))]),
+                    copy.deepcopy([MC_auxs[i].loc[MC_masks[i]] for i in range(len(MC_labels))]),
+                    MC_labels
+                )
+            else:
+                full_Data_df, full_Data_aux = (
+                    pd.concat([full_Data_df, Data_df.loc[Data_mask]]).reset_index(drop=True), 
+                    pd.concat([full_Data_aux, Data_aux.loc[Data_mask]]).reset_index(drop=True)
+                )
+                full_MC_dfs, full_MC_auxs = (
+                    [pd.concat([full_MC_dfs[i], MC_dfs[i].loc[MC_masks[i]]]) for i in range(len(MC_labels))],
+                    [pd.concat([full_MC_auxs[i], MC_auxs[i].loc[MC_masks[i]]]) for i in range(len(MC_labels))]
+                )
+        if FOLD_TO_PLOT == 'all' or FOLD_TO_PLOT == fold_idx:
+            for col in Data_df.columns:
+                fig, axs = plt.subplots(2, 1, sharex=True, height_ratios=[4,1], figsize=(10, 8))
+
+                Data_arr = Data_df.loc[Data_mask, col].to_numpy()
+                plot_1dhist(
+                    Data_arr, TRAINING_DIRPATH, PLOT_TYPE+f'_fold{fold_idx}', col,
+                    weights=np.ones_like(Data_arr), yerr=True, subplots=(fig, axs[0]),
+                    histtype="errorbar", labels='Data', logy=not LINY, density=DENSITY,
+                    colors='k'
+                )
+
+                MC_arrs = [MC_dfs[i].loc[MC_masks[i], col].to_numpy() for i in range(len(MC_dfs))]
+                MC_weights = [MC_auxs[i].loc[MC_masks[i], 'AUX_eventWeight'].to_numpy() for i in range(len(MC_dfs))]
+                plot_1dhist(
+                    MC_arrs, TRAINING_DIRPATH, PLOT_TYPE+f'_fold{fold_idx}', col,
+                    weights=MC_weights, yerr=True, subplots=(fig, axs[0]),
+                    histtype='step' if DENSITY else 'fill', labels=MC_labels, 
+                    logy=not LINY, density=DENSITY, stack=not DENSITY,
+                )
+
+                plot_ratio(
+                    Data_arr, MC_arrs, col, (fig, axs), 
+                    TRAINING_DIRPATH, PLOT_TYPE+f'_fold{fold_idx}',
+                    weights1=np.ones_like(Data_arr), weights2=MC_weights,
+                    save_and_close=True,
+                    plot_prefix=col, 
+                    plot_postfix=combine_prepostfix(f"fold{fold_idx}", 'density' if DENSITY else '', 'postfix')
+                )
+
+    if FOLD_TO_PLOT == 'all' or FOLD_TO_PLOT == 'none':
+        assert all(all(sorted(full_Data_df.columns[i]) == sorted(MC_df.columns[i]) for i in range(len(Data_df.columns))) for MC_df in full_MC_dfs), f"Data and MC have different variables"
+        for col in full_Data_df.columns:
             fig, axs = plt.subplots(2, 1, sharex=True, height_ratios=[4,1], figsize=(10, 8))
 
-            Data_arr = Data_df.loc[Data_mask, col].to_numpy()
+            Data_arr = full_Data_df.loc[:, col].to_numpy()
             plot_1dhist(
                 Data_arr, TRAINING_DIRPATH, PLOT_TYPE, col,
                 weights=np.ones_like(Data_arr), yerr=True, subplots=(fig, axs[0]),
@@ -178,8 +218,8 @@ def data_mc_comparison():
                 colors='k'
             )
 
-            MC_arrs = [MC_dfs[i].loc[MC_masks[i], col].to_numpy() for i in range(len(MC_dfs))]
-            MC_weights = [MC_auxs[i].loc[MC_masks[i], 'AUX_eventWeight'].to_numpy() for i in range(len(MC_dfs))]
+            MC_arrs = [full_MC_dfs[i].loc[:, col].to_numpy() for i in range(len(full_MC_labels))]
+            MC_weights = [full_MC_auxs[i].loc[:, 'AUX_eventWeight'].to_numpy() for i in range(len(full_MC_labels))]
             plot_1dhist(
                 MC_arrs, TRAINING_DIRPATH, PLOT_TYPE, col,
                 weights=MC_weights, yerr=True, subplots=(fig, axs[0]),
@@ -191,39 +231,9 @@ def data_mc_comparison():
                 Data_arr, MC_arrs, col, subplots=(fig, axs), 
                 training_dirpath=TRAINING_DIRPATH, plot_type=PLOT_TYPE,
                 weights1=np.ones_like(Data_arr), weights2=MC_weights,
-                save_and_close=True,
-                plot_prefix=col, 
-                plot_postfix=combine_prepostfix(f"fold{fold_idx}", 'density' if DENSITY else '', 'postfix')
+                yerr=True, save_and_close=True,
+                plot_prefix=col, plot_postfix='density' if DENSITY else ''
             )
-
-    assert all(all(sorted(full_Data_df.columns[i]) == sorted(MC_df.columns[i]) for i in range(len(Data_df.columns))) for MC_df in full_MC_dfs), f"Data and MC have different variables"
-    for col in full_Data_df.columns:
-        fig, axs = plt.subplots(2, 1, sharex=True, height_ratios=[4,1], figsize=(10, 8))
-
-        Data_arr = full_Data_df.loc[:, col].to_numpy()
-        plot_1dhist(
-            Data_arr, TRAINING_DIRPATH, PLOT_TYPE, col,
-            weights=np.ones_like(Data_arr), yerr=True, subplots=(fig, axs[0]),
-            histtype="errorbar", labels='Data', logy=not LINY, density=DENSITY,
-            colors='k'
-        )
-
-        MC_arrs = [full_MC_dfs[i].loc[:, col].to_numpy() for i in range(len(full_MC_labels))]
-        MC_weights = [full_MC_auxs[i].loc[:, 'AUX_eventWeight'].to_numpy() for i in range(len(full_MC_labels))]
-        plot_1dhist(
-            MC_arrs, TRAINING_DIRPATH, PLOT_TYPE, col,
-            weights=MC_weights, yerr=True, subplots=(fig, axs[0]),
-            histtype='step' if DENSITY else 'fill', labels=MC_labels, 
-            logy=not LINY, density=DENSITY, stack=not DENSITY,
-        )
-
-        plot_ratio(
-            Data_arr, MC_arrs, col, subplots=(fig, axs), 
-            training_dirpath=TRAINING_DIRPATH, plot_type=PLOT_TYPE,
-            weights1=np.ones_like(Data_arr), weights2=MC_weights,
-            yerr=True, save_and_close=True,
-            plot_prefix=col, plot_postfix='density' if DENSITY else ''
-        )
             
         
 if __name__ == "__main__":

@@ -87,7 +87,7 @@ def plot_ratio(
     hists2 = make_hists(arrs2, var_label, weights=weights2)
 
     ratio = np.sum([hist1.values() for hist1 in hists1], axis=0) / np.sum([hist2.values() for hist2 in hists2], axis=0)
-    numer_err, denom_err = np.sum([hist1.variances() for hist1 in hists1], axis=0), np.sum([hist2.variances() for hist2 in hists2], axis=0)
+    numer_err, denom_err = np.sqrt(np.sum([hist1.variances() for hist1 in hists1], axis=0)), np.sqrt(np.sum([hist2.variances() for hist2 in hists2], axis=0))
     for arr in [ratio, numer_err, denom_err]:  # Set 0 and inf to nan to hide during plotting
         arr[arr == 0] = np.nan  
         arr[np.isinf(arr)] = np.nan
@@ -169,11 +169,11 @@ def plot_1dhist(
     colors = [None for _ in hists] if colors is None else [colors[i] for i in xs_order]
 
     if stack:
-        hep.histplot(hists, ax=ax, histtype=histtype, yerr=np.sum(w2s, axis=0) if yerr else False, label=labels, stack=stack, density=density)
+        hep.histplot(hists, ax=ax, histtype=histtype, yerr=np.sqrt(np.sum(w2s, axis=0)) if yerr else False, label=labels, stack=stack, density=density)
     else:
-        for hist, w2, label, color in zip(hists, w2s, labels, colors): hep.histplot(hist, ax=ax, histtype=histtype, yerr=w2 if yerr else False, label=label, density=density, color=color)
+        for hist, w2, label, color in zip(hists, w2s, labels, colors): hep.histplot(hist, ax=ax, histtype=histtype, yerr=np.sqrt(w2) if yerr else False, label=label, density=density, color=color)
     
-    ax.legend()
+    ax.legend(bbox_to_anchor=(1, 1))
     if logy: ax.set_yscale('log')
 
     if save_and_close:

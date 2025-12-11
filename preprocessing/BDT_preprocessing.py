@@ -15,6 +15,7 @@ import pyarrow.parquet as pq
 
 ################################
 
+
 GIT_REPO = (
     subprocess.Popen(["git", "rev-parse", "--show-toplevel"], stdout=subprocess.PIPE)
     .communicate()[0]
@@ -69,7 +70,7 @@ parser.add_argument(
 )
 
 args = parser.parse_args()
-BDT_CONFIG = args.BDT_config.replace('.py', '')
+BDT_CONFIG = args.BDT_config.replace('.py', '').split('/')[-1]
 exec(f"from {BDT_CONFIG} import *")
 
 ################################
