@@ -35,7 +35,9 @@ CONDOR_FILEPATHS = {
     'submission': lambda jobs_dir: os.path.join(jobs_dir, f"{BASE_NAME}.sub"),
     'out': lambda jobs_dir: os.path.join(jobs_dir, f"{BASE_NAME}.$(ClusterId).$(ProcId).out"),
     'err': lambda jobs_dir: os.path.join(jobs_dir, f"{BASE_NAME}.$(ClusterId).$(ProcId).err"),
-    'log': lambda jobs_dir: os.path.join(jobs_dir, f"{BASE_NAME}.$(ClusterId).log")
+    'log': lambda jobs_dir: os.path.join(jobs_dir, f"{BASE_NAME}.$(ClusterId).log"),
+    'submission_output': lambda jobs_dir: os.path.join(os.path.dirname(jobs_dir), "submission_output.txt"),
+    'job_info': lambda jobs_dir: os.path.join(os.path.dirname(jobs_dir), "job_info.txt"),
 }
 CURRENT_TIME = None
 
@@ -172,19 +174,17 @@ def submit(
     
     # Submits the condor jobs
     # see https://batchdocs.web.cern.ch/troubleshooting/eos.html#no-eos-submission-allowed
-    os.system(f"condor_submit {'-spool ' if CWD.startswith('/eos') else ''}{CONDOR_FILEPATHS['submission']} > {CURRENT_TIME}_submission_output.txt")
+    os.system(f"condor_submit {'-spool ' if CWD.startswith('/eos') else ''}{CONDOR_FILEPATHS['submission']} > {CONDOR_FILEPATHS['submission_output']}")
 
-    with open(f"{CURRENT_TIME}_submission_output.txt", 'r') as f:
-        cluster_id = int(re.search(r'\d+', f.read()[::-1]).group(0)[::-1])
-    os.system(f"rm {CURRENT_TIME}_submission_output.txt")
+    with open(CONDOR_FILEPATHS['submission_output'], 'r') as f:
+        cluster_id = int(re.search(r'\d+', f.readlines()[1]).group(1))
     while True:
-        os.system(f"condor_q -constraint \"ClusterId == {cluster_id}\" -af JobId JobStatus RequestMemory | wc -l > {CURRENT_TIME}_job_info.txt")
-        if os.path.getsize(f"{CURRENT_TIME}_job_info.txt") == 0:
+        os.system(f"condor_q -constraint \"ClusterId == {cluster_id}\" -af JobId JobStatus RequestMemory > {CONDOR_FILEPATHS['job_info']}")
+        if os.path.getsize(CONDOR_FILEPATHS['job_info']) == 0:
             logger.log(1, f"Finished running condor jobs, running postprocessing.")
-            os.system(f"rm {CURRENT_TIME}_job_info.txt")
             postprocessing(output_dirpath, eos_dirpath)
             break
-        with open(f"{CURRENT_TIME}_job_info.txt", 'r') as f:
+        with open(CONDOR_FILEPATHS['job_info'], 'r') as f:
             for line in f:
                 job_info = line.strip().split()
                 assert len(job_info) == 3, f"condor_q command is wrong, fix"
