@@ -178,7 +178,7 @@ def submit(
     os.system(f"condor_submit {'-spool ' if CWD.startswith('/eos') else ''}{CONDOR_FILEPATHS['submission']} > {CONDOR_FILEPATHS['submission_output']}")
 
     with open(CONDOR_FILEPATHS['submission_output'], 'r') as f:
-        cluster_id = int(re.search(r'\d+', f.readlines()[1]).group(1))
+        cluster_id = int(re.search(r'\d+', f.readlines()[1][::-1]).group(0)[::-1])
     while True:
         os.system(f"condor_q -constraint \"ClusterId == {cluster_id}\" -af JobId JobStatus RequestMemory > {CONDOR_FILEPATHS['job_info']}")
         if os.path.getsize(CONDOR_FILEPATHS['job_info']) == 0:
