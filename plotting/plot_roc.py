@@ -119,7 +119,7 @@ ROCTYPE = args.ROCtype
 DISCRIMINATOR = args.discriminator
 SAVE_FPRTPR = args.save_FPRTPR
 BKGEFF = transform_preds_bkgeffs([key for key in get_class_sample_map(DATASET_DIRPATH).keys()], DISCRIMINATOR)
-PLOT_TYPE = f'ROC_{ROCTYPE}_{DISCRIMINATOR}' + '_unweighted' if not WEIGHTS else '_MCweighted'
+PLOT_TYPE = f'ROC_{ROCTYPE}_{DISCRIMINATOR}' + ('_unweighted' if not WEIGHTS else '_MCweighted')
 
 BASE_TPR = np.linspace(0, 1, 5000)
 

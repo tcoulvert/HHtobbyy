@@ -37,7 +37,7 @@ def init_params(n_classes: int, static_params_dict: dict=None):
     param = {}
     # Booster parameters
     param['eta']              = 0.05       # learning rate
-    param['max_depth']        = 10         # max number of splittings per tree
+    param['max_depth']        = 4         # max number of splittings per tree
     param['subsample']        = 0.2        # fraction of events to train tree on
     param['colsample_bytree'] = 0.6        # fraction of features to train tree on
     param['num_class']        = n_classes  # num classes for multi-class training
@@ -61,7 +61,7 @@ def init_params(n_classes: int, static_params_dict: dict=None):
         for key, value in static_params_dict.items():
             param[key] = value
 
-    return param, round(25 / param['eta'])  # number of trees to make
+    return param, round(50 / param['eta'])  # number of trees to make
 
 
 def optimize_hyperparams(

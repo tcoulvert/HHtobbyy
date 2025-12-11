@@ -4,15 +4,15 @@ import datetime
 ################################
 
 
-DATASET_TAG = "22to24_bTagWP3XT4XT"
+DATASET_TAG = "22to24_bTagWPDDQCD"
 
 CLASS_SAMPLE_MAP = {
     'ggF HH': ["GluGlu*HH*kl-1p00"],  # *!batch 
     # 'VBF HH': ["VBF*HH*C2V_1"],
     'ttH + bbH': ["ttH", "bbH"],
     'VH': ["VH", "ZH", "Wm*H", "Wp*H"],
-    'nonRes + ggFH + VBFH': ["GGJets_MGG", "GJet_PT", "TTGG", "GluGluH*GG", "VBFH*GG"],
-    # 'nonRes + ggFH + VBFH': ["DDQCDGJets", "TTGG", "GluGluH*GG", "VBFH*GG"],
+    # 'nonRes + ggFH + VBFH': ["GGJets_MGG", "GJet_PT", "TTGG", "GluGluH*GG", "VBFH*GG"],
+    'nonRes + ggFH + VBFH': ["DDQCDGJets", "TTGG", "GluGluH*GG", "VBFH*GG"],
 }
 TRAIN_ONLY_SAMPLES = {
     "Zto2Q", "Wto2Q", "batch[4-6]"
@@ -42,14 +42,14 @@ BASIC_VARIABLES = lambda jet_prefix: {
     # f"{jet_prefix}_lead_bjet_btagUParTAK4B",
     f"{jet_prefix}_lead_bjet_bTagWPL", f"{jet_prefix}_lead_bjet_bTagWPM", f"{jet_prefix}_lead_bjet_bTagWPT",
     f"{jet_prefix}_lead_bjet_bTagWPXT", f"{jet_prefix}_lead_bjet_bTagWPXXT",
-    f"{jet_prefix}_lead_bjet_bTagWP3XT", f"{jet_prefix}_lead_bjet_bTagWP4XT",
+    # f"{jet_prefix}_lead_bjet_bTagWP3XT", f"{jet_prefix}_lead_bjet_bTagWP4XT",
     # --------
     f'{jet_prefix}_sublead_bjet_eta', 
     # f"{jet_prefix}_sublead_bjet_btagPNetB",
     # f"{jet_prefix}_sublead_bjet_btagUParTAK4B",
     f"{jet_prefix}_sublead_bjet_bTagWPL", f"{jet_prefix}_sublead_bjet_bTagWPM", f"{jet_prefix}_sublead_bjet_bTagWPT",
     f"{jet_prefix}_sublead_bjet_bTagWPXT", f"{jet_prefix}_sublead_bjet_bTagWPXXT",
-    f"{jet_prefix}_sublead_bjet_bTagWP3XT", f"{jet_prefix}_sublead_bjet_bTagWP4XT",
+    # f"{jet_prefix}_sublead_bjet_bTagWP3XT", f"{jet_prefix}_sublead_bjet_bTagWP4XT",
     
     # diphoton vars
     'eta',

@@ -96,7 +96,7 @@ DENSITY = args.density
 LOGY = args.logy
 BINS = args.bins
 DISCRIMINATOR = args.discriminator
-PLOT_TYPE = f'output_{DISCRIMINATOR}' + '_unweighted' if not WEIGHTS else '_MCweighted'
+PLOT_TYPE = f'output_{DISCRIMINATOR}' + ('_unweighted' if not WEIGHTS else '_MCweighted')
 
 plt.style.use(hep.style.CMS)
 plt.rcParams.update({'font.size': 20})

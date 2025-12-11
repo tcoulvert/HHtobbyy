@@ -78,7 +78,7 @@ parser.add_argument(
     "--queue", 
     choices=["workday", "longlunch"], 
     default="workday",
-    help="Memory to request on batch jobs"
+    help="Queue to request on batch jobs"
 )
 
 ################################
