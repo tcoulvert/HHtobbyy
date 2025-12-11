@@ -176,10 +176,11 @@ def submit(
     # Submits the condor jobs
     # see https://batchdocs.web.cern.ch/troubleshooting/eos.html#no-eos-submission-allowed
     print(CONDOR_FILEPATHS['submission_output'])
-    # os.system(f"condor_submit {'-spool ' if CWD.startswith('/eos') else ''}{CONDOR_FILEPATHS['submission']} > {CONDOR_FILEPATHS['submission_output']}")
+    os.system(f"condor_submit {'-spool ' if CWD.startswith('/eos') else ''}{CONDOR_FILEPATHS['submission']} > {CONDOR_FILEPATHS['submission_output']}")
 
-    # with open(CONDOR_FILEPATHS['submission_output'], 'r') as f:
-    #     cluster_id = int(re.search(r'\d+', f.readlines()[1][::-1]).group(0)[::-1])
+    with open(CONDOR_FILEPATHS['submission_output'], 'r') as f:
+        cluster_id = int(re.search(r'\d+', f.readlines()[1][::-1]).group(0)[::-1])
+        print(cluster_id)
 
     # while True:
     #     os.system(f"condor_q -constraint \"ClusterId == {cluster_id}\" -af JobId JobStatus RequestMemory > {CONDOR_FILEPATHS['job_info']}")
