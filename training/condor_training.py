@@ -36,8 +36,8 @@ CONDOR_FILEPATHS = {
     'out': lambda jobs_dir: os.path.join(jobs_dir, f"{BASE_NAME}.$(ClusterId).$(ProcId).out"),
     'err': lambda jobs_dir: os.path.join(jobs_dir, f"{BASE_NAME}.$(ClusterId).$(ProcId).err"),
     'log': lambda jobs_dir: os.path.join(jobs_dir, f"{BASE_NAME}.$(ClusterId).log"),
-    'submission_output': lambda jobs_dir: os.path.join(os.path.dirname(jobs_dir), "submission_output.txt"),
-    'job_info': lambda jobs_dir: os.path.join(os.path.dirname(jobs_dir), "job_info.txt"),
+    'submission_output': lambda jobs_dir: os.path.join(os.path.dirname(os.path.normpath(jobs_dir)), "submission_output.txt"),
+    'job_info': lambda jobs_dir: os.path.join(os.path.dirname(os.path.normpath(jobs_dir)), "job_info.txt"),
 }
 CURRENT_TIME = None
 
