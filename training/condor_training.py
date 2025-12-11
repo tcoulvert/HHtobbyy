@@ -180,22 +180,21 @@ def submit(
 
     with open(CONDOR_FILEPATHS['submission_output'], 'r') as f:
         cluster_id = int(re.search(r'\d+', f.readlines()[1][::-1]).group(0)[::-1])
-        print(cluster_id)
 
-    # while True:
-    #     os.system(f"condor_q -constraint \"ClusterId == {cluster_id}\" -af JobId JobStatus RequestMemory > {CONDOR_FILEPATHS['job_info']}")
-    #     if os.path.getsize(CONDOR_FILEPATHS['job_info']) == 0:
-    #         logger.log(1, f"Finished running condor jobs, running postprocessing.")
-    #         postprocessing(output_dirpath, eos_dirpath)
-    #         break
-    #     with open(CONDOR_FILEPATHS['job_info'], 'r') as f:
-    #         for line in f:
-    #             job_info = line.strip().split()
-    #             assert len(job_info) == 3, f"condor_q command is wrong, fix"
-    #             JobId, JobStatus, RequestMemory = int(job_info[0]), int(job_info[1]), job_info[2]
-    #             if JobStatus == 5:
-    #                 new_RequestMemory = str(int( int(re.search(r'\d+', RequestMemory).group()) * 1.5 ))+str(RequestMemory[re.search(r'\d+', RequestMemory).end():])
-    #                 os.system(f"condor_qedit {JobId} RequestMemory={new_RequestMemory}")
-    #                 logger.log(1, f"JobId {JobId} held, requesting 1.5x memory and resubmitting.")
-    #     time.sleep(60)
+    while True:
+        os.system(f"condor_q -constraint \"ClusterId == {cluster_id}\" -af JobId JobStatus RequestMemory > {CONDOR_FILEPATHS['job_info']}")
+        if os.path.getsize(CONDOR_FILEPATHS['job_info']) == 0:
+            logger.log(1, f"Finished running condor jobs, running postprocessing.")
+            postprocessing(output_dirpath, eos_dirpath)
+            break
+        with open(CONDOR_FILEPATHS['job_info'], 'r') as f:
+            for line in f:
+                job_info = line.strip().split()
+                assert len(job_info) == 3, f"condor_q command is wrong, fix"
+                JobId, JobStatus, RequestMemory = int(job_info[0]), int(job_info[1]), job_info[2]
+                if JobStatus == 5:
+                    new_RequestMemory = str(int( int(re.search(r'\d+', RequestMemory).group()) * 1.5 ))+str(RequestMemory[re.search(r'\d+', RequestMemory).end():])
+                    os.system(f"condor_qedit {JobId} RequestMemory={new_RequestMemory}")
+                    logger.log(1, f"JobId {JobId} held, requesting 1.5x memory and resubmitting.")
+        time.sleep(60)
                 
