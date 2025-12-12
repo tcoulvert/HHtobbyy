@@ -138,6 +138,13 @@ sample_name_map = {
 ################################
 
 
+def has_magic_bytes(parquet_filepath: str):
+    try:
+        pq.read_schema(parquet_filepath)
+        return True
+    except:
+        return False
+
 def get_files(eras, type='MC'):
     for era in eras.keys():
         glob_dirs_set = lambda end_filepath: set(
@@ -145,10 +152,15 @@ def get_files(eras, type='MC'):
         )
         all_dirs_set = set(elem for end_filepath in END_FILEPATHS for elem in glob_dirs_set(end_filepath))
         if OUTPUT_DIRPATH is None:
-            ran_dirs_set = glob_dirs_set(NEW_END_FILEPATH)
+            ran_dirs_set = set(
+                parquet_filepath for parquet_filepath in glob_dirs_set(NEW_END_FILEPATH) 
+                if has_magic_bytes(parquet_filepath)
+            )
         else:
             ran_dirs_set = set(
-                glob.glob(os.path.join(OUTPUT_DIRPATH, "**", f"*{NEW_END_FILEPATH}"), recursive=True)
+                parquet_filepath 
+                for parquet_filepath in glob.glob(os.path.join(OUTPUT_DIRPATH, "**", f"*{NEW_END_FILEPATH}"), recursive=True)
+                if has_magic_bytes(parquet_filepath)
             ) & set(get_output_filepath(input_filepath) for input_filepath in glob_dirs_set(NEW_END_FILEPATH))
 
         # Remove bad dirs
