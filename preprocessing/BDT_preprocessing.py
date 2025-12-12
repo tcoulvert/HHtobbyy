@@ -24,7 +24,9 @@ GIT_REPO = (
 )
 sys.path.append(os.path.join(GIT_REPO, "plotting/"))
 
-from preprocessing_utils import match_sample, get_era_filepaths
+from preprocessing_utils import (
+    match_sample, match_regex, get_era_filepaths
+)
 from BDT_preprocessing_utils import (
     no_standardize, apply_logs
 )
@@ -68,6 +70,11 @@ parser.add_argument(
     action="store_true",
     help="Flag to not save parquets out and just try running"
 )
+parser.add_argument(
+    "--dont_check_dataset", 
+    action="store_true",
+    help="Boolean to *not* check the train dataset for the samples for each era"
+)
 
 args = parser.parse_args()
 BDT_CONFIG = args.BDT_config.replace('.py', '').split('/')[-1]
@@ -76,10 +83,16 @@ exec(f"from {BDT_CONFIG} import *")
 ################################
 
 
-def get_input_filepaths(input_eras: str):
-    input_filepaths = {'train-test': list(), 'train': list(), 'test': list()}
+def check_train_dataset(train_filepaths: list):
+    good_dataset_bool = True
+    for glob_name in [glob_name for glob_names in CLASS_SAMPLE_MAP.values() for glob_name in glob_names]:
+        for era in ERAS:
+            if match_regex(f"{era}*{glob_name}", train_filepaths) is None:
+                good_dataset_bool = False; break 
+    return good_dataset_bool
 
-    ERAS = get_era_filepaths(args.input_eras)
+def get_input_filepaths():
+    input_filepaths = {'train-test': list(), 'train': list(), 'test': list()}
     
     for era in ERAS:
         sample_filepaths = glob.glob(os.path.join(era, "**", f"*{END_FILEPATH}"), recursive=True)
@@ -100,6 +113,9 @@ def get_input_filepaths(input_eras: str):
                 if DEBUG:
                     logger.warning(f"{sample_filepath} \nSample not found in any dict (TRAIN_TEST_SAMPLES, TRAIN_ONLY_SAMPLES, TEST_ONLY_SAMPLES). Continuing with other samples.")
                 continue
+
+    if not args.dont_check_dataset:
+        assert check_train_dataset(input_filepaths['train']), f"Train dataset is missing some samples for some eras."
     
     return input_filepaths
 
@@ -311,7 +327,8 @@ if __name__ == '__main__':
     else: args_output_dirpath = os.path.join(args_output_dirpath, f"{DATASET_TAG}_{CURRENT_TIME}")
     if not os.path.exists(args_output_dirpath) and not DRYRUN:
         os.makedirs(args_output_dirpath)
-    input_filepaths = get_input_filepaths(args.input_eras)
+    ERAS = get_era_filepaths(args.input_eras)
+    input_filepaths = get_input_filepaths()
 
     preprocess_resolved_bdt(input_filepaths, args_output_dirpath)
     print(f'Finished Resolved BDT processing')

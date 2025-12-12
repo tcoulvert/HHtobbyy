@@ -161,7 +161,7 @@ def get_files(eras, type='MC'):
                 parquet_filepath 
                 for parquet_filepath in glob.glob(os.path.join(OUTPUT_DIRPATH, "**", f"*{NEW_END_FILEPATH}"), recursive=True)
                 if has_magic_bytes(parquet_filepath)
-            ) & set(get_output_filepath(input_filepath) for input_filepath in glob_dirs_set(NEW_END_FILEPATH))
+            ) & set(get_output_filepath(input_filepath) for input_filepath in all_dirs_set)
 
         # Remove bad dirs
         all_dirs_set = set(
