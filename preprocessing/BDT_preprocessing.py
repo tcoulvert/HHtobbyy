@@ -146,6 +146,7 @@ def get_split_dfs(filepaths, BDT_vars, AUX_vars, fold_idx):
 
     train_dfs, train_aux_dfs, test_dfs, test_aux_dfs = {}, {}, {}, {}
     for filepath in sorted(filepaths):
+        print(filepath)
         train_mask = (aux_dfs[filepath]['event'] % TRAIN_MOD).ne(fold_idx)
         test_mask = (aux_dfs[filepath]['event'] % TRAIN_MOD).eq(fold_idx)
 
