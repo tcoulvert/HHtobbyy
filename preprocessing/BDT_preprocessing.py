@@ -86,9 +86,15 @@ exec(f"from {BDT_CONFIG} import *")
 def check_train_dataset(train_filepaths: list):
     good_dataset_bool = True
     for glob_name in [glob_name for glob_names in CLASS_SAMPLE_MAP.values() for glob_name in glob_names]:
-        for era in ERAS:
+        for era in get_era_filepaths(args.input_eras, split_data_mc_eras=True)[0]:
+            if 'data' in era: continue
             if match_regex(f"{era}*{glob_name}", train_filepaths) is None:
-                good_dataset_bool = False; break 
+                if not (
+                    ('2024' in era and glob_name in ['VH', 'GJet_PT'])
+                    or (('2022' in era or '2023' in era) and glob_name in ['ZH', 'Wm*H', 'Wp*H'])
+                ):
+                    good_dataset_bool = False; break 
+        if not good_dataset_bool: break
     return good_dataset_bool
 
 def get_input_filepaths():
@@ -115,7 +121,7 @@ def get_input_filepaths():
                 continue
 
     if not args.dont_check_dataset:
-        assert check_train_dataset(input_filepaths['train']), f"Train dataset is missing some samples for some eras."
+        assert check_train_dataset(input_filepaths['train-test']+input_filepaths['train']), f"Train dataset is missing some samples for some eras."
     
     return input_filepaths
 
@@ -162,7 +168,6 @@ def get_split_dfs(filepaths, BDT_vars, AUX_vars, fold_idx):
 
     train_dfs, train_aux_dfs, test_dfs, test_aux_dfs = {}, {}, {}, {}
     for filepath in sorted(filepaths):
-        print(filepath)
         train_mask = (aux_dfs[filepath]['event'] % TRAIN_MOD).ne(fold_idx)
         test_mask = (aux_dfs[filepath]['event'] % TRAIN_MOD).eq(fold_idx)
 
