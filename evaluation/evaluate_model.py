@@ -18,7 +18,7 @@ sys.path.append(os.path.join(GIT_REPO, "training/"))
 
 
 from retrieval_utils import (
-    get_class_sample_map, get_n_folds, format_class_names
+    get_class_sample_map, get_n_folds
 )
 from training_utils import (
     get_dataset_dirpath, get_model_func

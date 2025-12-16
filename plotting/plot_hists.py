@@ -59,7 +59,7 @@ def make_hists(arrs: list, var_label: str, weights: list=None):
         )
 
         var_hist = hist.Hist(
-            hist.axis.Regular(100, min_val, max_val, name="var", label=var_label, growth=False, underflow=False), 
+            hist.axis.Regular(50, min_val, max_val, name="var", label=var_label, growth=False, underflow=False), 
             storage='weight'
         ).fill(var=arr[var_mask], weight=weights[i][var_mask] if weights is not None else np.ones_like(arr[var_mask]))
         hists.append(var_hist)
@@ -90,6 +90,7 @@ def plot_ratio(
     hists2 = make_hists(arrs2, var_label, weights=weights2)
 
     ratio = np.sum([hist1.values() for hist1 in hists1], axis=0) / np.sum([hist2.values() for hist2 in hists2], axis=0)
+    print(f"median Data / MC for {var_label}: {np.median(ratio[np.isfinite(ratio)]):.2f}")
     numer_err, denom_err = np.sqrt(np.sum([hist1.variances() for hist1 in hists1], axis=0)) / np.sum([hist1.values() for hist1 in hists1], axis=0), np.sqrt(np.sum([hist2.variances() for hist2 in hists2], axis=0)) / np.sum([hist2.values() for hist2 in hists2], axis=0)
     for arr in [ratio, numer_err, denom_err]:  # Set 0 and inf to nan to hide during plotting
         arr[arr == 0] = np.nan  

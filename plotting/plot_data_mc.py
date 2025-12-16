@@ -145,7 +145,9 @@ def data_mc_comparison():
         MC_filepaths = [filepath for filepath in get_filepaths_func(fold_idx)[DATASET] if 'sim' in filepath.lower()]
         assert len(set(get_filepaths_func(fold_idx)[DATASET])) == len(set(Data_filepaths) | set(MC_filepaths)), f"Some files are not being found as data or sim, please check that data filepaths contain \"data\" (not case sensitive) and sim filepaths contain \"sim\""
         
-        Data_df, Data_aux = pd.concat([get_Dataframe(filepath) for filepath in Data_filepaths]), pd.concat([get_Dataframe(filepath, aux=True) for filepath in Data_filepaths])
+        Data_df, Data_aux = pd.concat([get_Dataframe(filepath, n_folds_fold_idx=(get_n_folds(DATASET_DIRPATH), fold_idx)) for filepath in Data_filepaths]), pd.concat([get_Dataframe(filepath, aux=True, n_folds_fold_idx=(get_n_folds(DATASET_DIRPATH), fold_idx)) for filepath in Data_filepaths])
+        # Data_df, Data_aux = pd.concat([get_Dataframe(filepath, n_folds_fold_idx=(get_n_folds(DATASET_DIRPATH), fold_idx)) for filepath in Data_filepaths]), pd.concat([get_Dataframe(filepath, aux=True, n_folds_fold_idx=(get_n_folds(DATASET_DIRPATH), fold_idx)) for filepath in Data_filepaths])
+        # MC_dfs, MC_auxs = [get_Dataframe(filepath, n_folds_fold_idx=(get_n_folds(DATASET_DIRPATH), fold_idx)) for filepath in MC_filepaths], [get_Dataframe(filepath, aux=True, n_folds_fold_idx=(get_n_folds(DATASET_DIRPATH), fold_idx)) for filepath in MC_filepaths]
         MC_dfs, MC_auxs = [get_Dataframe(filepath) for filepath in MC_filepaths], [get_Dataframe(filepath, aux=True) for filepath in MC_filepaths]
         MC_labels = [MC_aux.loc[:, 'AUX_sample_name'][0] for MC_aux in MC_auxs]
         unique_MC_labels = np.unique(MC_labels)

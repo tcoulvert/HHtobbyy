@@ -94,15 +94,20 @@ def get_label1D(labelND):
     """
     return np.nonzero(labelND).flatten()
 
-def get_Dataframe(filepath: str, aux: bool=False):
+def get_Dataframe(filepath: str, aux: bool=False, n_folds_fold_idx: tuple=None):
     schema = pq.read_schema(filepath)
     vars = [var for var in schema.names if ('AUX_' not in var) ^ aux]
 
     df = pq.read_table(filepath, columns=vars).to_pandas()
 
-    return df
-def get_Dataframes(filepath: str):
-    return get_Dataframe(filepath), get_Dataframe(filepath, aux=True)
+    if n_folds_fold_idx is None:
+        return df
+    else:
+        AUX_event_df = pq.read_table(filepath, columns=['AUX_event']).to_pandas()
+        mask = (AUX_event_df.loc[:, 'AUX_event'] % n_folds_fold_idx[0]).eq(n_folds_fold_idx[1])
+        return df.loc[mask].reset_index(drop=True)
+def get_Dataframes(filepath: str, n_folds_fold_idx: tuple=None):
+    return get_Dataframe(filepath, n_folds_fold_idx=n_folds_fold_idx), get_Dataframe(filepath, aux=True, n_folds_fold_idx=n_folds_fold_idx)
 def get_train_Dataframe(dataset_dirpath: str, fold_idx: int, dataset: str="train"):
     filepaths = get_train_filepaths_func(dataset_dirpath, dataset=dataset)(fold_idx)
 
@@ -150,8 +155,9 @@ def get_train_Dataframe(dataset_dirpath: str, fold_idx: int, dataset: str="train
         aux.reindex(class_shuffle_idx)
 
     return df, aux
-def get_test_Dataframe(filepath: str):
-    return pq.read_table(filepath).to_pandas()
+def get_test_Dataframe(filepath: str, n_folds_fold_idx: tuple=None):
+    df, aux = get_Dataframes(filepath, n_folds_fold_idx=n_folds_fold_idx)
+    return pd.concat([df, aux])
 
 def get_DMatrix(df, aux, dataset: str='train', label: bool=True):
     if label: label_arg = aux['AUX_label1D']
@@ -173,6 +179,6 @@ def get_train_DMatrices(dataset_dirpath: str, fold_idx: int, val_split: float=0.
     test_dm = get_DMatrix(test_df, test_aux, dataset='test')
 
     return train_dm, val_dm, test_dm
-def get_test_DMatrix(filepath: str):
-    df, aux = get_Dataframes(filepath)
+def get_test_DMatrix(filepath: str, n_folds_fold_idx: tuple=None):
+    df, aux = get_Dataframes(filepath, n_folds_fold_idx=n_folds_fold_idx)
     return get_DMatrix(df, aux, dataset='test', label=False)

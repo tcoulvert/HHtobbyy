@@ -139,7 +139,7 @@ AUX_VARIABLES = lambda jet_prefix: {
 
 FILL_VALUE = -999
 TRAIN_MOD = 5
-JET_PREFIX = 'nonResReg_DNNpair'  # ["Res", "Res_DNNpair", "nonRes", "nonResReg", "nonResReg_DNNpair"]
+JET_PREFIX = 'nonRes'  # ["Res", "Res_DNNpair", "nonRes", "nonResReg", "nonResReg_DNNpair"]
 
 SEED = 21
 BASE_FILEPATH = 'Run3_202'
