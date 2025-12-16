@@ -4,15 +4,15 @@ import datetime
 ################################
 
 
-DATASET_TAG = "22to24_bTagWPRegDNN"
+DATASET_TAG = "22to24_bTagWPDDQCD"
 
 CLASS_SAMPLE_MAP = {
     'ggF HH': ["GluGlu*HH*kl-1p00"],  # *!batch 
     # 'VBF HH': ["VBF*HH*C2V_1"],
     'ttH + bbH': ["ttH", "bbH"],
     'VH': ["VH", "ZH", "Wm*H", "Wp*H"],
-    'nonRes + ggFH + VBFH': ["GGJets_MGG", "GJet_PT", "TTGG", "GluGluH*GG", "VBFH*GG"],
-    # 'nonRes + ggFH + VBFH': ["DDQCDGJets", "TTGG", "GluGluH*GG", "VBFH*GG"],
+    # 'nonRes + ggFH + VBFH': ["GGJets_MGG", "GJet_PT", "TTGG", "GluGluH*GG", "VBFH*GG"],
+    'nonRes + ggFH + VBFH': ["DDQCDGJets", "TTGG", "GluGluH*GG", "VBFH*GG"],
 }
 TRAIN_ONLY_SAMPLES = {
     "Zto2Q", "Wto2Q", "batch[4-6]"
@@ -120,7 +120,7 @@ VBFHH_VARIABLES = lambda jet_prefix: {
 } if 'nonRes' in jet_prefix else {}
 AUX_VARIABLES = lambda jet_prefix: {
     # identifiable event info
-    'event', 'lumi', 'hash', 'sample_name', 
+    'event', 'lumi', 'hash', 'sample_name', 'sample_era',
 
     # MC info
     'weight', 'eventWeight',
@@ -151,5 +151,5 @@ END_FILEPATH = "preprocessed.parquet"
 ################################
 
 
-BDT_VARIABLES = BASIC_VARIABLES(JET_PREFIX) | MHH_CORRELATED_VARIABLES(JET_PREFIX) #| VBFHH_VARIABLES(JET_PREFIX)
+BDT_VARIABLES = BASIC_VARIABLES(JET_PREFIX) | MHH_CORRELATED_VARIABLES(JET_PREFIX) | (VBFHH_VARIABLES(JET_PREFIX) if 'VBFHH' in DATASET_TAG else set())
 AUX_VARIABLES = AUX_VARIABLES(JET_PREFIX)

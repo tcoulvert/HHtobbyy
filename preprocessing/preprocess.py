@@ -263,12 +263,12 @@ if __name__ == '__main__':
     SIM_ERAS, DATA_ERAS = get_era_filepaths(INPUT_ERAS, split_data_mc_eras=True)
 
     sim_eras = {
-            os.path.join(era, ''): list() for era in SIM_ERAS
+        os.path.join(era, ''): list() for era in SIM_ERAS
     } if len(SIM_ERAS) > 0 else None
     make_mc(sim_eras)
 
     data_eras = {
-            os.path.join(era, ''): list() for era in DATA_ERAS
+        os.path.join(era, ''): list() for era in DATA_ERAS
     } if len(DATA_ERAS) > 0 else None
     make_data(data_eras)
 

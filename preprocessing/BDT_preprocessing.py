@@ -83,6 +83,11 @@ exec(f"from {BDT_CONFIG} import *")
 ################################
 
 
+NECESSARY_AUX_VARIABLES = {'weight', 'eventWeight', 'sample_name', 'hash'}
+
+################################
+
+
 def check_train_dataset(train_filepaths: list):
     good_dataset_bool = True
     for glob_name in [glob_name for glob_names in CLASS_SAMPLE_MAP.values() for glob_name in glob_names]:
@@ -213,6 +218,7 @@ def preprocess_resolved_bdt(input_filepaths, output_dirpath):
             json.dump(CLASS_SAMPLE_MAP, f)
 
     # Defining variables to use #
+    assert len(NECESSARY_AUX_VARIABLES & AUX_VARIABLES) == len(NECESSARY_AUX_VARIABLES), f"Missing some necessary AUX variables, see \"NECESSARY_AUX_VARIABLES\" for list"
     BDT_variables, AUX_variables = sorted(BDT_VARIABLES), sorted(AUX_VARIABLES)
     
     train_dfs, train_aux_dfs = get_dfs(input_filepaths['train'], BDT_variables, AUX_variables)

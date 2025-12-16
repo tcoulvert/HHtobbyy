@@ -17,7 +17,7 @@ from sklearn.model_selection import train_test_split
 
 ################################
 
-from preprocessing_utils import match_sample
+from preprocessing_utils import match_sample, match_regex
 
 ################################
 
@@ -137,8 +137,10 @@ def get_train_Dataframe(dataset_dirpath: str, fold_idx: int, dataset: str="train
 
     # Upweight resonant background and signal samples for training #
     # Non-Resonant background #
-    nonres_mask = aux['AUX_sample_name'].eq('GJet')
-    aux.loc[nonres_mask, 'AUX_eventWeightTrain'] = aux.loc[nonres_mask, 'AUX_eventWeightTrain'] * 2.78  # 1.78
+    if match_regex('DDQCDGJets', [filepath for filepath_class_list in filepaths.values() for filepath in filepath_class_list]) is not None:
+        DDQCD_GGJET_2024_mask = aux['AUX_sample_name'].eq('GGJets')
+        aux.loc[DDQCD_GGJET_2024_mask, 'AUX_eventWeight'] = aux.loc[DDQCD_GGJET_2024_mask, 'AUX_eventWeight'] * 1.59
+        aux.loc[DDQCD_GGJET_2024_mask, 'AUX_eventWeightTrain'] = aux.loc[DDQCD_GGJET_2024_mask, 'AUX_eventWeight']
     # Resonant background
     for i, _ in enumerate([key for key in filepaths.keys() if 'nonRes' not in key and 'HH' not in key]):
         class_mask = aux['AUX_label1D'].eq(i)

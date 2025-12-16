@@ -90,7 +90,6 @@ def plot_ratio(
     hists2 = make_hists(arrs2, var_label, weights=weights2)
 
     ratio = np.sum([hist1.values() for hist1 in hists1], axis=0) / np.sum([hist2.values() for hist2 in hists2], axis=0)
-    print(f"median Data / MC for {var_label}: {np.median(ratio[np.isfinite(ratio)]):.2f}")
     numer_err, denom_err = np.sqrt(np.sum([hist1.variances() for hist1 in hists1], axis=0)) / np.sum([hist1.values() for hist1 in hists1], axis=0), np.sqrt(np.sum([hist2.variances() for hist2 in hists2], axis=0)) / np.sum([hist2.values() for hist2 in hists2], axis=0)
     for arr in [ratio, numer_err, denom_err]:  # Set 0 and inf to nan to hide during plotting
         arr[arr == 0] = np.nan  
@@ -98,7 +97,7 @@ def plot_ratio(
 
     fig, axs = subplots[0], subplots[1]
 
-    axs[1].set_ylim(0., 5.)
+    axs[1].set_ylim(0., 2.5)
     axs[1].axhline(
         central_value, color="black", linestyle="solid", lw=1.
     )
