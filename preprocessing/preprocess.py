@@ -74,7 +74,8 @@ luminosities = {
     '2022*postEE': 26.6717,
     '2023*preBPix': 17.794,
     '2023*postBPix': 9.451,
-    '2024': 109.08
+    '2024': 109.08,
+    '*****DQCDGJets*****': 1.
 }
 # Name: cross section [fb] @ sqrrt{s}=13.6 TeV & m_H=125.09 GeV #
 cross_sections = {
@@ -137,13 +138,30 @@ sample_name_map = {
 ################################
 
 
+def has_magic_bytes(parquet_filepath: str):
+    try:
+        pq.read_schema(parquet_filepath)
+        return True
+    except:
+        return False
+
 def get_files(eras, type='MC'):
     for era in eras.keys():
         glob_dirs_set = lambda end_filepath: set(
             glob.glob(os.path.join(era, "**", f"*{end_filepath}"), recursive=True)
         )
         all_dirs_set = set(elem for end_filepath in END_FILEPATHS for elem in glob_dirs_set(end_filepath))
-        ran_dirs_set = glob_dirs_set(NEW_END_FILEPATH)
+        if OUTPUT_DIRPATH is None:
+            ran_dirs_set = set(
+                parquet_filepath for parquet_filepath in glob_dirs_set(NEW_END_FILEPATH) 
+                if has_magic_bytes(parquet_filepath)
+            )
+        else:
+            ran_dirs_set = set(
+                parquet_filepath 
+                for parquet_filepath in glob.glob(os.path.join(OUTPUT_DIRPATH, "**", f"*{NEW_END_FILEPATH}"), recursive=True)
+                if has_magic_bytes(parquet_filepath)
+            ) & set(get_output_filepath(input_filepath) for input_filepath in all_dirs_set)
 
         # Remove bad dirs
         all_dirs_set = set(
@@ -164,24 +182,23 @@ def get_files(eras, type='MC'):
 
 def get_output_filepath(input_filepath: str):
     if OUTPUT_DIRPATH is None:
-        return input_filepath.replace(match_sample(input_filepath, END_FILEPATHS), NEW_END_FILEPATH)
+        output_filepath = input_filepath.replace(match_sample(input_filepath, END_FILEPATHS), NEW_END_FILEPATH)
     else:
-        return os.path.join(
+        output_filepath = os.path.join(
             OUTPUT_DIRPATH, 
             input_filepath[
                 re.search(BASE_FILEPATH, input_filepath).start():
             ].replace(match_sample(input_filepath, END_FILEPATHS), NEW_END_FILEPATH)
         )
+    if not os.path.exists('/'.join(output_filepath.split('/')[:-1])):
+        os.makedirs('/'.join(output_filepath.split('/')[:-1]))
+    return output_filepath
 
 def make_dataset(filepath, era, type='MC'):
     print('======================== \n', 'Starting \n', filepath)
     pq_file = pq.ParquetFile(filepath)
     schema = pq.read_schema(filepath)
-    columns = [
-        field for field in schema.names if not (
-            'nonResReg' in field and 'nonResReg_DNNpair' not in field
-        )
-    ]
+    columns = [field for field in schema.names]
 
     output_filepath = get_output_filepath(filepath)
     pq_writer = None
@@ -194,11 +211,14 @@ def make_dataset(filepath, era, type='MC'):
         if type.upper() == 'MC':
             print(f"lumi match = {match_sample(filepath, luminosities.keys())}")
             print(f"xs match = {match_sample(filepath, cross_sections.keys())}")
-            ak_batch['eventWeight'] = (
-                ak_batch['weight'] 
-                * luminosities[match_sample(filepath, luminosities.keys())] 
-                * cross_sections[match_sample(filepath, cross_sections.keys())]
-            )
+            if match_sample(filepath, cross_sections.keys()) != 'DDQCDGJets':
+                ak_batch['eventWeight'] = (
+                    ak_batch['weight'] 
+                    * luminosities[match_sample(filepath, luminosities.keys())] 
+                    * cross_sections[match_sample(filepath, cross_sections.keys())]
+                )
+            else: 
+                ak_batch['eventWeight'] = ak_batch['weight']
         else: 
             ak_batch['weight'] =  ak.ones_like(ak_batch['pt'])
             ak_batch['eventWeight'] =  ak.ones_like(ak_batch['pt'])
@@ -251,3 +271,4 @@ if __name__ == '__main__':
             os.path.join(era, ''): list() for era in DATA_ERAS
     } if len(DATA_ERAS) > 0 else None
     make_data(data_eras)
+

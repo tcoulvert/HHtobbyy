@@ -4,15 +4,13 @@ import datetime
 ################################
 
 
-DATASET_TAG = "22to24_bTagWPRegDNN"
+DATASET_TAG = "22to23_PASmodel"
 
 CLASS_SAMPLE_MAP = {
-    'ggF HH': ["GluGlu*HH*kl-1p00"],  # *!batch 
-    # 'VBF HH': ["VBF*HH*C2V_1"],
+    'ggF HH': ["GluGlu*HH*kl-1p00*!batch"],
     'ttH + bbH': ["ttH", "bbH"],
     'VH': ["VH", "ZH", "Wm*H", "Wp*H"],
     'nonRes + ggFH + VBFH': ["GGJets_MGG", "GJet_PT", "TTGG", "GluGluH*GG", "VBFH*GG"],
-    # 'nonRes + ggFH + VBFH': ["DDQCDGJets", "TTGG", "GluGluH*GG", "VBFH*GG"],
 }
 TRAIN_ONLY_SAMPLES = {
     "Zto2Q", "Wto2Q", "batch[4-6]"
@@ -38,18 +36,10 @@ BASIC_VARIABLES = lambda jet_prefix: {
 
     # bjet vars
     f'{jet_prefix}_lead_bjet_eta', # eta
-    # f"{jet_prefix}_lead_bjet_btagPNetB",
-    # f"{jet_prefix}_lead_bjet_btagUParTAK4B",
-    f"{jet_prefix}_lead_bjet_bTagWPL", f"{jet_prefix}_lead_bjet_bTagWPM", f"{jet_prefix}_lead_bjet_bTagWPT",
-    f"{jet_prefix}_lead_bjet_bTagWPXT", f"{jet_prefix}_lead_bjet_bTagWPXXT",
-    # f"{jet_prefix}_lead_bjet_bTagWP3XT", f"{jet_prefix}_lead_bjet_bTagWP4XT",
+    f"{jet_prefix}_lead_bjet_btagPNetB",
     # --------
     f'{jet_prefix}_sublead_bjet_eta', 
-    # f"{jet_prefix}_sublead_bjet_btagPNetB",
-    # f"{jet_prefix}_sublead_bjet_btagUParTAK4B",
-    f"{jet_prefix}_sublead_bjet_bTagWPL", f"{jet_prefix}_sublead_bjet_bTagWPM", f"{jet_prefix}_sublead_bjet_bTagWPT",
-    f"{jet_prefix}_sublead_bjet_bTagWPXT", f"{jet_prefix}_sublead_bjet_bTagWPXXT",
-    # f"{jet_prefix}_sublead_bjet_bTagWP3XT", f"{jet_prefix}_sublead_bjet_bTagWP4XT",
+    f"{jet_prefix}_sublead_bjet_btagPNetB",
     
     # diphoton vars
     'eta',
@@ -69,9 +59,6 @@ BASIC_VARIABLES = lambda jet_prefix: {
     f'{jet_prefix}_DeltaPhi_isr_jet_z',
 }
 MHH_CORRELATED_VARIABLES = lambda jet_prefix: {
-    # MHH
-    # f'{jet_prefix}_HHbbggCandidate_mass',
-
     # MET variables
     'puppiMET_sumEt',  #eft
 
@@ -98,26 +85,6 @@ MHH_CORRELATED_VARIABLES = lambda jet_prefix: {
     f'{jet_prefix}_DeltaEta_jj', #eft
     f'{jet_prefix}_isr_jet_pt',  #eft
 }
-VBFHH_VARIABLES = lambda jet_prefix: {
-    # VBF jet vars
-    'VBF_first_jet_PtOverM',
-    'VBF_first_jet_eta',
-    'VBF_first_jet_btagPNetQvG',
-    # --------
-    'VBF_second_jet_PtOverM',
-    'VBF_second_jet_eta',
-    'VBF_first_jet_btagPNetQvG',
-
-    # VBF jet angular vars
-    'VBF_jet_eta_prod', 'VBF_jet_eta_diff',
-    'VBF_DeltaR_jg_min', 'VBF_DeltaR_jb_min', 
-
-    # centrality vars
-    'VBF_Cgg', 'VBF_Cbb',
-
-    # VBF dijet vars
-    'VBF_dijet_mass',
-} if 'nonRes' in jet_prefix else {}
 AUX_VARIABLES = lambda jet_prefix: {
     # identifiable event info
     'event', 'lumi', 'hash', 'sample_name', 
@@ -139,7 +106,7 @@ AUX_VARIABLES = lambda jet_prefix: {
 
 FILL_VALUE = -999
 TRAIN_MOD = 5
-JET_PREFIX = 'nonResReg_DNNpair'  # ["Res", "Res_DNNpair", "nonRes", "nonResReg", "nonResReg_DNNpair"]
+JET_PREFIX = 'nonRes'
 
 SEED = 21
 BASE_FILEPATH = 'Run3_202'
@@ -151,5 +118,5 @@ END_FILEPATH = "preprocessed.parquet"
 ################################
 
 
-BDT_VARIABLES = BASIC_VARIABLES(JET_PREFIX) | MHH_CORRELATED_VARIABLES(JET_PREFIX) #| VBFHH_VARIABLES(JET_PREFIX)
+BDT_VARIABLES = BASIC_VARIABLES(JET_PREFIX) | MHH_CORRELATED_VARIABLES(JET_PREFIX)
 AUX_VARIABLES = AUX_VARIABLES(JET_PREFIX)

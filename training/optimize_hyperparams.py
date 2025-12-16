@@ -40,8 +40,7 @@ def init_params(n_classes: int, static_params_dict: dict=None):
     param = {}
     # Booster parameters
     param['eta']              = 0.05       # learning rate
-    param['max_depth']        = 10         # max number of splittings per tree
-    param['subsample']        = 0.2        # fraction of events to train tree on
+    param['max_depth']        = 4         # max number of splittings per tree
     param['colsample_bytree'] = 0.6        # fraction of features to train tree on
     param['num_class']        = n_classes  # num classes for multi-class training
     param['min_child_weight'] = 0.25
@@ -50,10 +49,12 @@ def init_params(n_classes: int, static_params_dict: dict=None):
         param['device']           = 'cuda'
         param['tree_method']      = 'gpu_hist'
         param['sampling_method']  = 'gradient_based'
+        param['subsample']        = 0.2        # fraction of events to train tree on
     except:
         param['device']           = 'cpu'
         param['tree_method']      = 'hist'
         param['sampling_method']  = 'uniform'
+        param['subsample']        = 0.8        # fraction of events to train tree on
     param['max_bin']          = 512
     param['grow_policy']      = 'lossguide'
     # Learning task parameters
@@ -64,7 +65,7 @@ def init_params(n_classes: int, static_params_dict: dict=None):
         for key, value in static_params_dict.items():
             param[key] = value
 
-    return param, round(25 / param['eta'])  # number of trees to make
+    return param, round(50 / param['eta'])  # number of trees to make
 
 
 def optimize_hyperparams(

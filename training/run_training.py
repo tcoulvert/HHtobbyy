@@ -78,7 +78,7 @@ parser.add_argument(
     "--queue", 
     choices=["workday", "longlunch"], 
     default="workday",
-    help="Memory to request on batch jobs"
+    help="Queue to request on batch jobs"
 )
 
 ################################
@@ -100,7 +100,7 @@ CLASS_SAMPLE_MAP = get_class_sample_map(DATASET_DIRPATH)
 N_CLASSES = len(CLASS_SAMPLE_MAP)
 N_FOLDS = get_n_folds(DATASET_DIRPATH)
 
-VERSION = 'v19'
+VERSION = DATASET_DIRPATH.split('/')[-3]
 VARS = '_'.join(DATASET_DIRPATH.split('/')[-2].split('_')[:-2])
 CURRENT_TIME = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
 OUTPUT_DIRPATH = os.path.join(BASE_DIRPATH, VERSION, VARS, CURRENT_TIME)

@@ -1,5 +1,6 @@
 # Stdlib packages
 import argparse
+import copy
 import logging
 import os
 import subprocess
@@ -7,6 +8,7 @@ import sys
 
 # Common Py packages
 import numpy as np
+import pandas as pd
 from matplotlib import pyplot as plt
 
 # HEP packages
@@ -93,6 +95,11 @@ parser.add_argument(
     default=transform_preds_options()[0],
     help="Defines the discriminator to use for output scores, discriminators are implemented in evaluation_utils"
 )
+parser.add_argument(
+    "--save_FPRTPR", 
+    action="store_true",
+    help="Boolean to save out pandas file with TPR and FPR points inside"
+)
 
 ################################
 
@@ -110,8 +117,9 @@ LOGY = args.logy
 BINS = args.bins
 ROCTYPE = args.ROCtype
 DISCRIMINATOR = args.discriminator
+SAVE_FPRTPR = args.save_FPRTPR
 BKGEFF = transform_preds_bkgeffs([key for key in get_class_sample_map(DATASET_DIRPATH).keys()], DISCRIMINATOR)
-PLOT_TYPE = f'ROC_{ROCTYPE}_{DISCRIMINATOR}'
+PLOT_TYPE = f'ROC_{ROCTYPE}_{DISCRIMINATOR}' + ('_unweighted' if not WEIGHTS else '_MCweighted')
 
 BASE_TPR = np.linspace(0, 1, 5000)
 
@@ -138,8 +146,13 @@ def plot_rocs(
 
     plt.figure(figsize=(9,7))
 
+    FPRTPR_df = None
     for fpr, tpr, label in zip(fprs, tprs, labels):
         plt.plot(fpr, tpr, label=label, linestyle='solid')
+        if SAVE_FPRTPR:
+            new_df = pd.Dataframe([fpr, tpr], columns=['FPR: '+label, 'TPR: '+label])
+            if FPRTPR_df is None: FPRTPR_df = copy.deepcopy(new_df)
+            else: FPRTPR_df = pd.concat([FPRTPR_df, new_df])
 
     plt.legend(bbox_to_anchor=(1, 1))
     plt.xlabel('Background efficiency ($\epsilon_{{bkg}}$)')
@@ -161,6 +174,7 @@ def plot_rocs(
         plot_filepath(PLOT_TYPE, plot_dirpath, plot_prefix, plot_postfix, format='pdf'), 
         bbox_inches='tight'
     )
+    if SAVE_FPRTPR: FPRTPR_df.to_parquet(plot_filepath(PLOT_TYPE, plot_dirpath, plot_prefix, plot_postfix, format='parquet'))
     plt.close()
 
 

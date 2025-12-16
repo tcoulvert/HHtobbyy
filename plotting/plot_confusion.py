@@ -87,7 +87,7 @@ else:
 WEIGHTS = args.weights
 NORMALIZE = args.normalize
 BETA = args.beta
-PLOT_TYPE = 'confusion_matrix'
+PLOT_TYPE = 'confusion_matrix' + ('_unweighted' if not WEIGHTS else '_MCweighted')
 
 plt.style.use(hep.style.CMS)
 plt.rcParams.update({'font.size': 20})

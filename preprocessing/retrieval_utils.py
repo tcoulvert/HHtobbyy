@@ -44,7 +44,6 @@ def get_class_sample_map(dataset_dirpath: str):
 
 def get_n_folds(dataset_dirpath: str):
     filepaths = glob.glob(os.path.join(dataset_dirpath, "**", f"*train*.parquet"), recursive=True)
-    print(filepaths)
     max_fold = max([
         int(filepath[re.search('train[0-9]', filepath).end()-1]) for filepath in filepaths
     ])  # only works for up to 10 folds -- currently using 5, not likely to increase due to low-stats
@@ -56,11 +55,12 @@ def get_train_filepaths_func(dataset_dirpath: str, dataset: str="train", syst_na
     return lambda fold_idx: {
         class_name: sorted(
             set(
-                [
-                    sample_filepath 
-                    for sample_filepath in glob.glob(os.path.join(dataset_dirpath, "**", f"*{syst_name}*", f"*{dataset}{fold_idx}*.parquet"), recursive=True)
-                    if match_sample(sample_filepath, sample_names) is not None
-                ]
+                sample_filepath
+                for sample_filepath in glob.glob(os.path.join(dataset_dirpath, "**", f"*{dataset}{fold_idx}*.parquet"), recursive=True)
+                if (
+                    (syst_name == "nominal" and match_sample(sample_filepath, ["_up", "_down"]) is None) 
+                    or match_sample(sample_filepath, [syst_name]) is not None
+                ) and match_sample(sample_filepath, sample_names) is not None
             )
         ) for class_name, sample_names in class_sample_map.items()
     }
@@ -68,10 +68,12 @@ def get_test_filepaths_func(dataset_dirpath: str, syst_name: str='nominal'):
     return lambda fold_idx: {
         'test': sorted(
             set(
-                glob.glob(os.path.join(dataset_dirpath, "**", f"*{syst_name}*", f"*test{fold_idx}*.parquet"), recursive=True)
-            ) | (
-                set(glob.glob(os.path.join(dataset_dirpath, "**", f"Data*test{fold_idx}*.parquet"), recursive=True))
-                if syst_name == "nominal" else set()
+                sample_filepath
+                for sample_filepath in glob.glob(os.path.join(dataset_dirpath, "**", f"*test{fold_idx}*.parquet"), recursive=True)
+                if ( 
+                    (syst_name == "nominal" and match_sample(sample_filepath, ["_up", "_down"]) is None) 
+                    or match_sample(sample_filepath, [syst_name]) is not None
+                )
             )
         )
     }
