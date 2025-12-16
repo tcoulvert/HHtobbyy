@@ -184,7 +184,7 @@ def submit(
         os.system(f"condor_q -constraint \"ClusterId == {ClusterId}\" -af ProcId JobStatus RequestMemory > {CONDOR_FILEPATHS['job_info']}")
         if os.path.getsize(CONDOR_FILEPATHS['job_info']) == 0:
             logger.log(1, f"Finished running condor jobs, running postprocessing.")
-            postprocessing(output_dirpath, eos_dirpath)
+            postprocessing(output_dirpath)
             break
         with open(CONDOR_FILEPATHS['job_info'], 'r') as f:
             for line in f:

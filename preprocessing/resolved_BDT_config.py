@@ -4,15 +4,15 @@ import datetime
 ################################
 
 
-DATASET_TAG = "22to24_bTagWPDDQCD"
+DATASET_TAG = "22to24_bTagWPRegDNN"
 
 CLASS_SAMPLE_MAP = {
     'ggF HH': ["GluGlu*HH*kl-1p00"],  # *!batch 
     # 'VBF HH': ["VBF*HH*C2V_1"],
     'ttH + bbH': ["ttH", "bbH"],
     'VH': ["VH", "ZH", "Wm*H", "Wp*H"],
-    # 'nonRes + ggFH + VBFH': ["GGJets_MGG", "GJet_PT", "TTGG", "GluGluH*GG", "VBFH*GG"],
-    'nonRes + ggFH + VBFH': ["DDQCDGJets", "TTGG", "GluGluH*GG", "VBFH*GG"],
+    'nonRes + ggFH + VBFH': ["GGJets_MGG", "GJet_PT", "TTGG", "GluGluH*GG", "VBFH*GG"],
+    # 'nonRes + ggFH + VBFH': ["DDQCDGJets", "TTGG", "GluGluH*GG", "VBFH*GG"],
 }
 TRAIN_ONLY_SAMPLES = {
     "Zto2Q", "Wto2Q", "batch[4-6]"
@@ -139,7 +139,7 @@ AUX_VARIABLES = lambda jet_prefix: {
 
 FILL_VALUE = -999
 TRAIN_MOD = 5
-JET_PREFIX = 'nonRes'  # ["Res", "Res_DNNpair", "nonRes", "nonResReg", "nonResReg_DNNpair"]
+JET_PREFIX = 'nonResReg_DNNpair'  # ["Res", "Res_DNNpair", "nonRes", "nonResReg", "nonResReg_DNNpair"]
 
 SEED = 21
 BASE_FILEPATH = 'Run3_202'

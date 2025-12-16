@@ -111,7 +111,8 @@ SYST_NAME = args.syst_name
 SEED = args.seed
 DISCRIMINATOR = args.discriminator
 FOLD_TO_PLOT = args.fold
-assert FOLD_TO_PLOT in ['none', 'all']+list(range(get_n_folds(DATASET_DIRPATH))), f"The option passed to \'--fold\' ({FOLD_TO_PLOT}) is not allowed, for this dataset your options are: {['none', 'all']+list(range(get_n_folds(DATASET_DIRPATH)))}"
+FOLD_TO_PLOT_OPTIONS = ['none', 'all']+[str(fold_idx) for fold_idx in range(get_n_folds(DATASET_DIRPATH))]
+assert FOLD_TO_PLOT in FOLD_TO_PLOT_OPTIONS, f"The option passed to \'--fold\' ({FOLD_TO_PLOT}) is not allowed, for this dataset your options are: {FOLD_TO_PLOT_OPTIONS}"
 
 CLASS_SAMPLE_MAP = get_class_sample_map(DATASET_DIRPATH)
 CLASS_NAMES = [key for key in CLASS_SAMPLE_MAP.keys()]
@@ -175,7 +176,7 @@ def data_mc_comparison():
                     [pd.concat([full_MC_dfs[i], MC_dfs[i].loc[MC_masks[i]]]) for i in range(len(MC_labels))],
                     [pd.concat([full_MC_auxs[i], MC_auxs[i].loc[MC_masks[i]]]) for i in range(len(MC_labels))]
                 )
-        if FOLD_TO_PLOT == 'all' or FOLD_TO_PLOT == fold_idx:
+        if FOLD_TO_PLOT == 'all' or FOLD_TO_PLOT == str(fold_idx):
             for col in Data_df.columns:
                 fig, axs = plt.subplots(2, 1, sharex=True, height_ratios=[4,1], figsize=(10, 8))
 

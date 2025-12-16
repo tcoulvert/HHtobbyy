@@ -79,24 +79,25 @@ def plot_ratio(
     """
     plot_dirpath = make_plot_dirpath(training_dirpath, plot_type)
 
-    for arrs, weights in [(arrs1, weights1), (arrs2, weights2)]:
-        if arrs is np.ndarray: arrs = [arrs]; weights = [weights]
-        if len(np.shape(np.array(arrs, dtype=object))) > 2: raise IndexError(f"Input array should be either a 1D numpy array or a list of 1D numpy arrays, your shape is {np.shape(arrs)}")
+    if type(arrs1) is np.ndarray: arrs1 = [arrs1]; weights1 = [weights1]
+    if type(arrs2) is np.ndarray: arrs2 = [arrs2]; weights2 = [weights2]
+    assert (
+        len(np.shape(np.array(arrs1, dtype=object))) <= 2 
+        and len(np.shape(np.array(arrs2, dtype=object))) <= 2
+    ), f"Input arrays should be either a 1D numpy array or a list of 1D numpy arrays, your shapes are {np.shape(arrs1)} and {np.shape(arrs2)}"
 
     hists1 = make_hists(arrs1, var_label, weights=weights1)
     hists2 = make_hists(arrs2, var_label, weights=weights2)
 
     ratio = np.sum([hist1.values() for hist1 in hists1], axis=0) / np.sum([hist2.values() for hist2 in hists2], axis=0)
-    numer_err, denom_err = np.sqrt(np.sum([hist1.variances() for hist1 in hists1], axis=0)), np.sqrt(np.sum([hist2.variances() for hist2 in hists2], axis=0))
+    numer_err, denom_err = np.sqrt(np.sum([hist1.variances() for hist1 in hists1], axis=0)) / np.sum([hist1.values() for hist1 in hists1], axis=0), np.sqrt(np.sum([hist2.variances() for hist2 in hists2], axis=0)) / np.sum([hist2.values() for hist2 in hists2], axis=0)
     for arr in [ratio, numer_err, denom_err]:  # Set 0 and inf to nan to hide during plotting
         arr[arr == 0] = np.nan  
         arr[np.isinf(arr)] = np.nan
 
     fig, axs = subplots[0], subplots[1]
 
-    axs[1].set_ylim(0., 2.5)
-    if np.min(ratio - numer_err) > 0.8 and np.max(ratio + numer_err) < 1.2:
-        axs[1].set_ylim(0.8, 1.2)
+    axs[1].set_ylim(0., 5.)
     axs[1].axhline(
         central_value, color="black", linestyle="solid", lw=1.
     )
@@ -154,7 +155,7 @@ def plot_1dhist(
     if type(arrs) is np.ndarray: arrs = [arrs]; weights = [weights]; labels = [labels]; colors = [colors]
     if len(np.shape(np.array(arrs, dtype=object))) > 2: raise IndexError(f"Input array should be either a 1D numpy array or a list of 1D numpy arrays, your shape is {np.shape(arrs)}")
 
-    hists = make_hists(arrs, var_label)
+    hists = make_hists(arrs, var_label, weights=weights)
     xs_order = np.argsort([np.sum(_hist_.values()) for _hist_ in hists])
     hists, weights = [hists[i] for i in xs_order], [weights[i] for i in xs_order]
 
