@@ -141,14 +141,13 @@ def data_mc_comparison():
     for fold_idx in range(get_n_folds(DATASET_DIRPATH)):
         booster = get_booster(fold_idx)
 
-        Data_filepaths = [filepath for filepath in get_filepaths_func(fold_idx)[DATASET] if 'data' in filepath.lower()]
-        MC_filepaths = [filepath for filepath in get_filepaths_func(fold_idx)[DATASET] if 'sim' in filepath.lower()]
+        Data_filepaths = [filepath for filepath in get_filepaths_func(fold_idx)[DATASET] if 'data' in filepath.lower().split('/')]
+        MC_filepaths = [filepath for filepath in get_filepaths_func(fold_idx)[DATASET] if 'sim' in filepath.lower().split('/')]
         assert len(set(get_filepaths_func(fold_idx)[DATASET])) == len(set(Data_filepaths) | set(MC_filepaths)), f"Some files are not being found as data or sim, please check that data filepaths contain \"data\" (not case sensitive) and sim filepaths contain \"sim\""
         
         Data_df, Data_aux = pd.concat([get_Dataframe(filepath, n_folds_fold_idx=(get_n_folds(DATASET_DIRPATH), fold_idx)) for filepath in Data_filepaths]), pd.concat([get_Dataframe(filepath, aux=True, n_folds_fold_idx=(get_n_folds(DATASET_DIRPATH), fold_idx)) for filepath in Data_filepaths])
-        # Data_df, Data_aux = pd.concat([get_Dataframe(filepath, n_folds_fold_idx=(get_n_folds(DATASET_DIRPATH), fold_idx)) for filepath in Data_filepaths]), pd.concat([get_Dataframe(filepath, aux=True, n_folds_fold_idx=(get_n_folds(DATASET_DIRPATH), fold_idx)) for filepath in Data_filepaths])
-        # MC_dfs, MC_auxs = [get_Dataframe(filepath, n_folds_fold_idx=(get_n_folds(DATASET_DIRPATH), fold_idx)) for filepath in MC_filepaths], [get_Dataframe(filepath, aux=True, n_folds_fold_idx=(get_n_folds(DATASET_DIRPATH), fold_idx)) for filepath in MC_filepaths]
-        MC_dfs, MC_auxs = [get_Dataframe(filepath) for filepath in MC_filepaths], [get_Dataframe(filepath, aux=True) for filepath in MC_filepaths]
+        MC_dfs, MC_auxs = [get_Dataframe(filepath, n_folds_fold_idx=(get_n_folds(DATASET_DIRPATH), fold_idx)) for filepath in MC_filepaths], [get_Dataframe(filepath, aux=True, n_folds_fold_idx=(get_n_folds(DATASET_DIRPATH), fold_idx)) for filepath in MC_filepaths]
+        # MC_dfs, MC_auxs = [get_Dataframe(filepath) for filepath in MC_filepaths], [get_Dataframe(filepath, aux=True) for filepath in MC_filepaths]
         MC_labels = [MC_aux.loc[:, 'AUX_sample_name'][0] for MC_aux in MC_auxs]
         unique_MC_labels = np.unique(MC_labels)
         unique_MC_dfs, unique_MC_auxs = [], []

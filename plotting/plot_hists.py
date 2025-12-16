@@ -59,7 +59,7 @@ def make_hists(arrs: list, var_label: str, weights: list=None):
         )
 
         var_hist = hist.Hist(
-            hist.axis.Regular(50, min_val, max_val, name="var", label=var_label, growth=False, underflow=False), 
+            hist.axis.Regular(50, min_val, max_val, name="var", label=var_label, growth=False, underflow=False, overflow=False), 
             storage='weight'
         ).fill(var=arr[var_mask], weight=weights[i][var_mask] if weights is not None else np.ones_like(arr[var_mask]))
         hists.append(var_hist)

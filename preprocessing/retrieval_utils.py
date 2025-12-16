@@ -105,6 +105,7 @@ def get_Dataframe(filepath: str, aux: bool=False, n_folds_fold_idx: tuple=None):
     else:
         AUX_event_df = pq.read_table(filepath, columns=['AUX_event']).to_pandas()
         mask = (AUX_event_df.loc[:, 'AUX_event'] % n_folds_fold_idx[0]).eq(n_folds_fold_idx[1])
+        print(f"{'/'.join(filepath.split('/')[-3:])}\n   num events pass mask = {np.sum(mask)} vs. total num events = {np.shape(mask)[0]}\n"+'-'*60)
         return df.loc[mask].reset_index(drop=True)
 def get_Dataframes(filepath: str, n_folds_fold_idx: tuple=None):
     return get_Dataframe(filepath, n_folds_fold_idx=n_folds_fold_idx), get_Dataframe(filepath, aux=True, n_folds_fold_idx=n_folds_fold_idx)
