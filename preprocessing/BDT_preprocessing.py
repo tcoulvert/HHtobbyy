@@ -95,7 +95,7 @@ def check_train_dataset(train_filepaths: list):
             if 'data' in era: continue
             if match_regex(f"{era}*{glob_name}", train_filepaths) is None:
                 if not (
-                    ('2024' in era and glob_name in ['VH', 'GJet_PT'])
+                    ('2024' in era and glob_name in ['VH'])
                     or (('2022' in era or '2023' in era) and glob_name in ['ZH', 'Wm*H', 'Wp*H'])
                 ):
                     good_dataset_bool = False; break 

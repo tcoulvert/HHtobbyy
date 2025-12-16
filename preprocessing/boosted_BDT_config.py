@@ -4,19 +4,6 @@ import datetime
 ################################
 
 
-INPUT_ERAS = {
-    # MC
-    '/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/Run3_2022/sim/preEE',
-    '/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/Run3_2022/sim/postEE',
-    '/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/Run3_2023/sim/preBPix',
-    '/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/Run3_2023/sim/postBPix',
-    '/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/Run3_2024/sim',
-    # Data
-    '/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/Run3_2022/data',
-    '/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/Run3_2023/data',
-    '/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/v4/Run3_2024/data',
-}
-
 DATASET_TAG = "22to24_bTagWPbatch"
 
 CLASS_SAMPLE_MAP = {
@@ -86,7 +73,7 @@ AUX_VARIABLES = lambda jet_prefix: {
 
 FILL_VALUE = -999
 TRAIN_MOD = 5
-JET_PREFIX = 'Res'
+JET_PREFIX = 'Res'  # ["Res", "Res_DNNpair", "nonRes", "nonResReg", "nonResReg_DNNpair"]
 
 SEED = 21
 BASE_FILEPATH = 'Run3_202'
