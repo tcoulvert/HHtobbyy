@@ -11,7 +11,7 @@ CLASS_SAMPLE_MAP = {
     # 'VBF HH': ["VBF*HH*C2V_1"],
     'ttH + bbH': ["ttH", "bbH"],
     'VH': ["VH", "ZH", "Wm*H", "Wp*H"],
-    'nonRes + ggFH + VBFH': ["GGJets_MGG", "GJet_", "TTGG", "GluGluH*GG", "VBFH*GG"],
+    'nonRes + ggFH + VBFH': ["!DDQCDGGjet*GGJets", "!DDQCDGJet*GJet", "TTGG", "GluGluH*GG", "VBFH*GG"],
     # 'nonRes + ggFH + VBFH': ["DDQCDGJets", "TTGG", "GluGluH*GG", "VBFH*GG"],
 }
 TRAIN_ONLY_SAMPLES = {

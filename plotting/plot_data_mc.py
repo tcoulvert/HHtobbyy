@@ -8,8 +8,6 @@ import sys
 
 # Common Py packages
 import matplotlib.pyplot as plt
-
-# HEP packages
 import numpy as np
 import pandas as pd
 
@@ -141,9 +139,9 @@ def data_mc_comparison():
     for fold_idx in range(get_n_folds(DATASET_DIRPATH)):
         booster = get_booster(fold_idx)
 
-        Data_filepaths = [filepath for filepath in get_filepaths_func(fold_idx)[DATASET] if 'data' in filepath.lower().split('/')]
-        MC_filepaths = [filepath for filepath in get_filepaths_func(fold_idx)[DATASET] if 'sim' in filepath.lower().split('/')]
-        assert len(set(get_filepaths_func(fold_idx)[DATASET])) == len(set(Data_filepaths) | set(MC_filepaths)), f"Some files are not being found as data or sim, please check that data filepaths contain \"/data/\" (not case sensitive) and sim filepaths contain \"/sim/\""
+        Data_filepaths = [filepath for dataset in get_filepaths_func(fold_idx).values() for filepath in dataset if 'data' in filepath.lower().split('/')]
+        MC_filepaths = [filepath for dataset in get_filepaths_func(fold_idx).values() for filepath in dataset if 'sim' in filepath.lower().split('/')]
+        assert len(set(filepath for dataset in get_filepaths_func(fold_idx).values() for filepath in dataset)) == len(set(Data_filepaths) | set(MC_filepaths)), f"Some files are not being found as data or sim, please check that data filepaths contain \"/data/\" (not case sensitive) and sim filepaths contain \"/sim/\""
         
         Data_df, Data_aux = pd.concat([get_Dataframe(filepath, n_folds_fold_idx=(get_n_folds(DATASET_DIRPATH), fold_idx)) for filepath in Data_filepaths]), pd.concat([get_Dataframe(filepath, aux=True, n_folds_fold_idx=(get_n_folds(DATASET_DIRPATH), fold_idx)) for filepath in Data_filepaths])
         MC_dfs, MC_auxs = [get_Dataframe(filepath, n_folds_fold_idx=(get_n_folds(DATASET_DIRPATH), fold_idx)) for filepath in MC_filepaths], [get_Dataframe(filepath, aux=True, n_folds_fold_idx=(get_n_folds(DATASET_DIRPATH), fold_idx)) for filepath in MC_filepaths]

@@ -94,18 +94,20 @@ def get_label1D(labelND):
     """
     return np.nonzero(labelND).flatten()
 
-def get_Dataframe(filepath: str, aux: bool=False, n_folds_fold_idx: tuple=None):
+def get_Dataframe(filepath: str, aux: bool=False, n_folds_fold_idx: tuple=None, columns: list=None):
     schema = pq.read_schema(filepath)
-    vars = [var for var in schema.names if ('AUX_' not in var) ^ aux]
+    if columns is None:
+        columns = [var for var in schema.names if ('AUX_' not in var) ^ aux]
+    else:
+        assert set(columns) <= set(schema.names), f"The requested list of columns are not all in the file. Missing variables:\n{set(columns) - set(schema.names)}"
 
-    df = pq.read_table(filepath, columns=vars).to_pandas()
+    df = pq.read_table(filepath, columns=columns).to_pandas()
 
     if n_folds_fold_idx is None:
         return df
     else:
         AUX_event_df = pq.read_table(filepath, columns=['AUX_event']).to_pandas()
         mask = (AUX_event_df.loc[:, 'AUX_event'] % n_folds_fold_idx[0]).eq(n_folds_fold_idx[1])
-        print(f"{'/'.join(filepath.split('/')[-3:])}\n   num events pass mask = {np.sum(mask)} vs. total num events = {np.shape(mask)[0]}\n"+'-'*60)
         return df.loc[mask].reset_index(drop=True)
 def get_Dataframes(filepath: str, n_folds_fold_idx: tuple=None):
     return get_Dataframe(filepath, n_folds_fold_idx=n_folds_fold_idx), get_Dataframe(filepath, aux=True, n_folds_fold_idx=n_folds_fold_idx)
@@ -158,9 +160,10 @@ def get_train_Dataframe(dataset_dirpath: str, fold_idx: int, dataset: str="train
         aux.reindex(class_shuffle_idx)
 
     return df, aux
-def get_test_Dataframe(filepath: str, n_folds_fold_idx: tuple=None):
-    df, aux = get_Dataframes(filepath, n_folds_fold_idx=n_folds_fold_idx)
-    return pd.concat([df, aux])
+def get_test_Dataframe(filepath: str):
+    df, aux = get_Dataframes(filepath)
+    for col in aux.columns: df[col] = aux[col]
+    return df
 
 def get_DMatrix(df, aux, dataset: str='train', label: bool=True):
     if label: label_arg = aux['AUX_label1D']
@@ -182,6 +185,6 @@ def get_train_DMatrices(dataset_dirpath: str, fold_idx: int, val_split: float=0.
     test_dm = get_DMatrix(test_df, test_aux, dataset='test')
 
     return train_dm, val_dm, test_dm
-def get_test_DMatrix(filepath: str, n_folds_fold_idx: tuple=None):
-    df, aux = get_Dataframes(filepath, n_folds_fold_idx=n_folds_fold_idx)
+def get_test_DMatrix(filepath: str):
+    df, aux = get_Dataframes(filepath)
     return get_DMatrix(df, aux, dataset='test', label=False)
