@@ -152,15 +152,15 @@ def compute_cuts1D(df: pd.DataFrame, cat_mask: pd.DataFrame):
             pass_cut = np.logical_and(pass_fom, cat_df.loc[:, TRANSFORM_COLUMNS[0]].gt(cut1))
             sideband_cut = np.logical_and(pass_sideband, cat_df.loc[:, TRANSFORM_COLUMNS[0]].gt(cut1))
 
-            signal = cat_df.loc[np.logical_and(pass_cut, cat_df.loc['AUX_label1D'].eq(SIGNAL_LABEL)), 'AUX_eventWeight'].sum()
-            bkg = cat_df.loc[np.logical_and(pass_cut, cat_df.loc['AUX_label1D'].ne(SIGNAL_LABEL)), 'AUX_eventWeight'].sum()
-            sideband_nonres = cat_df.loc[np.logical_and(sideband_cut), 'AUX_eventWeight'].sum()
+            signal = cat_df.loc[np.logical_and(pass_cut, cat_df.loc[:, 'AUX_label1D'].eq(SIGNAL_LABEL)), 'AUX_eventWeight'].sum()
+            bkg = cat_df.loc[np.logical_and(pass_cut, cat_df.loc[:, 'AUX_label1D'].ne(SIGNAL_LABEL)), 'AUX_eventWeight'].sum()
+            sideband_nonres = cat_df.loc[sideband_cut, 'AUX_eventWeight'].sum()
             fom = fom_s_over_sqrt_b(signal, bkg) if sideband_nonres > 8. else 0.
             foms.append(fom)
 
         cut = cuts[np.argmax(foms)]
         step_size1 = (stop1 - start1) / N_STEPS
-        start1, stop1 = cut[0] - step_size1, cut[0] + step_size1
+        start1, stop1 = cut - step_size1, cut + step_size1
 
         if foms[np.argmax(foms)] > best_fom: best_fom = foms[np.argmax(foms)]; best_cut = cuts[np.argmax(foms)]
 
@@ -191,15 +191,15 @@ def compute_cuts2D(df: pd.DataFrame, cat_mask: pd.DataFrame):
                 pass_cut = np.logical_and(pass_cut, cat_df.loc[:, TRANSFORM_COLUMNS[1]].gt(cut2))
                 sideband_cut = np.logical_and(pass_sideband, cat_df.loc[:, TRANSFORM_COLUMNS[1]].gt(cut2))
 
-                signal = cat_df.loc[np.logical_and(pass_cut, cat_df.loc['AUX_label1D'].eq(SIGNAL_LABEL)), 'AUX_eventWeight'].sum()
-                bkg = cat_df.loc[np.logical_and(pass_cut, cat_df.loc['AUX_label1D'].ne(SIGNAL_LABEL)), 'AUX_eventWeight'].sum()
-                sideband_nonres = cat_df.loc[np.logical_and(sideband_cut), 'AUX_eventWeight'].sum()
+                signal = cat_df.loc[np.logical_and(pass_cut, cat_df.loc[:, 'AUX_label1D'].eq(SIGNAL_LABEL)), 'AUX_eventWeight'].sum()
+                bkg = cat_df.loc[np.logical_and(pass_cut, cat_df.loc[:, 'AUX_label1D'].ne(SIGNAL_LABEL)), 'AUX_eventWeight'].sum()
+                sideband_nonres = cat_df.loc[sideband_cut, 'AUX_eventWeight'].sum()
                 fom = fom_s_over_sqrt_b(signal, bkg) if sideband_nonres > 8. else 0.
                 _foms_.append(fom)
             foms.append(_foms_)
             cuts.append(_cuts_)
         
-        cut = cuts[np.argmax(foms)]
+        cut = cuts[np.unravel_index(np.argmax(foms), np.shape(foms))[0]][np.unravel_index(np.argmax(foms), np.shape(foms))[1]]
         step_size1, step_size2 = (stop1 - start1) / N_STEPS, (stop2 - start2) / N_STEPS
         start1, stop1 = cut[0] - step_size1, cut[0] + step_size1
         start2, stop2 = cut[1] - step_size2, cut[1] + step_size2
