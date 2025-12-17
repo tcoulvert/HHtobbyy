@@ -220,7 +220,7 @@ def ROC_OnevsOne(
     fprs, tprs, plot_labels = list(), list(), list()
     for j, (class_name, class_data) in enumerate(plot_data.items()):
         for k, (_class_name_, _class_data_) in enumerate(plot_data.items()):
-            if k < j: continue
+            if k <= j: continue
 
             roc_data = {
                 data_name: np.concatenate([class_data[data_name], _class_data_[data_name]])

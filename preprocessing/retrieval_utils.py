@@ -57,7 +57,7 @@ def get_train_filepaths_func(dataset_dirpath: str, dataset: str="train", syst_na
                 if (
                     (syst_name == "nominal" and match_sample(sample_filepath, ["_up", "_down"]) is None) 
                     or match_sample(sample_filepath, [syst_name]) is not None
-                ) and match_sample(sample_filepath, sample_names) is not None
+                ) and match_sample(sample_filepath, sample_names) is not None and 'data' not in sample_filepath.lower().split('/')
             )
         ) for class_name, sample_names in class_sample_map.items()
     }
@@ -136,6 +136,8 @@ def get_train_Dataframe(dataset_dirpath: str, fold_idx: int, dataset: str="train
         else:
             df = pd.concat([df, class_df], ignore_index=True)
             aux = pd.concat([aux, class_aux], ignore_index=True)
+
+    assert 'Data' not in set(np.unique(aux['AUX_sample_name']).tolist()), f"Data is getting into train dataset... THIS IS VERY BAD"
 
     # Upweight resonant background and signal samples for training #
     # Non-Resonant background #
