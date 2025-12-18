@@ -55,9 +55,9 @@ def get_train_filepaths_func(dataset_dirpath: str, dataset: str="train", syst_na
                 sample_filepath
                 for sample_filepath in glob.glob(os.path.join(dataset_dirpath, "**", f"*{dataset}{fold_idx}*.parquet"), recursive=True)
                 if (
-                    (syst_name == "nominal" and match_sample(sample_filepath, ["_up", "_down"]) is None) 
-                    or match_sample(sample_filepath, [syst_name]) is not None
-                ) and match_sample(sample_filepath, sample_names) is not None and 'data' not in sample_filepath.lower().split('/')
+                    (syst_name == "nominal" and match_sample(sample_filepath[len(dataset_dirpath):], ["_up", "_down"]) is None) 
+                    or match_sample(sample_filepath[len(dataset_dirpath):], [syst_name]) is not None
+                ) and match_sample(sample_filepath[len(dataset_dirpath):], sample_names) is not None
             )
         ) for class_name, sample_names in class_sample_map.items()
     }
@@ -68,8 +68,8 @@ def get_test_filepaths_func(dataset_dirpath: str, syst_name: str='nominal'):
                 sample_filepath
                 for sample_filepath in glob.glob(os.path.join(dataset_dirpath, "**", f"*test{fold_idx}*.parquet"), recursive=True)
                 if ( 
-                    (syst_name == "nominal" and match_sample(sample_filepath, ["_up", "_down"]) is None) 
-                    or match_sample(sample_filepath, [syst_name]) is not None
+                    (syst_name == "nominal" and match_sample(sample_filepath[len(dataset_dirpath):], ["_up", "_down"]) is None) 
+                    or match_sample(sample_filepath[len(dataset_dirpath):], [syst_name]) is not None
                 )
             )
         )
@@ -113,6 +113,13 @@ def get_Dataframes(filepath: str, n_folds_fold_idx: tuple=None):
     return get_Dataframe(filepath, n_folds_fold_idx=n_folds_fold_idx), get_Dataframe(filepath, aux=True, n_folds_fold_idx=n_folds_fold_idx)
 def get_train_Dataframe(dataset_dirpath: str, fold_idx: int, dataset: str="train"):
     filepaths = get_train_filepaths_func(dataset_dirpath, dataset=dataset)(fold_idx)
+    
+    for class_name, class_filepaths in filepaths.items():
+        print(class_name)
+        print('='*60+'\n'+'='*60)
+        for filepath in class_filepaths:
+            print(filepath)
+            print('-'*60)
 
     df, aux = None, None
     for i, bdt_class in enumerate(filepaths.keys()):

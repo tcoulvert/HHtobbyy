@@ -98,7 +98,10 @@ def check_train_dataset(train_filepaths: list):
                     ('2024' in era and glob_name in ['VH'])
                     or (('2022' in era or '2023' in era) and glob_name in ['ZH', 'Wm*H', 'Wp*H'])
                 ):
-                    good_dataset_bool = False; break 
+                    good_dataset_bool = False; break
+            elif match_regex(f"{era}*{glob_name}", list(set(train_filepaths) - set([match_regex(f"{era}*{glob_name}", train_filepaths)]))) is not None:
+                if not 'GJet' in glob_name:
+                    good_dataset_bool = False; break
         if not good_dataset_bool: break
     return good_dataset_bool
 
@@ -108,17 +111,18 @@ def get_input_filepaths():
     for era in ERAS:
         sample_filepaths = glob.glob(os.path.join(era, "**", f"*{END_FILEPATH}"), recursive=True)
         for sample_filepath in sample_filepaths:
+            sub_sample_filepath = sample_filepath[len(era):]
             if (
-                match_sample(sample_filepath, TEST_ONLY_SAMPLES) is not None
-                and match_sample(sample_filepath, {glob_name for glob_names in CLASS_SAMPLE_MAP.values() for glob_name in glob_names}) is None
+                match_sample(sub_sample_filepath, TEST_ONLY_SAMPLES) is not None
+                and match_sample(sub_sample_filepath, {glob_name for glob_names in CLASS_SAMPLE_MAP.values() for glob_name in glob_names}) is None
             ):
                 input_filepaths['test'].append(sample_filepath)
             elif (
-                match_sample(sample_filepath, {glob_name for glob_names in CLASS_SAMPLE_MAP.values() for glob_name in glob_names}) is not None 
-                and match_sample(sample_filepath, TRAIN_ONLY_SAMPLES) is not None
+                match_sample(sub_sample_filepath, {glob_name for glob_names in CLASS_SAMPLE_MAP.values() for glob_name in glob_names}) is not None 
+                and match_sample(sub_sample_filepath, TRAIN_ONLY_SAMPLES) is not None
             ):
                 input_filepaths['train'].append(sample_filepath)
-            elif match_sample(sample_filepath, {glob_name for glob_names in CLASS_SAMPLE_MAP.values() for glob_name in glob_names}) is not None:
+            elif match_sample(sub_sample_filepath, {glob_name for glob_names in CLASS_SAMPLE_MAP.values() for glob_name in glob_names}) is not None:
                 input_filepaths['train-test'].append(sample_filepath)
             else:
                 if DEBUG:
