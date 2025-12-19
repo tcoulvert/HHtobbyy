@@ -258,23 +258,23 @@ def categorize_model():
 
         category_mask = full_MC_eval.loc[:, 'AUX_nonRes_resolved_BDT_mask'].eq(1)
 
-        cuts_trials = [(0.9788, 0.9934), (0.987, 0.999), (0.99, 0.999), (0.999, 0.9999)]
-        for cuts_trial in cuts_trials:
-            print('='*60+'\n'+'='*60)
-            print('Cat 1 yields')
-            print('-'*60)
-            print(f"{TRANSFORM_COLUMNS[0]} > {cuts_trial[0]} & {TRANSFORM_COLUMNS[1]} > {cuts_trial[1]}")
-            pass_mask = np.logical_and(
-                category_mask, 
-                np.logical_and(
-                    full_MC_eval.loc[:, TRANSFORM_COLUMNS[0]].gt(cuts_trial[0]),
-                    full_MC_eval.loc[:, TRANSFORM_COLUMNS[1]].gt(cuts_trial[1]),
-                )
-            )
-            for unique_label in np.unique(full_MC_eval.loc[:, 'AUX_sample_name']):
-                unique_yield = full_MC_eval.loc[np.logical_and(pass_mask, full_MC_eval.loc[:, 'AUX_sample_name'].eq(unique_label)), 'AUX_eventWeight'].sum()
-                print('-'*60)
-                print(f"{unique_label} yield = {unique_yield}")
+        # cuts_trials = [(0.9788, 0.9934), (0.987, 0.999), (0.99, 0.999), (0.999, 0.9999)]
+        # for cuts_trial in cuts_trials:
+        #     print('='*60+'\n'+'='*60)
+        #     print('Cat 1 yields')
+        #     print('-'*60)
+        #     print(f"{TRANSFORM_COLUMNS[0]} > {cuts_trial[0]} & {TRANSFORM_COLUMNS[1]} > {cuts_trial[1]}")
+        #     pass_mask = np.logical_and(
+        #         category_mask, 
+        #         np.logical_and(
+        #             full_MC_eval.loc[:, TRANSFORM_COLUMNS[0]].gt(cuts_trial[0]),
+        #             full_MC_eval.loc[:, TRANSFORM_COLUMNS[1]].gt(cuts_trial[1]),
+        #         )
+        #     )
+        #     for unique_label in np.unique(full_MC_eval.loc[:, 'AUX_sample_name']):
+        #         unique_yield = full_MC_eval.loc[np.logical_and(pass_mask, full_MC_eval.loc[:, 'AUX_sample_name'].eq(unique_label)), 'AUX_eventWeight'].sum()
+        #         print('-'*60)
+        #         print(f"{unique_label} yield = {unique_yield}")
             
 
         for i in range(N_CATEGORIES):
