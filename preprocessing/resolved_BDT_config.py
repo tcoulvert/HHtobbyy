@@ -4,7 +4,7 @@ import datetime
 ################################
 
 
-DATASET_TAG = "22to23_bTagWP"
+DATASET_TAG = "22to24_bTagWP1k"
 
 CLASS_SAMPLE_MAP = {
     'ggF HH': ["GluGlu*HH*kl-1p00"],  # *!batch 

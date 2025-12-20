@@ -22,7 +22,7 @@ from preprocessing_utils import match_sample, match_regex
 ################################
 
 
-RES_BKG_RESCALE = 100
+RES_BKG_RESCALE = 1000  # 100 
 DF_SHUFFLE = True
 RNG_SEED = 21
 FILL_VALUE = -999
