@@ -75,7 +75,7 @@ luminosities = {
     '2023*preBPix': 17.794,
     '2023*postBPix': 9.451,
     '2024': 109.08,
-    '*****DQCDGJets*****': 1.
+    '*****DDQCDGJets*****': 1.
 }
 # Name: cross section [fb] @ sqrrt{s}=13.6 TeV & m_H=125.09 GeV #
 cross_sections = {

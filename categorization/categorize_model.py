@@ -254,7 +254,7 @@ def categorize_model():
 
         category_mask = full_MC_eval.loc[:, 'AUX_nonRes_resolved_BDT_mask'].eq(1)
 
-        cuts_trials = [(0.9813, 0.9977), (0.985, 0.9995), (0.999, 0.999), (0.999, 0.9993), (0.9838, 0.9983)]
+        cuts_trials = [(0., 0.), (0.9813, 0.9977), (0.9838, 0.9983)]
         for cuts_trial in cuts_trials:
             print('='*60+'\n'+'='*60)
             print('Cat 1 yields')
