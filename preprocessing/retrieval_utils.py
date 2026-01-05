@@ -111,7 +111,10 @@ def get_Dataframe(filepath: str, aux: bool=False, n_folds_fold_idx: tuple=None, 
         return df.loc[mask].reset_index(drop=True)
 def get_Dataframes(filepath: str, n_folds_fold_idx: tuple=None):
     return get_Dataframe(filepath, n_folds_fold_idx=n_folds_fold_idx), get_Dataframe(filepath, aux=True, n_folds_fold_idx=n_folds_fold_idx)
-def get_train_Dataframe(dataset_dirpath: str, fold_idx: int, dataset: str="train"):
+def get_train_Dataframe(dataset_dirpath: str, fold_idx: int, dataset: str="train", **kwargs):
+    df_list = []
+    aux_list = []
+
     filepaths = get_train_filepaths_func(dataset_dirpath, dataset=dataset)(fold_idx)
 
     # for class_name, class_filepaths in filepaths.items():
@@ -138,12 +141,19 @@ def get_train_Dataframe(dataset_dirpath: str, fold_idx: int, dataset: str="train
         class_df = class_df.loc[mask]
         class_aux = class_aux.loc[mask]
         
-        if df is None:
-            df = class_df
-            aux = class_aux
-        else:
-            df = pd.concat([df, class_df], ignore_index=True)
-            aux = pd.concat([aux, class_aux], ignore_index=True)
+        df_list.append(class_df)
+        aux_list.append(class_aux)
+    
+    if df_list:
+        df = pd.concat(df_list, ignore_index=True)
+        aux = pd.concat(aux_list, ignore_index=True)
+    else:
+        return None, None
+
+    if kwargs.get('restandardize', False):
+        if 'previous_std' in kwargs and 'new_std' in kwargs:
+            print(f"[INFO] Re-standardizing variables from {kwargs['previous_std']} to {kwargs['new_std']}")
+            df = reStandardize_variable(df, kwargs['previous_std'], kwargs['new_std'])
 
     assert 'Data' not in set(np.unique(aux['AUX_sample_name']).tolist()), f"Data is getting into train dataset... THIS IS VERY BAD"
 
@@ -212,15 +222,62 @@ def get_train_DMatrices(dataset_dirpath: str, fold_idx: int, val_split: float=0.
     if 'res_bkg_rescale' in kwargs: RES_BKG_RESCALE = kwargs['res_bkg_rescale']
     if 'shuffle' in kwargs: DF_SHUFFLE = kwargs['shuffle']
 
-    tr_df, tr_aux = get_train_Dataframe(dataset_dirpath, fold_idx)
+    if kwargs.get('test_only', False):
+        # save resource when only need test DMatrix
+        test_df, test_aux = get_train_Dataframe(dataset_dirpath, fold_idx, 'test', **kwargs)
+        test_dm = get_DMatrix(test_df, test_aux, dataset='test')
+        if kwargs.get('get_aux', False):
+            return None, None, test_dm, None, None, test_aux
+        return None, None, test_dm
+    tr_df, tr_aux = get_train_Dataframe(dataset_dirpath, fold_idx, **kwargs)
     train_df, val_df, train_aux, val_aux = train_test_split(tr_df, tr_aux, test_size=val_split, random_state=RNG_SEED)
-    test_df, test_aux = get_train_Dataframe(dataset_dirpath, fold_idx, 'test')
+    test_df, test_aux = get_train_Dataframe(dataset_dirpath, fold_idx, 'test', **kwargs)
 
     train_dm = get_DMatrix(train_df, train_aux)
     val_dm = get_DMatrix(val_df, val_aux)
     test_dm = get_DMatrix(test_df, test_aux, dataset='test')
 
-    return train_dm, val_dm, test_dm
+    if not kwargs.get('get_aux', False):
+        return train_dm, val_dm, test_dm
+    return train_dm, val_dm, test_dm, train_aux, val_aux, test_aux
 def get_test_DMatrix(filepath: str):
     df, aux = get_Dataframes(filepath)
     return get_DMatrix(df, aux, dataset='test', label=False)
+
+def reStandardize_variable(df, previous_std_json, new_std_json, fill_value: float=FILL_VALUE):
+    def load_std_dict(std_input):
+        if isinstance(std_input, str):
+            with open(std_input, 'r') as f:
+                data = json.load(f)
+        else:
+            data = std_input
+            
+        if isinstance(data, dict) and "col" in data and "mean" in data and "std" in data:
+            return {
+                c: {"mean": m, "std": s} 
+                for c, m, s in zip(data["col"], data["mean"], data["std"])
+            }
+        return data
+
+    previous_std = load_std_dict(previous_std_json)
+    new_std = load_std_dict(new_std_json)
+
+    for col in df.columns:
+        if col in previous_std and col in new_std:
+            # valid values are those that are not the fill value
+            # assuming fill_value is a large negative number like -999, consistent with other functions
+            valid_mask = df[col] > (fill_value + 2)
+
+            prev_mean = previous_std[col]['mean']
+            prev_std_val = previous_std[col]['std']
+            new_mean = new_std[col]['mean']
+            new_std_val = new_std[col]['std']
+
+            # de-standardize: x_raw = x_std * std + mean
+            raw_values = df.loc[valid_mask, col] * prev_std_val + prev_mean
+            # re-standardize: x_new_std = (x_raw - new_mean) / new_std
+            df.loc[valid_mask, col] = (raw_values - new_mean) / new_std_val
+        elif col not in new_std:
+            print(f"[WARNING] Column {col} not found in new_std dictionary. Dropping this column.")
+            df.drop(columns=[col], inplace=True)
+    return df

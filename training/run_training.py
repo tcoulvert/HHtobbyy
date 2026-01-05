@@ -116,6 +116,12 @@ def run_training():
     dataset_filepath = os.path.join(OUTPUT_DIRPATH, "dataset_filepath.txt")
     with open (dataset_filepath, "w") as f:
         f.write(DATASET_DIRPATH)
+    
+    # copy the standardization json file to output dir
+    subprocess.run(
+        ['cp', os.path.join(DATASET_DIRPATH, "standardization.json"), OUTPUT_DIRPATH],
+        check=True
+    )
 
     # Dict of hyperparameters for the model -- necessary to store for evaluation
     param_filepath = os.path.join(OUTPUT_DIRPATH, f'{CURRENT_TIME}_best_params.json')
