@@ -154,15 +154,41 @@ def get_train_Dataframe(dataset_dirpath: str, fold_idx: int, dataset: str="train
         aux.loc[DDQCD_GGJET_2024_mask, 'AUX_eventWeight'] = aux.loc[DDQCD_GGJET_2024_mask, 'AUX_eventWeight'] * 1.59
         aux.loc[DDQCD_GGJET_2024_mask, 'AUX_eventWeightTrain'] = aux.loc[DDQCD_GGJET_2024_mask, 'AUX_eventWeight']
     # Resonant background
-    for i, _ in enumerate([key for key in filepaths.keys() if 'nonRes' not in key and 'HH' not in key]):
-        class_mask = aux['AUX_label1D'].eq(i)
-        aux.loc[class_mask, 'AUX_eventWeightTrain'] = aux.loc[class_mask, 'AUX_eventWeightTrain'] * RES_BKG_RESCALE
+    for i, key in enumerate(filepaths.keys()):
+        if 'ttH' in key or 'VH' in key:
+            class_mask = aux['AUX_label1D'].eq(i)
+            aux.loc[class_mask, 'AUX_eventWeightTrain'] = aux.loc[class_mask, 'AUX_eventWeightTrain'] * RES_BKG_RESCALE
+
+    # Sherpa: scale it to same as nonRes background
+    sherpa_mask = aux['AUX_sample_name'].eq('SherpaNLO')
+    if any(sherpa_mask):
+        # scale shepra by 1000, as mistake in cross-section fb vs pb
+        aux.loc[sherpa_mask, 'AUX_eventWeight'] *= 1000
+        aux.loc[sherpa_mask, 'AUX_eventWeightTrain'] *= 1000
+        # nonres_label = [i for i, key in enumerate(filepaths.keys()) if 'nonRes' in key][0]
+        # nonres_mask = aux['AUX_label1D'].eq(nonres_label)
+        # nonsherpa_mask = aux['AUX_sample_name'].ne('SherpaNLO')
+        # nonres_nonsherpa_mask = nonres_mask & nonsherpa_mask
+        # sum_nonres = np.sum(aux.loc[nonres_nonsherpa_mask, 'AUX_eventWeightTrain'])
+        # sum_sherpa = np.sum(aux.loc[sherpa_mask, 'AUX_eventWeightTrain'])
+        # if sum_sherpa > 0:
+        #     print(f"[INFO] Scaling SherpaNLO weights from {sum_sherpa} to {sum_nonres} for training")
+        #     aux.loc[sherpa_mask, 'AUX_eventWeightTrain'] *= (sum_nonres / sum_sherpa)
+
     # Signal
-    for i, _ in enumerate([key for key in filepaths.keys() if 'HH' in key]):
-        signal_mask = aux['AUX_label1D'].eq(i)
-        background_mask = aux['AUX_label1D'].ne(i)
-        aux.loc[signal_mask, 'AUX_eventWeightTrain'] = aux.loc[signal_mask, 'AUX_eventWeightTrain'] * np.sum(aux.loc[background_mask, 'AUX_eventWeightTrain']) / np.sum(aux.loc[signal_mask, 'AUX_eventWeightTrain'])
+    for i, key in enumerate(filepaths.keys()):
+        if 'HH' in key:
+            signal_mask = aux['AUX_label1D'].eq(i)
+            background_mask = aux['AUX_label1D'].ne(i)
+            aux.loc[signal_mask, 'AUX_eventWeightTrain'] = aux.loc[signal_mask, 'AUX_eventWeightTrain'] * np.sum(aux.loc[background_mask, 'AUX_eventWeightTrain']) / np.sum(aux.loc[signal_mask, 'AUX_eventWeightTrain'])
     
+    # check average weight and sum weight for each class
+    for i, class_name in enumerate(filepaths.keys()):
+        class_mask = aux['AUX_label1D'].eq(i)
+        sum_weights = aux.loc[class_mask, 'AUX_eventWeightTrain'].sum()
+        avg_weight = aux.loc[class_mask, 'AUX_eventWeightTrain'].mean()
+        print(f"[CHECK] Class {class_name} (label {i}): number of events = {class_mask.sum()}, sum of weights = {sum_weights}, average weight = {avg_weight}")
+
     if DF_SHUFFLE:
         rng = np.random.default_rng(seed=RNG_SEED)
         class_shuffle_idx = rng.permutation(df.index)
