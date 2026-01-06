@@ -22,7 +22,7 @@ from preprocessing_utils import match_sample, match_regex
 ################################
 
 
-RES_BKG_RESCALE = 100  # 100 
+RES_BKG_RESCALE = 100
 DF_SHUFFLE = True
 RNG_SEED = 21
 FILL_VALUE = -999
@@ -114,6 +114,8 @@ def get_Dataframes(filepath: str, n_folds_fold_idx: tuple=None):
 def get_train_Dataframe(dataset_dirpath: str, fold_idx: int, dataset: str="train"):
     filepaths = get_train_filepaths_func(dataset_dirpath, dataset=dataset)(fold_idx)
 
+    # print(fold_idx)
+    # print('\n'*4)
     # for class_name, class_filepaths in filepaths.items():
     #     print(class_name)
     #     print('='*60+'\n'+'='*60)
@@ -150,18 +152,23 @@ def get_train_Dataframe(dataset_dirpath: str, fold_idx: int, dataset: str="train
     # Upweight resonant background and signal samples for training #
     # Non-Resonant background #
     if match_regex('DDQCDGJets', [filepath for filepath_class_list in filepaths.values() for filepath in filepath_class_list]) is not None:
+        print(f"found DDQCD bkg with key")
         DDQCD_GGJET_2024_mask = aux['AUX_sample_name'].eq('GGJets')
         aux.loc[DDQCD_GGJET_2024_mask, 'AUX_eventWeight'] = aux.loc[DDQCD_GGJET_2024_mask, 'AUX_eventWeight'] * 1.59
         aux.loc[DDQCD_GGJET_2024_mask, 'AUX_eventWeightTrain'] = aux.loc[DDQCD_GGJET_2024_mask, 'AUX_eventWeight']
     # Resonant background
-    for i, _ in enumerate([key for key in filepaths.keys() if 'nonRes' not in key and 'HH' not in key]):
-        class_mask = aux['AUX_label1D'].eq(i)
-        aux.loc[class_mask, 'AUX_eventWeightTrain'] = aux.loc[class_mask, 'AUX_eventWeightTrain'] * RES_BKG_RESCALE
+    for i, key in enumerate(filepaths.keys()):
+        if 'ttH' in key or 'VH' in key:
+            print(f"found res bkg with key {key} and index {i}")
+            class_mask = aux['AUX_label1D'].eq(i)
+            aux.loc[class_mask, 'AUX_eventWeightTrain'] = aux.loc[class_mask, 'AUX_eventWeightTrain'] * RES_BKG_RESCALE
     # Signal
-    for i, _ in enumerate([key for key in filepaths.keys() if 'HH' in key]):
-        signal_mask = aux['AUX_label1D'].eq(i)
-        background_mask = aux['AUX_label1D'].ne(i)
-        aux.loc[signal_mask, 'AUX_eventWeightTrain'] = aux.loc[signal_mask, 'AUX_eventWeightTrain'] * np.sum(aux.loc[background_mask, 'AUX_eventWeightTrain']) / np.sum(aux.loc[signal_mask, 'AUX_eventWeightTrain'])
+    for i, key in enumerate(filepaths.keys()):
+        if 'HH' in key:
+            print(f"found signal with key {key} and index {i}")
+            signal_mask = aux['AUX_label1D'].eq(i)
+            background_mask = aux['AUX_label1D'].ne(i)
+            aux.loc[signal_mask, 'AUX_eventWeightTrain'] = aux.loc[signal_mask, 'AUX_eventWeightTrain'] * np.sum(aux.loc[background_mask, 'AUX_eventWeightTrain']) / np.sum(aux.loc[signal_mask, 'AUX_eventWeightTrain'])
     
     if DF_SHUFFLE:
         rng = np.random.default_rng(seed=RNG_SEED)

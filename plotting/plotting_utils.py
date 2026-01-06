@@ -114,11 +114,11 @@ def make_plot_data(
             for class_name in CLASS_NAMES
         }
 
-        for j, class_name in enumerate(CLASS_NAMES):
-            train_dm, _, test_dm = get_train_DMatrices(dataset_dirpath, fold_idx)
+        train_dm, _, test_dm = get_train_DMatrices(dataset_dirpath, fold_idx)
+        if dataset == "train-test": dm = test_dm
+        elif dataset == "train": dm = train_dm
 
-            if dataset == "train-test": dm = test_dm
-            elif dataset == "train": dm = train_dm
+        for j, class_name in enumerate(CLASS_NAMES):
 
             event_mask = (dm.get_label() == j)
 

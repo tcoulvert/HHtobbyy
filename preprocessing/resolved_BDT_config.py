@@ -4,14 +4,15 @@ import datetime
 ################################
 
 
-DATASET_TAG = "22to24_bTagWP1k"
+DATASET_TAG = "22to23_PASReg"
 
 CLASS_SAMPLE_MAP = {
     'ggF HH': ["GluGlu*HH*kl-1p00"],  # *!batch 
     # 'VBF HH': ["VBF*HH*C2V_1"],
     'ttH + bbH': ["ttH", "bbH"],
     'VH': ["VH", "ZH", "Wm*H", "Wp*H"],
-    'nonRes + ggFH + VBFH': ["!DDQCDGJet*GGJets", "!DDQCDGJet*GJet", "TTGG", "GluGluH*GG", "VBFH*GG"],
+    'nonRes + ggFH + VBFH': ["!DDQCDGJet*GGJets", "!DDQCDGJet*GJet", "GluGluH*GG", "VBFH*GG"],
+    # 'nonRes + ggFH + VBFH': ["!DDQCDGJet*GGJets", "!DDQCDGJet*GJet", "TTGG", "GluGluH*GG", "VBFH*GG"],
     # 'nonRes + ggFH + VBFH': ["DDQCDGJets", "TTGG", "GluGluH*GG", "VBFH*GG"],
 }
 TRAIN_ONLY_SAMPLES = {
@@ -38,17 +39,17 @@ BASIC_VARIABLES = lambda jet_prefix: {
 
     # bjet vars
     f'{jet_prefix}_lead_bjet_eta', # eta
-    # f"{jet_prefix}_lead_bjet_btagPNetB",
+    f"{jet_prefix}_lead_bjet_btagPNetB",
     # f"{jet_prefix}_lead_bjet_btagUParTAK4B",
-    f"{jet_prefix}_lead_bjet_bTagWPL", f"{jet_prefix}_lead_bjet_bTagWPM", f"{jet_prefix}_lead_bjet_bTagWPT",
-    f"{jet_prefix}_lead_bjet_bTagWPXT", f"{jet_prefix}_lead_bjet_bTagWPXXT",
+    # f"{jet_prefix}_lead_bjet_bTagWPL", f"{jet_prefix}_lead_bjet_bTagWPM", f"{jet_prefix}_lead_bjet_bTagWPT",
+    # f"{jet_prefix}_lead_bjet_bTagWPXT", f"{jet_prefix}_lead_bjet_bTagWPXXT",
     # f"{jet_prefix}_lead_bjet_bTagWP3XT", f"{jet_prefix}_lead_bjet_bTagWP4XT",
     # --------
     f'{jet_prefix}_sublead_bjet_eta', 
-    # f"{jet_prefix}_sublead_bjet_btagPNetB",
+    f"{jet_prefix}_sublead_bjet_btagPNetB",
     # f"{jet_prefix}_sublead_bjet_btagUParTAK4B",
-    f"{jet_prefix}_sublead_bjet_bTagWPL", f"{jet_prefix}_sublead_bjet_bTagWPM", f"{jet_prefix}_sublead_bjet_bTagWPT",
-    f"{jet_prefix}_sublead_bjet_bTagWPXT", f"{jet_prefix}_sublead_bjet_bTagWPXXT",
+    # f"{jet_prefix}_sublead_bjet_bTagWPL", f"{jet_prefix}_sublead_bjet_bTagWPM", f"{jet_prefix}_sublead_bjet_bTagWPT",
+    # f"{jet_prefix}_sublead_bjet_bTagWPXT", f"{jet_prefix}_sublead_bjet_bTagWPXXT",
     # f"{jet_prefix}_sublead_bjet_bTagWP3XT", f"{jet_prefix}_sublead_bjet_bTagWP4XT",
     
     # diphoton vars
@@ -139,7 +140,7 @@ AUX_VARIABLES = lambda jet_prefix: {
 
 FILL_VALUE = -999
 TRAIN_MOD = 5
-JET_PREFIX = 'nonRes'  # ["Res", "Res_DNNpair", "nonRes", "nonResReg", "nonResReg_DNNpair"]
+JET_PREFIX = 'nonResReg'  # ["Res", "Res_DNNpair", "nonRes", "nonResReg", "nonResReg_DNNpair"]
 
 SEED = 21
 BASE_FILEPATH = 'Run3_202'

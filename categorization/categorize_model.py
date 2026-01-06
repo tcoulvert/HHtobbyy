@@ -23,7 +23,7 @@ sys.path.append(os.path.join(GIT_REPO, "preprocessing/"))
 sys.path.append(os.path.join(GIT_REPO, "training/"))
 sys.path.append(os.path.join(GIT_REPO, "evaluation/"))
 
-
+from preprocessing_utils import match_regex
 from retrieval_utils import (
     get_class_sample_map, get_n_folds,
     get_train_Dataframe
@@ -32,7 +32,7 @@ from training_utils import (
     get_dataset_dirpath,
 )
 from evaluation_utils import (
-    get_filepaths, transform_preds_options, transform_preds_func
+    transform_preds_options, transform_preds_func
 )
 
 ################################
@@ -79,6 +79,11 @@ parser.add_argument(
     default=0,
     help="If the 1D label to use as signal during the optimization is not 0 (i.e. signal class is not first entry in class_sample_map), use this option to change"
 )
+parser.add_argument(
+    "--verbose",
+    action='store_true',
+    help="Prints out category information as they're created"
+)
 
 ################################
 
@@ -93,6 +98,7 @@ DATASET = args.dataset
 SYST_NAME = args.syst_name
 DISCRIMINATOR = args.discriminator
 SIGNAL_LABEL = args.signal
+VERBOSE = args.verbose
 FOLD_TO_CATEGORIZE = args.fold
 FOLD_TO_PLOT_OPTIONS = ['none', 'all']+[str(fold_idx) for fold_idx in range(get_n_folds(DATASET_DIRPATH))]
 assert FOLD_TO_CATEGORIZE in FOLD_TO_PLOT_OPTIONS, f"The option passed to \'--fold\' ({FOLD_TO_CATEGORIZE}) is not allowed, for this dataset your options are: {FOLD_TO_PLOT_OPTIONS}"
@@ -103,7 +109,7 @@ CLASS_NAMES = [key for key in CLASS_SAMPLE_MAP.keys()]
 TRANSFORM_LABELS, TRANSFORM_PREDS = transform_preds_func(CLASS_NAMES, DISCRIMINATOR)
 TRANSFORM_COLUMNS = [f"AUX_{transform_label}_prob" for transform_label in TRANSFORM_LABELS]
 assert len(TRANSFORM_COLUMNS) <= 2, f"You're trying to run categorization over a discriminator with more than 2 dimensions, this likely won't converge with the brute-force way in this file. Please write your own categorization code or use a different discriminator"
-CATEGORIZATION_COLUMNS = ['AUX_sample_name', 'AUX_eventWeight', 'AUX_mass', 'AUX_nonRes_resolved_BDT_mask', 'AUX_label1D'] + TRANSFORM_COLUMNS
+CATEGORIZATION_COLUMNS = ['AUX_sample_name', 'AUX_eventWeight', 'AUX_mass', 'AUX_*_resolved_BDT_mask', 'AUX_label1D'] + TRANSFORM_COLUMNS
 
 CATEGORIZATION_DIRPATH = os.path.join(TRAINING_DIRPATH, "categorization", "")
 if not os.path.exists(CATEGORIZATION_DIRPATH): 
@@ -217,8 +223,9 @@ def categorize_model():
     for fold_idx in range(get_n_folds(DATASET_DIRPATH)):
         MC_df, MC_aux = get_train_Dataframe(DATASET_DIRPATH, fold_idx, dataset='test' if DATASET == 'train-test' else 'train')
         for col in MC_aux.columns: MC_df[col] = MC_aux[col]
-        assert set(CATEGORIZATION_COLUMNS) <= set(MC_df.columns), f"The requested list of columns are not all in the file. Missing variables:\n{set(CATEGORIZATION_COLUMNS) - set(MC_df.columns)}"
-        MC_eval = MC_df[CATEGORIZATION_COLUMNS]
+        cat_cols = [match_regex(cat_col, MC_df.columns) for cat_col in CATEGORIZATION_COLUMNS]
+        assert set(cat_cols) <= set(MC_df.columns), f"The requested list of columns are not all in the file. Missing variables:\n{set(cat_cols) - set(MC_df.columns)}"
+        MC_eval = MC_df[cat_cols]
 
         if FOLD_TO_CATEGORIZE == 'all' or FOLD_TO_CATEGORIZE == 'none':
             if fold_idx == 0: full_MC_eval = copy.deepcopy(MC_eval)
@@ -252,57 +259,86 @@ def categorize_model():
     if FOLD_TO_CATEGORIZE == 'all' or FOLD_TO_CATEGORIZE == 'none':
         categories_dict[FOLD_TO_CATEGORIZE] = {}
 
-        category_mask = full_MC_eval.loc[:, 'AUX_nonRes_resolved_BDT_mask'].eq(1)
+        mask_var = [col for col in full_MC_eval.columns if 'resolved_BDT_mask' in col][0]
+        category_mask = full_MC_eval.loc[:, mask_var].eq(1)
 
-        cuts_trials = [(0., 0.), (0.9813, 0.9977), (0.9838, 0.9983)]
-        for cuts_trial in cuts_trials:
-            print('='*60+'\n'+'='*60)
-            print('Cat 1 yields')
-            print('-'*60)
-            print(f"{TRANSFORM_COLUMNS[0]} > {cuts_trial[0]} & {TRANSFORM_COLUMNS[1]} > {cuts_trial[1]}")
-            pass_mask = np.logical_and(
-                np.logical_and(
+        # cuts_trials = [(0., 0.)] + [(step_dtth*0.01+0.55, step_dqcd*0.01+0.55) for step_dtth in range(5) for step_dqcd in range(5)]
+        # cuts_trials = [(0., 0.), (0.98, 0.99), (0.987, 0.999)]
+        # for cuts_idx, cuts_trial in enumerate(cuts_trials):
+        #     print('='*60+'\n'+'='*60)
+        #     print(f"{TRANSFORM_COLUMNS[0]} > {cuts_trial[0]:.3f} & {TRANSFORM_COLUMNS[1]} > {cuts_trial[1]:.3f}")
+        #     print('-'*60)
+        #     pass_mask = np.logical_and(
+        #         np.logical_and(
+        #             category_mask, 
+        #             np.logical_and(
+        #                 full_MC_eval.loc[:, 'AUX_mass'].ge(122.5),
+        #                 full_MC_eval.loc[:, 'AUX_mass'].le(127.),
+        #             )
+        #         ),
+        #         np.logical_and(
+        #             full_MC_eval.loc[:, TRANSFORM_COLUMNS[0]].gt(cuts_trial[0]),
+        #             full_MC_eval.loc[:, TRANSFORM_COLUMNS[1]].gt(cuts_trial[1]),
+        #         )
+        #     )
+        #     for unique_label in np.unique(full_MC_eval.loc[:, 'AUX_sample_name']):
+        #         unique_yield = full_MC_eval.loc[np.logical_and(pass_mask, full_MC_eval.loc[:, 'AUX_sample_name'].eq(unique_label)), 'AUX_eventWeight'].sum()
+        #         print('-'*60)
+        #         print(f"{unique_label} yield = {unique_yield:.4f}")
+            
+
+        for i in range(1, N_CATEGORIES+1):
+            categories_dict[FOLD_TO_CATEGORIZE][f'cat{i}'] = {}
+            
+            if len(TRANSFORM_COLUMNS) == 1:
+                best_fom, best_cut = compute_cuts1D(full_MC_eval, category_mask)
+                category_mask = np.logical_and(
                     category_mask, 
-                    np.logical_and(
-                        full_MC_eval.loc[:, 'AUX_mass'].ge(122.5),
-                        full_MC_eval.loc[:, 'AUX_mass'].le(127.),
-                    )
-                ),
-                np.logical_and(
-                    full_MC_eval.loc[:, TRANSFORM_COLUMNS[0]].gt(cuts_trial[0]),
-                    full_MC_eval.loc[:, TRANSFORM_COLUMNS[1]].gt(cuts_trial[1]),
+                    ~full_MC_eval.loc[:, TRANSFORM_COLUMNS[0]].gt(best_cut)
                 )
-            )
-            for unique_label in np.unique(full_MC_eval.loc[:, 'AUX_sample_name']):
-                unique_yield = full_MC_eval.loc[np.logical_and(pass_mask, full_MC_eval.loc[:, 'AUX_sample_name'].eq(unique_label)), 'AUX_eventWeight'].sum()
+            else:
+                best_fom, best_cut = compute_cuts2D(full_MC_eval, category_mask)
+                category_mask = np.logical_and(
+                    category_mask, 
+                    ~np.logical_and(
+                        full_MC_eval.loc[:, TRANSFORM_COLUMNS[0]].gt(best_cut[0]),
+                        full_MC_eval.loc[:, TRANSFORM_COLUMNS[1]].gt(best_cut[1])
+                    )
+                )
+
+            categories_dict[FOLD_TO_CATEGORIZE][f'cat{i}']['fom'] = best_fom
+            categories_dict[FOLD_TO_CATEGORIZE][f'cat{i}']['cut'] = best_cut
+            
+            if VERBOSE:
+                print('='*60+'\n'+'='*60)
+                print(f"cat{i} yields")
                 print('-'*60)
-                print(f"{unique_label} yield = {unique_yield:.4f}")
+                print_str = ' & '.join([f"{TRANSFORM_COLUMNS[i]} > {best_cut[i]:.3f}" for i in range(len(TRANSFORM_COLUMNS))])
+                if i > 1:
+                    print_str = print_str + ' & '.join(['']+[f"{TRANSFORM_COLUMNS[i]} ≤ {categories_dict[f'cat{i-1}']['cut'][i]:.3f}" for i in range(len(TRANSFORM_COLUMNS))])
+                print(print_str)
+                print('-'*60)
+                pass_mask = np.logical_and(
+                    np.logical_and(
+                        category_mask, 
+                        np.logical_and(
+                            full_MC_eval.loc[:, 'AUX_mass'].ge(122.5),
+                            full_MC_eval.loc[:, 'AUX_mass'].le(127.),
+                        )
+                    ),
+                    np.logical_and(
+                        full_MC_eval.loc[:, TRANSFORM_COLUMNS[0]].gt(best_cut[0]),
+                        full_MC_eval.loc[:, TRANSFORM_COLUMNS[1]].gt(best_cut[1]),
+                    )
+                )
+                for unique_label in np.unique(full_MC_eval.loc[:, 'AUX_sample_name']):
+                    unique_yield = full_MC_eval.loc[np.logical_and(pass_mask, full_MC_eval.loc[:, 'AUX_sample_name'].eq(unique_label)), 'AUX_eventWeight'].sum()
+                    print('-'*60)
+                    print(f"{unique_label} yield = {unique_yield:.4f}")
             
 
-    #     for i in range(N_CATEGORIES):
-    #         categories_dict[FOLD_TO_CATEGORIZE][f'cat{i}'] = {}
-            
-    #         if len(TRANSFORM_COLUMNS) == 1:
-    #             best_fom, best_cut = compute_cuts1D(full_MC_eval, category_mask)
-    #             category_mask = np.logical_and(
-    #                 category_mask, 
-    #                 ~full_MC_eval.loc[:, TRANSFORM_COLUMNS[0]].gt(best_cut)
-    #             )
-    #         else:
-    #             best_fom, best_cut = compute_cuts2D(full_MC_eval, category_mask)
-    #             category_mask = np.logical_and(
-    #                 category_mask, 
-    #                 ~np.logical_and(
-    #                     full_MC_eval.loc[:, TRANSFORM_COLUMNS[0]].gt(best_cut[0]),
-    #                     full_MC_eval.loc[:, TRANSFORM_COLUMNS[1]].gt(best_cut[1])
-    #                 )
-    #             )
-
-    #         categories_dict[FOLD_TO_CATEGORIZE][f'cat{i}']['fom'] = best_fom
-    #         categories_dict[FOLD_TO_CATEGORIZE][f'cat{i}']['cut'] = best_cut
-
-    # with open(CATEGORIZATION_FILEPATH, 'w') as f:
-    #     json.dump(categories_dict, f)
+    with open(CATEGORIZATION_FILEPATH, 'w') as f:
+        json.dump(categories_dict, f)
 
 
 if __name__ == "__main__":
