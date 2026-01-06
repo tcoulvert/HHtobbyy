@@ -344,6 +344,12 @@ if __name__ == '__main__':
         os.makedirs(args_output_dirpath)
     ERAS = get_era_filepaths(args.input_eras)
     input_filepaths = get_input_filepaths()
+    for data_type, data_list in input_filepaths.items():
+        print(data_type)
+        print('='*60)
+        for data in data_list:
+            print(data)
+            print('-'*60)
 
     preprocess_resolved_bdt(input_filepaths, args_output_dirpath)
     print(f'Finished Resolved BDT processing')
