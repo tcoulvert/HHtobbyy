@@ -263,59 +263,49 @@ def categorize_model():
         category_mask = full_MC_eval.loc[:, mask_var].eq(1)
 
         # cuts_trials = [(0., 0.)] + [(step_dtth*0.01+0.55, step_dqcd*0.01+0.55) for step_dtth in range(5) for step_dqcd in range(5)]
-        # cuts_trials = [(0., 0.), (0.98, 0.99), (0.987, 0.999)]
-        # for cuts_idx, cuts_trial in enumerate(cuts_trials):
-        #     print('='*60+'\n'+'='*60)
-        #     print(f"{TRANSFORM_COLUMNS[0]} > {cuts_trial[0]:.3f} & {TRANSFORM_COLUMNS[1]} > {cuts_trial[1]:.3f}")
-        #     print('-'*60)
-        #     pass_mask = np.logical_and(
-        #         np.logical_and(
-        #             category_mask, 
-        #             np.logical_and(
-        #                 full_MC_eval.loc[:, 'AUX_mass'].ge(122.5),
-        #                 full_MC_eval.loc[:, 'AUX_mass'].le(127.),
-        #             )
-        #         ),
-        #         np.logical_and(
-        #             full_MC_eval.loc[:, TRANSFORM_COLUMNS[0]].gt(cuts_trial[0]),
-        #             full_MC_eval.loc[:, TRANSFORM_COLUMNS[1]].gt(cuts_trial[1]),
-        #         )
-        #     )
-        #     for unique_label in np.unique(full_MC_eval.loc[:, 'AUX_sample_name']):
-        #         unique_yield = full_MC_eval.loc[np.logical_and(pass_mask, full_MC_eval.loc[:, 'AUX_sample_name'].eq(unique_label)), 'AUX_eventWeight'].sum()
-        #         print('-'*60)
-        #         print(f"{unique_label} yield = {unique_yield:.4f}")
+        cuts_trials = [(0., 0.), (0.9878, 0.9993), (0.9413, 0.9955)]
+        for cuts_idx, cuts_trial in enumerate(cuts_trials):
+            print('='*60+'\n'+'='*60)
+            print(f"{TRANSFORM_COLUMNS[0]} > {cuts_trial[0]:.3f} & {TRANSFORM_COLUMNS[1]} > {cuts_trial[1]:.3f}")
+            print('-'*60)
+            pass_mask = np.logical_and(
+                np.logical_and(
+                    category_mask, 
+                    np.logical_and(
+                        full_MC_eval.loc[:, 'AUX_mass'].ge(122.5),
+                        full_MC_eval.loc[:, 'AUX_mass'].le(127.),
+                    )
+                ),
+                np.logical_and(
+                    full_MC_eval.loc[:, TRANSFORM_COLUMNS[0]].gt(cuts_trial[0]),
+                    full_MC_eval.loc[:, TRANSFORM_COLUMNS[1]].gt(cuts_trial[1]),
+                )
+            )
+            for unique_label in np.unique(full_MC_eval.loc[:, 'AUX_sample_name']):
+                unique_yield = full_MC_eval.loc[np.logical_and(pass_mask, full_MC_eval.loc[:, 'AUX_sample_name'].eq(unique_label)), 'AUX_eventWeight'].sum()
+                print('-'*60)
+                print(f"{unique_label} yield = {unique_yield:.4f}")
             
 
-        for i in range(1, N_CATEGORIES+1):
-            categories_dict[FOLD_TO_CATEGORIZE][f'cat{i}'] = {}
+        for cat_idx in range(1, N_CATEGORIES+1):
+            categories_dict[FOLD_TO_CATEGORIZE][f'cat{cat_idx}'] = {}
             
             if len(TRANSFORM_COLUMNS) == 1:
                 best_fom, best_cut = compute_cuts1D(full_MC_eval, category_mask)
-                category_mask = np.logical_and(
-                    category_mask, 
-                    ~full_MC_eval.loc[:, TRANSFORM_COLUMNS[0]].gt(best_cut)
-                )
             else:
                 best_fom, best_cut = compute_cuts2D(full_MC_eval, category_mask)
-                category_mask = np.logical_and(
-                    category_mask, 
-                    ~np.logical_and(
-                        full_MC_eval.loc[:, TRANSFORM_COLUMNS[0]].gt(best_cut[0]),
-                        full_MC_eval.loc[:, TRANSFORM_COLUMNS[1]].gt(best_cut[1])
-                    )
-                )
 
-            categories_dict[FOLD_TO_CATEGORIZE][f'cat{i}']['fom'] = best_fom
-            categories_dict[FOLD_TO_CATEGORIZE][f'cat{i}']['cut'] = best_cut
+            categories_dict[FOLD_TO_CATEGORIZE][f'cat{cat_idx}']['fom'] = best_fom
+            categories_dict[FOLD_TO_CATEGORIZE][f'cat{cat_idx}']['cut'] = best_cut
             
             if VERBOSE:
                 print('='*60+'\n'+'='*60)
-                print(f"cat{i} yields")
+                print('/'.join(os.path.normpath(TRAINING_DIRPATH).split('/')[-2:]))
+                print(f"cat{cat_idx} yields")
                 print('-'*60)
-                print_str = ' & '.join([f"{TRANSFORM_COLUMNS[i]} > {best_cut[i]:.3f}" for i in range(len(TRANSFORM_COLUMNS))])
-                if i > 1:
-                    print_str = print_str + ' & '.join(['']+[f"{TRANSFORM_COLUMNS[i]} ≤ {categories_dict[f'cat{i-1}']['cut'][i]:.3f}" for i in range(len(TRANSFORM_COLUMNS))])
+                print_str = ' & '.join([f"{TRANSFORM_COLUMNS[i]} > {best_cut[i]:.4f}" for i in range(len(TRANSFORM_COLUMNS))])
+                if cat_idx > 1:
+                    print_str = print_str + ' & '.join(['']+[f"{TRANSFORM_COLUMNS[i]} ≤ {categories_dict[f'cat{cat_idx-1}']['cut'][i]:.4f}" for i in range(len(TRANSFORM_COLUMNS))])
                 print(print_str)
                 print('-'*60)
                 pass_mask = np.logical_and(
@@ -335,6 +325,20 @@ def categorize_model():
                     unique_yield = full_MC_eval.loc[np.logical_and(pass_mask, full_MC_eval.loc[:, 'AUX_sample_name'].eq(unique_label)), 'AUX_eventWeight'].sum()
                     print('-'*60)
                     print(f"{unique_label} yield = {unique_yield:.4f}")
+
+            if len(TRANSFORM_COLUMNS) == 1:
+                category_mask = np.logical_and(
+                    category_mask, 
+                    ~full_MC_eval.loc[:, TRANSFORM_COLUMNS[0]].gt(best_cut)
+                )
+            else:
+                category_mask = np.logical_and(
+                    category_mask, 
+                    ~np.logical_and(
+                        full_MC_eval.loc[:, TRANSFORM_COLUMNS[0]].gt(best_cut[0]),
+                        full_MC_eval.loc[:, TRANSFORM_COLUMNS[1]].gt(best_cut[1])
+                    )
+                )
             
 
     with open(CATEGORIZATION_FILEPATH, 'w') as f:
