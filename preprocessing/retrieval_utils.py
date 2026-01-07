@@ -162,7 +162,6 @@ def get_train_Dataframe(dataset_dirpath: str, fold_idx: int, dataset: str="train
     # Upweight resonant background and signal samples for training #
     # Non-Resonant background #
     if match_regex('DDQCDGJets', [filepath for filepath_class_list in filepaths.values() for filepath in filepath_class_list]) is not None:
-        print(f"found DDQCD bkg with key")
         DDQCD_GGJET_2024_mask = aux['AUX_sample_name'].eq('GGJets')
         aux.loc[DDQCD_GGJET_2024_mask, 'AUX_eventWeight'] = aux.loc[DDQCD_GGJET_2024_mask, 'AUX_eventWeight'] * 1.59
         aux.loc[DDQCD_GGJET_2024_mask, 'AUX_eventWeightTrain'] = aux.loc[DDQCD_GGJET_2024_mask, 'AUX_eventWeight']
