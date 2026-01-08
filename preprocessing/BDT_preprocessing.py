@@ -92,6 +92,7 @@ def check_train_dataset(train_filepaths: list):
     good_dataset_bool = True
     for glob_name in [glob_name for glob_names in CLASS_SAMPLE_MAP.values() for glob_name in glob_names]:
         for era in get_era_filepaths(args.input_eras, split_data_mc_eras=True)[0]:
+            print(f"{era}*{glob_name}")
             if 'data' in era: continue
             if match_regex(f"{era}*{glob_name}", train_filepaths) is None:
                 if not (
@@ -344,12 +345,6 @@ if __name__ == '__main__':
         os.makedirs(args_output_dirpath)
     ERAS = get_era_filepaths(args.input_eras)
     input_filepaths = get_input_filepaths()
-    for data_type, data_list in input_filepaths.items():
-        print(data_type)
-        print('='*60)
-        for data in data_list:
-            print(data)
-            print('-'*60)
 
     preprocess_resolved_bdt(input_filepaths, args_output_dirpath)
     print(f'Finished Resolved BDT processing')

@@ -8,7 +8,7 @@ DATASET_TAG = "22to24_bTagWP"
 
 CLASS_SAMPLE_MAP = {
     'ggF HH': ["GluGlu*HH*kl-1p00"],  # *!batch 
-    # 'VBF HH': ["VBF*HH*C2V_1"],
+    # 'VBF HH': ["VBF*HH*C2V_1_"],
     'ttH + bbH': ["ttH", "bbH"],
     'VH': ["VH", "ZH", "Wm*H", "Wp*H"],
     'nonRes + ggFH + VBFH': ["!DDQCDGJet*GGJets", "!DDQCDGJet*GJet", "TTGG", "GluGluH*GG", "VBFH*GG"],

@@ -246,6 +246,7 @@ def make_mc(sim_eras: dict):
     for sim_era, filepaths in sim_eras.items():
         for filepath in filepaths:
             if match_sample(filepath, {'_up/', '_down/'}) is not None: continue
+            if match_sample(filepath, {'VHToGG', 'Wm*HTo*G', 'Wp*HTo*G'}) is None: continue
             make_dataset(filepath, sim_era)
 
 def make_data(data_eras: dict):
