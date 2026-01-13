@@ -51,9 +51,14 @@ parser.add_argument(
     help="Full filepath on cluster for output to be dumped"
 )
 parser.add_argument(
-    "--remake_test", 
+    "--add_test", 
     action="store_true",
-    help="Flag to extend existing parquets with extra samples for testing/evaluation (i.e. NOT training) following the same standardization -- requires there to be samples and standarization JSONs at the output_dirpath location."
+    help="Flag to extend existing parquets with extra samples for testing/evaluation (i.e. NOT training) following the same standardization -- requires there to be samples and standarization JSONs at the output_dirpath location. Only adds additional test files"
+)
+parser.add_argument(
+    "--replace_test", 
+    action="store_true",
+    help="Flag to extend existing parquets with extra samples for testing/evaluation (i.e. NOT training) following the same standardization -- requires there to be samples and standarization JSONs at the output_dirpath location. Removes previous test files"
 )
 parser.add_argument(
     "--plots", 
@@ -218,8 +223,12 @@ def preprocess_resolved_bdt(input_filepaths, output_dirpath):
     # Defining class definitions for samples #
     if not DRYRUN:
         class_sample_map_filepath = os.path.join(output_dirpath, 'class_sample_map.json')
-        with open(class_sample_map_filepath, 'w') as f:
-            json.dump(CLASS_SAMPLE_MAP, f)
+        if class_sample_map_filepath.split('/')[1] == 'eos':
+            tmp_file = f"tmp_class_sample.json"
+            with open(tmp_file, 'w') as f: json.dump(CLASS_SAMPLE_MAP, f)
+            subprocess.run(['eosmv', tmp_file, '/'.join(class_sample_map_filepath.split('/')[3:])])
+        else:
+            with open(class_sample_map_filepath, 'w') as f: json.dump(CLASS_SAMPLE_MAP, f)
 
     # Defining variables to use #
     assert len(NECESSARY_AUX_VARIABLES & AUX_VARIABLES) == len(NECESSARY_AUX_VARIABLES), f"Missing some necessary AUX variables, see \"NECESSARY_AUX_VARIABLES\" for list"
@@ -236,12 +245,16 @@ def preprocess_resolved_bdt(input_filepaths, output_dirpath):
 
 
         stdjson_filepath = os.path.join(output_dirpath, 'standardization.json')
-        if not REMAKE_TEST:
+        if not REPLACE_TEST:
             x_mean, x_std = compute_standardization(train_dfs, train_dfs_fold)
             if not DRYRUN:
                 stdjson = {'col': BDT_variables, 'mean': x_mean.tolist(), 'std': x_std.tolist()}
-                with open(stdjson_filepath, 'w') as f:
-                    json.dump(stdjson, f)
+                if stdjson_filepath.split('/')[1] == 'eos':
+                    tmp_file = f"tmp_std.json"
+                    with open(tmp_file, 'w') as f: json.dump(stdjson, f)
+                    subprocess.run(['eosmv', tmp_file, '/'.join(stdjson_filepath.split('/')[3:])])
+                else:
+                    with open(stdjson_filepath, 'w') as f: json.dump(stdjson, f)
         else:
             with open(stdjson_filepath, 'r') as f:
                 stdjson = json.load(f)
@@ -253,12 +266,12 @@ def preprocess_resolved_bdt(input_filepaths, output_dirpath):
             x_mean, x_std = [stdjson['mean'][i] for i in sort_indices], [stdjson['std'][i] for i in sort_indices]
 
 
-        if not REMAKE_TEST:
+        if not (ADD_TEST or REPLACE_TEST):
             for filepath in train_dfs.keys():
                 train_dfs_fold[filepath] = copy.deepcopy(train_dfs[filepath])
                 train_aux_dfs_fold[filepath] = copy.deepcopy(train_aux_dfs[filepath])
 
-            for filepath, df in train_dfs_fold.items():
+            for file_i, (filepath, df) in enumerate(train_dfs_fold.items()):
                 output_filepath = make_output_filepath(filepath, output_dirpath, f"train{fold_idx}")
                 if MAKE_PLOTS: 
                     plot_vars(
@@ -289,15 +302,35 @@ def preprocess_resolved_bdt(input_filepaths, output_dirpath):
                 for aux_col in train_aux_dfs_fold[filepath].columns:
                     df[f"AUX_{aux_col}"] = train_aux_dfs_fold[filepath].loc[:,aux_col]
 
-                if not DRYRUN: df.to_parquet(output_filepath)
+                if not DRYRUN: 
+                    if output_filepath.split('/')[1] == 'eos':
+                        tmp_file = f"tmp{file_i}.parquet"
+                        df.to_parquet(tmp_file)
+                        subprocess.run(['eosmv', tmp_file, '/'.join(output_filepath.split('/')[3:])])
+                    else:
+                        df.to_parquet(output_filepath)
 
 
         for filepath in test_dfs.keys():
             test_dfs_fold[filepath] = copy.deepcopy(test_dfs[filepath])
             test_aux_dfs_fold[filepath] = copy.deepcopy(test_aux_dfs[filepath])
 
-        for filepath, df in test_dfs_fold.items():
+        for file_i, (filepath, df) in enumerate(test_dfs_fold.items()):
             output_filepath = make_output_filepath(filepath, output_dirpath, f"test{fold_idx}")
+            prev_test_filepaths = glob.glob(
+                output_filepath[:output_filepath.rfind(f"test{fold_idx}")+len(f"test{fold_idx}")]
+                + "*.parquet"
+            )
+            if len(prev_test_filepaths) > 0 and ADD_TEST:
+                logger.log(1, f"{filepath[filepath.find(BASE_FILEPATH):filepath.rfind('/')]} skipped because test file already exists and \'--add_test\' option selected")
+            elif len(prev_test_filepaths) > 0 and REPLACE_TEST:
+                logger.log(1, f"{filepath[filepath.find(BASE_FILEPATH):filepath.rfind('/')]} removed because test file already exists and \'--replace_test\' option selected")
+                for prev_test_filepath in prev_test_filepaths: 
+                    if prev_test_filepath.split('/')[0] == 'eos':
+                        subprocess.run(['eosrm', '/'.join(prev_test_filepath.split('/')[2:])])
+                    else:
+                        subprocess.run(['rm', prev_test_filepath])
+                        
             if MAKE_PLOTS: 
                 plot_vars(
                     df, 
@@ -327,7 +360,13 @@ def preprocess_resolved_bdt(input_filepaths, output_dirpath):
             for aux_col in test_aux_dfs_fold[filepath].columns:
                 df[f"AUX_{aux_col}"] = test_aux_dfs_fold[filepath].loc[:,aux_col]
 
-            if not DRYRUN: df.to_parquet(output_filepath)
+            if not DRYRUN:
+                if output_filepath.split('/')[1] == 'eos':
+                    tmp_file = f"tmp{file_i}.parquet"
+                    df.to_parquet(tmp_file)
+                    subprocess.run(['eosmv', tmp_file, '/'.join(output_filepath.split('/')[3:])])
+                else:
+                    df.to_parquet(output_filepath)
 
 if __name__ == '__main__':
     print('='*60)
@@ -336,9 +375,10 @@ if __name__ == '__main__':
     DEBUG = args.debug
     DRYRUN = args.dryrun
     MAKE_PLOTS = args.plots
-    REMAKE_TEST = args.remake_test
+    ADD_TEST = args.add_test
+    REPLACE_TEST = args.replace_test
     args_output_dirpath = os.path.normpath(args.output_dirpath)
-    if REMAKE_TEST: CURRENT_TIME = args_output_dirpath[args_output_dirpath.rfind('/')+1:]
+    if REPLACE_TEST: CURRENT_TIME = args_output_dirpath[-len('YYYY-MM-DD_HH-MM-SS'):]
     else: args_output_dirpath = os.path.join(args_output_dirpath, f"{DATASET_TAG}_{CURRENT_TIME}")
     if not os.path.exists(args_output_dirpath) and not DRYRUN:
         os.makedirs(args_output_dirpath)

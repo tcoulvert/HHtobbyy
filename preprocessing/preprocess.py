@@ -4,6 +4,7 @@ import glob
 import logging
 import os
 import re
+import subprocess
 
 # Common Py packages
 import numpy as np
@@ -202,6 +203,9 @@ def make_dataset(filepath, era, type='MC'):
     columns = [field for field in schema.names]
 
     output_filepath = get_output_filepath(filepath)
+    if output_filepath.split('/')[1] == 'eos':
+        eos_output_filepath = '/'.join(output_filepath.split('/')[3:])
+        output_filepath = f"tmp{np.random.default_rng(seed=21).integers(1_000_000)}.parquet"
     pq_writer = None
     for pq_batch in pq_file.iter_batches(batch_size=524_288, columns=columns):
         ak_batch = ak.from_arrow(pq_batch)
@@ -233,6 +237,8 @@ def make_dataset(filepath, era, type='MC'):
         if pq_writer is None:
             pq_writer = pq.ParquetWriter(output_filepath, schema=table_batch.schema)
         pq_writer.write_table(table_batch)
+    if 'eos_output_filepath' in locals():
+        subprocess.run(['eosmv', output_filepath, eos_output_filepath])
     print('Finished \n', '========================')
 
 def make_mc(sim_eras: dict):
