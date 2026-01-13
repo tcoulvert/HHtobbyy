@@ -104,7 +104,7 @@ def evaluate_and_save(filepath: str, booster: xgb.Booster, class_names: list, tr
     if filepath.split('/')[1] == 'eos':
         tmp_file = f"tmp.parquet"
         df.to_parquet(tmp_file)
-        subprocess.run(['eoscp', '-f', tmp_file, '/'.join(filepath.split('/')[3:])])
+        proc = subprocess.run(['xrdcp', '-f', tmp_file, 'root://cmseos.fnal.gov/'+'/'.join(['']+filepath.split('/')[3:])], capture_output=True, text=True)
         subprocess.run(['rm', tmp_file])
     else:
         df.to_parquet(filepath)

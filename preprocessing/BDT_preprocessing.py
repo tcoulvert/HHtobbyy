@@ -226,7 +226,7 @@ def preprocess_resolved_bdt(input_filepaths, output_dirpath):
         if class_sample_map_filepath.split('/')[1] == 'eos':
             tmp_file = f"tmp_class_sample.json"
             with open(tmp_file, 'w') as f: json.dump(CLASS_SAMPLE_MAP, f)
-            subprocess.run(['eoscp', '-f', tmp_file, '/'.join(class_sample_map_filepath.split('/')[3:])])
+            subprocess.run(['xrdcp', '-f', tmp_file, 'root://cmseos.fnal.gov/'+'/'.join(['']+class_sample_map_filepath.split('/')[3:])])
             subprocess.run(['rm', tmp_file])
         else:
             with open(class_sample_map_filepath, 'w') as f: json.dump(CLASS_SAMPLE_MAP, f)
@@ -253,7 +253,7 @@ def preprocess_resolved_bdt(input_filepaths, output_dirpath):
                 if stdjson_filepath.split('/')[1] == 'eos':
                     tmp_file = f"tmp_std.json"
                     with open(tmp_file, 'w') as f: json.dump(stdjson, f)
-                    subprocess.run(['eoscp', '-f', tmp_file, '/'.join(stdjson_filepath.split('/')[3:])])
+                    subprocess.run(['xrdcp', '-f', tmp_file, 'root://cmseos.fnal.gov/'+'/'.join(['']+stdjson_filepath.split('/')[3:])])
                     subprocess.run(['rm', tmp_file])
                 else:
                     with open(stdjson_filepath, 'w') as f: json.dump(stdjson, f)
@@ -308,7 +308,7 @@ def preprocess_resolved_bdt(input_filepaths, output_dirpath):
                     if output_filepath.split('/')[1] == 'eos':
                         tmp_file = f"tmp{file_i}.parquet"
                         df.to_parquet(tmp_file)
-                        subprocess.run(['eoscp', '-f', tmp_file, '/'.join(output_filepath.split('/')[3:])])
+                        subprocess.run(['xrdcp', '-f', tmp_file, 'root://cmseos.fnal.gov/'+'/'.join(['']+output_filepath.split('/')[3:])])
                         subprocess.run(['rm', tmp_file])
                     else:
                         df.to_parquet(output_filepath)
@@ -329,8 +329,8 @@ def preprocess_resolved_bdt(input_filepaths, output_dirpath):
             elif len(prev_test_filepaths) > 0 and REPLACE_TEST:
                 logger.log(1, f"{filepath[filepath.find(BASE_FILEPATH):filepath.rfind('/')]} removed because test file already exists and \'--replace_test\' option selected")
                 for prev_test_filepath in prev_test_filepaths: 
-                    if prev_test_filepath.split('/')[0] == 'eos':
-                        subprocess.run(['eosrm', '/'.join(prev_test_filepath.split('/')[2:])])
+                    if prev_test_filepath.split('/')[1] == 'eos':
+                        subprocess.run(['eosrm', '/'.join(['']+prev_test_filepath.split('/')[3:])])
                     else:
                         subprocess.run(['rm', prev_test_filepath])
                         
@@ -367,7 +367,7 @@ def preprocess_resolved_bdt(input_filepaths, output_dirpath):
                 if output_filepath.split('/')[1] == 'eos':
                     tmp_file = f"tmp{file_i}.parquet"
                     df.to_parquet(tmp_file)
-                    subprocess.run(['eoscp', '-f', tmp_file, '/'.join(output_filepath.split('/')[3:])])
+                    subprocess.run(['xrdcp', '-f', tmp_file, 'root://cmseos.fnal.gov/'+'/'.join(['']+output_filepath.split('/')[3:])])
                     subprocess.run(['rm', tmp_file])
                 else:
                     df.to_parquet(output_filepath)

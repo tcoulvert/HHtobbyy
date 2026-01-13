@@ -204,7 +204,7 @@ def make_dataset(filepath, era, type='MC'):
 
     output_filepath = get_output_filepath(filepath)
     if output_filepath.split('/')[1] == 'eos':
-        eos_output_filepath = '/'.join(output_filepath.split('/')[3:])
+        eos_output_filepath = '/'.join(['']+output_filepath.split('/')[3:])
         output_filepath = f"tmp{np.random.default_rng(seed=21).integers(1_000_000)}.parquet"
     pq_writer = None
     for pq_batch in pq_file.iter_batches(batch_size=524_288, columns=columns):
@@ -238,7 +238,7 @@ def make_dataset(filepath, era, type='MC'):
             pq_writer = pq.ParquetWriter(output_filepath, schema=table_batch.schema)
         pq_writer.write_table(table_batch)
     if 'eos_output_filepath' in locals():
-        subprocess.run(['eoscp', '-f', output_filepath, eos_output_filepath])
+        subprocess.run(['xrdcp', '-f', output_filepath, 'root://cmseos.fnal.gov/'+eos_output_filepath])
         subprocess.run(['rm', output_filepath])
     print('Finished \n', '========================')
 
