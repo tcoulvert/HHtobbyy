@@ -100,6 +100,13 @@ def evaluate_and_save(filepath: str, booster: xgb.Booster, class_names: list, tr
 
     for i, transform_label in enumerate(transform_labels):
         df[f"AUX_{transform_label}_prob"] = transformed_preds[:, i]
-    df.to_parquet(filepath)
+    
+    if filepath.split('/')[1] == 'eos':
+        tmp_file = f"tmp.parquet"
+        df.to_parquet(tmp_file)
+        subprocess.run(['eoscp', '-f', tmp_file, '/'.join(filepath.split('/')[3:])])
+        subprocess.run(['rm', tmp_file])
+    else:
+        df.to_parquet(filepath)
 
     assert all(f'AUX_{transform_label}_prob' in get_test_Dataframe(filepath).columns for transform_label in transform_labels), f"{filepath.split('/')[-3:]} - evaluation and saving did not work properly"

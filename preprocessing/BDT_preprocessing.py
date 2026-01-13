@@ -226,7 +226,8 @@ def preprocess_resolved_bdt(input_filepaths, output_dirpath):
         if class_sample_map_filepath.split('/')[1] == 'eos':
             tmp_file = f"tmp_class_sample.json"
             with open(tmp_file, 'w') as f: json.dump(CLASS_SAMPLE_MAP, f)
-            subprocess.run(['eosmv', tmp_file, '/'.join(class_sample_map_filepath.split('/')[3:])])
+            subprocess.run(['eoscp', '-f', tmp_file, '/'.join(class_sample_map_filepath.split('/')[3:])])
+            subprocess.run(['rm', tmp_file])
         else:
             with open(class_sample_map_filepath, 'w') as f: json.dump(CLASS_SAMPLE_MAP, f)
 
@@ -252,7 +253,8 @@ def preprocess_resolved_bdt(input_filepaths, output_dirpath):
                 if stdjson_filepath.split('/')[1] == 'eos':
                     tmp_file = f"tmp_std.json"
                     with open(tmp_file, 'w') as f: json.dump(stdjson, f)
-                    subprocess.run(['eosmv', tmp_file, '/'.join(stdjson_filepath.split('/')[3:])])
+                    subprocess.run(['eoscp', '-f', tmp_file, '/'.join(stdjson_filepath.split('/')[3:])])
+                    subprocess.run(['rm', tmp_file])
                 else:
                     with open(stdjson_filepath, 'w') as f: json.dump(stdjson, f)
         else:
@@ -306,7 +308,8 @@ def preprocess_resolved_bdt(input_filepaths, output_dirpath):
                     if output_filepath.split('/')[1] == 'eos':
                         tmp_file = f"tmp{file_i}.parquet"
                         df.to_parquet(tmp_file)
-                        subprocess.run(['eosmv', tmp_file, '/'.join(output_filepath.split('/')[3:])])
+                        subprocess.run(['eoscp', '-f', tmp_file, '/'.join(output_filepath.split('/')[3:])])
+                        subprocess.run(['rm', tmp_file])
                     else:
                         df.to_parquet(output_filepath)
 
@@ -364,7 +367,8 @@ def preprocess_resolved_bdt(input_filepaths, output_dirpath):
                 if output_filepath.split('/')[1] == 'eos':
                     tmp_file = f"tmp{file_i}.parquet"
                     df.to_parquet(tmp_file)
-                    subprocess.run(['eosmv', tmp_file, '/'.join(output_filepath.split('/')[3:])])
+                    subprocess.run(['eoscp', '-f', tmp_file, '/'.join(output_filepath.split('/')[3:])])
+                    subprocess.run(['rm', tmp_file])
                 else:
                     df.to_parquet(output_filepath)
 

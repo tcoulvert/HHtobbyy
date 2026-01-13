@@ -238,7 +238,8 @@ def make_dataset(filepath, era, type='MC'):
             pq_writer = pq.ParquetWriter(output_filepath, schema=table_batch.schema)
         pq_writer.write_table(table_batch)
     if 'eos_output_filepath' in locals():
-        subprocess.run(['eosmv', output_filepath, eos_output_filepath])
+        subprocess.run(['eoscp', '-f', output_filepath, eos_output_filepath])
+        subprocess.run(['rm', output_filepath])
     print('Finished \n', '========================')
 
 def make_mc(sim_eras: dict):
