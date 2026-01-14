@@ -246,7 +246,7 @@ def preprocess_resolved_bdt(input_filepaths, output_dirpath):
 
 
         stdjson_filepath = os.path.join(output_dirpath, 'standardization.json')
-        if not REPLACE_TEST:
+        if not (ADD_TEST or REPLACE_TEST):
             x_mean, x_std = compute_standardization(train_dfs, train_dfs_fold)
             if not DRYRUN:
                 stdjson = {'col': BDT_variables, 'mean': x_mean.tolist(), 'std': x_std.tolist()}
@@ -330,7 +330,7 @@ def preprocess_resolved_bdt(input_filepaths, output_dirpath):
                 logger.log(1, f"{filepath[filepath.find(BASE_FILEPATH):filepath.rfind('/')]} removed because test file already exists and \'--replace_test\' option selected")
                 for prev_test_filepath in prev_test_filepaths: 
                     if prev_test_filepath.split('/')[1] == 'eos':
-                        subprocess.run(['eosrm', '/'.join(['']+prev_test_filepath.split('/')[3:])])
+                        subprocess.run(['xrdfs', 'root://cmseos.fnal.gov/', 'rm', '/'.join(['']+prev_test_filepath.split('/')[3:])])
                     else:
                         subprocess.run(['rm', prev_test_filepath])
                         
