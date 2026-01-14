@@ -205,7 +205,7 @@ def make_dataset(filepath, era, type='MC'):
     output_filepath = get_output_filepath(filepath)
     if output_filepath.split('/')[1] == 'eos':
         eos_output_filepath = '/'.join(['']+output_filepath.split('/')[3:])
-        output_filepath = f"tmp{np.random.default_rng(seed=21).integers(1_000_000)}.parquet"
+        output_filepath = f"tmp{hash(output_filepath)}.parquet"
     pq_writer = None
     for pq_batch in pq_file.iter_batches(batch_size=524_288, columns=columns):
         ak_batch = ak.from_arrow(pq_batch)

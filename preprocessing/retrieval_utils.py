@@ -75,7 +75,7 @@ def get_test_filepaths_func(dataset_dirpath: str, syst_name: str='nominal'):
         )
     }
 
-def argsorted(objects, **kwargs):
+def argsorted(objects):
     object_to_index = {}
     for index, object in enumerate(objects):
         object_to_index[object] = index
@@ -111,7 +111,7 @@ def get_Dataframe(filepath: str, aux: bool=False, n_folds_fold_idx: tuple=None, 
         return df.loc[mask].reset_index(drop=True)
 def get_Dataframes(filepath: str, n_folds_fold_idx: tuple=None):
     return get_Dataframe(filepath, n_folds_fold_idx=n_folds_fold_idx), get_Dataframe(filepath, aux=True, n_folds_fold_idx=n_folds_fold_idx)
-def get_train_Dataframe(dataset_dirpath: str, fold_idx: int, dataset: str="train", **kwargs):
+def get_train_Dataframe(dataset_dirpath: str, fold_idx: int, dataset: str="train"):
     df_list = []
     aux_list = []
 
@@ -142,11 +142,6 @@ def get_train_Dataframe(dataset_dirpath: str, fold_idx: int, dataset: str="train
     else:
         return None, None
 
-    if kwargs.get('restandardize', False):
-        if 'previous_std' in kwargs and 'new_std' in kwargs:
-            print(f"[INFO] Re-standardizing variables from {kwargs['previous_std']} to {kwargs['new_std']}")
-            df = reStandardize_variable(df, kwargs['previous_std'], kwargs['new_std'])
-
     assert 'Data' not in set(np.unique(aux['AUX_sample_name']).tolist()), f"Data is getting into train dataset... THIS IS VERY BAD"
 
     # Upweight resonant background and signal samples for training #
@@ -155,6 +150,10 @@ def get_train_Dataframe(dataset_dirpath: str, fold_idx: int, dataset: str="train
         DDQCD_GGJET_2024_mask = aux['AUX_sample_name'].eq('GGJets')
         aux.loc[DDQCD_GGJET_2024_mask, 'AUX_eventWeight'] = aux.loc[DDQCD_GGJET_2024_mask, 'AUX_eventWeight'] * 1.59
         aux.loc[DDQCD_GGJET_2024_mask, 'AUX_eventWeightTrain'] = aux.loc[DDQCD_GGJET_2024_mask, 'AUX_eventWeight']
+        # DDQCD_GJET_2024_mask = aux['AUX_sample_name'].ne('GGJets')
+        # aux.loc[DDQCD_GJET_2024_mask, 'AUX_eventWeight'] = aux.loc[DDQCD_GJET_2024_mask, 'AUX_eventWeight'] * 1.21
+        # aux.loc[DDQCD_GJET_2024_mask, 'AUX_eventWeightTrain'] = aux.loc[DDQCD_GJET_2024_mask, 'AUX_eventWeight']
+
     # Resonant background
     for i, key in enumerate(filepaths.keys()):
         if 'ttH' in key or 'VH' in key:
@@ -167,15 +166,6 @@ def get_train_Dataframe(dataset_dirpath: str, fold_idx: int, dataset: str="train
         # scale shepra by 1000, as mistake in cross-section fb vs pb
         aux.loc[sherpa_mask, 'AUX_eventWeight'] *= 1000
         aux.loc[sherpa_mask, 'AUX_eventWeightTrain'] *= 1000
-        # nonres_label = [i for i, key in enumerate(filepaths.keys()) if 'nonRes' in key][0]
-        # nonres_mask = aux['AUX_label1D'].eq(nonres_label)
-        # nonsherpa_mask = aux['AUX_sample_name'].ne('SherpaNLO')
-        # nonres_nonsherpa_mask = nonres_mask & nonsherpa_mask
-        # sum_nonres = np.sum(aux.loc[nonres_nonsherpa_mask, 'AUX_eventWeightTrain'])
-        # sum_sherpa = np.sum(aux.loc[sherpa_mask, 'AUX_eventWeightTrain'])
-        # if sum_sherpa > 0:
-        #     print(f"[INFO] Scaling SherpaNLO weights from {sum_sherpa} to {sum_nonres} for training")
-        #     aux.loc[sherpa_mask, 'AUX_eventWeightTrain'] *= (sum_nonres / sum_sherpa)
 
     # Signal
     for i, key in enumerate(filepaths.keys()):
@@ -198,6 +188,7 @@ def get_train_Dataframe(dataset_dirpath: str, fold_idx: int, dataset: str="train
         aux.reindex(class_shuffle_idx)
 
     return df, aux
+
 def get_test_Dataframe(filepath: str):
     df, aux = get_Dataframes(filepath)
     for col in aux.columns: df[col] = aux[col]
@@ -210,66 +201,25 @@ def get_DMatrix(df, aux, dataset: str='train', label: bool=True):
         data=df, label=label_arg, weight=np.abs(aux['AUX_eventWeightTrain'] if dataset.lower() == 'train' else aux['AUX_eventWeight']),
         missing=FILL_VALUE, feature_names=list(df.columns)
     )
-def get_train_DMatrices(dataset_dirpath: str, fold_idx: int, val_split: float=0.2, **kwargs):
+def get_train_DMatrices(dataset_dirpath: str, fold_idx: int, val_split: float=0.2, dataset: str='all', **kwargs):
     if 'res_bkg_rescale' in kwargs: RES_BKG_RESCALE = kwargs['res_bkg_rescale']
     if 'shuffle' in kwargs: DF_SHUFFLE = kwargs['shuffle']
-
-    if kwargs.get('test_only', False):
-        # save resource when only need test DMatrix
-        test_df, test_aux = get_train_Dataframe(dataset_dirpath, fold_idx, 'test', **kwargs)
+    
+    if dataset in ['all', 'train', 'val']:
+        tr_df, tr_aux = get_train_Dataframe(dataset_dirpath, fold_idx)
+        train_df, val_df, train_aux, val_aux = train_test_split(tr_df, tr_aux, test_size=val_split, random_state=RNG_SEED)
+        train_dm = get_DMatrix(train_df, train_aux)
+        val_dm = get_DMatrix(val_df, val_aux)
+    if dataset in ['all', 'test']:
+        test_df, test_aux = get_train_Dataframe(dataset_dirpath, fold_idx, 'test')
         test_dm = get_DMatrix(test_df, test_aux, dataset='test')
-        if kwargs.get('get_aux', False):
-            return None, None, test_dm, None, None, test_aux
-        return None, None, test_dm
-    tr_df, tr_aux = get_train_Dataframe(dataset_dirpath, fold_idx, **kwargs)
-    train_df, val_df, train_aux, val_aux = train_test_split(tr_df, tr_aux, test_size=val_split, random_state=RNG_SEED)
-    test_df, test_aux = get_train_Dataframe(dataset_dirpath, fold_idx, 'test', **kwargs)
 
-    train_dm = get_DMatrix(train_df, train_aux)
-    val_dm = get_DMatrix(val_df, val_aux)
-    test_dm = get_DMatrix(test_df, test_aux, dataset='test')
+    if dataset == 'all': return train_dm, val_dm, test_dm
+    elif dataset == 'train': return train_dm
+    elif dataset == 'val': return val_dm
+    elif dataset == 'test': return test_dm
+    else: raise ValueError(f"Unknown dataset: {dataset}")
 
-    if not kwargs.get('get_aux', False):
-        return train_dm, val_dm, test_dm
-    return train_dm, val_dm, test_dm, train_aux, val_aux, test_aux
 def get_test_DMatrix(filepath: str):
     df, aux = get_Dataframes(filepath)
     return get_DMatrix(df, aux, dataset='test', label=False)
-
-def reStandardize_variable(df, previous_std_json, new_std_json, fill_value: float=FILL_VALUE):
-    def load_std_dict(std_input):
-        if isinstance(std_input, str):
-            with open(std_input, 'r') as f:
-                data = json.load(f)
-        else:
-            data = std_input
-            
-        if isinstance(data, dict) and "col" in data and "mean" in data and "std" in data:
-            return {
-                c: {"mean": m, "std": s} 
-                for c, m, s in zip(data["col"], data["mean"], data["std"])
-            }
-        return data
-
-    previous_std = load_std_dict(previous_std_json)
-    new_std = load_std_dict(new_std_json)
-
-    for col in df.columns:
-        if col in previous_std and col in new_std:
-            # valid values are those that are not the fill value
-            # assuming fill_value is a large negative number like -999, consistent with other functions
-            valid_mask = df[col] > (fill_value + 2)
-
-            prev_mean = previous_std[col]['mean']
-            prev_std_val = previous_std[col]['std']
-            new_mean = new_std[col]['mean']
-            new_std_val = new_std[col]['std']
-
-            # de-standardize: x_raw = x_std * std + mean
-            raw_values = df.loc[valid_mask, col] * prev_std_val + prev_mean
-            # re-standardize: x_new_std = (x_raw - new_mean) / new_std
-            df.loc[valid_mask, col] = (raw_values - new_mean) / new_std_val
-        elif col not in new_std:
-            print(f"[WARNING] Column {col} not found in new_std dictionary. Dropping this column.")
-            df.drop(columns=[col], inplace=True)
-    return df

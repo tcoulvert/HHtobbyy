@@ -102,7 +102,7 @@ def evaluate_and_save(filepath: str, booster: xgb.Booster, class_names: list, tr
         df[f"AUX_{transform_label}_prob"] = transformed_preds[:, i]
     
     if filepath.split('/')[1] == 'eos':
-        tmp_file = f"tmp{np.random.default_rng(seed=21).integers(1_000_000)}.parquet"
+        tmp_file = f"tmp{hash(filepath)}.parquet"
         df.to_parquet(tmp_file)
         subprocess.run(['xrdcp', '-f', tmp_file, 'root://cmseos.fnal.gov/'+'/'.join(['']+filepath.split('/')[3:])])
         subprocess.run(['rm', tmp_file])
