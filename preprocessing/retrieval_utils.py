@@ -265,10 +265,21 @@ def reStandardize_variable(df, previous_std_json, new_std_json, fill_value: floa
             new_mean = new_std[col]['mean']
             new_std_val = new_std[col]['std']
 
+            print(f"col: {col}")
+            print(f"prev mean = {prev_mean}")
+            print(f"prev stddev = {prev_std_val}")
+            print(f"new mean = {new_mean}")
+            print(f"new stddev = {new_std_val}")
+            print(f"prev head = {df.loc[valid_mask, col].head()}")
+
             # de-standardize: x_raw = x_std * std + mean
             raw_values = df.loc[valid_mask, col] * prev_std_val + prev_mean
             # re-standardize: x_new_std = (x_raw - new_mean) / new_std
             df.loc[valid_mask, col] = (raw_values - new_mean) / new_std_val
+
+            print(f"new head = {df.loc[valid_mask, col].head()}")
+            print('-'*60)
+
         elif col not in new_std:
             print(f"[WARNING] Column {col} not found in new_std dictionary. Dropping this column.")
             df.drop(columns=[col], inplace=True)
