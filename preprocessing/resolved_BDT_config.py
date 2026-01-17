@@ -4,15 +4,17 @@ import datetime
 ################################
 
 
-DATASET_TAG = "22to24_bTagWPDDQCD"
+DATASET_TAG = "22to24_bTagWP"
 
 CLASS_SAMPLE_MAP = {
     'ggF HH': ["GluGlu*HH*kl-1p00"],  # *!batch 
-    # 'VBF HH': ["VBF*HH*C2V_1_"],
+    **({'VBF HH': ["VBF*HH*C2V_1_"]} if 'VBFHH' in DATASET_TAG else {}),
     'ttH + bbH': ["ttH", "bbH"],
     'VH': ["VH", "ZH", "Wm*H", "Wp*H"],
-    # 'nonRes + ggFH + VBFH': ["!DDQCDGJet*GGJets", "!DDQCDGJet*GJet", "TTGG", "GluGluH*GG", "VBFH*GG"],
-    'nonRes + ggFH + VBFH': ["DDQCDGJets", "TTGG", "GluGluH*GG", "VBFH*GG"],
+    **(
+        {'nonRes + ggFH + VBFH': ["!DDQCDGJet*GGJets", "!DDQCDGJet*GJet", "TTGG", "GluGluH*GG", "VBFH*GG"]} 
+        if 'DDQCD' not in DATASET_TAG.upper() else {'nonRes + ggFH + VBFH': ["DDQCDGJets", "TTGG", "GluGluH*GG", "VBFH*GG"]}
+    ),
     # 'nonRes + ggFH + VBFH': ["GJet", "TTGG", "GluGluH*GG", "VBFH*GG"],
 }
 TRAIN_ONLY_SAMPLES = {
@@ -140,7 +142,7 @@ AUX_VARIABLES = lambda jet_prefix: {
 
 FILL_VALUE = -999
 TRAIN_MOD = 5
-JET_PREFIX = 'nonRes'  # ["Res", "Res_DNNpair", "nonRes", "nonResReg", "nonResReg_DNNpair"]
+JET_PREFIX = 'nonRes' if 'RESREG' not in DATASET_TAG.upper() else ('nonResReg' if 'DNN' not in DATASET_TAG.upper() else 'nonResReg_DNNpair')  # ["Res", "Res_DNNpair", "nonRes", "nonResReg", "nonResReg_DNNpair"]
 
 SEED = 21
 BASE_FILEPATH = 'Run3_202'

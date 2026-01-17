@@ -80,7 +80,6 @@ def evaluate_model(
 
         for class_name, class_filepaths in filepaths.items():
             for filepath in class_filepaths:
-
                 evaluate_and_save(filepath, booster, class_sample_map.keys(), discriminator)
                 
 

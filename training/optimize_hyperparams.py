@@ -36,11 +36,11 @@ from retrieval_utils import get_train_DMatrices
 def init_params(n_classes: int, static_params_dict: dict=None):
     param = {}
     # Booster parameters
-    param['eta']              = 0.05       # learning rate
-    param['max_depth']        = 10         # max number of splittings per tree
+    param['eta']              = 0.1        # learning rate -- 0.05
+    param['max_depth']        = 4          # max number of splittings per tree -- 10
     param['colsample_bytree'] = 0.6        # fraction of features to train tree on
     param['num_class']        = n_classes  # num classes for multi-class training
-    param['min_child_weight'] = 0.25
+    param['min_child_weight'] = 1.         # smallest sum weight for leaf -- 0.25
     try:
         gpustat.print_gpustat()
         param['device']           = 'cuda'
@@ -52,11 +52,11 @@ def init_params(n_classes: int, static_params_dict: dict=None):
         param['tree_method']      = 'hist'
         param['sampling_method']  = 'uniform'
         param['subsample']        = 0.8        # fraction of events to train tree on
-    param['max_bin']          = 512
+    param['max_bin']          = 256            # number of bins for histogramming -- 512
     param['grow_policy']      = 'lossguide'
     # Learning task parameters
-    param['objective']   = 'multi:softprob'   # objective function
-    param['eval_metric'] = 'mlogloss'         # evaluation metric for cross validation
+    param['objective']   = 'multi:softprob'    # objective function
+    param['eval_metric'] = 'mlogloss'          # evaluation metric for cross validation
 
     if static_params_dict is not None:
         for key, value in static_params_dict.items():

@@ -34,6 +34,7 @@ from training_utils import (
 from evaluation_utils import (
     transform_preds_options, transform_preds_func
 )
+import categorization_utils
 
 ################################
 
@@ -44,6 +45,10 @@ parser = argparse.ArgumentParser(description="Standardize BDT inputs and save ou
 parser.add_argument(
     "training_dirpath", 
     help="Full filepath on LPC for trained model files"
+)
+parser.add_argument(
+    "options_filepath",
+    help="Full filepath on LPC for categorization options file"
 )
 parser.add_argument(
     "--dataset_dirpath", 
@@ -99,6 +104,7 @@ SYST_NAME = args.syst_name
 DISCRIMINATOR = args.discriminator
 SIGNAL_LABEL = args.signal
 VERBOSE = args.verbose
+OPTIONS_FILEPATH = args.options_filepath
 FOLD_TO_CATEGORIZE = args.fold
 FOLD_TO_PLOT_OPTIONS = ['none', 'all']+[str(fold_idx) for fold_idx in range(get_n_folds(DATASET_DIRPATH))]
 assert FOLD_TO_CATEGORIZE in FOLD_TO_PLOT_OPTIONS, f"The option passed to \'--fold\' ({FOLD_TO_CATEGORIZE}) is not allowed, for this dataset your options are: {FOLD_TO_PLOT_OPTIONS}"
@@ -108,113 +114,23 @@ CLASS_NAMES = [key for key in CLASS_SAMPLE_MAP.keys()]
 
 TRANSFORM_LABELS, TRANSFORM_PREDS = transform_preds_func(CLASS_NAMES, DISCRIMINATOR)
 TRANSFORM_COLUMNS = [f"AUX_{transform_label}_prob" for transform_label in TRANSFORM_LABELS]
-assert len(TRANSFORM_COLUMNS) <= 2, f"You're trying to run categorization over a discriminator with more than 2 dimensions, this likely won't converge with the brute-force way in this file. Please write your own categorization code or use a different discriminator"
+assert len(TRANSFORM_COLUMNS) <= 4, f"You're trying to run categorization over a discriminator with more than 4 dimensions, this likely won't converge with the brute-force way in this file. Please write your own categorization code or use a different discriminator"
 CATEGORIZATION_COLUMNS = ['AUX_sample_name', 'AUX_eventWeight', 'AUX_mass', 'AUX_*_resolved_BDT_mask', 'AUX_label1D'] + TRANSFORM_COLUMNS
 
 CATEGORIZATION_DIRPATH = os.path.join(TRAINING_DIRPATH, "categorization", "")
 if not os.path.exists(CATEGORIZATION_DIRPATH): 
     os.makedirs(CATEGORIZATION_DIRPATH)
 CATEGORIZATION_FILEPATH = os.path.join(CATEGORIZATION_DIRPATH, f"{DISCRIMINATOR}{f'_sig{CLASS_NAMES[SIGNAL_LABEL]}' if SIGNAL_LABEL != 0 else ''}_categorization.json")
-N_CATEGORIES = 3
-N_STEPS = 50
-N_ZOOM = 4
-START1, STOP1 = 0.8, 1.
-START2, STOP2 = 0.8, 1.
+CATEGORIZATION_OPTIONS_FILEPATH = os.path.join(CATEGORIZATION_DIRPATH, f"{DISCRIMINATOR}{f'_sig{CLASS_NAMES[SIGNAL_LABEL]}' if SIGNAL_LABEL != 0 else ''}_categorization_options.json")
+with open(OPTIONS_FILEPATH, 'r') as f: CATEGORIZATION_OPTIONS = json.load(f)
+CATEGORIZATION_OPTIONS['TRANSFORM_COLUMNS'] = TRANSFORM_COLUMNS
+CATEGORIZATION_OPTIONS['SIGNAL_LABEL'] = SIGNAL_LABEL
+CATEGORIZATION_METHOD = getattr(categorization_utils, CATEGORIZATION_OPTIONS['METHOD'])
+if 'STARTSTOPS' not in CATEGORIZATION_OPTIONS.keys():
+    CATEGORIZATION_OPTIONS['STARTSTOPS'] = [[0., 1.] for _ in TRANSFORM_COLUMNS]
 
 ################################
 
-
-def fom_mask(df: pd.DataFrame):
-    return np.logical_and(df.loc[:, 'AUX_mass'].ge(122.5), df.loc[:, 'AUX_mass'].le(127.))
-
-def sideband_nonres_mask(df: pd.DataFrame):
-    return np.logical_and(
-        np.logical_or(df.loc[:, 'AUX_mass'].lt(120.), df.loc[:, 'AUX_mass'].gt(130.)),
-        np.logical_or(
-            df.loc[:, 'AUX_sample_name'].eq('TTGG'),  # TTGG
-            np.logical_or(
-                np.logical_or(df.loc[:, 'AUX_sample_name'].eq('GJet'), df.loc[:, 'AUX_sample_name'].eq('GGJets')),  # GGJets or GJet
-                df.loc[:, 'AUX_sample_name'].eq('DDQCDGJets')  # DDQCD GJet or GGJets
-            )
-        )
-    )
-
-def fom_s_over_sqrt_b(s, b):
-    return s / np.sqrt(b)
-
-def compute_cuts1D(df: pd.DataFrame, cat_mask: pd.DataFrame):
-    pass_fom = np.logical_and(cat_mask, fom_mask(df))
-    pass_sideband = np.logical_and(cat_mask, sideband_nonres_mask(df))
-
-    best_fom, best_cut = 0., 0.
-
-    start1, stop1 = START1, STOP1
-    for zoom in range(N_ZOOM):
-        foms, cuts = [], []
-
-        for cut1 in np.linspace(start1, stop1, N_STEPS, endpoint=True):
-            cuts.append(cut1)
-
-            pass_cut = np.logical_and(pass_fom, df.loc[:, TRANSFORM_COLUMNS[0]].gt(cut1))
-            sideband_cut = np.logical_and(pass_sideband, df.loc[:, TRANSFORM_COLUMNS[0]].gt(cut1))
-
-            signal = df.loc[np.logical_and(pass_cut, df.loc[:, 'AUX_label1D'].eq(SIGNAL_LABEL)), 'AUX_eventWeight'].sum()
-            bkg = df.loc[np.logical_and(pass_cut, df.loc[:, 'AUX_label1D'].ne(SIGNAL_LABEL)), 'AUX_eventWeight'].sum()
-            sideband_nonres = df.loc[sideband_cut, 'AUX_eventWeight'].sum()
-            fom = fom_s_over_sqrt_b(signal, bkg) if sideband_nonres > 8. else 0.
-            foms.append(fom)
-
-        index = np.argmax(foms)
-        fom, cut = foms[index], cuts[index]
-        step_size1 = (stop1 - start1) / N_STEPS
-        start1, stop1 = cut - step_size1, cut + step_size1
-
-        if fom > best_fom: best_fom = fom; best_cut = cut
-
-    return best_fom, best_cut
-
-def compute_cuts2D(df: pd.DataFrame, cat_mask: pd.DataFrame):
-    pass_fom = np.logical_and(cat_mask, fom_mask(df))
-    pass_sideband = np.logical_and(cat_mask, sideband_nonres_mask(df))
-
-    best_fom, best_cut = 0., (0., 0.)
-
-    start1, stop1 = START1, STOP1
-    start2, stop2 = START2, STOP2
-    for zoom in range(N_ZOOM):
-        foms, cuts = [], []
-        
-        for cut1 in np.linspace(start1, stop1, N_STEPS, endpoint=True):
-
-            pass_cut = np.logical_and(pass_fom, df.loc[:, TRANSFORM_COLUMNS[0]].gt(cut1))
-            sideband_cut = np.logical_and(pass_sideband, df.loc[:, TRANSFORM_COLUMNS[0]].gt(cut1))
-            
-            _foms_, _cuts_ = [], []
-            for cut2 in np.linspace(start2, stop2, N_STEPS, endpoint=True):
-                _cuts_.append( (cut1, cut2) )
-
-                pass_cut = np.logical_and(pass_cut, df.loc[:, TRANSFORM_COLUMNS[1]].gt(cut2))
-                sideband_cut = np.logical_and(pass_sideband, df.loc[:, TRANSFORM_COLUMNS[1]].gt(cut2))
-
-                signal = df.loc[np.logical_and(pass_cut, df.loc[:, 'AUX_label1D'].eq(SIGNAL_LABEL)), 'AUX_eventWeight'].sum()
-                bkg = df.loc[np.logical_and(pass_cut, df.loc[:, 'AUX_label1D'].ne(SIGNAL_LABEL)), 'AUX_eventWeight'].sum()
-                sideband_nonres = df.loc[sideband_cut, 'AUX_eventWeight'].sum()
-                fom = fom_s_over_sqrt_b(signal, bkg) if (sideband_nonres > 8. or zoom != N_ZOOM-1) and np.isfinite(fom_s_over_sqrt_b(signal, bkg)) else 0.
-                # print(f"{_cuts_[-1]}: fom = {fom}; signal = {signal}, bkg = {bkg}, nonres sideband = {sideband_nonres}")
-                _foms_.append(fom)
-            foms.append(_foms_)
-            cuts.append(_cuts_)
-        
-        index = np.unravel_index(np.argmax(foms), np.shape(foms))
-        fom, cut = foms[index[0]][index[1]], cuts[index[0]][index[1]]
-        step_size1, step_size2 = (stop1 - start1) / N_STEPS, (stop2 - start2) / N_STEPS
-        start1, stop1 = cut[0] - step_size1, cut[0] + step_size1
-        start2, stop2 = cut[1] - step_size2, cut[1] + step_size2
-
-        if fom > best_fom: best_fom = fom; best_cut = cut
-
-    print(f"{best_fom:.2f}, ({best_cut[0]:.4f}, {best_cut[1]:.4f})")
-    return best_fom, best_cut
 
 def categorize_model():
     categories_dict = {}
@@ -234,24 +150,17 @@ def categorize_model():
             categories_dict[FOLD_TO_CATEGORIZE] = {}
 
             category_mask = MC_eval.loc[:, 'AUX_nonRes_resolved_BDT_mask'].eq(1)
-            for cat_idx in range(1, N_CATEGORIES+1):
+            print(np.shape(category_mask.to_numpy()))
+            for cat_idx in range(1, CATEGORIZATION_OPTIONS['N_CATEGORIES']+1):
                 categories_dict[FOLD_TO_CATEGORIZE][f'cat{cat_idx}'] = {}
                 
-                if len(TRANSFORM_COLUMNS) == 1:
-                    best_fom, best_cut = compute_cuts1D(MC_eval, category_mask)
-                    category_mask = np.logical_and(
-                        category_mask, 
-                        ~MC_eval.loc[:, TRANSFORM_COLUMNS[0]].gt(best_cut)
+                best_fom, best_cut = CATEGORIZATION_METHOD(MC_eval, category_mask, CATEGORIZATION_OPTIONS)
+                prev_category_mask = copy.deepcopy(category_mask)
+                for i in range(len(TRANSFORM_COLUMNS)):
+                    prev_category_mask = np.logical_and(
+                        prev_category_mask, MC_eval.loc[:, TRANSFORM_COLUMNS[i]].gt(best_cut[i])
                     )
-                else:
-                    best_fom, best_cut = compute_cuts2D(MC_eval, category_mask)
-                    category_mask = np.logical_and(
-                        category_mask, 
-                        ~np.logical_and(
-                            MC_eval.loc[:, TRANSFORM_COLUMNS[0]].gt(best_cut[0]),
-                            MC_eval.loc[:, TRANSFORM_COLUMNS[1]].gt(best_cut[1])
-                        )
-                    )
+                category_mask = np.logical_and(category_mask, ~prev_category_mask)
 
                 categories_dict[FOLD_TO_CATEGORIZE][f'cat{cat_idx}']['fom'] = best_fom
                 categories_dict[FOLD_TO_CATEGORIZE][f'cat{cat_idx}']['cut'] = best_cut
@@ -262,38 +171,10 @@ def categorize_model():
         mask_var = [col for col in full_MC_eval.columns if 'resolved_BDT_mask' in col][0]
         category_mask = full_MC_eval.loc[:, mask_var].eq(1)
 
-        # # cuts_trials = [(0., 0.)] + [(step_dtth*0.01+0.55, step_dqcd*0.01+0.55) for step_dtth in range(5) for step_dqcd in range(5)]
-        # cuts_trials = [(0., 0.), (0.9878, 0.9993), (0.9413, 0.9955)]
-        # for cuts_idx, cuts_trial in enumerate(cuts_trials):
-        #     print('='*60+'\n'+'='*60)
-        #     print(f"{TRANSFORM_COLUMNS[0]} > {cuts_trial[0]:.3f} & {TRANSFORM_COLUMNS[1]} > {cuts_trial[1]:.3f}")
-        #     print('-'*60)
-        #     pass_mask = np.logical_and(
-        #         np.logical_and(
-        #             category_mask, 
-        #             np.logical_and(
-        #                 full_MC_eval.loc[:, 'AUX_mass'].ge(122.5),
-        #                 full_MC_eval.loc[:, 'AUX_mass'].le(127.),
-        #             )
-        #         ),
-        #         np.logical_and(
-        #             full_MC_eval.loc[:, TRANSFORM_COLUMNS[0]].gt(cuts_trial[0]),
-        #             full_MC_eval.loc[:, TRANSFORM_COLUMNS[1]].gt(cuts_trial[1]),
-        #         )
-        #     )
-        #     for unique_label in np.unique(full_MC_eval.loc[:, 'AUX_sample_name']):
-        #         unique_yield = full_MC_eval.loc[np.logical_and(pass_mask, full_MC_eval.loc[:, 'AUX_sample_name'].eq(unique_label)), 'AUX_eventWeight'].sum()
-        #         print('-'*60)
-        #         print(f"{unique_label} yield = {unique_yield:.4f}")
-            
-
-        for cat_idx in range(1, N_CATEGORIES+1):
+        for cat_idx in range(1, CATEGORIZATION_OPTIONS['N_CATEGORIES']+1):
             categories_dict[FOLD_TO_CATEGORIZE][f'cat{cat_idx}'] = {}
             
-            if len(TRANSFORM_COLUMNS) == 1:
-                best_fom, best_cut = compute_cuts1D(full_MC_eval, category_mask)
-            else:
-                best_fom, best_cut = compute_cuts2D(full_MC_eval, category_mask)
+            best_fom, best_cut = CATEGORIZATION_METHOD(MC_eval, category_mask, CATEGORIZATION_OPTIONS)
 
             categories_dict[FOLD_TO_CATEGORIZE][f'cat{cat_idx}']['fom'] = best_fom
             categories_dict[FOLD_TO_CATEGORIZE][f'cat{cat_idx}']['cut'] = best_cut
@@ -309,36 +190,23 @@ def categorize_model():
                 print(print_str)
                 print('-'*60)
                 pass_mask = np.logical_and(
-                    np.logical_and(
-                        category_mask, 
-                        np.logical_and(
-                            full_MC_eval.loc[:, 'AUX_mass'].ge(122.5),
-                            full_MC_eval.loc[:, 'AUX_mass'].le(127.),
-                        )
-                    ),
-                    np.logical_and(
-                        full_MC_eval.loc[:, TRANSFORM_COLUMNS[0]].gt(best_cut[0]),
-                        full_MC_eval.loc[:, TRANSFORM_COLUMNS[1]].gt(best_cut[1]),
-                    )
+                    category_mask, categorization_utils.fom_mask(full_MC_eval)
                 )
+                for i in range(len(TRANSFORM_COLUMNS)):
+                    pass_mask = np.logical_and(
+                        pass_mask, MC_eval.loc[:, TRANSFORM_COLUMNS[i]].gt(best_cut[i])
+                    )
                 for unique_label in np.unique(full_MC_eval.loc[:, 'AUX_sample_name']):
                     unique_yield = full_MC_eval.loc[np.logical_and(pass_mask, full_MC_eval.loc[:, 'AUX_sample_name'].eq(unique_label)), 'AUX_eventWeight'].sum()
                     print('-'*60)
                     print(f"{unique_label} yield = {unique_yield:.4f}")
 
-            if len(TRANSFORM_COLUMNS) == 1:
-                category_mask = np.logical_and(
-                    category_mask, 
-                    ~full_MC_eval.loc[:, TRANSFORM_COLUMNS[0]].gt(best_cut)
+            prev_category_mask = copy.deepcopy(category_mask)
+            for i in range(len(TRANSFORM_COLUMNS)):
+                prev_category_mask = np.logical_and(
+                    prev_category_mask, MC_eval.loc[:, TRANSFORM_COLUMNS[i]].gt(best_cut[i])
                 )
-            else:
-                category_mask = np.logical_and(
-                    category_mask, 
-                    ~np.logical_and(
-                        full_MC_eval.loc[:, TRANSFORM_COLUMNS[0]].gt(best_cut[0]),
-                        full_MC_eval.loc[:, TRANSFORM_COLUMNS[1]].gt(best_cut[1])
-                    )
-                )
+            category_mask = np.logical_and(category_mask, ~prev_category_mask)
             
 
     with open(CATEGORIZATION_FILEPATH, 'w') as f:

@@ -224,7 +224,7 @@ def preprocess_resolved_bdt(input_filepaths, output_dirpath):
     if not DRYRUN:
         class_sample_map_filepath = os.path.join(output_dirpath, 'class_sample_map.json')
         if class_sample_map_filepath.split('/')[1] == 'eos':
-            tmp_file = f"tmp_class_sample.json"
+            tmp_file = f"tmp_map{hash(output_dirpath)}.json"
             with open(tmp_file, 'w') as f: json.dump(CLASS_SAMPLE_MAP, f)
             subprocess.run(['xrdcp', '-f', tmp_file, 'root://cmseos.fnal.gov/'+'/'.join(['']+class_sample_map_filepath.split('/')[3:])])
             subprocess.run(['rm', tmp_file])
@@ -251,7 +251,7 @@ def preprocess_resolved_bdt(input_filepaths, output_dirpath):
             if not DRYRUN:
                 stdjson = {'col': BDT_variables, 'mean': x_mean.tolist(), 'std': x_std.tolist()}
                 if stdjson_filepath.split('/')[1] == 'eos':
-                    tmp_file = f"tmp_std.json"
+                    tmp_file = f"tmp_std{hash(output_dirpath)}.json"
                     with open(tmp_file, 'w') as f: json.dump(stdjson, f)
                     subprocess.run(['xrdcp', '-f', tmp_file, 'root://cmseos.fnal.gov/'+'/'.join(['']+stdjson_filepath.split('/')[3:])])
                     subprocess.run(['rm', tmp_file])
@@ -306,7 +306,7 @@ def preprocess_resolved_bdt(input_filepaths, output_dirpath):
 
                 if not DRYRUN: 
                     if output_filepath.split('/')[1] == 'eos':
-                        tmp_file = f"tmp{file_i}.parquet"
+                        tmp_file = f"tmp{hash(output_filepath)}.parquet"
                         df.to_parquet(tmp_file)
                         subprocess.run(['xrdcp', '-f', tmp_file, 'root://cmseos.fnal.gov/'+'/'.join(['']+output_filepath.split('/')[3:])])
                         subprocess.run(['rm', tmp_file])
@@ -365,7 +365,7 @@ def preprocess_resolved_bdt(input_filepaths, output_dirpath):
 
             if not DRYRUN:
                 if output_filepath.split('/')[1] == 'eos':
-                    tmp_file = f"tmp{file_i}.parquet"
+                    tmp_file = f"tmp{hash(output_filepath)}.parquet"
                     df.to_parquet(tmp_file)
                     subprocess.run(['xrdcp', '-f', tmp_file, 'root://cmseos.fnal.gov/'+'/'.join(['']+output_filepath.split('/')[3:])])
                     subprocess.run(['rm', tmp_file])

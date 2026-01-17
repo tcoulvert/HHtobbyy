@@ -163,7 +163,7 @@ def get_files(eras, type='MC'):
                 parquet_filepath 
                 for parquet_filepath in glob.glob(os.path.join(OUTPUT_DIRPATH, "**", f"*{NEW_END_FILEPATH}"), recursive=True)
                 if has_magic_bytes(parquet_filepath)
-            ) & set(get_output_filepath(input_filepath) for input_filepath in all_dirs_set)
+            )
 
         # Remove bad dirs
         all_dirs_set = set(
@@ -171,7 +171,10 @@ def get_files(eras, type='MC'):
             if match_sample(item, BAD_DIRS) is None
         )
         if not FORCE:
-            all_dirs_set = all_dirs_set - set(elem.replace(NEW_END_FILEPATH, end_filepath) for elem in ran_dirs_set for end_filepath in END_FILEPATHS)
+            all_dirs_set = set(
+                input_filepath for input_filepath in all_dirs_set 
+                if get_output_filepath(input_filepath) not in ran_dirs_set
+            )
 
         # Remove non-necessary MC samples
         if type.upper() == 'MC' and not RUN_ALL_MC:
@@ -197,7 +200,7 @@ def get_output_filepath(input_filepath: str):
     return output_filepath
 
 def make_dataset(filepath, era, type='MC'):
-    print('======================== \n', 'Starting \n', filepath)
+    print('========================>\n'+'Starting \n', filepath)
     pq_file = pq.ParquetFile(filepath)
     schema = pq.read_schema(filepath)
     columns = [field for field in schema.names]
@@ -237,10 +240,11 @@ def make_dataset(filepath, era, type='MC'):
         if pq_writer is None:
             pq_writer = pq.ParquetWriter(output_filepath, schema=table_batch.schema)
         pq_writer.write_table(table_batch)
+    pq_writer.close()
     if 'eos_output_filepath' in locals():
         subprocess.run(['xrdcp', '-f', output_filepath, 'root://cmseos.fnal.gov/'+eos_output_filepath])
         subprocess.run(['rm', output_filepath])
-    print('Finished \n', '========================')
+    print('Finished\n'+'<========================')
 
 def make_mc(sim_eras: dict):
     if sim_eras is None:
@@ -253,7 +257,6 @@ def make_mc(sim_eras: dict):
     for sim_era, filepaths in sim_eras.items():
         for filepath in filepaths:
             if match_sample(filepath, {'_up/', '_down/'}) is not None: continue
-            if match_sample(filepath, {'VHToGG', 'Wm*HTo*G', 'Wp*HTo*G'}) is None: continue
             make_dataset(filepath, sim_era)
 
 def make_data(data_eras: dict):
