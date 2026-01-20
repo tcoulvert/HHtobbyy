@@ -149,8 +149,7 @@ def categorize_model():
         if FOLD_TO_CATEGORIZE == 'all' or FOLD_TO_CATEGORIZE == str(fold_idx):
             categories_dict[FOLD_TO_CATEGORIZE] = {}
 
-            category_mask = MC_eval.loc[:, 'AUX_nonRes_resolved_BDT_mask'].eq(1)
-            print(np.shape(category_mask.to_numpy()))
+            category_mask = MC_eval.loc[:, match_regex('AUX_*_resolved_BDT_mask', MC_eval.columns)].eq(1).to_numpy()
             for cat_idx in range(1, CATEGORIZATION_OPTIONS['N_CATEGORIES']+1):
                 categories_dict[FOLD_TO_CATEGORIZE][f'cat{cat_idx}'] = {}
                 
@@ -168,13 +167,13 @@ def categorize_model():
     if FOLD_TO_CATEGORIZE == 'all' or FOLD_TO_CATEGORIZE == 'none':
         categories_dict[FOLD_TO_CATEGORIZE] = {}
 
-        mask_var = [col for col in full_MC_eval.columns if 'resolved_BDT_mask' in col][0]
-        category_mask = full_MC_eval.loc[:, mask_var].eq(1)
+        category_mask = full_MC_eval.loc[:, match_regex('AUX_*_resolved_BDT_mask', full_MC_eval.columns)].eq(1).to_numpy()
 
         for cat_idx in range(1, CATEGORIZATION_OPTIONS['N_CATEGORIES']+1):
             categories_dict[FOLD_TO_CATEGORIZE][f'cat{cat_idx}'] = {}
             
-            best_fom, best_cut = CATEGORIZATION_METHOD(MC_eval, category_mask, CATEGORIZATION_OPTIONS)
+            best_fom, best_cut = CATEGORIZATION_METHOD(full_MC_eval, category_mask, CATEGORIZATION_OPTIONS)
+            print(f"Best fom = {best_fom}, best cut = {best_cut}")
 
             categories_dict[FOLD_TO_CATEGORIZE][f'cat{cat_idx}']['fom'] = best_fom
             categories_dict[FOLD_TO_CATEGORIZE][f'cat{cat_idx}']['cut'] = best_cut
@@ -194,17 +193,17 @@ def categorize_model():
                 )
                 for i in range(len(TRANSFORM_COLUMNS)):
                     pass_mask = np.logical_and(
-                        pass_mask, MC_eval.loc[:, TRANSFORM_COLUMNS[i]].gt(best_cut[i])
+                        pass_mask, MC_eval.loc[:, TRANSFORM_COLUMNS[i]].gt(best_cut[i]).to_numpy()
                     )
                 for unique_label in np.unique(full_MC_eval.loc[:, 'AUX_sample_name']):
-                    unique_yield = full_MC_eval.loc[np.logical_and(pass_mask, full_MC_eval.loc[:, 'AUX_sample_name'].eq(unique_label)), 'AUX_eventWeight'].sum()
+                    unique_yield = full_MC_eval.loc[np.logical_and(pass_mask, full_MC_eval.loc[:, 'AUX_sample_name'].eq(unique_label).to_numpy()), 'AUX_eventWeight'].sum()
                     print('-'*60)
                     print(f"{unique_label} yield = {unique_yield:.4f}")
 
             prev_category_mask = copy.deepcopy(category_mask)
             for i in range(len(TRANSFORM_COLUMNS)):
                 prev_category_mask = np.logical_and(
-                    prev_category_mask, MC_eval.loc[:, TRANSFORM_COLUMNS[i]].gt(best_cut[i])
+                    prev_category_mask, full_MC_eval.loc[:, TRANSFORM_COLUMNS[i]].gt(best_cut[i]).to_numpy()
                 )
             category_mask = np.logical_and(category_mask, ~prev_category_mask)
             
