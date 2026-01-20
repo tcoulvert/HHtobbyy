@@ -27,6 +27,7 @@ def sideband_nonres_mask(df: pd.DataFrame):
         )
     )
 
+
 @nb.njit
 def fom_s_over_sqrt_b(s, b):
     return s / np.sqrt(b)
@@ -34,7 +35,6 @@ def fom_s_over_sqrt_b(s, b):
 @nb.njit
 def fom_s_over_b(s, b):
     return s / b
-
 
 
 @nb.njit
@@ -45,25 +45,28 @@ def brute_force(
 ):
     for i, cut in enumerate(cuts):
         signal_sr, bkg_sr, bkg_sideband = 0., 0., 0.
+        # Signal yield in SR
         for signal_sr_score, signal_sr_weight in zip(signal_sr_scores, signal_sr_weights):
             pass_cut_bool = True
             for score_j, cut_j in zip(signal_sr_score, cut): pass_cut_bool = pass_cut_bool & (score_j > cut_j)
             signal_sr += pass_cut_bool * signal_sr_weight
+        # Background yield in SR
         for bkg_sr_score, bkg_sr_weight in zip(bkg_sr_scores, bkg_sr_weights):
             pass_cut_bool = True
             for score_j, cut_j in zip(bkg_sr_score, cut): pass_cut_bool = pass_cut_bool & (score_j > cut_j)
             bkg_sr += pass_cut_bool * bkg_sr_weight
+        # Background yield outside SR
         for bkg_sideband_score, bkg_sideband_weight in zip(bkg_sideband_scores, bkg_sideband_weights):
             pass_cut_bool = True
             for score_j, cut_j in zip(bkg_sideband_score, cut): pass_cut_bool = pass_cut_bool & (score_j > cut_j)
             bkg_sideband += pass_cut_bool * bkg_sideband_weight
-
         foms[i] = fom_s_over_b(signal_sr, bkg_sr) if bkg_sideband > 8. else 0.
     return foms
 
 def grid_search(df: pd.DataFrame, cat_mask: np.ndarray, options_dict: dict):
     sr_mask = np.logical_and(cat_mask, fom_mask(df))
     sideband_mask = np.logical_and(cat_mask, sideband_nonres_mask(df))
+    assert not np.any(np.logical_and(sr_mask, sideband_mask)), print(f"Overlap between SR and Sideband definitions... THIS IS VERY BAD")
 
     best_fom, best_cut = 0., [0. for _ in options_dict['TRANSFORM_COLUMNS']]
 
@@ -74,13 +77,16 @@ def grid_search(df: pd.DataFrame, cat_mask: np.ndarray, options_dict: dict):
     signal_sr_scores = df.loc[signal_sr_mask, options_dict['TRANSFORM_COLUMNS']].to_numpy()
     signal_sr_weights = df.loc[signal_sr_mask, 'AUX_eventWeight'].to_numpy()
     # Bkg events inside SR
-    bkg_sr_mask = np.isfinite(np.logical_and(sr_mask, df.loc[:, 'AUX_label1D'].ne(options_dict['SIGNAL_LABEL'])))
+    bkg_sr_mask = np.logical_and(sr_mask, df.loc[:, 'AUX_label1D'].ne(options_dict['SIGNAL_LABEL']).to_numpy())
     bkg_sr_scores = df.loc[bkg_sr_mask, options_dict['TRANSFORM_COLUMNS']].to_numpy()
     bkg_sr_weights = df.loc[bkg_sr_mask, 'AUX_eventWeight'].to_numpy()
     # Bkg events outside SR
-    bkg_sideband_mask = np.isfinite(np.logical_and(sideband_mask, df.loc[:, 'AUX_label1D'].ne(options_dict['SIGNAL_LABEL'])))
+    bkg_sideband_mask = np.logical_and(sideband_mask, df.loc[:, 'AUX_label1D'].ne(options_dict['SIGNAL_LABEL']).to_numpy())
     bkg_sideband_scores = df.loc[bkg_sideband_mask, options_dict['TRANSFORM_COLUMNS']].to_numpy()
     bkg_sideband_weights = df.loc[bkg_sideband_mask, 'AUX_eventWeight'].to_numpy()
+
+    print(f"Total bkg in SR = {np.sum(bkg_sr_weights)}")
+    print(f"Total bkg in sidebands = {np.sum(bkg_sideband_weights)}")
 
     startstops = copy.deepcopy(options_dict['STARTSTOPS'])
     for zoom in range(options_dict['N_ZOOM']):
@@ -105,9 +111,9 @@ def grid_search(df: pd.DataFrame, cat_mask: np.ndarray, options_dict: dict):
         step_sizes = [(stop - start) / options_dict['N_STEPS'] for start, stop in startstops]
         startstops = [[cut[i] - step_sizes[i], cut[i] + step_sizes[i]] for i in range(len(step_sizes))]
 
-        if fom > best_fom: best_fom = fom; best_cut = cut
+        if fom > best_fom: best_fom = fom; best_cut = cut; print(f"best cut = {cut}, best fom = {fom}")
 
-    return best_fom, best_cut
+    return best_fom.item(), best_cut.tolist()
 
 
 
