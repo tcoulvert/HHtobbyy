@@ -31,7 +31,7 @@ FILL_VALUE = -999
 
 
 def format_class_names(class_names):
-    return [''.join(class_name.split(' ')) for class_name in class_names]
+    return [class_name.replace(' ', '').replace('+', '') for class_name in class_names]
 
 def get_class_sample_map(dataset_dirpath: str):
     class_sample_map_filepath = os.path.join(dataset_dirpath, "class_sample_map.json")

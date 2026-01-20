@@ -85,9 +85,6 @@ def grid_search(df: pd.DataFrame, cat_mask: np.ndarray, options_dict: dict):
     bkg_sideband_scores = df.loc[bkg_sideband_mask, options_dict['TRANSFORM_COLUMNS']].to_numpy()
     bkg_sideband_weights = df.loc[bkg_sideband_mask, 'AUX_eventWeight'].to_numpy()
 
-    print(f"Total bkg in SR = {np.sum(bkg_sr_weights)}")
-    print(f"Total bkg in sidebands = {np.sum(bkg_sideband_weights)}")
-
     startstops = copy.deepcopy(options_dict['STARTSTOPS'])
     for zoom in range(options_dict['N_ZOOM']):
         steps = [
@@ -114,81 +111,3 @@ def grid_search(df: pd.DataFrame, cat_mask: np.ndarray, options_dict: dict):
         if fom > best_fom: best_fom = fom; best_cut = cut; print(f"best cut = {cut}, best fom = {fom}")
 
     return best_fom.item(), best_cut.tolist()
-
-
-
-
-
-# def compute_cuts1D(df: pd.DataFrame, cat_mask: pd.DataFrame, options_dict: dict):
-#     pass_fom = np.logical_and(cat_mask, fom_mask(df))
-#     pass_sideband = np.logical_and(cat_mask, sideband_nonres_mask(df))
-
-#     best_fom, best_cut = 0., 0.
-
-#     start1, stop1 = options_dict['START1'], options_dict['STOP1']
-#     for zoom in range(options_dict['N_ZOOM']):
-#         foms, cuts = [], []
-
-#         for cut1 in np.linspace(start1, stop1, options_dict['N_STEPS'], endpoint=True):
-#             cuts.append(cut1)
-
-#             pass_cut = np.logical_and(pass_fom, df.loc[:, options_dict['TRANSFORM_COLUMNS'][0]].gt(cut1))
-#             sideband_cut = np.logical_and(pass_sideband, df.loc[:, options_dict['TRANSFORM_COLUMNS'][0]].gt(cut1))
-
-#             signal = df.loc[np.logical_and(pass_cut, df.loc[:, 'AUX_label1D'].eq(options_dict['SIGNAL_LABEL'])), 'AUX_eventWeight'].sum()
-#             bkg = df.loc[np.logical_and(pass_cut, df.loc[:, 'AUX_label1D'].ne(options_dict['SIGNAL_LABEL'])), 'AUX_eventWeight'].sum()
-#             sideband_nonres = df.loc[sideband_cut, 'AUX_eventWeight'].sum()
-#             fom = fom_s_over_sqrt_b(signal, bkg) if sideband_nonres > 8. else 0.
-#             foms.append(fom)
-
-#         index = np.argmax(foms)
-#         fom, cut = foms[index], cuts[index]
-#         step_size1 = (stop1 - start1) / options_dict['N_STEPS']
-#         start1, stop1 = cut - step_size1, cut + step_size1
-
-#         if fom > best_fom: best_fom = fom; best_cut = cut
-
-#     return best_fom, (best_cut)
-
-# def compute_cuts2D(df: pd.DataFrame, cat_mask: pd.DataFrame, options_dict: dict):
-#     pass_fom = np.logical_and(cat_mask, fom_mask(df))
-#     pass_sideband = np.logical_and(cat_mask, sideband_nonres_mask(df))
-
-#     best_fom, best_cut = 0., (0., 0.)
-
-#     start1, stop1 = options_dict['START1'], options_dict['STOP1']
-#     start2, stop2 = options_dict['START2'], options_dict['STOP2']
-#     for zoom in range(options_dict['N_ZOOM']):
-#         foms, cuts = [], []
-        
-#         for cut1 in np.linspace(start1, stop1, options_dict['N_STEPS'], endpoint=True):
-
-#             pass_cut = np.logical_and(pass_fom, df.loc[:, options_dict['TRANSFORM_COLUMNS'][0]].gt(cut1))
-#             sideband_cut = np.logical_and(pass_sideband, df.loc[:, options_dict['TRANSFORM_COLUMNS'][0]].gt(cut1))
-            
-#             _foms_, _cuts_ = [], []
-#             for cut2 in np.linspace(start2, stop2, options_dict['N_STEPS'], endpoint=True):
-#                 _cuts_.append( (cut1, cut2) )
-
-#                 pass_cut = np.logical_and(pass_cut, df.loc[:, options_dict['TRANSFORM_COLUMNS'][1]].gt(cut2))
-#                 sideband_cut = np.logical_and(pass_sideband, df.loc[:, options_dict['TRANSFORM_COLUMNS'][1]].gt(cut2))
-
-#                 signal = df.loc[np.logical_and(pass_cut, df.loc[:, 'AUX_label1D'].eq(options_dict['SIGNAL_LABEL'])), 'AUX_eventWeight'].sum()
-#                 bkg = df.loc[np.logical_and(pass_cut, df.loc[:, 'AUX_label1D'].ne(options_dict['SIGNAL_LABEL'])), 'AUX_eventWeight'].sum()
-#                 sideband_nonres = df.loc[sideband_cut, 'AUX_eventWeight'].sum()
-#                 fom = fom_s_over_sqrt_b(signal, bkg) if (sideband_nonres > 8. or zoom != options_dict['N_ZOOM']-1) and np.isfinite(fom_s_over_sqrt_b(signal, bkg)) else 0.
-#                 # print(f"{_cuts_[-1]}: fom = {fom}; signal = {signal}, bkg = {bkg}, nonres sideband = {sideband_nonres}")
-#                 _foms_.append(fom)
-#             foms.append(_foms_)
-#             cuts.append(_cuts_)
-        
-#         index = np.unravel_index(np.argmax(foms), np.shape(foms))
-#         fom, cut = foms[index[0]][index[1]], cuts[index[0]][index[1]]
-#         step_size1, step_size2 = (stop1 - start1) / options_dict['N_STEPS'], (stop2 - start2) / options_dict['N_STEPS']
-#         start1, stop1 = cut[0] - step_size1, cut[0] + step_size1
-#         start2, stop2 = cut[1] - step_size2, cut[1] + step_size2
-
-#         if fom > best_fom: best_fom = fom; best_cut = cut
-
-#     print(f"{best_fom:.2f}, ({best_cut[0]:.4f}, {best_cut[1]:.4f})")
-#     return best_fom, best_cut
