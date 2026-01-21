@@ -183,9 +183,9 @@ def categorize_model():
                 print('/'.join(os.path.normpath(TRAINING_DIRPATH).split('/')[-2:]))
                 print(f"cat{cat_idx} yields")
                 print('-'*60)
-                print_str = ' & '.join([f"{TRANSFORM_COLUMNS[i]} > {best_cut[i]:.4f}" for i in range(len(TRANSFORM_COLUMNS))])
+                print_str = ' & '.join([f"{TRANSFORM_COLUMNS[i]} {TRANSFORM_CUT[i]} {best_cut[i]:.4f}" for i in range(len(TRANSFORM_COLUMNS))])
                 if cat_idx > 1:
-                    print_str = print_str + ' & '.join(['']+[f"{TRANSFORM_COLUMNS[i]} ≤ {categories_dict[FOLD_TO_CATEGORIZE][f'cat{cat_idx-1}']['cut'][i]:.4f}" for i in range(len(TRANSFORM_COLUMNS))])
+                    print_str = print_str + ' & NOT '.join(['']+[f"{TRANSFORM_COLUMNS[i]} {TRANSFORM_CUT[i]} {categories_dict[FOLD_TO_CATEGORIZE][f'cat{cat_idx-1}']['cut'][i]:.4f}" for i in range(len(TRANSFORM_COLUMNS))])
                 print(print_str)
                 print('-'*60)
                 pass_mask = np.logical_and(

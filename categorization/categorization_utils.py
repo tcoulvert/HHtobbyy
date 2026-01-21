@@ -116,7 +116,7 @@ def grid_search(df: pd.DataFrame, cat_mask: np.ndarray, options_dict: dict, cutd
         foms = brute_force(
             signal_sr_scores, signal_sr_weights, bkg_sr_scores, bkg_sr_weights, 
             bkg_sideband_scores, bkg_sideband_weights, 
-            cuts, foms, np.array(cutdir)
+            cuts, foms, nb.typed.List(cutdir)
         )
         all_foms.extend(foms)
 
