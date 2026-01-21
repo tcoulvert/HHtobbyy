@@ -129,6 +129,7 @@ def make_plot_data(
 
         for j, class_name in enumerate(CLASS_NAMES):
             event_mask = (labels == j)
+            if np.all(~event_mask): continue
 
             nD_preds = preds[event_mask]
             transformed_preds = transform_preds(nD_preds)

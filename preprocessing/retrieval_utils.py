@@ -236,4 +236,9 @@ def get_data_DMatrix(dataset_dirpath: str, fold_idx: int, blinded: bool=True):
     if blinded:
         SR_mask = np.logical_and(aux.loc[:, 'AUX_mass'].to_numpy() > 120., aux.loc[:, 'AUX_mass'].to_numpy() < 130.)
         df, aux = df.loc[~SR_mask], aux.loc[~SR_mask]
-    return get_DMatrix(df, aux, dataset='test', label=False)
+        
+        class_sample_map = get_class_sample_map(dataset_dirpath)
+        nonRes_idx = [i for i, key in enumerate(class_sample_map.keys()) if 'nonres' in key.lower()][0]
+        aux['AUX_label1D'] = nonRes_idx * np.ones_like(aux['AUX_mass'])
+        return get_DMatrix(df, aux, dataset='test')
+    else: return get_DMatrix(df, aux, dataset='test', label=False)
