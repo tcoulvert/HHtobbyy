@@ -1,4 +1,5 @@
 # Stdlib packages
+import copy
 import glob
 import json
 import os
@@ -224,21 +225,38 @@ def get_test_DMatrix(filepath: str):
     df, aux = get_Dataframes(filepath)
     return get_DMatrix(df, aux, dataset='test', label=False)
 
-def get_data_DMatrix(dataset_dirpath: str, fold_idx: int, blinded: bool=True):
-    data_filepaths = get_test_filepaths_func(dataset_dirpath, syst_name="Data")(fold_idx)['test']
-    df, aux = None, None
-    for data_filepath in data_filepaths:
-        if df is None: 
-            df, aux = get_Dataframes(data_filepath)
-        else: 
-            new_df, new_aux = get_Dataframes(data_filepath)
-            df, aux = pd.concat([df, new_df]), pd.concat([aux, new_aux])
-    if blinded:
-        SR_mask = np.logical_and(aux.loc[:, 'AUX_mass'].to_numpy() > 120., aux.loc[:, 'AUX_mass'].to_numpy() < 130.)
-        df, aux = df.loc[~SR_mask], aux.loc[~SR_mask]
+def get_test_subset_DMatrix(dataset_dirpath: str, fold_idx: int, regexs: list, label: bool=True):
+    class_sample_map = get_class_sample_map(dataset_dirpath)
+
+    df_full, aux_full = None, None
+    for regex in regexs:
         
-        class_sample_map = get_class_sample_map(dataset_dirpath)
-        nonRes_idx = [i for i, key in enumerate(class_sample_map.keys()) if 'nonres' in key.lower()][0]
-        aux['AUX_label1D'] = nonRes_idx * np.ones_like(aux['AUX_mass'])
-        return get_DMatrix(df, aux, dataset='test')
-    else: return get_DMatrix(df, aux, dataset='test', label=False)
+        filepaths = [
+            filepath for filepath in get_test_filepaths_func(dataset_dirpath)(fold_idx)['test']
+            if match_sample(filepath, [regex]) is not None
+        ]
+        df, aux = None, None
+        for filepath in filepaths:
+            if df is None: 
+                df, aux = get_Dataframes(filepath)
+            else: 
+                new_df, new_aux = get_Dataframes(filepath)
+                df, aux = pd.concat([df, new_df]), pd.concat([aux, new_aux])
+                
+        if regex == 'Data':
+            SR_mask = np.logical_and(aux.loc[:, 'AUX_mass'].to_numpy() > 120., aux.loc[:, 'AUX_mass'].to_numpy() < 130.)
+            df, aux = df.loc[~SR_mask], aux.loc[~SR_mask]
+            
+        if label and regex == 'Data':
+            data_idx = [i for i, key in enumerate(class_sample_map.keys()) if 'nonres' in key.lower()][0]
+            aux['AUX_label1D'] = data_idx * np.ones_like(aux['AUX_mass'])
+        elif label:
+            class_idx = [i for i, regex_list in enumerate(class_sample_map.values()) if regex in regex_list][0]
+            aux['AUX_label1D'] = class_idx * np.ones_like(aux['AUX_mass'])
+
+        if df_full is None:
+            df_full, aux_full = copy.deepcopy(df), copy.deepcopy(aux)
+        else:
+            df_full, aux_full = pd.concat([df_full, df]), pd.concat([aux_full, aux])
+
+    return get_DMatrix(df_full, aux_full, dataset='test', label=label)

@@ -58,7 +58,7 @@ parser.add_argument(
 )
 parser.add_argument(
     "--dataset", 
-    choices=["train", "train-test", "data"], 
+    choices=["train", "train-test", "data&GluGlu*HH*kl-1p00"], 
     default="train-test",
     help="Make output score distributions for what dataset"
 )

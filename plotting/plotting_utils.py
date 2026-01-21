@@ -23,7 +23,7 @@ sys.path.append(os.path.join(GIT_REPO, "evaluation/"))
 # Module packages
 from retrieval_utils import (
     get_class_sample_map, get_n_folds, get_train_DMatrices,
-    get_test_filepaths_func, get_data_DMatrix
+    get_test_subset_DMatrix
 )
 from training_utils import (
     get_model_func
@@ -112,8 +112,8 @@ def make_plot_data(
             dm = get_train_DMatrices(dataset_dirpath, fold_idx, dataset='test')
         elif dataset == "train":
             dm = get_train_DMatrices(dataset_dirpath, fold_idx, dataset='train')
-        elif dataset == "data":
-            dm = get_data_DMatrix(dataset_dirpath, fold_idx)
+        elif dataset == "data&GluGlu*HH*kl-1p00":
+            dm = get_test_subset_DMatrix(dataset_dirpath, fold_idx, dataset.split('&'))
         else: raise ValueError(f"Unknown dataset: {dataset}")
 
         preds = evaluate(booster, dm)
