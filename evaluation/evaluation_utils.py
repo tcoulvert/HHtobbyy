@@ -40,7 +40,13 @@ TRANSFORM_PREDS = [
         'name': 'DttH-DQCD', 
         'output': lambda class_names: ['DttH', 'DQCD'], 
         'ROC_bkgeffs': lambda class_names: [1e-2, 1e-3],
-        'func': lambda multibdt_output: np.column_stack([DttH(multibdt_output), DQCD(multibdt_output)])
+        'func': lambda multibdt_output: DttHDQCD(multibdt_output)
+    },
+    {
+        'name': '3D', 
+        'output': lambda class_names: ['a', 'b', 'c'], 
+        'ROC_bkgeffs': lambda class_names: [1e-2, 1e-2, 1e-3],
+        'func': lambda multibdt_output: abc(multibdt_output)
     },
 ]
 
@@ -75,15 +81,33 @@ def transform_preds_func(class_names: list, transform_name: str):
     output, func = [(transformation['output'](class_names), transformation['func']) for transformation in TRANSFORM_PREDS if transform_name == transformation['name']][0]
     return output, func
 
+
+def DttHDQCD(multibdt_output):
+    DttH_preds = multibdt_output[:, 0] / (multibdt_output[:, 0] + multibdt_output[:, 1])
+    DQCD_preds = multibdt_output[:, 0] / (multibdt_output[:, 0] + multibdt_output[:, 2] + multibdt_output[:, 3])
+
+    DttH_preds[np.isnan(DttH_preds)], DQCD_preds[np.isnan(DQCD_preds)] = 0, 0
+
+    return np.column_stack([DttH_preds, DQCD_preds])
+
+def abc(multibdt_output):
+    a_preds = multibdt_output[:, 1]
+    b_preds = multibdt_output[:, 2] / (1 - a_preds)
+    c_preds = multibdt_output[:, 3] / ( (1 - a_preds) * (1-b_preds) )
+
+    a_preds[np.isnan(a_preds)], b_preds[np.isnan(b_preds)], c_preds[np.isnan(c_preds)] = 0, 0, 0
+    
+    return np.column_stack([a_preds, b_preds, c_preds])
+
+def b(multibdt_output):
+    b_preds = multibdt_output[:, 0] / (multibdt_output[:, 0] + multibdt_output[:, 1])
+    b_preds[np.isnan(b_preds)] = 0
+    return b_preds
+
 def DttH(multibdt_output):
     DttH_preds = multibdt_output[:, 0] / (multibdt_output[:, 0] + multibdt_output[:, 1])
     DttH_preds[np.isnan(DttH_preds)] = 0
     return DttH_preds
-
-def DQCD(multibdt_output):
-    DQCD_preds = multibdt_output[:, 0] / (multibdt_output[:, 0] + multibdt_output[:, 2] + multibdt_output[:, 3])
-    DQCD_preds[np.isnan(DQCD_preds)] = 0
-    return DQCD_preds
 
 
 def evaluate(booster: xgb.Booster, dmatrix: xgb.DMatrix):
