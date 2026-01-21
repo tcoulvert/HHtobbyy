@@ -104,6 +104,7 @@ def grid_search(df: pd.DataFrame, cat_mask: np.ndarray, options_dict: dict, cutd
 
     startstops = copy.deepcopy(options_dict['STARTSTOPS'])
     for zoom in range(options_dict['N_ZOOM']):
+        print(f"Zoom {zoom}")
         steps = [
             np.linspace(
                 startstops[i][0], startstops[i][1], options_dict['N_STEPS'], endpoint=True

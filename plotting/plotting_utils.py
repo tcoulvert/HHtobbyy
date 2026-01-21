@@ -102,18 +102,11 @@ def make_plot_data(
 
     transform_labels, transform_preds = transform_preds_func(CLASS_NAMES, discriminator)
 
-    plot_data = {
-        class_name: {'preds': None, 'labels': None, 'weights': None}
-        for class_name in CLASS_NAMES
-    }
-
+    plot_data = {}
     for fold_idx in range(get_n_folds(dataset_dirpath)):
         booster = get_booster(fold_idx)
 
-        fold_plot_data =  {
-            class_name: {'preds': None, 'labels': None, 'weights': None}
-            for class_name in CLASS_NAMES
-        }
+        fold_plot_data =  {}
 
         if dataset == "train-test": 
             dm = get_train_DMatrices(dataset_dirpath, fold_idx, dataset='test')
@@ -130,6 +123,8 @@ def make_plot_data(
         for j, class_name in enumerate(CLASS_NAMES):
             event_mask = (labels == j)
             if np.all(~event_mask): continue
+            fold_plot_data[class_name] = {}
+            if class_name not in plot_data.keys(): plot_data[class_name] = {}
 
             nD_preds = preds[event_mask]
             transformed_preds = transform_preds(nD_preds)
@@ -139,7 +134,7 @@ def make_plot_data(
             fold_plot_data[class_name]['labels'] = labels[event_mask]
             fold_plot_data[class_name]['weights'] = weights[event_mask]
             for data_name, data in fold_plot_data[class_name].items():
-                if plot_data[class_name][data_name] is None:
+                if data_name not in plot_data[class_name].keys():
                     plot_data[class_name][data_name] = copy.deepcopy(data)
                 else:
                     plot_data[class_name][data_name] = np.concatenate([plot_data[class_name][data_name], data])
