@@ -56,24 +56,24 @@ def brute_force(
         for j in nb.prange(signal_sr_scores.shape[0]):
             pass_cut_bool = True
             for k in nb.prange(signal_sr_scores.shape[1]): pass_cut_bool = pass_cut_bool & ( 
-                (signal_sr_scores[j][k] > cuts[i][k]) & (cutdir[k] == '>') 
-                | (signal_sr_scores[j][k] < cuts[i][k]) & (cutdir[k] == '<')
+                ( (signal_sr_scores[j][k] > cuts[i][k]) & (cutdir[k] == '>') )
+                | ( (signal_sr_scores[j][k] < cuts[i][k]) & (cutdir[k] == '<') )
             )
             signal_yields[i] += pass_cut_bool * signal_sr_weights[j]
         # Background yield in SR
         for j in nb.prange(bkg_sr_scores.shape[0]):
             pass_cut_bool = True
             for k in nb.prange(bkg_sr_scores.shape[1]): pass_cut_bool = pass_cut_bool & ( 
-                (bkg_sr_scores[j][k] > cuts[i][k]) & (cutdir[k] == '>') 
-                | (bkg_sr_scores[j][k] < cuts[i][k]) & (cutdir[k] == '<')
+                ( (bkg_sr_scores[j][k] > cuts[i][k]) & (cutdir[k] == '>') )
+                | ( (bkg_sr_scores[j][k] < cuts[i][k]) & (cutdir[k] == '<') )
             )
             bkg_yields[i] += pass_cut_bool * bkg_sr_weights[j]
         # Background yield outside SR
         for j in nb.prange(bkg_sideband_scores.shape[0]):
             pass_cut_bool = True
             for k in nb.prange(bkg_sideband_scores.shape[1]): pass_cut_bool = pass_cut_bool & ( 
-                (bkg_sideband_scores[j][k] > cuts[i][k]) & (cutdir[k] == '>') 
-                | (bkg_sideband_scores[j][k] < cuts[i][k]) & (cutdir[k] == '<')
+                ( (bkg_sideband_scores[j][k] > cuts[i][k]) & (cutdir[k] == '>') )
+                | ( (bkg_sideband_scores[j][k] < cuts[i][k]) & (cutdir[k] == '<') )
             )
             sideband_yields[i] += pass_cut_bool * bkg_sideband_weights[j]
     for i in nb.prange(foms.shape[0]):
