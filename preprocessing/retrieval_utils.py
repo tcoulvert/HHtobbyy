@@ -225,7 +225,7 @@ def get_test_DMatrix(filepath: str):
     return get_DMatrix(df, aux, dataset='test', label=False)
 
 def get_data_DMatrix(dataset_dirpath: str, fold_idx: int, blinded: bool=True):
-    data_filepaths = get_test_filepaths_func(dataset_dirpath, syst_name="Data")(fold_idx)
+    data_filepaths = get_test_filepaths_func(dataset_dirpath, syst_name="Data")(fold_idx)['test']
     df, aux = None, None
     for data_filepath in data_filepaths:
         if df is None: 
