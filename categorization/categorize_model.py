@@ -112,7 +112,7 @@ assert FOLD_TO_CATEGORIZE in FOLD_TO_PLOT_OPTIONS, f"The option passed to \'--fo
 CLASS_SAMPLE_MAP = get_class_sample_map(DATASET_DIRPATH)
 CLASS_NAMES = [key for key in CLASS_SAMPLE_MAP.keys()]
 
-TRANSFORM_LABELS, TRANSFORM_PREDS = transform_preds_func(CLASS_NAMES, DISCRIMINATOR)
+TRANSFORM_LABELS, TRANSFORM_PREDS, TRANSFORM_CUT = transform_preds_func(CLASS_NAMES, DISCRIMINATOR, cutdirbool=True)
 TRANSFORM_COLUMNS = [f"AUX_{transform_label}_prob" for transform_label in TRANSFORM_LABELS]
 assert len(TRANSFORM_COLUMNS) <= 4, f"You're trying to run categorization over a discriminator with more than 4 dimensions, this likely won't converge with the brute-force way in this file. Please write your own categorization code or use a different discriminator"
 CATEGORIZATION_COLUMNS = ['AUX_sample_name', 'AUX_eventWeight', 'AUX_mass', 'AUX_*_resolved_BDT_mask', 'AUX_label1D'] + TRANSFORM_COLUMNS
@@ -153,7 +153,7 @@ def categorize_model():
             for cat_idx in range(1, CATEGORIZATION_OPTIONS['N_CATEGORIES']+1):
                 categories_dict[FOLD_TO_CATEGORIZE][f'cat{cat_idx}'] = {}
                 
-                best_fom, best_cut = CATEGORIZATION_METHOD(MC_eval, category_mask, CATEGORIZATION_OPTIONS)
+                best_fom, best_cut = CATEGORIZATION_METHOD(MC_eval, category_mask, CATEGORIZATION_OPTIONS, TRANSFORM_CUT)
                 prev_category_mask = copy.deepcopy(category_mask)
                 for i in range(len(TRANSFORM_COLUMNS)):
                     prev_category_mask = np.logical_and(
@@ -172,7 +172,7 @@ def categorize_model():
         for cat_idx in range(1, CATEGORIZATION_OPTIONS['N_CATEGORIES']+1):
             categories_dict[FOLD_TO_CATEGORIZE][f'cat{cat_idx}'] = {}
             
-            best_fom, best_cut = CATEGORIZATION_METHOD(full_MC_eval, category_mask, CATEGORIZATION_OPTIONS)
+            best_fom, best_cut = CATEGORIZATION_METHOD(full_MC_eval, category_mask, CATEGORIZATION_OPTIONS, TRANSFORM_CUT)
             print(f"Best fom = {best_fom}, best cut = {best_cut}")
 
             categories_dict[FOLD_TO_CATEGORIZE][f'cat{cat_idx}']['fom'] = best_fom

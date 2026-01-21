@@ -34,19 +34,22 @@ TRANSFORM_PREDS = [
         'name': 'nD', 
         'output': lambda class_names: ['D'+ formatted_class_name for formatted_class_name in format_class_names(class_names)], 
         'ROC_bkgeffs': lambda class_names: [1e-3 for _ in class_names],
-        'func': lambda multibdt_output: multibdt_output
+        'func': lambda multibdt_output: multibdt_output,
+        'cutdir': ['>', '<', '<', '<']
     },
     {
         'name': 'DttH-DQCD', 
         'output': lambda class_names: ['DttH', 'DQCD'], 
         'ROC_bkgeffs': lambda class_names: [1e-2, 1e-3],
-        'func': lambda multibdt_output: DttHDQCD(multibdt_output)
+        'func': lambda multibdt_output: DttHDQCD(multibdt_output),
+        'cutdir': ['>', '>']
     },
     {
         'name': '3D', 
         'output': lambda class_names: ['a', 'b', 'c'], 
         'ROC_bkgeffs': lambda class_names: [1e-2, 1e-2, 1e-3],
-        'func': lambda multibdt_output: abc(multibdt_output)
+        'func': lambda multibdt_output: abc(multibdt_output),
+        'cutdir': ['<', '<', '<']
     },
 ]
 
@@ -74,12 +77,13 @@ def transform_preds_bkgeffs(class_names: list, transform_name: str):
     ROC_bkgeffs = [transformation['ROC_bkgeffs'](class_names) for transformation in TRANSFORM_PREDS if transform_name == transformation['name']][0]
     return ROC_bkgeffs
 
-def transform_preds_func(class_names: list, transform_name: str):
+def transform_preds_func(class_names: list, transform_name: str, cutdirbool: bool=False):
     if transform_name not in transform_preds_options():
         raise KeyError(f"Output transformation {transform_name} not implemented, try one of {transform_preds_options()}")
     
-    output, func = [(transformation['output'](class_names), transformation['func']) for transformation in TRANSFORM_PREDS if transform_name == transformation['name']][0]
-    return output, func
+    output, func, cutdir = [(transformation['output'](class_names), transformation['func'], transformation['cutdir']) for transformation in TRANSFORM_PREDS if transform_name == transformation['name']][0]
+    if cutdirbool: return output, func, cutdir
+    else: return output, func
 
 
 def DttHDQCD(multibdt_output):

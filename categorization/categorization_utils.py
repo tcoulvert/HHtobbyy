@@ -36,35 +36,51 @@ def fom_s_over_sqrt_b(s, b):
 def fom_s_over_b(s, b):
     return s / b
 
+def apply_cut(score, cut, cutdir):
+    if cutdir == '>': return score > cut
+    elif cutdir == '>=': return score >= cut
+    elif cutdir == '<': return score < cut
+    elif cutdir == '<=': return score <= cut
+    else: raise NotImplementedError(f"The cutdir you supplied ({cutdir}) isn't allowed, allowed options are: \'<\', \'<=\', \'>\', \'>=\'")
+
 
 @nb.njit(parallel=True)
 def brute_force(
     signal_sr_scores, signal_sr_weights, bkg_sr_scores, bkg_sr_weights, 
     bkg_sideband_scores, bkg_sideband_weights, 
-    cuts, foms
+    cuts, foms, cutdir
 ):
     signal_yields, bkg_yields, sideband_yields = np.zeros_like(foms), np.zeros_like(foms), np.zeros_like(foms)
     for i in nb.prange(cuts.shape[0]):
         # Signal yield in SR
         for j in nb.prange(signal_sr_scores.shape[0]):
             pass_cut_bool = True
-            for k in nb.prange(signal_sr_scores.shape[1]): pass_cut_bool = pass_cut_bool & (signal_sr_scores[j][k] > cuts[i][k])
+            for k in nb.prange(signal_sr_scores.shape[1]): pass_cut_bool = pass_cut_bool & ( 
+                (signal_sr_scores[j][k] > cuts[i][k]) & (cutdir[k] == '>') 
+                | (signal_sr_scores[j][k] < cuts[i][k]) & (cutdir[k] == '<')
+            )
             signal_yields[i] += pass_cut_bool * signal_sr_weights[j]
         # Background yield in SR
         for j in nb.prange(bkg_sr_scores.shape[0]):
             pass_cut_bool = True
-            for k in nb.prange(bkg_sr_scores.shape[1]): pass_cut_bool = pass_cut_bool & (bkg_sr_scores[j][k] > cuts[i][k])
+            for k in nb.prange(bkg_sr_scores.shape[1]): pass_cut_bool = pass_cut_bool & ( 
+                (bkg_sr_scores[j][k] > cuts[i][k]) & (cutdir[k] == '>') 
+                | (bkg_sr_scores[j][k] < cuts[i][k]) & (cutdir[k] == '<')
+            )
             bkg_yields[i] += pass_cut_bool * bkg_sr_weights[j]
         # Background yield outside SR
         for j in nb.prange(bkg_sideband_scores.shape[0]):
             pass_cut_bool = True
-            for k in nb.prange(bkg_sideband_scores.shape[1]): pass_cut_bool = pass_cut_bool & (bkg_sideband_scores[j][k] > cuts[i][k])
+            for k in nb.prange(bkg_sideband_scores.shape[1]): pass_cut_bool = pass_cut_bool & ( 
+                (bkg_sideband_scores[j][k] > cuts[i][k]) & (cutdir[k] == '>') 
+                | (bkg_sideband_scores[j][k] < cuts[i][k]) & (cutdir[k] == '<')
+            )
             sideband_yields[i] += pass_cut_bool * bkg_sideband_weights[j]
     for i in nb.prange(foms.shape[0]):
         foms[i] = fom_s_over_b(signal_yields[i], bkg_yields[i]) if sideband_yields[i] > 8. else 0.
     return foms
 
-def grid_search(df: pd.DataFrame, cat_mask: np.ndarray, options_dict: dict):
+def grid_search(df: pd.DataFrame, cat_mask: np.ndarray, options_dict: dict, cutdir: list):
     sr_mask = np.logical_and(cat_mask, fom_mask(df))
     sideband_mask = np.logical_and(cat_mask, sideband_nonres_mask(df))
     assert not np.any(np.logical_and(sr_mask, sideband_mask)), print(f"Overlap between SR and Sideband definitions... THIS IS VERY BAD")
@@ -100,7 +116,7 @@ def grid_search(df: pd.DataFrame, cat_mask: np.ndarray, options_dict: dict):
         foms = brute_force(
             signal_sr_scores, signal_sr_weights, bkg_sr_scores, bkg_sr_weights, 
             bkg_sideband_scores, bkg_sideband_weights, 
-            cuts, foms
+            cuts, foms, np.array(cutdir)
         )
         all_foms.extend(foms)
 
