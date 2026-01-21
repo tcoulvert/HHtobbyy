@@ -223,3 +223,17 @@ def get_train_DMatrices(dataset_dirpath: str, fold_idx: int, val_split: float=0.
 def get_test_DMatrix(filepath: str):
     df, aux = get_Dataframes(filepath)
     return get_DMatrix(df, aux, dataset='test', label=False)
+
+def get_data_DMatrix(dataset_dirpath: str, fold_idx: int, blinded: bool=True):
+    data_filepaths = get_test_filepaths_func(dataset_dirpath, syst_name="Data")(fold_idx)
+    df, aux = None, None
+    for data_filepath in data_filepaths:
+        if df is None: 
+            df, aux = get_Dataframes(data_filepath)
+        else: 
+            new_df, new_aux = get_Dataframes(data_filepath)
+            df, aux = pd.concat([df, new_df]), pd.concat([aux, new_aux])
+    if blinded:
+        SR_mask = np.logical_and(aux.loc[:, 'AUX_mass'].to_numpy() > 120., aux.loc[:, 'AUX_mass'].to_numpy() < 130.)
+        df, aux = df.loc[~SR_mask], aux.loc[~SR_mask]
+    return get_DMatrix(df, aux, dataset='test', label=False)
