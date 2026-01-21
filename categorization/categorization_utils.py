@@ -28,39 +28,40 @@ def sideband_nonres_mask(df: pd.DataFrame):
     )
 
 
-@nb.njit
+@nb.njit()
 def fom_s_over_sqrt_b(s, b):
     return s / np.sqrt(b)
 
-@nb.njit
+@nb.njit()
 def fom_s_over_b(s, b):
     return s / b
 
 
-@nb.njit
+@nb.njit(parallel=True)
 def brute_force(
     signal_sr_scores, signal_sr_weights, bkg_sr_scores, bkg_sr_weights, 
     bkg_sideband_scores, bkg_sideband_weights, 
     cuts, foms
 ):
-    for i, cut in enumerate(cuts):
-        signal_sr, bkg_sr, bkg_sideband = 0., 0., 0.
+    signal_yields, bkg_yields, sideband_yields = np.zeros_like(foms), np.zeros_like(foms), np.zeros_like(foms)
+    for i in nb.prange(cuts.shape[0]):
         # Signal yield in SR
-        for signal_sr_score, signal_sr_weight in zip(signal_sr_scores, signal_sr_weights):
+        for j in nb.prange(signal_sr_scores.shape[0]):
             pass_cut_bool = True
-            for score_j, cut_j in zip(signal_sr_score, cut): pass_cut_bool = pass_cut_bool & (score_j > cut_j)
-            signal_sr += pass_cut_bool * signal_sr_weight
+            for k in nb.prange(signal_sr_scores.shape[1]): pass_cut_bool = pass_cut_bool & (signal_sr_scores[j][k] > cuts[i][k])
+            signal_yields[i] += pass_cut_bool * signal_sr_weights[j]
         # Background yield in SR
-        for bkg_sr_score, bkg_sr_weight in zip(bkg_sr_scores, bkg_sr_weights):
+        for j in nb.prange(bkg_sr_scores.shape[0]):
             pass_cut_bool = True
-            for score_j, cut_j in zip(bkg_sr_score, cut): pass_cut_bool = pass_cut_bool & (score_j > cut_j)
-            bkg_sr += pass_cut_bool * bkg_sr_weight
+            for k in nb.prange(bkg_sr_scores.shape[1]): pass_cut_bool = pass_cut_bool & (bkg_sr_scores[j][k] > cuts[i][k])
+            bkg_yields[i] += pass_cut_bool * bkg_sr_weights[j]
         # Background yield outside SR
-        for bkg_sideband_score, bkg_sideband_weight in zip(bkg_sideband_scores, bkg_sideband_weights):
+        for j in nb.prange(bkg_sideband_scores.shape[0]):
             pass_cut_bool = True
-            for score_j, cut_j in zip(bkg_sideband_score, cut): pass_cut_bool = pass_cut_bool & (score_j > cut_j)
-            bkg_sideband += pass_cut_bool * bkg_sideband_weight
-        foms[i] = fom_s_over_b(signal_sr, bkg_sr) if bkg_sideband > 8. else 0.
+            for k in nb.prange(bkg_sideband_scores.shape[1]): pass_cut_bool = pass_cut_bool & (bkg_sideband_scores[j][k] > cuts[i][k])
+            sideband_yields[i] += pass_cut_bool * bkg_sideband_weights[j]
+    for i in nb.prange(foms.shape[0]):
+        foms[i] = fom_s_over_b(signal_yields[i], bkg_yields[i]) if sideband_yields[i] > 8. else 0.
     return foms
 
 def grid_search(df: pd.DataFrame, cat_mask: np.ndarray, options_dict: dict):
