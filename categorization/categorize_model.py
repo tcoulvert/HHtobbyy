@@ -193,7 +193,7 @@ def categorize_model():
                 )
                 for i in range(len(TRANSFORM_COLUMNS)):
                     pass_mask = np.logical_and(
-                        pass_mask, MC_eval.loc[:, TRANSFORM_COLUMNS[i]].gt(best_cut[i]).to_numpy()
+                        pass_mask, full_MC_eval.loc[:, TRANSFORM_COLUMNS[i]].gt(best_cut[i]).to_numpy()
                     )
                 for unique_label in np.unique(full_MC_eval.loc[:, 'AUX_sample_name']):
                     unique_yield = full_MC_eval.loc[np.logical_and(pass_mask, full_MC_eval.loc[:, 'AUX_sample_name'].eq(unique_label).to_numpy()), 'AUX_eventWeight'].sum()

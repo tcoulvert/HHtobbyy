@@ -66,7 +66,7 @@ def match_sample(sample_str, regexes):
             return regex
         
 def match_regex(regex, sample_strs):
-    for sample_str in sorted(sample_strs, key=len, reverse=True):
+    for sample_str in sorted(sample_strs, key=len):
         regex_bools = []
         match_str = sample_str
         for exp in regex.split('*'):
