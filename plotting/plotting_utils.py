@@ -112,9 +112,8 @@ def make_plot_data(
             dm = get_train_DMatrices(dataset_dirpath, fold_idx, dataset='test')
         elif dataset == "train":
             dm = get_train_DMatrices(dataset_dirpath, fold_idx, dataset='train')
-        elif dataset == "data&GluGlu*HH*kl-1p00":
+        else:
             dm = get_test_subset_DMatrix(dataset_dirpath, fold_idx, dataset.split('&'))
-        else: raise ValueError(f"Unknown dataset: {dataset}")
 
         preds = evaluate(booster, dm)
         labels = dm.get_label()
