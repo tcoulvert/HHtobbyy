@@ -3,6 +3,7 @@ import copy
 
 # Common Py packages
 import numba as nb
+import numba_cuda as cuda
 import numpy as np
 import pandas as pd
 
@@ -35,13 +36,6 @@ def fom_s_over_sqrt_b(s, b):
 @nb.njit()
 def fom_s_over_b(s, b):
     return s / b
-
-def apply_cut(score, cut, cutdir):
-    if cutdir == '>': return score > cut
-    elif cutdir == '>=': return score >= cut
-    elif cutdir == '<': return score < cut
-    elif cutdir == '<=': return score <= cut
-    else: raise NotImplementedError(f"The cutdir you supplied ({cutdir}) isn't allowed, allowed options are: \'<\', \'<=\', \'>\', \'>=\'")
 
 
 @nb.njit(parallel=True)
@@ -80,6 +74,77 @@ def brute_force(
         foms[i] = fom_s_over_b(signal_yields[i], bkg_yields[i]) if sideband_yields[i] > 8. else 0.
     return foms
 
+# @cuda.jit
+# def brute_force_cuda(
+#     signal_sr_scores, signal_sr_weights, bkg_sr_scores, bkg_sr_weights, 
+#     bkg_sideband_scores, bkg_sideband_weights, 
+#     cuts, foms, cutdir
+# ):
+#     signal_yields, bkg_yields, sideband_yields = np.zeros_like(foms), np.zeros_like(foms), np.zeros_like(foms)
+#     for i in nb.prange(cuts.shape[0]):
+#         # Signal yield in SR
+#         for j in nb.prange(signal_sr_scores.shape[0]):
+#             pass_cut_bool = True
+#             for k in nb.prange(signal_sr_scores.shape[1]): pass_cut_bool = pass_cut_bool & ( 
+#                 ( (signal_sr_scores[j][k] > cuts[i][k]) & (cutdir[k] == '>') )
+#                 | ( (signal_sr_scores[j][k] < cuts[i][k]) & (cutdir[k] == '<') )
+#             )
+#             signal_yields[i] += pass_cut_bool * signal_sr_weights[j]
+#         # Background yield in SR
+#         for j in nb.prange(bkg_sr_scores.shape[0]):
+#             pass_cut_bool = True
+#             for k in nb.prange(bkg_sr_scores.shape[1]): pass_cut_bool = pass_cut_bool & ( 
+#                 ( (bkg_sr_scores[j][k] > cuts[i][k]) & (cutdir[k] == '>') )
+#                 | ( (bkg_sr_scores[j][k] < cuts[i][k]) & (cutdir[k] == '<') )
+#             )
+#             bkg_yields[i] += pass_cut_bool * bkg_sr_weights[j]
+#         # Background yield outside SR
+#         for j in nb.prange(bkg_sideband_scores.shape[0]):
+#             pass_cut_bool = True
+#             for k in nb.prange(bkg_sideband_scores.shape[1]): pass_cut_bool = pass_cut_bool & ( 
+#                 ( (bkg_sideband_scores[j][k] > cuts[i][k]) & (cutdir[k] == '>') )
+#                 | ( (bkg_sideband_scores[j][k] < cuts[i][k]) & (cutdir[k] == '<') )
+#             )
+#             sideband_yields[i] += pass_cut_bool * bkg_sideband_weights[j]
+#     for i in nb.prange(foms.shape[0]):
+#         foms[i] = fom_s_over_b(signal_yields[i], bkg_yields[i]) if sideband_yields[i] > 8. else 0.
+#     return foms
+
+def brute_force_python(
+    signal_sr_scores, signal_sr_weights, bkg_sr_scores, bkg_sr_weights, 
+    bkg_sideband_scores, bkg_sideband_weights, 
+    cuts, foms, cutdir
+):
+    lt_scores = lambda scores: np.column_stack([scores[:, j] for j in range(scores.shape[1]) if cutdir[j] == '<'])
+    gt_scores = lambda scores: np.column_stack([scores[:, j] for j in range(scores.shape[1]) if cutdir[j] == '>'])
+
+    signal_lt_scores, bkg_lt_scores, sideband_lt_scores = lt_scores(signal_sr_scores), lt_scores(bkg_sr_scores), lt_scores(bkg_sideband_scores)
+    signal_gt_scores, bkg_gt_scores, sideband_gt_scores = gt_scores(signal_sr_scores), gt_scores(bkg_sr_scores), gt_scores(bkg_sideband_scores)
+    lt_cuts, gt_cuts = lt_scores(cuts), gt_scores(cuts)
+
+    jump_to_cut = -1
+    best_fom, best_cut = 0., cuts[0]
+    for i in range(cuts.shape[0]):
+        if i < jump_to_cut: continue
+
+        foms[i] = fom_s_over_b(
+            np.sum(signal_sr_weights[np.logical_and(signal_lt_scores < lt_cuts, signal_gt_scores > gt_cuts)]),
+            np.sum(bkg_sr_weights[np.logical_and(bkg_lt_scores < lt_cuts, bkg_gt_scores > gt_cuts)]),
+        ) if np.sum(bkg_sideband_weights[np.logical_and(sideband_lt_scores < lt_cuts, sideband_gt_scores > gt_cuts)]) > 8. else 0.
+
+        if i > 0 and foms[i-1] > foms[i]: 
+            if foms[i-1] < best_fom: 
+                if cuts.shape[1] < 3: break
+                jump_to_cut = np.argmax(cuts[:, cuts.shape[1]-3] != cuts[i, cuts.shape[1]-3])
+            else: 
+                if cuts.shape[1] < 2: break
+                jump_to_cut = np.argmax(cuts[:, cuts.shape[1]-2] != cuts[i, cuts.shape[1]-2])
+        else:
+            best_fom, best_cut = foms[i], cuts[i]
+
+    return best_fom, best_cut
+
+
 def grid_search(df: pd.DataFrame, cat_mask: np.ndarray, options_dict: dict, cutdir: list):
     sr_mask = np.logical_and(cat_mask, fom_mask(df))
     sideband_mask = np.logical_and(cat_mask, sideband_nonres_mask(df))
@@ -112,17 +177,31 @@ def grid_search(df: pd.DataFrame, cat_mask: np.ndarray, options_dict: dict, cutd
         ]
         cuts = np.array(ak.to_list(ak.cartesian(steps, axis=0)))
         foms = np.zeros(np.shape(cuts)[0])
-        all_cuts.extend(cuts)
+        # all_cuts.extend(cuts)
 
-        foms = brute_force(
+        # if cuda:
+        #     threadsperblock = 256
+        #     blockspergrid = (an_array.size + (threadsperblock - 1)) // threadsperblock
+        #     brute_force_cuda[blockspergrid, threadsperblock](
+        #         signal_sr_scores, signal_sr_weights, bkg_sr_scores, bkg_sr_weights, 
+        #         bkg_sideband_scores, bkg_sideband_weights, 
+        #         cuts, foms, nb.typed.List(cutdir)
+        #     )
+        # else:
+        #     brute_force(
+        #         signal_sr_scores, signal_sr_weights, bkg_sr_scores, bkg_sr_weights, 
+        #         bkg_sideband_scores, bkg_sideband_weights, 
+        #         cuts, foms, nb.typed.List(cutdir)
+        #     )
+        # all_foms.extend(foms)
+        cut, fom = brute_force_python(
             signal_sr_scores, signal_sr_weights, bkg_sr_scores, bkg_sr_weights, 
             bkg_sideband_scores, bkg_sideband_weights, 
             cuts, foms, nb.typed.List(cutdir)
         )
-        all_foms.extend(foms)
 
-        index = np.argmax(foms)
-        fom, cut = foms[index], cuts[index]
+        # index = np.argmax(foms)
+        # fom, cut = foms[index], cuts[index]
         step_sizes = [(stop - start) / options_dict['N_STEPS'] for start, stop in startstops]
         startstops = [[cut[i] - step_sizes[i], cut[i] + step_sizes[i]] for i in range(len(step_sizes))]
 
