@@ -62,6 +62,11 @@ parser.add_argument(
     help="Evaluate and save out evaluation for what dataset"
 )
 parser.add_argument(
+    "--minimal_dataset",
+    action="store_true",
+    help="Evaluate only for small dataset (useful for debugging)"
+)
+parser.add_argument(
     "--syst_name", 
     choices=["nominal", "all"], 
     default="nominal",
@@ -104,6 +109,7 @@ SYST_NAME = args.syst_name
 DISCRIMINATOR = args.discriminator
 SIGNAL_LABEL = args.signal
 VERBOSE = args.verbose
+MINIMAL = args.minimal_dataset
 OPTIONS_FILEPATH = args.options_filepath
 FOLD_TO_CATEGORIZE = args.fold
 FOLD_TO_PLOT_OPTIONS = ['none', 'all']+[str(fold_idx) for fold_idx in range(get_n_folds(DATASET_DIRPATH))]
@@ -137,7 +143,7 @@ def categorize_model():
 
     full_MC_eval = None
     for fold_idx in range(get_n_folds(DATASET_DIRPATH)):
-        MC_df, MC_aux = get_train_Dataframe(DATASET_DIRPATH, fold_idx, dataset='test' if DATASET == 'train-test' else 'train')
+        MC_df, MC_aux = get_train_Dataframe(DATASET_DIRPATH, fold_idx, dataset='test' if DATASET == 'train-test' else 'train', minimal=MINIMAL)
         for col in MC_aux.columns: MC_df[col] = MC_aux[col]
         cat_cols = [match_regex(cat_col, MC_df.columns) for cat_col in CATEGORIZATION_COLUMNS]
         assert set(cat_cols) <= set(MC_df.columns), f"The requested list of columns are not all in the file. Missing variables:\n{set(cat_cols) - set(MC_df.columns)}"
@@ -153,7 +159,13 @@ def categorize_model():
             for cat_idx in range(1, CATEGORIZATION_OPTIONS['N_CATEGORIES']+1):
                 categories_dict[FOLD_TO_CATEGORIZE][f'cat{cat_idx}'] = {}
                 
-                best_fom, best_cut = CATEGORIZATION_METHOD(MC_eval, category_mask, CATEGORIZATION_OPTIONS, TRANSFORM_CUT)
+                best_fom, best_cut = CATEGORIZATION_METHOD(
+                    MC_eval, category_mask, CATEGORIZATION_OPTIONS, TRANSFORM_CUT, 
+                    [
+                        categories_dict[FOLD_TO_CATEGORIZE][f'cat{prev_cat_idx}']['cut'] 
+                        for prev_cat_idx in range(1, cat_idx)
+                    ] if cat_idx != 1 else None
+                )
                 prev_category_mask = copy.deepcopy(category_mask)
                 for i in range(len(TRANSFORM_COLUMNS)):
                     prev_category_mask = np.logical_and(
@@ -172,7 +184,13 @@ def categorize_model():
         for cat_idx in range(1, CATEGORIZATION_OPTIONS['N_CATEGORIES']+1):
             categories_dict[FOLD_TO_CATEGORIZE][f'cat{cat_idx}'] = {}
             
-            best_fom, best_cut = CATEGORIZATION_METHOD(full_MC_eval, category_mask, CATEGORIZATION_OPTIONS, TRANSFORM_CUT)
+            best_fom, best_cut = CATEGORIZATION_METHOD(
+                full_MC_eval, category_mask, CATEGORIZATION_OPTIONS, TRANSFORM_CUT,
+                [
+                    categories_dict[FOLD_TO_CATEGORIZE][f'cat{prev_cat_idx}']['cut'] 
+                    for prev_cat_idx in range(1, cat_idx)
+                ] if cat_idx != 1 else None
+            )
             print(f"Best fom = {best_fom}, best cut = {best_cut}")
 
             categories_dict[FOLD_TO_CATEGORIZE][f'cat{cat_idx}']['fom'] = best_fom
@@ -208,8 +226,9 @@ def categorize_model():
             category_mask = np.logical_and(category_mask, ~prev_category_mask)
             
 
-    with open(CATEGORIZATION_FILEPATH, 'w') as f:
-        json.dump(categories_dict, f)
+    if not MINIMAL:
+        with open(CATEGORIZATION_FILEPATH, 'w') as f:
+            json.dump(categories_dict, f)
 
 
 if __name__ == "__main__":

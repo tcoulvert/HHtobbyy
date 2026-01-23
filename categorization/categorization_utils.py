@@ -1,5 +1,6 @@
 # Stdlib packages
 import copy
+import time
 
 # Common Py packages
 import numba as nb
@@ -38,41 +39,41 @@ def fom_s_over_b(s, b):
     return s / b
 
 
-@nb.njit(parallel=True)
-def brute_force(
-    signal_sr_scores, signal_sr_weights, bkg_sr_scores, bkg_sr_weights, 
-    bkg_sideband_scores, bkg_sideband_weights, 
-    cuts, foms, cutdir
-):
-    signal_yields, bkg_yields, sideband_yields = np.zeros_like(foms), np.zeros_like(foms), np.zeros_like(foms)
-    for i in nb.prange(cuts.shape[0]):
-        # Signal yield in SR
-        for j in nb.prange(signal_sr_scores.shape[0]):
-            pass_cut_bool = True
-            for k in nb.prange(signal_sr_scores.shape[1]): pass_cut_bool = pass_cut_bool & ( 
-                ( (signal_sr_scores[j][k] > cuts[i][k]) & (cutdir[k] == '>') )
-                | ( (signal_sr_scores[j][k] < cuts[i][k]) & (cutdir[k] == '<') )
-            )
-            signal_yields[i] += pass_cut_bool * signal_sr_weights[j]
-        # Background yield in SR
-        for j in nb.prange(bkg_sr_scores.shape[0]):
-            pass_cut_bool = True
-            for k in nb.prange(bkg_sr_scores.shape[1]): pass_cut_bool = pass_cut_bool & ( 
-                ( (bkg_sr_scores[j][k] > cuts[i][k]) & (cutdir[k] == '>') )
-                | ( (bkg_sr_scores[j][k] < cuts[i][k]) & (cutdir[k] == '<') )
-            )
-            bkg_yields[i] += pass_cut_bool * bkg_sr_weights[j]
-        # Background yield outside SR
-        for j in nb.prange(bkg_sideband_scores.shape[0]):
-            pass_cut_bool = True
-            for k in nb.prange(bkg_sideband_scores.shape[1]): pass_cut_bool = pass_cut_bool & ( 
-                ( (bkg_sideband_scores[j][k] > cuts[i][k]) & (cutdir[k] == '>') )
-                | ( (bkg_sideband_scores[j][k] < cuts[i][k]) & (cutdir[k] == '<') )
-            )
-            sideband_yields[i] += pass_cut_bool * bkg_sideband_weights[j]
-    for i in nb.prange(foms.shape[0]):
-        foms[i] = fom_s_over_b(signal_yields[i], bkg_yields[i]) if sideband_yields[i] > 8. else 0.
-    return foms
+# @nb.njit(parallel=True)
+# def brute_force(
+#     signal_sr_scores, signal_sr_weights, bkg_sr_scores, bkg_sr_weights, 
+#     bkg_sideband_scores, bkg_sideband_weights, 
+#     cuts, foms, cutdir
+# ):
+#     signal_yields, bkg_yields, sideband_yields = np.zeros_like(foms), np.zeros_like(foms), np.zeros_like(foms)
+#     for i in nb.prange(cuts.shape[0]):
+#         # Signal yield in SR
+#         for j in nb.prange(signal_sr_scores.shape[0]):
+#             pass_cut_bool = True
+#             for k in nb.prange(signal_sr_scores.shape[1]): pass_cut_bool = pass_cut_bool & ( 
+#                 ( (signal_sr_scores[j][k] > cuts[i][k]) & (cutdir[k] == '>') )
+#                 | ( (signal_sr_scores[j][k] < cuts[i][k]) & (cutdir[k] == '<') )
+#             )
+#             signal_yields[i] += pass_cut_bool * signal_sr_weights[j]
+#         # Background yield in SR
+#         for j in nb.prange(bkg_sr_scores.shape[0]):
+#             pass_cut_bool = True
+#             for k in nb.prange(bkg_sr_scores.shape[1]): pass_cut_bool = pass_cut_bool & ( 
+#                 ( (bkg_sr_scores[j][k] > cuts[i][k]) & (cutdir[k] == '>') )
+#                 | ( (bkg_sr_scores[j][k] < cuts[i][k]) & (cutdir[k] == '<') )
+#             )
+#             bkg_yields[i] += pass_cut_bool * bkg_sr_weights[j]
+#         # Background yield outside SR
+#         for j in nb.prange(bkg_sideband_scores.shape[0]):
+#             pass_cut_bool = True
+#             for k in nb.prange(bkg_sideband_scores.shape[1]): pass_cut_bool = pass_cut_bool & ( 
+#                 ( (bkg_sideband_scores[j][k] > cuts[i][k]) & (cutdir[k] == '>') )
+#                 | ( (bkg_sideband_scores[j][k] < cuts[i][k]) & (cutdir[k] == '<') )
+#             )
+#             sideband_yields[i] += pass_cut_bool * bkg_sideband_weights[j]
+#     for i in nb.prange(foms.shape[0]):
+#         foms[i] = fom_s_over_b(signal_yields[i], bkg_yields[i]) if sideband_yields[i] > 8. else 0.
+#     return foms
 
 # @cuda.jit
 # def brute_force_cuda(
@@ -110,42 +111,58 @@ def brute_force(
 #         foms[i] = fom_s_over_b(signal_yields[i], bkg_yields[i]) if sideband_yields[i] > 8. else 0.
 #     return foms
 
-def brute_force_python(
+def brute_force(
     signal_sr_scores, signal_sr_weights, bkg_sr_scores, bkg_sr_weights, 
     bkg_sideband_scores, bkg_sideband_weights, 
     cuts, foms, cutdir
 ):
-    lt_scores = lambda scores: np.column_stack([scores[:, j] for j in range(scores.shape[1]) if cutdir[j] == '<'])
-    gt_scores = lambda scores: np.column_stack([scores[:, j] for j in range(scores.shape[1]) if cutdir[j] == '>'])
+    lt_scores = lambda scores: np.column_stack([scores[:, j] for j in range(scores.shape[1]) if cutdir[j] == '<']) if any(_cutdir_ == '<' for _cutdir_ in cutdir) else None
+    gt_scores = lambda scores: np.column_stack([scores[:, j] for j in range(scores.shape[1]) if cutdir[j] == '>']) if any(_cutdir_ == '>' for _cutdir_ in cutdir) else None
 
     signal_lt_scores, bkg_lt_scores, sideband_lt_scores = lt_scores(signal_sr_scores), lt_scores(bkg_sr_scores), lt_scores(bkg_sideband_scores)
     signal_gt_scores, bkg_gt_scores, sideband_gt_scores = gt_scores(signal_sr_scores), gt_scores(bkg_sr_scores), gt_scores(bkg_sideband_scores)
     lt_cuts, gt_cuts = lt_scores(cuts), gt_scores(cuts)
 
+    ncuts, ndims = cuts.shape
     jump_to_cut = -1
     best_fom, best_cut = 0., cuts[0]
-    for i in range(cuts.shape[0]):
+    for i in range(ncuts):
         if i < jump_to_cut: continue
 
+        if any(_cutdir_ == '<' for _cutdir_ in cutdir) and any(_cutdir_ == '>' for _cutdir_ in cutdir):
+            signal_sr_bool = np.all(np.logical_and(signal_lt_scores < lt_cuts[i:i+1], signal_gt_scores > gt_cuts[i:i+1]), axis=1)
+            bkg_sr_bool = np.all(np.logical_and(bkg_lt_scores < lt_cuts[i:i+1], bkg_gt_scores > gt_cuts[i:i+1]), axis=1)
+            bkg_sideband_bool = np.all(np.logical_and(sideband_lt_scores < lt_cuts[i:i+1], sideband_gt_scores > gt_cuts[i:i+1]), axis=1)
+        elif any(_cutdir_ == '<' for _cutdir_ in cutdir):
+            signal_sr_bool = np.all(signal_lt_scores < lt_cuts[i:i+1], axis=1)
+            bkg_sr_bool = np.all(bkg_lt_scores < lt_cuts[i:i+1], axis=1)
+            bkg_sideband_bool = np.all(sideband_lt_scores < lt_cuts[i:i+1], axis=1)
+        elif any(_cutdir_ == '>' for _cutdir_ in cutdir):
+            signal_sr_bool = np.all(signal_gt_scores > gt_cuts[i:i+1], axis=1)
+            bkg_sr_bool = np.all(bkg_gt_scores > gt_cuts[i:i+1], axis=1)
+            bkg_sideband_bool = np.all(sideband_gt_scores > gt_cuts[i:i+1], axis=1)
+        else: raise NotImplementedError(f"Provided cut directions for discriminator can only be \'<\' or \'>\', your cut directions are {cutdir}")
+
         foms[i] = fom_s_over_b(
-            np.sum(signal_sr_weights[np.logical_and(signal_lt_scores < lt_cuts, signal_gt_scores > gt_cuts)]),
-            np.sum(bkg_sr_weights[np.logical_and(bkg_lt_scores < lt_cuts, bkg_gt_scores > gt_cuts)]),
-        ) if np.sum(bkg_sideband_weights[np.logical_and(sideband_lt_scores < lt_cuts, sideband_gt_scores > gt_cuts)]) > 8. else 0.
+            np.sum(signal_sr_weights[signal_sr_bool]), np.sum(bkg_sr_weights[bkg_sr_bool]),
+        ) if np.sum(bkg_sideband_weights[bkg_sideband_bool]) > 8. else 0.
 
         if i > 0 and foms[i-1] > foms[i]: 
             if foms[i-1] < best_fom: 
-                if cuts.shape[1] < 3: break
-                jump_to_cut = np.argmax(cuts[:, cuts.shape[1]-3] != cuts[i, cuts.shape[1]-3])
+                if ndims < 3: break
+                jump_to_cut = np.argmax(cuts[:, ndims-3] != cuts[i, ndims-3])
             else: 
-                if cuts.shape[1] < 2: break
-                jump_to_cut = np.argmax(cuts[:, cuts.shape[1]-2] != cuts[i, cuts.shape[1]-2])
+                if ndims < 2: break
+                jump_to_cut = np.argmax(cuts[:, ndims-2] != cuts[i, ndims-2])
         else:
             best_fom, best_cut = foms[i], cuts[i]
 
     return best_fom, best_cut
 
 
-def grid_search(df: pd.DataFrame, cat_mask: np.ndarray, options_dict: dict, cutdir: list):
+def grid_search(df: pd.DataFrame, cat_mask: np.ndarray, options_dict: dict, cutdir: list, prev_cuts: list=None):
+    start_time = time.time()
+
     sr_mask = np.logical_and(cat_mask, fom_mask(df))
     sideband_mask = np.logical_and(cat_mask, sideband_nonres_mask(df))
     assert not np.any(np.logical_and(sr_mask, sideband_mask)), print(f"Overlap between SR and Sideband definitions... THIS IS VERY BAD")
@@ -172,39 +189,29 @@ def grid_search(df: pd.DataFrame, cat_mask: np.ndarray, options_dict: dict, cutd
         print(f"Zoom {zoom}")
         steps = [
             np.linspace(
-                startstops[i][0], startstops[i][1], options_dict['N_STEPS'], endpoint=True
+                startstops[i][0], startstops[i][1], options_dict['N_STEPS'], endpoint=False
             ) for i in range(len(options_dict['TRANSFORM_COLUMNS']))
         ]
         cuts = np.array(ak.to_list(ak.cartesian(steps, axis=0)))
-        foms = np.zeros(np.shape(cuts)[0])
-        # all_cuts.extend(cuts)
+        if prev_cuts is not None:
+            cuts = [cut for cut in cuts if all(cut[i] > prev_cut[i] if cutdir[i] == '>' else cut[i] < prev_cut[i] for prev_cut in prev_cuts for i in range(len(prev_cut)))]
+        foms = -np.ones(np.shape(cuts)[0])
 
-        # if cuda:
-        #     threadsperblock = 256
-        #     blockspergrid = (an_array.size + (threadsperblock - 1)) // threadsperblock
-        #     brute_force_cuda[blockspergrid, threadsperblock](
-        #         signal_sr_scores, signal_sr_weights, bkg_sr_scores, bkg_sr_weights, 
-        #         bkg_sideband_scores, bkg_sideband_weights, 
-        #         cuts, foms, nb.typed.List(cutdir)
-        #     )
-        # else:
-        #     brute_force(
-        #         signal_sr_scores, signal_sr_weights, bkg_sr_scores, bkg_sr_weights, 
-        #         bkg_sideband_scores, bkg_sideband_weights, 
-        #         cuts, foms, nb.typed.List(cutdir)
-        #     )
-        # all_foms.extend(foms)
-        cut, fom = brute_force_python(
+        fom, cut = brute_force(
             signal_sr_scores, signal_sr_weights, bkg_sr_scores, bkg_sr_weights, 
             bkg_sideband_scores, bkg_sideband_weights, 
             cuts, foms, nb.typed.List(cutdir)
         )
+        all_cuts.extend(cuts[foms >= 0.])
+        all_foms.extend(foms[foms >= 0.])
 
-        # index = np.argmax(foms)
-        # fom, cut = foms[index], cuts[index]
         step_sizes = [(stop - start) / options_dict['N_STEPS'] for start, stop in startstops]
-        startstops = [[cut[i] - step_sizes[i], cut[i] + step_sizes[i]] for i in range(len(step_sizes))]
+        startstops = [[cut[i] - step_sizes[i], cut[i] + step_sizes[i]] if cutdir[i] == '<' else [cut[i] + step_sizes[i], cut[i] - step_sizes[i]] for i in range(len(step_sizes))]
 
         if fom > best_fom: best_fom = fom; best_cut = cut; print(f"best cut = {cut}, best fom = {fom}")
+
+    end_time = time.time()
+    exec_time = end_time - start_time
+    print(f"Execution took {exec_time} seconds for 1 category")
 
     return best_fom.item(), best_cut.tolist()

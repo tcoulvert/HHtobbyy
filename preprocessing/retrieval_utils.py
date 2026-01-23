@@ -112,11 +112,12 @@ def get_Dataframe(filepath: str, aux: bool=False, n_folds_fold_idx: tuple=None, 
         return df.loc[mask].reset_index(drop=True)
 def get_Dataframes(filepath: str, n_folds_fold_idx: tuple=None):
     return get_Dataframe(filepath, n_folds_fold_idx=n_folds_fold_idx), get_Dataframe(filepath, aux=True, n_folds_fold_idx=n_folds_fold_idx)
-def get_train_Dataframe(dataset_dirpath: str, fold_idx: int, dataset: str="train"):
+def get_train_Dataframe(dataset_dirpath: str, fold_idx: int, dataset: str="train", minimal: bool=True):
     df_list = []
     aux_list = []
 
     filepaths = get_train_filepaths_func(dataset_dirpath, dataset=dataset)(fold_idx)
+    if minimal: filepaths = {bdt_class: [filepaths[bdt_class][0]] for bdt_class in filepaths.keys()}
 
     df, aux = None, None
     for i, bdt_class in enumerate(filepaths.keys()):
