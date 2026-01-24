@@ -151,7 +151,7 @@ def run_training():
             train_dm, val_dm, test_dm = get_train_DMatrices(DATASET_DIRPATH, fold_idx)
 
             # Train bdt
-            evallist = [(train_dm, 'train'), (val_dm, 'test'), (test_dm, 'val')]
+            evallist = [(train_dm, 'train'), (test_dm, 'test'), (val_dm, 'val')]
             booster = xgb.train(
                 param, train_dm, num_boost_round=num_trees, 
                 evals=evallist, early_stopping_rounds=10, 
