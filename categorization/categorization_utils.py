@@ -148,25 +148,14 @@ def brute_force(
             np.sum(signal_sr_weights[signal_sr_bool]), np.sum(bkg_sr_weights[bkg_sr_bool]),
         ) if np.sum(bkg_sideband_weights[bkg_sideband_bool]) > 8. else 0.
 
-        if foms[i] > best_dim_foms[0]:
-            best_dim_foms[0], best_dim_cuts[0] = foms[i], cuts[i]
-        elif foms[i-1] > foms[i]:
-            if np.sum(np.flatnonzero(best_dim_foms)) > 1 and np.argmax(best_dim_foms) == 0:
-                best_dim_foms[1:], best_dim_cuts[1:] = np.array([-1.]*(ndims-1)), np.array([cuts[0]]*(ndims-1))
+        if i > 0 and foms[i-1] > foms[i]:
+            for j in range(ndims+1):
+                if j == ndims: return best_dim_foms[j], best_dim_cuts[j]
+                if j == 0:
+                    if foms[i-1] > best_dim_foms[j]: best_dim_foms[j] = foms[i-1]; break
+                if best_dim_foms[j-1] > best_dim_foms[j]: best_dim_foms[j] = best_dim_foms[j-1]; best_dim_foms[j-1] = -1.; break
 
-            last_contiguous_index = np.flatnonzero(best_dim_foms == -1.)[0] - 1 if np.any(np.flatnonzero(best_dim_foms == -1.)) else ndims - 1
-            if (
-                (last_contiguous_index == 0 and foms[i-1] < best_dim_foms[last_contiguous_index])
-                or (last_contiguous_index > 0 and best_dim_foms[last_contiguous_index-1] < best_dim_foms[last_contiguous_index])
-            ):
-                if last_contiguous_index+1 == ndims: break
-                best_dim_foms[last_contiguous_index+1], best_dim_cuts[last_contiguous_index+1] = best_dim_foms[last_contiguous_index], best_dim_cuts[last_contiguous_index]
-                best_dim_foms[:last_contiguous_index+1], best_dim_cuts[:last_contiguous_index+1] = -1., np.array([cuts[0]]*(last_contiguous_index+1))
-
-            jump_to_cut = i + np.argmax(cuts[i:, -(last_contiguous_index+2)] != cuts[i, -(last_contiguous_index+2)])
-        print(f"best fom = {np.amax(best_dim_foms)}; best cut = {best_dim_cuts[np.argmax(best_dim_foms)]}")
-
-    return best_dim_foms[-1], best_dim_cuts[-1]
+            jump_to_cut = i + np.argmax(cuts[i:, -(j+2)] != cuts[i, -(j+2)])
 
 
 def grid_search(df: pd.DataFrame, cat_mask: np.ndarray, options_dict: dict, cutdir: list, prev_cuts: list=None):
