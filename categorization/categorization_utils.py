@@ -152,10 +152,13 @@ def brute_force(
             for j in range(ndims+1):
                 if j == ndims: return best_dim_foms[j], best_dim_cuts[j]
                 if j == 0:
-                    if foms[i-1] > best_dim_foms[j]: best_dim_foms[j] = foms[i-1]; break
-                if best_dim_foms[j-1] > best_dim_foms[j]: best_dim_foms[j] = best_dim_foms[j-1]; best_dim_foms[j-1] = -1.; break
+                    if foms[i-1] > best_dim_foms[j]: 
+                        best_dim_foms[j] = foms[i-1]; jump_index = -2; break
+                if best_dim_foms[j-1] > best_dim_foms[j]: 
+                    best_dim_foms[j] = best_dim_foms[j-1]; best_dim_foms[j-1] = -1.; jump_index = -(j+1); break
 
-            jump_to_cut = i + np.argmax(cuts[i:, -(j+2)] != cuts[i, -(j+2)])
+            jump_to_cut = i + np.argmax(cuts[i:, jump_index] != cuts[i, jump_index])
+    return best_dim_foms[np.argmax(best_dim_foms)], best_dim_cuts[np.argmax(best_dim_foms)]
 
 
 def grid_search(df: pd.DataFrame, cat_mask: np.ndarray, options_dict: dict, cutdir: list, prev_cuts: list=None):
