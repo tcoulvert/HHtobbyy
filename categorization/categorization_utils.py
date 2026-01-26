@@ -55,9 +55,9 @@ def brute_force(
         if i < jump_to_cut: continue
 
         if any(_cutdir_ == '<' for _cutdir_ in cutdir) and any(_cutdir_ == '>' for _cutdir_ in cutdir):
-            signal_sr_bool = np.all(np.logical_and(signal_lt_scores < lt_cuts[i:i+1], signal_gt_scores > gt_cuts[i:i+1]), axis=1)
-            bkg_sr_bool = np.all(np.logical_and(bkg_lt_scores < lt_cuts[i:i+1], bkg_gt_scores > gt_cuts[i:i+1]), axis=1)
-            bkg_sideband_bool = np.all(np.logical_and(sideband_lt_scores < lt_cuts[i:i+1], sideband_gt_scores > gt_cuts[i:i+1]), axis=1)
+            signal_sr_bool = np.logical_and(np.all(signal_lt_scores < lt_cuts[i:i+1], axis=1), np.all(signal_gt_scores > gt_cuts[i:i+1], axis=1))
+            bkg_sr_bool = np.logical_and(np.all(bkg_lt_scores < lt_cuts[i:i+1], axis=1), np.all(bkg_gt_scores > gt_cuts[i:i+1], axis=1))
+            bkg_sideband_bool = np.logical_and(np.all(sideband_lt_scores < lt_cuts[i:i+1], axis=1), np.all(sideband_gt_scores > gt_cuts[i:i+1], axis=1))
         elif any(_cutdir_ == '<' for _cutdir_ in cutdir):
             signal_sr_bool = np.all(signal_lt_scores < lt_cuts[i:i+1], axis=1)
             bkg_sr_bool = np.all(bkg_lt_scores < lt_cuts[i:i+1], axis=1)
@@ -72,7 +72,7 @@ def brute_force(
             np.sum(signal_sr_weights[signal_sr_bool]), np.sum(bkg_sr_weights[bkg_sr_bool]),
         ) if np.sum(bkg_sideband_weights[bkg_sideband_bool]) > 8. else 0.
 
-        if i > 0 and foms[i-1] > foms[i]:
+        if i > 0 and (foms[i-1] > foms[i] or foms[i-1] == foms[i]):
             for j in range(ndims+1):
                 if j == ndims: return best_dim_foms[j-1], best_dim_cuts[j-1]
                 if j == 0:
