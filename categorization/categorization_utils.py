@@ -146,7 +146,7 @@ def brute_force(
 
         foms[i] = fom_s_over_b(
             np.sum(signal_sr_weights[signal_sr_bool]), np.sum(bkg_sr_weights[bkg_sr_bool]),
-        ) if np.sum(bkg_sideband_weights[bkg_sideband_bool]) > 4. else 0.
+        ) if np.sum(bkg_sideband_weights[bkg_sideband_bool]) > 8. else 0.
 
         if i > 0 and foms[i-1] > foms[i]:
             for j in range(ndims+1):
