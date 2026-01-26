@@ -146,19 +146,20 @@ def brute_force(
 
         foms[i] = fom_s_over_b(
             np.sum(signal_sr_weights[signal_sr_bool]), np.sum(bkg_sr_weights[bkg_sr_bool]),
-        ) if np.sum(bkg_sideband_weights[bkg_sideband_bool]) > 8. else 0.
+        ) if np.sum(bkg_sideband_weights[bkg_sideband_bool]) > 4. else 0.
 
         if i > 0 and foms[i-1] > foms[i]:
             for j in range(ndims+1):
-                if j == ndims: return best_dim_foms[j], best_dim_cuts[j]
+                if j == ndims: return best_dim_foms[j-1], best_dim_cuts[j-1]
                 if j == 0:
-                    if foms[i-1] > best_dim_foms[j]: 
-                        best_dim_foms[j] = foms[i-1]; jump_index = -2; break
-                if best_dim_foms[j-1] > best_dim_foms[j]: 
-                    best_dim_foms[j] = best_dim_foms[j-1]; best_dim_foms[j-1] = -1.; jump_index = -(j+1); break
+                    if foms[i-1] > best_dim_foms[j]:
+                        best_dim_foms[j] = foms[i-1]; best_dim_cuts[j] = cuts[i-1]
+                        jump_index = -2; break
+                elif best_dim_foms[j-1] > best_dim_foms[j]: 
+                    best_dim_foms[j] = best_dim_foms[j-1]; best_dim_cuts[j] = best_dim_cuts[j-1]
+                    best_dim_foms[j-1] = -1.; jump_index = -(j+1); break
 
             jump_to_cut = i + np.argmax(cuts[i:, jump_index] != cuts[i, jump_index])
-    return best_dim_foms[np.argmax(best_dim_foms)], best_dim_cuts[np.argmax(best_dim_foms)]
 
 
 def grid_search(df: pd.DataFrame, cat_mask: np.ndarray, options_dict: dict, cutdir: list, prev_cuts: list=None):
@@ -208,7 +209,7 @@ def grid_search(df: pd.DataFrame, cat_mask: np.ndarray, options_dict: dict, cutd
         all_foms.extend(foms[foms >= 0.])
 
         step_sizes = [(stop - start) / options_dict['N_STEPS'] for start, stop in startstops]
-        startstops = [[cut[i] - step_sizes[i], cut[i] + step_sizes[i]] if cutdir[i] == '<' else [cut[i] + step_sizes[i], cut[i] - step_sizes[i]] for i in range(len(step_sizes))]
+        startstops = [[cut[i] - step_sizes[i], cut[i] + step_sizes[i]] for i in range(len(step_sizes))]
 
         if fom > best_fom: best_fom = fom; best_cut = cut; print(f"best cut = {cut}, best fom = {fom}")
 
