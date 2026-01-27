@@ -87,7 +87,6 @@ def brute_force(
     return best_dim_foms[np.argmax(best_dim_foms)], best_dim_cuts[np.argmax(best_dim_foms)]
 
 def grid_search(df: pd.DataFrame, cat_mask: np.ndarray, options_dict: dict, cutdir: list, prev_cuts: list=None):
-    start_time = time.time()
 
     sr_mask = np.logical_and(cat_mask, fom_mask(df))
     sideband_mask = np.logical_and(cat_mask, sideband_nonres_mask(df))
@@ -112,7 +111,6 @@ def grid_search(df: pd.DataFrame, cat_mask: np.ndarray, options_dict: dict, cutd
 
     startstops = copy.deepcopy(options_dict['STARTSTOPS'])
     for zoom in range(options_dict['N_ZOOM']):
-        print(f"Zoom {zoom}")
         steps = [
             np.linspace(
                 startstops[i][1], startstops[i][0], options_dict['N_STEPS'], endpoint=False
@@ -136,9 +134,5 @@ def grid_search(df: pd.DataFrame, cat_mask: np.ndarray, options_dict: dict, cutd
         startstops = [[cut[i] - step_sizes[i], cut[i] + step_sizes[i]] for i in range(len(step_sizes))]
 
         if fom > best_fom: best_fom = fom; best_cut = cut; print(f"best cut = {cut}, best fom = {fom}")
-
-    end_time = time.time()
-    exec_time = end_time - start_time
-    print(f"Execution took {exec_time} seconds for 1 category")
 
     return best_fom.item(), best_cut.tolist()

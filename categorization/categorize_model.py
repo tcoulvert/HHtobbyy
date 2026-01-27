@@ -10,6 +10,7 @@ import sys
 # Common Py packages
 import numpy as np
 import pandas as pd
+import prettytable as pt
 
 ################################
 
@@ -140,6 +141,7 @@ if 'STARTSTOPS' not in CATEGORIZATION_OPTIONS.keys():
 
 def categorize_model():
     categories_dict = {}
+    table = pt.PrettyTable()
 
     full_MC_eval = None
     for fold_idx in range(get_n_folds(DATASET_DIRPATH)):
@@ -148,6 +150,7 @@ def categorize_model():
         cat_cols = [match_regex(cat_col, MC_df.columns) for cat_col in CATEGORIZATION_COLUMNS]
         assert set(cat_cols) <= set(MC_df.columns), f"The requested list of columns are not all in the file. Missing variables:\n{set(cat_cols) - set(MC_df.columns)}"
         MC_eval = MC_df[cat_cols]
+        if len(table.field_names) == 0: table.field_names = ['Category', 'FoM (s/b)'] + sorted(pd.unique(MC_eval['AUX_sample_name']).tolist())
 
         if FOLD_TO_CATEGORIZE == 'all' or FOLD_TO_CATEGORIZE == 'none':
             if fold_idx == 0: full_MC_eval = copy.deepcopy(MC_eval)
@@ -157,7 +160,7 @@ def categorize_model():
 
             category_mask = MC_eval.loc[:, match_regex('AUX_*_resolved_BDT_mask', MC_eval.columns)].eq(1).to_numpy()
             for cat_idx in range(1, CATEGORIZATION_OPTIONS['N_CATEGORIES']+1):
-                categories_dict[FOLD_TO_CATEGORIZE][f'cat{cat_idx}'] = {}
+                categories_dict[str(fold_idx)][f'cat{cat_idx}'] = {}
                 
                 best_fom, best_cut = CATEGORIZATION_METHOD(
                     MC_eval, category_mask, CATEGORIZATION_OPTIONS, TRANSFORM_CUT, 
@@ -166,6 +169,16 @@ def categorize_model():
                         for prev_cat_idx in range(1, cat_idx)
                     ] if cat_idx != 1 else None
                 )
+                new_row = [f'Merged folds - Cat {cat_idx}', best_fom]
+                pass_mask = np.logical_and(category_mask, categorization_utils.fom_mask(MC_eval))
+                for i in range(len(TRANSFORM_COLUMNS)):
+                    if '>' in TRANSFORM_CUT[i]:
+                        pass_mask = np.logical_and(pass_mask, MC_eval.loc[:, TRANSFORM_COLUMNS[i]].gt(best_cut[i]).to_numpy())
+                    else:
+                        pass_mask = np.logical_and(pass_mask, MC_eval.loc[:, TRANSFORM_COLUMNS[i]].lt(best_cut[i]).to_numpy())
+                for sample_name in table.field_names[2:]:
+                    new_row.append(MC_eval.loc[np.logical_and(pass_mask, MC_eval.loc[:, 'AUX_sample_name'].eq(sample_name).to_numpy()), 'AUX_eventWeight'].sum())
+                table.add_row(new_row)                
                 prev_category_mask = copy.deepcopy(category_mask)
                 for i in range(len(TRANSFORM_COLUMNS)):
                     prev_category_mask = np.logical_and(
@@ -173,8 +186,9 @@ def categorize_model():
                     )
                 category_mask = np.logical_and(category_mask, ~prev_category_mask)
 
-                categories_dict[FOLD_TO_CATEGORIZE][f'cat{cat_idx}']['fom'] = best_fom
-                categories_dict[FOLD_TO_CATEGORIZE][f'cat{cat_idx}']['cut'] = best_cut
+                categories_dict[str(fold_idx)][f'cat{cat_idx}']['fom'] = best_fom
+                categories_dict[str(fold_idx)][f'cat{cat_idx}']['cut'] = best_cut
+
 
     if FOLD_TO_CATEGORIZE == 'all' or FOLD_TO_CATEGORIZE == 'none':
         categories_dict[FOLD_TO_CATEGORIZE] = {}
@@ -191,32 +205,19 @@ def categorize_model():
                     for prev_cat_idx in range(1, cat_idx)
                 ] if cat_idx != 1 else None
             )
-            print(f"Best fom = {best_fom}, best cut = {best_cut}")
+            new_row = [f'Merged folds - Cat {cat_idx}', best_fom]
+            pass_mask = np.logical_and(category_mask, categorization_utils.fom_mask(full_MC_eval))
+            for i in range(len(TRANSFORM_COLUMNS)):
+                if '>' in TRANSFORM_CUT[i]:
+                    pass_mask = np.logical_and(pass_mask, full_MC_eval.loc[:, TRANSFORM_COLUMNS[i]].gt(best_cut[i]).to_numpy())
+                else:
+                    pass_mask = np.logical_and(pass_mask, full_MC_eval.loc[:, TRANSFORM_COLUMNS[i]].lt(best_cut[i]).to_numpy())
+            for sample_name in table.field_names[2:]:
+                new_row.append(full_MC_eval.loc[np.logical_and(pass_mask, full_MC_eval.loc[:, 'AUX_sample_name'].eq(sample_name).to_numpy()), 'AUX_eventWeight'].sum())
+            table.add_row(new_row)
 
             categories_dict[FOLD_TO_CATEGORIZE][f'cat{cat_idx}']['fom'] = best_fom
             categories_dict[FOLD_TO_CATEGORIZE][f'cat{cat_idx}']['cut'] = best_cut
-            
-            if VERBOSE:
-                print('='*60+'\n'+'='*60)
-                print('/'.join(os.path.normpath(TRAINING_DIRPATH).split('/')[-2:]))
-                print(f"cat{cat_idx} yields")
-                print('-'*60)
-                print_str = ' & '.join([f"{TRANSFORM_COLUMNS[i]} {TRANSFORM_CUT[i]} {best_cut[i]:.4f}" for i in range(len(TRANSFORM_COLUMNS))])
-                if cat_idx > 1:
-                    print_str = print_str + ' & NOT '.join(['']+[f"{TRANSFORM_COLUMNS[i]} {TRANSFORM_CUT[i]} {categories_dict[FOLD_TO_CATEGORIZE][f'cat{cat_idx-1}']['cut'][i]:.4f}" for i in range(len(TRANSFORM_COLUMNS))])
-                print(print_str)
-                print('-'*60)
-                pass_mask = np.logical_and(
-                    category_mask, categorization_utils.fom_mask(full_MC_eval)
-                )
-                for i in range(len(TRANSFORM_COLUMNS)):
-                    pass_mask = np.logical_and(
-                        pass_mask, full_MC_eval.loc[:, TRANSFORM_COLUMNS[i]].gt(best_cut[i]).to_numpy()
-                    )
-                for unique_label in np.unique(full_MC_eval.loc[:, 'AUX_sample_name']):
-                    unique_yield = full_MC_eval.loc[np.logical_and(pass_mask, full_MC_eval.loc[:, 'AUX_sample_name'].eq(unique_label).to_numpy()), 'AUX_eventWeight'].sum()
-                    print('-'*60)
-                    print(f"{unique_label} yield = {unique_yield:.4f}")
 
             prev_category_mask = copy.deepcopy(category_mask)
             for i in range(len(TRANSFORM_COLUMNS)):
@@ -225,10 +226,13 @@ def categorize_model():
                 )
             category_mask = np.logical_and(category_mask, ~prev_category_mask)
             
+    if VERBOSE: print(' - '.join(TRAINING_DIRPATH.split('/')[-2:]+[DISCRIMINATOR])); table.float_format = '0.4'; print(table)
 
     if not MINIMAL:
         with open(CATEGORIZATION_FILEPATH, 'w') as f:
             json.dump(categories_dict, f)
+        with open(CATEGORIZATION_FILEPATH.replace('.json', '_yields.csv'), 'w') as f:
+            f.write(table.get_csv_string())
 
 
 if __name__ == "__main__":
