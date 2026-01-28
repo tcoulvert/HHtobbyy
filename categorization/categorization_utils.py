@@ -86,8 +86,8 @@ def brute_force(
                 binwidth = 5
                 _hist_, _bins_ = np.histogram(bkg_sideband_mass[bkg_sideband_bool], bins=np.arange(100., 180., binwidth), weights=bkg_sideband_weights[bkg_sideband_bool])
                 regressor = LinearRegression(fit_intercept=True).fit((_bins_[:-1][_hist_ > 0.] + 0.5*binwidth).reshape(-1, 1), _hist_[_hist_ > 0.])
-                y_pred = regressor.predict(np.array(SIDEBAND_CUTS).reshape(-1, 1))
-                est_yield = (SIDEBAND_CUTS[1] - SIDEBAND_CUTS[0]) * (y_pred[0] - 0.5*(y_pred[0] - y_pred[1]))
+                y_pred = regressor.predict(np.array(SR_CUTS).reshape(-1, 1))
+                est_yield = (SR_CUTS[1] - SR_CUTS[0]) * (y_pred[0] - 0.5*(y_pred[0] - y_pred[1]))
             else: est_yield = 0.
 
             foms[i] = fom_s_over_b(
