@@ -226,7 +226,7 @@ def get_test_DMatrix(filepath: str):
     df, aux = get_Dataframes(filepath)
     return get_DMatrix(df, aux, dataset='test', label=False)
 
-def get_test_subset_DMatrix(dataset_dirpath: str, fold_idx: int, regexs: list, label: bool=True):
+def get_test_subset_Dataframes(dataset_dirpath: str, fold_idx: int, regexs: list, label: bool=True):
     class_sample_map = get_class_sample_map(dataset_dirpath)
 
     df_full, aux_full = None, None
@@ -260,4 +260,8 @@ def get_test_subset_DMatrix(dataset_dirpath: str, fold_idx: int, regexs: list, l
         else:
             df_full, aux_full = pd.concat([df_full, df]), pd.concat([aux_full, aux])
 
+    return df_full, aux_full
+
+def get_test_subset_DMatrix(dataset_dirpath: str, fold_idx: int, regexs: list, label: bool=True):
+    df_full, aux_full = get_test_subset_Dataframes(dataset_dirpath, fold_idx, regexs, label=label)
     return get_DMatrix(df_full, aux_full, dataset='test', label=label)

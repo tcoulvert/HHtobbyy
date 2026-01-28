@@ -14,6 +14,7 @@ import prettytable as pt
 
 ################################
 
+
 GIT_REPO = (
     subprocess.Popen(["git", "rev-parse", "--show-toplevel"], stdout=subprocess.PIPE)
     .communicate()[0]
@@ -27,7 +28,7 @@ sys.path.append(os.path.join(GIT_REPO, "evaluation/"))
 from preprocessing_utils import match_regex
 from retrieval_utils import (
     get_class_sample_map, get_n_folds,
-    get_train_Dataframe
+    get_train_Dataframe, get_test_subset_Dataframes
 )
 from training_utils import (
     get_dataset_dirpath,
@@ -66,6 +67,11 @@ parser.add_argument(
     "--minimal_dataset",
     action="store_true",
     help="Evaluate only for small dataset (useful for debugging)"
+)
+parser.add_argument(
+    "--opt_data_sideband",
+    action='store_true',
+    help="Performs category optimization using fit to data sidebands for estimation of non-resonant background in SR"
 )
 parser.add_argument(
     "--syst_name", 
@@ -111,6 +117,7 @@ DISCRIMINATOR = args.discriminator
 SIGNAL_LABEL = args.signal
 VERBOSE = args.verbose
 MINIMAL = args.minimal_dataset
+OPT_DATA_SIDEBAND = args.opt_data_sideband
 OPTIONS_FILEPATH = args.options_filepath
 FOLD_TO_CATEGORIZE = args.fold
 FOLD_TO_PLOT_OPTIONS = ['none', 'all']+[str(fold_idx) for fold_idx in range(get_n_folds(DATASET_DIRPATH))]
@@ -150,6 +157,11 @@ def categorize_model():
         cat_cols = [match_regex(cat_col, MC_df.columns) for cat_col in CATEGORIZATION_COLUMNS]
         assert set(cat_cols) <= set(MC_df.columns), f"The requested list of columns are not all in the file. Missing variables:\n{set(cat_cols) - set(MC_df.columns)}"
         MC_eval = MC_df[cat_cols]
+        if OPT_DATA_SIDEBAND:
+            DATA_df, DATA_aux = get_test_subset_Dataframes(DATASET_DIRPATH, fold_idx, 'Data')
+            for col in DATA_aux.columns: DATA_df[col] = DATA_aux[col]
+            assert set(cat_cols) <= set(DATA_df.columns)
+            MC_eval = pd.concat([MC_eval, DATA_df])
         if len(table.field_names) == 0: table.field_names = ['Category', 'FoM (s/b)'] + sorted(pd.unique(MC_eval['AUX_sample_name']).tolist())
 
         if FOLD_TO_CATEGORIZE == 'all' or FOLD_TO_CATEGORIZE == 'none':
@@ -226,7 +238,7 @@ def categorize_model():
                 )
             category_mask = np.logical_and(category_mask, ~prev_category_mask)
             
-    if VERBOSE: print(' - '.join(TRAINING_DIRPATH.split('/')[-2:]+[DISCRIMINATOR])); table.float_format = '0.4'; print(table)
+    if VERBOSE: print(' - '.join(os.path.normpath(TRAINING_DIRPATH).split('/')[-2:]+[DISCRIMINATOR])); table.float_format = '0.4'; print(table)
 
     if not MINIMAL:
         with open(CATEGORIZATION_FILEPATH, 'w') as f:

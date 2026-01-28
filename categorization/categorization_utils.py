@@ -1,10 +1,10 @@
 # Stdlib packages
 import copy
-import time
 
 # Common Py packages
 import numpy as np
 import pandas as pd
+from sklearn.linear_model import LinearRegression
 
 # HEP packages
 import awkward as ak
@@ -12,20 +12,28 @@ import awkward as ak
 ################################
 
 
+SR_CUTS = [122.5, 127.]
+SIDEBAND_CUTS = [120., 130.]
+
+################################
+
+
 def fom_mask(df: pd.DataFrame):
-    return np.logical_and(df.loc[:, 'AUX_mass'].ge(122.5).to_numpy(), df.loc[:, 'AUX_mass'].le(127.).to_numpy())
+    return np.logical_and(df.loc[:, 'AUX_mass'].ge(SR_CUTS[0]).to_numpy(), df.loc[:, 'AUX_mass'].le(SR_CUTS[1]).to_numpy())
 
 def sideband_nonres_mask(df: pd.DataFrame):
-    return np.logical_and(
-        np.logical_or(df.loc[:, 'AUX_mass'].lt(120.).to_numpy(), df.loc[:, 'AUX_mass'].gt(130.).to_numpy()),
-        np.logical_or(
+    mass_cut = np.logical_or(df.loc[:, 'AUX_mass'].lt(SIDEBAND_CUTS[0]).to_numpy(), df.loc[:, 'AUX_mass'].gt(SIDEBAND_CUTS[1]).to_numpy())
+    if np.any(df.loc[:, 'AUX_sample_name'].eq('Data').to_numpy()):
+        sample_cut = df.loc[:, 'AUX_sample_name'].eq('Data').to_numpy()
+    else:
+        sample_cut = np.logical_or(
             df.loc[:, 'AUX_sample_name'].eq('TTGG').to_numpy(),  # TTGG
             np.logical_or(
                 np.logical_or(df.loc[:, 'AUX_sample_name'].eq('GJet').to_numpy(), df.loc[:, 'AUX_sample_name'].eq('GGJets').to_numpy()),  # GGJets or GJet
                 df.loc[:, 'AUX_sample_name'].eq('DDQCDGJets').to_numpy()  # DDQCD GJet or GGJets
             )
         )
-    )
+    return np.logical_and(mass_cut, sample_cut)
 
 
 def fom_s_over_sqrt_b(s, b):
@@ -36,10 +44,10 @@ def fom_s_over_b(s, b):
 
 
 def brute_force(
-    signal_sr_scores, signal_sr_weights, 
-    bkg_sr_scores, bkg_sr_weights, 
-    bkg_sideband_scores, bkg_sideband_weights, 
-    cuts, foms, cutdir
+    signal_sr_scores: np.ndarray, signal_sr_weights: np.ndarray, 
+    bkg_sr_scores: np.ndarray, bkg_sr_weights: np.ndarray, 
+    bkg_sideband_scores: np.ndarray, bkg_sideband_weights: np.ndarray, 
+    cuts: np.ndarray, foms: np.ndarray, cutdir: np.ndarray, bkg_sideband_mass: np.ndarray=None
 ):
     lt_scores = lambda scores: np.column_stack([scores[:, j] for j in range(scores.shape[1]) if cutdir[j] == '<']) if any(_cutdir_ == '<' for _cutdir_ in cutdir) else None
     gt_scores = lambda scores: np.column_stack([scores[:, j] for j in range(scores.shape[1]) if cutdir[j] == '>']) if any(_cutdir_ == '>' for _cutdir_ in cutdir) else None
@@ -68,9 +76,15 @@ def brute_force(
             bkg_sideband_bool = np.all(sideband_gt_scores > gt_cuts[i:i+1], axis=1)
         else: raise NotImplementedError(f"Provided cut directions for discriminator can only be \'<\' or \'>\', your cut directions are {cutdir}")
 
+        if bkg_sideband_mass is not None:
+            regressor = LinearRegression.fit(bkg_sideband_mass[bkg_sideband_bool], bkg_sideband_weights[bkg_sideband_bool])
+            y_pred = regressor.predict(np.array([120., 130.]))
+            est_yield = (SIDEBAND_CUTS[1] - SIDEBAND_CUTS[0]) * (y_pred[0] - 0.5*(y_pred[0] - y_pred[1]))
+        else: est_yield = 0.
+
         foms[i] = fom_s_over_b(
-            np.sum(signal_sr_weights[signal_sr_bool]), np.sum(bkg_sr_weights[bkg_sr_bool]),
-        ) if np.sum(bkg_sideband_weights[bkg_sideband_bool]) > 8. else 0.
+            np.sum(signal_sr_weights[signal_sr_bool]), np.sum(bkg_sr_weights[bkg_sr_bool])+est_yield,
+        ) if np.sum(bkg_sideband_weights[bkg_sideband_bool]) > 10. else 0.
 
         if i > 0 and (foms[i-1] > foms[i] or foms[i-1] == foms[i]):
             for j in range(ndims+1):
@@ -125,7 +139,7 @@ def grid_search(df: pd.DataFrame, cat_mask: np.ndarray, options_dict: dict, cutd
             signal_sr_scores, signal_sr_weights, 
             bkg_sr_scores, bkg_sr_weights, 
             bkg_sideband_scores, bkg_sideband_weights, 
-            cuts, foms, cutdir  # nb.typed.List(cutdir)
+            cuts, foms, np.array(cutdir), sideband_fit=np.any(df.loc[:, 'AUX_label1D'].eq('Data').to_numpy())  # nb.typed.List(cutdir)
         )
         all_cuts.extend(cuts[foms >= 0.])
         all_foms.extend(foms[foms >= 0.])
