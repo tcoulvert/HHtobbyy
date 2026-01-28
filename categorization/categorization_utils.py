@@ -46,8 +46,8 @@ def fom_s_over_b(s, b):
 def brute_force(
     signal_sr_scores: np.ndarray, signal_sr_weights: np.ndarray, 
     bkg_sr_scores: np.ndarray, bkg_sr_weights: np.ndarray, 
-    bkg_sideband_scores: np.ndarray, bkg_sideband_weights: np.ndarray, 
-    cuts: np.ndarray, foms: np.ndarray, cutdir: np.ndarray, bkg_sideband_mass: np.ndarray=None
+    bkg_sideband_scores: np.ndarray, bkg_sideband_weights: np.ndarray, bkg_sideband_mass: np.ndarray,
+    cuts: np.ndarray, foms: np.ndarray, cutdir: np.ndarray, sideband_fit: bool=False
 ):
     lt_scores = lambda scores: np.column_stack([scores[:, j] for j in range(scores.shape[1]) if cutdir[j] == '<']) if any(_cutdir_ == '<' for _cutdir_ in cutdir) else None
     gt_scores = lambda scores: np.column_stack([scores[:, j] for j in range(scores.shape[1]) if cutdir[j] == '>']) if any(_cutdir_ == '>' for _cutdir_ in cutdir) else None
@@ -63,28 +63,37 @@ def brute_force(
         if i < jump_to_cut: continue
 
         if any(_cutdir_ == '<' for _cutdir_ in cutdir) and any(_cutdir_ == '>' for _cutdir_ in cutdir):
-            signal_sr_bool = np.logical_and(np.all(signal_lt_scores < lt_cuts[i:i+1], axis=1), np.all(signal_gt_scores > gt_cuts[i:i+1], axis=1))
-            bkg_sr_bool = np.logical_and(np.all(bkg_lt_scores < lt_cuts[i:i+1], axis=1), np.all(bkg_gt_scores > gt_cuts[i:i+1], axis=1))
             bkg_sideband_bool = np.logical_and(np.all(sideband_lt_scores < lt_cuts[i:i+1], axis=1), np.all(sideband_gt_scores > gt_cuts[i:i+1], axis=1))
         elif any(_cutdir_ == '<' for _cutdir_ in cutdir):
-            signal_sr_bool = np.all(signal_lt_scores < lt_cuts[i:i+1], axis=1)
-            bkg_sr_bool = np.all(bkg_lt_scores < lt_cuts[i:i+1], axis=1)
             bkg_sideband_bool = np.all(sideband_lt_scores < lt_cuts[i:i+1], axis=1)
         elif any(_cutdir_ == '>' for _cutdir_ in cutdir):
-            signal_sr_bool = np.all(signal_gt_scores > gt_cuts[i:i+1], axis=1)
-            bkg_sr_bool = np.all(bkg_gt_scores > gt_cuts[i:i+1], axis=1)
             bkg_sideband_bool = np.all(sideband_gt_scores > gt_cuts[i:i+1], axis=1)
         else: raise NotImplementedError(f"Provided cut directions for discriminator can only be \'<\' or \'>\', your cut directions are {cutdir}")
 
-        if bkg_sideband_mass is not None:
-            regressor = LinearRegression.fit(bkg_sideband_mass[bkg_sideband_bool], bkg_sideband_weights[bkg_sideband_bool])
-            y_pred = regressor.predict(np.array([120., 130.]))
-            est_yield = (SIDEBAND_CUTS[1] - SIDEBAND_CUTS[0]) * (y_pred[0] - 0.5*(y_pred[0] - y_pred[1]))
-        else: est_yield = 0.
+        if np.sum(bkg_sideband_weights[bkg_sideband_bool]) > 10.:
+            if any(_cutdir_ == '<' for _cutdir_ in cutdir) and any(_cutdir_ == '>' for _cutdir_ in cutdir):
+                signal_sr_bool = np.logical_and(np.all(signal_lt_scores < lt_cuts[i:i+1], axis=1), np.all(signal_gt_scores > gt_cuts[i:i+1], axis=1))
+                bkg_sr_bool = np.logical_and(np.all(bkg_lt_scores < lt_cuts[i:i+1], axis=1), np.all(bkg_gt_scores > gt_cuts[i:i+1], axis=1))
+            elif any(_cutdir_ == '<' for _cutdir_ in cutdir):
+                signal_sr_bool = np.all(signal_lt_scores < lt_cuts[i:i+1], axis=1)
+                bkg_sr_bool = np.all(bkg_lt_scores < lt_cuts[i:i+1], axis=1)
+            elif any(_cutdir_ == '>' for _cutdir_ in cutdir):
+                signal_sr_bool = np.all(signal_gt_scores > gt_cuts[i:i+1], axis=1)
+                bkg_sr_bool = np.all(bkg_gt_scores > gt_cuts[i:i+1], axis=1)
+            else: raise NotImplementedError(f"Provided cut directions for discriminator can only be \'<\' or \'>\', your cut directions are {cutdir}")
 
-        foms[i] = fom_s_over_b(
-            np.sum(signal_sr_weights[signal_sr_bool]), np.sum(bkg_sr_weights[bkg_sr_bool])+est_yield,
-        ) if np.sum(bkg_sideband_weights[bkg_sideband_bool]) > 10. else 0.
+            if sideband_fit:
+                binwidth = 5.
+                _hist_, _bins_ = np.histogram(bkg_sideband_mass[bkg_sideband_bool], bins=np.arange(100., 180., binwidth), weights=bkg_sideband_weights[bkg_sideband_bool])
+                regressor = LinearRegression(fit_intercept=True).fit((_bins_[:-1][_hist_ > 0.] + 0.5*binwidth).reshape(-1, 1), _hist_[_hist_ > 0.])
+                y_pred = regressor.predict(np.array(SIDEBAND_CUTS).reshape(-1, 1))
+                est_yield = (SIDEBAND_CUTS[1] - SIDEBAND_CUTS[0]) * (y_pred[0] - 0.5*(y_pred[0] - y_pred[1]))
+            else: est_yield = 0.
+
+            foms[i] = fom_s_over_b(
+                np.sum(signal_sr_weights[signal_sr_bool]), np.sum(bkg_sr_weights[bkg_sr_bool])+est_yield,
+            )
+        else: foms[i] = 0.
 
         if i > 0 and (foms[i-1] > foms[i] or foms[i-1] == foms[i]):
             for j in range(ndims+1):
@@ -122,6 +131,7 @@ def grid_search(df: pd.DataFrame, cat_mask: np.ndarray, options_dict: dict, cutd
     bkg_sideband_mask = np.logical_and(sideband_mask, df.loc[:, 'AUX_label1D'].ne(options_dict['SIGNAL_LABEL']).to_numpy())
     bkg_sideband_scores = df.loc[bkg_sideband_mask, options_dict['TRANSFORM_COLUMNS']].to_numpy()
     bkg_sideband_weights = df.loc[bkg_sideband_mask, 'AUX_eventWeight'].to_numpy()
+    bkg_sideband_mass = df.loc[bkg_sideband_mask, 'AUX_mass'].to_numpy()
 
     startstops = copy.deepcopy(options_dict['STARTSTOPS'])
     for zoom in range(options_dict['N_ZOOM']):
@@ -138,8 +148,8 @@ def grid_search(df: pd.DataFrame, cat_mask: np.ndarray, options_dict: dict, cutd
         fom, cut = brute_force(
             signal_sr_scores, signal_sr_weights, 
             bkg_sr_scores, bkg_sr_weights, 
-            bkg_sideband_scores, bkg_sideband_weights, 
-            cuts, foms, np.array(cutdir), sideband_fit=np.any(df.loc[:, 'AUX_label1D'].eq('Data').to_numpy())  # nb.typed.List(cutdir)
+            bkg_sideband_scores, bkg_sideband_weights, bkg_sideband_mass,
+            cuts, foms, np.array(cutdir), sideband_fit=np.any(df.loc[:, 'AUX_sample_name'].eq('Data').to_numpy())
         )
         all_cuts.extend(cuts[foms >= 0.])
         all_foms.extend(foms[foms >= 0.])

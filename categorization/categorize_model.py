@@ -158,7 +158,7 @@ def categorize_model():
         assert set(cat_cols) <= set(MC_df.columns), f"The requested list of columns are not all in the file. Missing variables:\n{set(cat_cols) - set(MC_df.columns)}"
         MC_eval = MC_df[cat_cols]
         if OPT_DATA_SIDEBAND:
-            DATA_df, DATA_aux = get_test_subset_Dataframes(DATASET_DIRPATH, fold_idx, 'Data')
+            DATA_df, DATA_aux = get_test_subset_Dataframes(DATASET_DIRPATH, fold_idx, ['Data'], minimal=MINIMAL)
             for col in DATA_aux.columns: DATA_df[col] = DATA_aux[col]
             assert set(cat_cols) <= set(DATA_df.columns)
             MC_eval = pd.concat([MC_eval, DATA_df])

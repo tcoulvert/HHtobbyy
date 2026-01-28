@@ -226,7 +226,7 @@ def get_test_DMatrix(filepath: str):
     df, aux = get_Dataframes(filepath)
     return get_DMatrix(df, aux, dataset='test', label=False)
 
-def get_test_subset_Dataframes(dataset_dirpath: str, fold_idx: int, regexs: list, label: bool=True):
+def get_test_subset_Dataframes(dataset_dirpath: str, fold_idx: int, regexs: list, label: bool=True, minimal: bool=False):
     class_sample_map = get_class_sample_map(dataset_dirpath)
 
     df_full, aux_full = None, None
@@ -236,6 +236,7 @@ def get_test_subset_Dataframes(dataset_dirpath: str, fold_idx: int, regexs: list
             filepath for filepath in get_test_filepaths_func(dataset_dirpath)(fold_idx)['test']
             if match_sample(filepath, [regex]) is not None
         ]
+        if minimal: filepaths = [filepaths[0]]
         df, aux = None, None
         for filepath in filepaths:
             if df is None: 
