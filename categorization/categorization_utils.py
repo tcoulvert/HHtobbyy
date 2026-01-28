@@ -83,7 +83,7 @@ def brute_force(
             else: raise NotImplementedError(f"Provided cut directions for discriminator can only be \'<\' or \'>\', your cut directions are {cutdir}")
 
             if sideband_fit:
-                binwidth = 5.
+                binwidth = 5
                 _hist_, _bins_ = np.histogram(bkg_sideband_mass[bkg_sideband_bool], bins=np.arange(100., 180., binwidth), weights=bkg_sideband_weights[bkg_sideband_bool])
                 regressor = LinearRegression(fit_intercept=True).fit((_bins_[:-1][_hist_ > 0.] + 0.5*binwidth).reshape(-1, 1), _hist_[_hist_ > 0.])
                 y_pred = regressor.predict(np.array(SIDEBAND_CUTS).reshape(-1, 1))
