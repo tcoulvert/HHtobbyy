@@ -105,7 +105,13 @@ def brute_force(
 
         bkg_sideband_bool = apply_cuts(sideband_lt_scores, sideband_gt_scores)
 
-        if np.sum(bkg_sideband_weights[bkg_sideband_bool]) > 10.:
+        if (
+            np.sum(bkg_sideband_weights[bkg_sideband_bool]) > 10. 
+            and (
+                np.sum(bkg_sideband_weights[bkg_sideband_bool][bkg_sideband_mass[bkg_sideband_bool] < SIDEBAND_CUTS[0][1]])
+                / np.sum(bkg_sideband_weights[bkg_sideband_bool][bkg_sideband_mass[bkg_sideband_bool] > SIDEBAND_CUTS[1][0]])
+            ) > 0.25
+        ):
             signal_sr_bool = apply_cuts(signal_lt_scores, signal_gt_scores)
             bkg_sr_bool = apply_cuts(bkg_lt_scores, bkg_gt_scores)
 
@@ -116,9 +122,9 @@ def brute_force(
                 params, _ = curve_fit(exp_func, _bins_[:-1]-_bins_[0], _hist_, p0=p0, sigma=np.where(np.isfinite(_hist_**-1), _hist_**-1, 0.76))
                 y_pred = exp_func(SR_CUTS-_bins_[0], a=params[0], b=params[1])
                 est_yield = (SR_CUTS[1] - SR_CUTS[0]) * (y_pred[0] - 0.5*(y_pred[0] - y_pred[1]))
-                # ascii_hist(bkg_sideband_mass[bkg_sideband_bool], bins=np.arange(100., 180., binwidth), weights=bkg_sideband_weights[bkg_sideband_bool], fit=exp_func(_bins_[:-1]-_bins_[0], a=params[0], b=params[1]))
-                # print(f"y = {params[0]:.2f}e^({params[1]:.2f}x)")
-                # print(f"  -> est. yield of non-res in SR = {est_yield}")
+                ascii_hist(bkg_sideband_mass[bkg_sideband_bool], bins=np.arange(100., 180., binwidth), weights=bkg_sideband_weights[bkg_sideband_bool], fit=exp_func(_bins_[:-1]-_bins_[0], a=params[0], b=params[1]))
+                print(f"y = {params[0]:.2f}e^({params[1]:.2f}x)")
+                print(f"  -> est. yield of non-res in SR = {est_yield}")
             else: est_yield = 0.
 
             foms[i] = fom_s_over_b(
