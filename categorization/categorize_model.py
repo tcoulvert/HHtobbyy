@@ -11,6 +11,7 @@ import sys
 import numpy as np
 import pandas as pd
 import prettytable as pt
+from scipy.optimize import curve_fit
 
 ################################
 
@@ -192,7 +193,23 @@ def categorize_model():
                     else:
                         pass_mask = np.logical_and(pass_mask, MC_eval.loc[:, TRANSFORM_COLUMNS[i]].lt(best_cut[i]).to_numpy())
                 for sample_name in table.field_names[2:]:
-                    new_row.append(MC_eval.loc[np.logical_and(pass_mask, MC_eval.loc[:, 'AUX_sample_name'].eq(sample_name).to_numpy()), 'AUX_eventWeight'].sum())
+                    if sample_name == 'Data':
+                        sideband_mask = np.logical_and(category_mask, categorization_utils.sideband_nonres_mask(MC_eval))
+                        if '>' in TRANSFORM_CUT[i]:
+                            pass_sideband_mask = np.logical_and(sideband_mask, MC_eval.loc[:, TRANSFORM_COLUMNS[i]].gt(best_cut[i]).to_numpy())
+                        else:
+                            pass_sideband_mask = np.logical_and(sideband_mask, MC_eval.loc[:, TRANSFORM_COLUMNS[i]].lt(best_cut[i]).to_numpy())
+
+                        def exp_func(x, a, b): return a * np.exp(b * x)
+                        binwidth = 5
+                        _hist_, _bins_ = np.histogram(MC_eval.loc[pass_sideband_mask, 'AUX_mass'].to_numpy(), bins=np.arange(100., 180., binwidth), weights=MC_eval.loc[pass_sideband_mask, 'AUX_eventWeight'].to_numpy())
+                        p0 = (_hist_[0], -0.1)
+                        params, _ = curve_fit(exp_func, _bins_[:-1]-_bins_[0], _hist_, p0=p0, sigma=np.where(np.isfinite(_hist_**-1), _hist_**-1, 0.76))
+                        y_pred = exp_func(categorization_utils.SR_CUTS-_bins_[0], a=params[0], b=params[1])
+                        est_yield = (categorization_utils.SR_CUTS[1] - categorization_utils.SR_CUTS[0]) * (y_pred[0] - 0.5*(y_pred[0] - y_pred[1]))
+                        new_row.append(est_yield)
+                    else:
+                        new_row.append(MC_eval.loc[np.logical_and(pass_mask, MC_eval.loc[:, 'AUX_sample_name'].eq(sample_name).to_numpy()), 'AUX_eventWeight'].sum())
                 table.add_row(new_row)                
                 prev_category_mask = copy.deepcopy(category_mask)
                 for i in range(len(TRANSFORM_COLUMNS)):
