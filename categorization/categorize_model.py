@@ -152,13 +152,16 @@ def categorize_model():
 
     full_MC_eval = None
     for fold_idx in range(get_n_folds(DATASET_DIRPATH)):
+        if FOLD_TO_CATEGORIZE not in ['all', 'none'] and FOLD_TO_CATEGORIZE != str(fold_idx): continue
         MC_df, MC_aux = get_train_Dataframe(DATASET_DIRPATH, fold_idx, dataset='test' if DATASET == 'train-test' else 'train', minimal=MINIMAL)
         for col in MC_aux.columns: MC_df[col] = MC_aux[col]
         cat_cols = [match_regex(cat_col, MC_df.columns) for cat_col in CATEGORIZATION_COLUMNS]
         assert set(cat_cols) <= set(MC_df.columns), f"The requested list of columns are not all in the file. Missing variables:\n{set(cat_cols) - set(MC_df.columns)}"
         MC_eval = MC_df[cat_cols]
         if OPT_DATA_SIDEBAND:
-            DATA_df, DATA_aux = get_test_subset_Dataframes(DATASET_DIRPATH, fold_idx, ['Data'], minimal=MINIMAL)
+            DATA_df, DATA_aux = get_test_subset_Dataframes(DATASET_DIRPATH, fold_idx, ['!2024*Data'], minimal=MINIMAL)
+            DATA_aux['AUX_eventWeight'] = DATA_aux['AUX_eventWeight'] * 2.76  # lumi 22-24 / lumi 22-23
+            # DATA_df, DATA_aux = get_test_subset_Dataframes(DATASET_DIRPATH, fold_idx, ['Data'], minimal=MINIMAL)
             for col in DATA_aux.columns: DATA_df[col] = DATA_aux[col]
             assert set(cat_cols) <= set(DATA_df.columns)
             MC_eval = pd.concat([MC_eval, DATA_df])

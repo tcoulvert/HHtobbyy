@@ -234,7 +234,7 @@ def get_test_subset_Dataframes(dataset_dirpath: str, fold_idx: int, regexs: list
         
         filepaths = [
             filepath for filepath in get_test_filepaths_func(dataset_dirpath)(fold_idx)['test']
-            if match_sample(filepath, [regex]) is not None
+            if match_sample(filepath[len(dataset_dirpath):], [regex]) is not None
         ]
         if minimal: filepaths = [filepaths[0]]
         df, aux = None, None
@@ -245,13 +245,12 @@ def get_test_subset_Dataframes(dataset_dirpath: str, fold_idx: int, regexs: list
                 new_df, new_aux = get_Dataframes(filepath)
                 df, aux = pd.concat([df, new_df]), pd.concat([aux, new_aux])
                 
-        if regex == 'Data':
+        if match_sample(regex, ['Data']) is not None:
             SR_mask = np.logical_and(aux.loc[:, 'AUX_mass'].to_numpy() > 120., aux.loc[:, 'AUX_mass'].to_numpy() < 130.)
             df, aux = df.loc[~SR_mask], aux.loc[~SR_mask]
-            
-        if label and regex == 'Data':
-            data_idx = [i for i, key in enumerate(class_sample_map.keys()) if 'nonres' in key.lower()][0]
-            aux['AUX_label1D'] = data_idx * np.ones_like(aux['AUX_mass'])
+            if label:
+                data_idx = [i for i, key in enumerate(class_sample_map.keys()) if 'nonres' in key.lower()][0]
+                aux['AUX_label1D'] = data_idx * np.ones_like(aux['AUX_mass'])
         elif label:
             class_idx = [i for i, regex_list in enumerate(class_sample_map.values()) if regex in regex_list][0]
             aux['AUX_label1D'] = class_idx * np.ones_like(aux['AUX_mass'])

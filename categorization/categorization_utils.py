@@ -4,7 +4,7 @@ import copy
 # Common Py packages
 import numpy as np
 import pandas as pd
-from sklearn.linear_model import LinearRegression
+from scipy.optimize import curve_fit
 
 # HEP packages
 import awkward as ak
@@ -13,7 +13,7 @@ import awkward as ak
 
 
 SR_CUTS = [122.5, 127.]
-SIDEBAND_CUTS = [120., 130.]
+SIDEBAND_CUTS = [[100., 120.], [130., 200.]]
 
 ################################
 
@@ -22,7 +22,14 @@ def fom_mask(df: pd.DataFrame):
     return np.logical_and(df.loc[:, 'AUX_mass'].ge(SR_CUTS[0]).to_numpy(), df.loc[:, 'AUX_mass'].le(SR_CUTS[1]).to_numpy())
 
 def sideband_nonres_mask(df: pd.DataFrame):
-    mass_cut = np.logical_or(df.loc[:, 'AUX_mass'].lt(SIDEBAND_CUTS[0]).to_numpy(), df.loc[:, 'AUX_mass'].gt(SIDEBAND_CUTS[1]).to_numpy())
+    mass_cut = np.logical_or(
+        np.logical_and(
+            df.loc[:, 'AUX_mass'].gt(SIDEBAND_CUTS[0][0]).to_numpy(), df.loc[:, 'AUX_mass'].lt(SIDEBAND_CUTS[0][1]).to_numpy()
+        ),
+        np.logical_and(
+            df.loc[:, 'AUX_mass'].gt(SIDEBAND_CUTS[1][0]).to_numpy(), df.loc[:, 'AUX_mass'].lt(SIDEBAND_CUTS[1][1]).to_numpy()
+        )
+    )
     if np.any(df.loc[:, 'AUX_sample_name'].eq('Data').to_numpy()):
         sample_cut = df.loc[:, 'AUX_sample_name'].eq('Data').to_numpy()
     else:
@@ -43,6 +50,27 @@ def fom_s_over_b(s, b):
     return s / b
 
 
+def ascii_hist(x, bins=10, weights=None, fit=None):
+    N,X = np.histogram(x, bins=bins, weights=weights)
+    width = 50
+    nmax = np.max([N.max(), fit.max()])
+    if fit is None:
+        for (xi, n) in zip(X,N):
+            bar = '#'*int(n*width/nmax)
+            xi = '{0: <8.4g}'.format(xi).ljust(10)
+            print('{0}| {1}'.format(xi,bar))
+    else:
+        for (xi, n, fiti) in zip(X,N,fit):
+            bar = '#'*int(n*width/nmax)
+            if fiti > n: bar = bar + ' '*(int(fiti*width/nmax) - int(n*width/nmax)) + '+'
+            else: bar = ''.join([bar[j] if j != int(fiti*width/nmax) else '+' for j in range(len(bar))])
+            xi = '{0: <8.4g}'.format(xi).ljust(10)
+            print('{0}| {1}'.format(xi,bar))
+
+
+def exp_func(x, a, b):
+    return a * np.exp(b * x)
+
 def brute_force(
     signal_sr_scores: np.ndarray, signal_sr_weights: np.ndarray, 
     bkg_sr_scores: np.ndarray, bkg_sr_weights: np.ndarray, 
@@ -59,35 +87,40 @@ def brute_force(
     ncuts, ndims = cuts.shape
     jump_to_cut = 0
     best_dim_foms, best_dim_cuts = np.array([-1.]*ndims), np.array([cuts[0]]*ndims)
+
+
+    def apply_cuts(_lt_scores_, _gt_scores_):
+        if any(_cutdir_ == '<' for _cutdir_ in cutdir) and any(_cutdir_ == '>' for _cutdir_ in cutdir):
+            pass_cut_bool = np.logical_and(np.all(_lt_scores_ < lt_cuts[i:i+1], axis=1), np.all(_gt_scores_ > gt_cuts[i:i+1], axis=1))
+        elif any(_cutdir_ == '<' for _cutdir_ in cutdir):
+            pass_cut_bool = np.all(_lt_scores_ < lt_cuts[i:i+1], axis=1)
+        elif any(_cutdir_ == '>' for _cutdir_ in cutdir):
+            pass_cut_bool = np.all(_gt_scores_ > gt_cuts[i:i+1], axis=1)
+        else: raise NotImplementedError(f"Provided cut directions for discriminator can only be \'<\' or \'>\', your cut directions are {cutdir}")
+        return pass_cut_bool
+
+
     for i in range(ncuts):
         if i < jump_to_cut: continue
 
-        if any(_cutdir_ == '<' for _cutdir_ in cutdir) and any(_cutdir_ == '>' for _cutdir_ in cutdir):
-            bkg_sideband_bool = np.logical_and(np.all(sideband_lt_scores < lt_cuts[i:i+1], axis=1), np.all(sideband_gt_scores > gt_cuts[i:i+1], axis=1))
-        elif any(_cutdir_ == '<' for _cutdir_ in cutdir):
-            bkg_sideband_bool = np.all(sideband_lt_scores < lt_cuts[i:i+1], axis=1)
-        elif any(_cutdir_ == '>' for _cutdir_ in cutdir):
-            bkg_sideband_bool = np.all(sideband_gt_scores > gt_cuts[i:i+1], axis=1)
-        else: raise NotImplementedError(f"Provided cut directions for discriminator can only be \'<\' or \'>\', your cut directions are {cutdir}")
+        bkg_sideband_bool = apply_cuts(sideband_lt_scores, sideband_gt_scores)
 
         if np.sum(bkg_sideband_weights[bkg_sideband_bool]) > 10.:
-            if any(_cutdir_ == '<' for _cutdir_ in cutdir) and any(_cutdir_ == '>' for _cutdir_ in cutdir):
-                signal_sr_bool = np.logical_and(np.all(signal_lt_scores < lt_cuts[i:i+1], axis=1), np.all(signal_gt_scores > gt_cuts[i:i+1], axis=1))
-                bkg_sr_bool = np.logical_and(np.all(bkg_lt_scores < lt_cuts[i:i+1], axis=1), np.all(bkg_gt_scores > gt_cuts[i:i+1], axis=1))
-            elif any(_cutdir_ == '<' for _cutdir_ in cutdir):
-                signal_sr_bool = np.all(signal_lt_scores < lt_cuts[i:i+1], axis=1)
-                bkg_sr_bool = np.all(bkg_lt_scores < lt_cuts[i:i+1], axis=1)
-            elif any(_cutdir_ == '>' for _cutdir_ in cutdir):
-                signal_sr_bool = np.all(signal_gt_scores > gt_cuts[i:i+1], axis=1)
-                bkg_sr_bool = np.all(bkg_gt_scores > gt_cuts[i:i+1], axis=1)
-            else: raise NotImplementedError(f"Provided cut directions for discriminator can only be \'<\' or \'>\', your cut directions are {cutdir}")
+            signal_sr_bool = apply_cuts(signal_lt_scores, signal_gt_scores)
+            bkg_sr_bool = apply_cuts(bkg_lt_scores, bkg_gt_scores)
 
             if sideband_fit:
                 binwidth = 5
                 _hist_, _bins_ = np.histogram(bkg_sideband_mass[bkg_sideband_bool], bins=np.arange(100., 180., binwidth), weights=bkg_sideband_weights[bkg_sideband_bool])
-                regressor = LinearRegression(fit_intercept=True).fit((_bins_[:-1][_hist_ > 0.] + 0.5*binwidth).reshape(-1, 1), _hist_[_hist_ > 0.])
-                y_pred = regressor.predict(np.array(SR_CUTS).reshape(-1, 1))
+                print(_hist_)
+                p0 = (_hist_[0], -0.1)
+                params, _ = curve_fit(exp_func, _bins_[:-1]-_bins_[0], _hist_, p0=p0, sigma=np.where(np.isfinite(_hist_**-1), _hist_**-1, 0.76))
+                y_pred = exp_func(SR_CUTS-_bins_[0], a=params[0], b=params[1])
                 est_yield = (SR_CUTS[1] - SR_CUTS[0]) * (y_pred[0] - 0.5*(y_pred[0] - y_pred[1]))
+                ascii_hist(bkg_sideband_mass[bkg_sideband_bool], bins=np.arange(100., 180., binwidth), weights=bkg_sideband_weights[bkg_sideband_bool], fit=exp_func(_bins_[:-1]-_bins_[0], a=params[0], b=params[1]))
+                print(f"y = {params[0]:.2f}e^({params[1]:.2f}x)")
+                print(f"  -> {y_pred} = {params[0]:.2f}e^({params[1]:.2f}{SR_CUTS-_bins_[0]})")
+                print(f"    -> est. yield of non-res in SR = {est_yield}")
             else: est_yield = 0.
 
             foms[i] = fom_s_over_b(
@@ -95,7 +128,7 @@ def brute_force(
             )
         else: foms[i] = 0.
 
-        if i > 0 and (foms[i-1] > foms[i] or foms[i-1] == foms[i]):
+        if i > 0 and (foms[i-1] > foms[i] or (foms[i-1] == foms[i] and foms[i-1] != 0.)):
             for j in range(ndims+1):
                 if j == ndims: return best_dim_foms[j-1], best_dim_cuts[j-1]
                 if j == 0:
@@ -135,6 +168,7 @@ def grid_search(df: pd.DataFrame, cat_mask: np.ndarray, options_dict: dict, cutd
 
     startstops = copy.deepcopy(options_dict['STARTSTOPS'])
     for zoom in range(options_dict['N_ZOOM']):
+        print(f"Zoom {zoom}")
         steps = [
             np.linspace(
                 startstops[i][1], startstops[i][0], options_dict['N_STEPS'], endpoint=False
