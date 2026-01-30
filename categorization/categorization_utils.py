@@ -5,6 +5,7 @@ import copy
 import numpy as np
 import pandas as pd
 from scipy.optimize import curve_fit
+from scipy.integrate import quad
 
 # HEP packages
 import awkward as ak
@@ -75,7 +76,7 @@ def brute_force(
     signal_sr_scores: np.ndarray, signal_sr_weights: np.ndarray, 
     bkg_sr_scores: np.ndarray, bkg_sr_weights: np.ndarray, 
     bkg_sideband_scores: np.ndarray, bkg_sideband_weights: np.ndarray, bkg_sideband_mass: np.ndarray,
-    cuts: np.ndarray, foms: np.ndarray, cutdir: np.ndarray, sideband_fit: bool=False
+    cuts: np.ndarray, foms: np.ndarray, cutdir: np.ndarray, sideband_fit: bool=False,
 ):
     lt_scores = lambda scores: np.column_stack([scores[:, j] for j in range(scores.shape[1]) if cutdir[j] == '<']) if any(_cutdir_ == '<' for _cutdir_ in cutdir) else None
     gt_scores = lambda scores: np.column_stack([scores[:, j] for j in range(scores.shape[1]) if cutdir[j] == '>']) if any(_cutdir_ == '>' for _cutdir_ in cutdir) else None
@@ -89,7 +90,7 @@ def brute_force(
     best_dim_foms, best_dim_cuts = np.array([-1.]*ndims), np.array([cuts[0]]*ndims)
 
 
-    def apply_cuts(_lt_scores_, _gt_scores_):
+    def apply_cuts(_lt_scores_, _gt_scores_, i):
         if any(_cutdir_ == '<' for _cutdir_ in cutdir) and any(_cutdir_ == '>' for _cutdir_ in cutdir):
             pass_cut_bool = np.logical_and(np.all(_lt_scores_ < lt_cuts[i:i+1], axis=1), np.all(_gt_scores_ > gt_cuts[i:i+1], axis=1))
         elif any(_cutdir_ == '<' for _cutdir_ in cutdir):
@@ -103,7 +104,7 @@ def brute_force(
     for i in range(ncuts):
         if i < jump_to_cut: continue
 
-        bkg_sideband_bool = apply_cuts(sideband_lt_scores, sideband_gt_scores)
+        bkg_sideband_bool = apply_cuts(sideband_lt_scores, sideband_gt_scores, i)
 
         if (
             np.sum(bkg_sideband_weights[bkg_sideband_bool]) > 10. 
@@ -112,19 +113,20 @@ def brute_force(
             #     / np.sum(bkg_sideband_weights[bkg_sideband_bool][bkg_sideband_mass[bkg_sideband_bool] > SIDEBAND_CUTS[1][0]])
             # ) > 0.25
         ):
-            signal_sr_bool = apply_cuts(signal_lt_scores, signal_gt_scores)
-            bkg_sr_bool = apply_cuts(bkg_lt_scores, bkg_gt_scores)
+            signal_sr_bool = apply_cuts(signal_lt_scores, signal_gt_scores, i)
+            bkg_sr_bool = apply_cuts(bkg_lt_scores, bkg_gt_scores, i)
 
             if sideband_fit:
-                binwidth = 5
-                _hist_, _bins_ = np.histogram(bkg_sideband_mass[bkg_sideband_bool], bins=np.arange(100., 180., binwidth), weights=bkg_sideband_weights[bkg_sideband_bool])
-                p0 = (_hist_[0], -0.1)
-                params, _ = curve_fit(exp_func, _bins_[:-1]-_bins_[0], _hist_, p0=p0, sigma=np.where(np.isfinite(_hist_**-1), _hist_**-1, 0.76))
-                y_pred = exp_func(SR_CUTS-_bins_[0], a=params[0], b=params[1])
-                est_yield = (SR_CUTS[1] - SR_CUTS[0]) * (y_pred[0] - 0.5*(y_pred[0] - y_pred[1]))
-                ascii_hist(bkg_sideband_mass[bkg_sideband_bool], bins=np.arange(100., 180., binwidth), weights=bkg_sideband_weights[bkg_sideband_bool], fit=exp_func(_bins_[:-1]-_bins_[0], a=params[0], b=params[1]))
-                print(f"y = {params[0]:.2f}e^({params[1]:.2f}x)")
-                print(f"  -> est. yield of non-res in SR = {est_yield}")
+                _hist_, _bins_ = np.histogram(bkg_sideband_mass[bkg_sideband_bool], bins=np.arange(100., 180., 5.), weights=bkg_sideband_weights[bkg_sideband_bool])
+                params, _ = curve_fit(exp_func, _bins_[:-1]-_bins_[0], _hist_, p0=(_hist_[0], -0.1), sigma=np.where(np.isfinite(_hist_**-1), _hist_**-1, 0.76))
+                est_yield, _ = quad(exp_func, SR_CUTS[0], SR_CUTS[1], args=tuple(params))
+                # print('='*60)
+                # print(cuts[i])
+                # ascii_hist(bkg_sideband_mass[bkg_sideband_bool], bins=np.arange(100., 180., 5.), weights=bkg_sideband_weights[bkg_sideband_bool], fit=exp_func(_bins_[:-1]-_bins_[0], a=params[0], b=params[1]))
+                # print(f"y = {params[0]:.2f}e^({params[1]:.2f}x)")
+                # print(f"  -> est. non-res bkg yield in SR = {est_yield}")
+                # print(f"signal yield in SR = {np.sum(signal_sr_weights[signal_sr_bool])}, res bkg yield in SR = {np.sum(bkg_sr_weights[bkg_sr_bool])}")
+                # print('='*60)
             else: est_yield = 0.
 
             foms[i] = fom_s_over_b(
@@ -149,8 +151,8 @@ def brute_force(
 def grid_search(df: pd.DataFrame, cat_mask: np.ndarray, options_dict: dict, cutdir: list, prev_cuts: list=None):
 
     sr_mask = np.logical_and(cat_mask, fom_mask(df))
-    sideband_mask = np.logical_and(cat_mask, sideband_nonres_mask(df))
-    assert not np.any(np.logical_and(sr_mask, sideband_mask)), print(f"Overlap between SR and Sideband definitions... THIS IS VERY BAD")
+    bkg_sideband_mask = np.logical_and(cat_mask, sideband_nonres_mask(df))
+    assert not np.any(np.logical_and(sr_mask, bkg_sideband_mask)), print(f"Overlap between SR and Sideband definitions... THIS IS VERY BAD")
 
     best_fom, best_cut = 0., [0. for _ in options_dict['TRANSFORM_COLUMNS']]
 
@@ -165,7 +167,6 @@ def grid_search(df: pd.DataFrame, cat_mask: np.ndarray, options_dict: dict, cutd
     bkg_sr_scores = df.loc[bkg_sr_mask, options_dict['TRANSFORM_COLUMNS']].to_numpy()
     bkg_sr_weights = df.loc[bkg_sr_mask, 'AUX_eventWeight'].to_numpy()
     # Bkg events outside SR
-    bkg_sideband_mask = np.logical_and(sideband_mask, df.loc[:, 'AUX_label1D'].ne(options_dict['SIGNAL_LABEL']).to_numpy())
     bkg_sideband_scores = df.loc[bkg_sideband_mask, options_dict['TRANSFORM_COLUMNS']].to_numpy()
     bkg_sideband_weights = df.loc[bkg_sideband_mask, 'AUX_eventWeight'].to_numpy()
     bkg_sideband_mass = df.loc[bkg_sideband_mask, 'AUX_mass'].to_numpy()
@@ -197,4 +198,4 @@ def grid_search(df: pd.DataFrame, cat_mask: np.ndarray, options_dict: dict, cutd
 
         if fom > best_fom: best_fom = fom; best_cut = cut; print(f"best cut = {cut}, best fom = {fom}")
 
-    return best_fom.item(), best_cut.tolist()
+    return best_fom, best_cut
