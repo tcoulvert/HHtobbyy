@@ -107,7 +107,7 @@ def brute_force(
         bkg_sideband_bool = apply_cuts(sideband_lt_scores, sideband_gt_scores, i)
 
         if (
-            np.sum(bkg_sideband_weights[bkg_sideband_bool]) > 10. 
+            np.sum(bkg_sideband_weights[bkg_sideband_bool]) > 10.
             # and (
             #     np.sum(bkg_sideband_weights[bkg_sideband_bool][bkg_sideband_mass[bkg_sideband_bool] < SIDEBAND_CUTS[0][1]])
             #     / np.sum(bkg_sideband_weights[bkg_sideband_bool][bkg_sideband_mass[bkg_sideband_bool] > SIDEBAND_CUTS[1][0]])
@@ -131,7 +131,7 @@ def brute_force(
 
             foms[i] = fom_s_over_b(
                 np.sum(signal_sr_weights[signal_sr_bool]), np.sum(bkg_sr_weights[bkg_sr_bool])+est_yield,
-            )
+            ) #if (est_yield > 0.1 or est_yield == 0.) else 0.
         else: foms[i] = 0.
 
         if i > 0 and (foms[i-1] > foms[i] or (foms[i-1] == foms[i] and foms[i-1] != 0.)):

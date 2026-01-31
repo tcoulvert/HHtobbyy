@@ -245,9 +245,10 @@ def categorize_model():
                 table.add_row(new_row)                
                 prev_category_mask = copy.deepcopy(category_mask)
                 for i in range(len(TRANSFORM_COLUMNS)):
-                    prev_category_mask = np.logical_and(
-                        prev_category_mask, MC_eval.loc[:, TRANSFORM_COLUMNS[i]].gt(best_cut[i])
-                    )
+                    if '>' in TRANSFORM_CUT[i]:
+                        prev_category_mask = np.logical_and(prev_category_mask, MC_eval.loc[:, TRANSFORM_COLUMNS[i]].gt(best_cut[i]).to_numpy())
+                    else:
+                        prev_category_mask = np.logical_and(prev_category_mask, MC_eval.loc[:, TRANSFORM_COLUMNS[i]].lt(best_cut[i]).to_numpy())
                 category_mask = np.logical_and(category_mask, ~prev_category_mask)
 
                 categories_dict[str(fold_idx)][f'cat{cat_idx}']['fom'] = best_fom.item()
@@ -320,9 +321,10 @@ def categorize_model():
 
             prev_category_mask = copy.deepcopy(category_mask)
             for i in range(len(TRANSFORM_COLUMNS)):
-                prev_category_mask = np.logical_and(
-                    prev_category_mask, full_MC_eval.loc[:, TRANSFORM_COLUMNS[i]].gt(best_cut[i]).to_numpy()
-                )
+                if '>' in TRANSFORM_CUT[i]:
+                    prev_category_mask = np.logical_and(prev_category_mask, full_MC_eval.loc[:, TRANSFORM_COLUMNS[i]].gt(best_cut[i]).to_numpy())
+                else:
+                    prev_category_mask = np.logical_and(prev_category_mask, full_MC_eval.loc[:, TRANSFORM_COLUMNS[i]].lt(best_cut[i]).to_numpy())
             category_mask = np.logical_and(category_mask, ~prev_category_mask)
             
     if VERBOSE: print(' - '.join(os.path.normpath(TRAINING_DIRPATH).split('/')[-2:]+[DISCRIMINATOR])); table.float_format = '0.4'; print(table)
