@@ -131,7 +131,7 @@ def brute_force(
 
             foms[i] = fom_s_over_b(
                 np.sum(signal_sr_weights[signal_sr_bool]), np.sum(bkg_sr_weights[bkg_sr_bool])+est_yield,
-            ) #if (est_yield > 0.1 or est_yield == 0.) else 0.
+            ) #if (est_yield > 0.001 or est_yield == 0.) else 0.
         else: foms[i] = 0.
 
         if i > 0 and (foms[i-1] > foms[i] or (foms[i-1] == foms[i] and foms[i-1] != 0.)):
