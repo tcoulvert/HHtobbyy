@@ -71,9 +71,9 @@ parser.add_argument(
     help="Evaluate only for small dataset (useful for debugging)"
 )
 parser.add_argument(
-    "--opt_data_sideband",
-    action='store_true',
-    help="Performs category optimization using fit to data sidebands for estimation of non-resonant background in SR"
+    "--opt_sideband",
+    choices=["none", "data", "mc"],
+    help="Performs category optimization using fit to sidebands for estimation of non-resonant background in SR"
 )
 parser.add_argument(
     "--syst_name", 
@@ -119,7 +119,7 @@ DISCRIMINATOR = args.discriminator
 SIGNAL_LABEL = args.signal
 VERBOSE = args.verbose
 MINIMAL = args.minimal_dataset
-OPT_DATA_SIDEBAND = args.opt_data_sideband
+OPT_SIDEBAND = args.opt_sideband
 OPTIONS_FILEPATH = args.options_filepath
 FOLD_TO_CATEGORIZE = args.fold
 FOLD_TO_PLOT_OPTIONS = ['none', 'all']+[str(fold_idx) for fold_idx in range(get_n_folds(DATASET_DIRPATH))]
@@ -152,7 +152,7 @@ def categorize_model():
     categories_dict = {}
     table = pt.PrettyTable()
 
-    full_MC_eval, full_DATA_eval = None, None
+    full_df_eval = None
     for fold_idx in range(get_n_folds(DATASET_DIRPATH)):
         if FOLD_TO_CATEGORIZE not in ['all', 'none'] and FOLD_TO_CATEGORIZE != str(fold_idx): continue
         MC_df, MC_aux = get_train_Dataframe(DATASET_DIRPATH, fold_idx, dataset='test' if DATASET == 'train-test' else 'train', minimal=MINIMAL)
@@ -160,13 +160,15 @@ def categorize_model():
         cat_cols = [match_regex(cat_col, MC_df.columns) for cat_col in CATEGORIZATION_COLUMNS]
         assert set(cat_cols) <= set(MC_df.columns), f"The requested list of columns are not all in the file. Missing variables:\n{set(cat_cols) - set(MC_df.columns)}"
         MC_eval = MC_df[cat_cols]
-        if OPT_DATA_SIDEBAND:
-            DATA_df, DATA_aux = get_test_subset_Dataframes(DATASET_DIRPATH, fold_idx, ['!2024*Data'], minimal=MINIMAL)
-            DATA_aux['AUX_eventWeight'] = DATA_aux['AUX_eventWeight'] * 2.76  # lumi 22-24 / lumi 22-23
-            # DATA_df, DATA_aux = get_test_subset_Dataframes(DATASET_DIRPATH, fold_idx, ['Data'], minimal=MINIMAL)
-            for col in DATA_aux.columns: DATA_df[col] = DATA_aux[col]
-            assert set(cat_cols) <= set(DATA_df.columns), f"The requested list of columns are not all in the Data file. Missing variables:\n{set(cat_cols) - set(DATA_df.columns)}"
-            DATA_eval = DATA_df[cat_cols]
+
+        DATA_df, DATA_aux = get_test_subset_Dataframes(DATASET_DIRPATH, fold_idx, ['!2024*Data'], minimal=MINIMAL)
+        DATA_aux['AUX_eventWeight'] = DATA_aux['AUX_eventWeight'] * 2.76  # lumi 22-24 / lumi 22-23
+        # DATA_df, DATA_aux = get_test_subset_Dataframes(DATASET_DIRPATH, fold_idx, ['Data'], minimal=MINIMAL)
+        for col in DATA_aux.columns: DATA_df[col] = DATA_aux[col]
+        assert set(cat_cols) <= set(DATA_df.columns), f"The requested list of columns are not all in the Data file. Missing variables:\n{set(cat_cols) - set(DATA_df.columns)}"
+        DATA_eval = DATA_df[cat_cols]
+
+        if OPT_SIDEBAND != 'none':
             sample_cut = np.logical_or(
                 MC_eval.loc[:, 'AUX_sample_name'].eq('TTGG').to_numpy(),  # TTGG
                 np.logical_or(
@@ -174,54 +176,64 @@ def categorize_model():
                     MC_eval.loc[:, 'AUX_sample_name'].eq('DDQCDGJets').to_numpy()  # DDQCD GJet or GGJets
                 )
             )
-            MC_eval = MC_eval.loc[~sample_cut]
+            if OPT_SIDEBAND == 'mc':
+                MC_eval['cat_mask'] = np.where(~sample_cut, 'SR', 'SB')
+                DATA_eval['cat_mask'] = ''
+            elif OPT_SIDEBAND == 'data':
+                MC_eval['cat_mask'] = np.where(~sample_cut, 'SR', '')
+                DATA_eval['cat_mask'] = 'SB'
+        else: 
+            MC_eval['cat_mask'] = 'SR'
+            DATA_eval['cat_mask'] = ''
 
+        df_eval = pd.concat([MC_eval, DATA_eval])
+        
         if FOLD_TO_CATEGORIZE == 'all' or FOLD_TO_CATEGORIZE == 'none':
-            if full_MC_eval is None: full_MC_eval = copy.deepcopy(MC_eval)
-            else: full_MC_eval = pd.concat([full_MC_eval, MC_eval]).reset_index(drop=True)
-            if OPT_DATA_SIDEBAND:
-                if full_DATA_eval is None: full_DATA_eval = copy.deepcopy(DATA_eval)
-                else:
-                    for col in TRANSFORM_COLUMNS: full_DATA_eval[col] += DATA_eval[col]
+            if full_df_eval is None: 
+                full_df_eval = copy.deepcopy(df_eval)
+            else: 
+                full_df_eval = pd.concat([full_df_eval, df_eval.loc[df_eval.loc[:, 'AUX_sample_name'].ne('Data')]]).reset_index(drop=True) 
+                for col in TRANSFORM_COLUMNS: 
+                    full_df_eval.loc[full_df_eval.loc[:, 'AUX_sample_name'].eq('Data'), col] += df_eval.loc[df_eval.loc[:, 'AUX_sample_name'].eq('Data'), col]
 
-        if OPT_DATA_SIDEBAND: MC_eval = pd.concat([MC_eval, DATA_df])
         if len(table.field_names) == 0: table.field_names = ['Category', 'FoM (s/b)'] + sorted(pd.unique(MC_eval['AUX_sample_name']).tolist())
         
         if FOLD_TO_CATEGORIZE == 'all' or FOLD_TO_CATEGORIZE == str(fold_idx):
             categories_dict[FOLD_TO_CATEGORIZE] = {}
 
-            category_mask = MC_eval.loc[:, match_regex('AUX_*_resolved_BDT_mask', MC_eval.columns)].eq(1).to_numpy()
+            category_mask = df_eval.loc[:, match_regex('AUX_*_resolved_BDT_mask', df_eval.columns)].eq(1).to_numpy()
+
             for cat_idx in range(1, CATEGORIZATION_OPTIONS['N_CATEGORIES']+1):
                 categories_dict[str(fold_idx)][f'cat{cat_idx}'] = {}
                 
                 best_fom, best_cut = CATEGORIZATION_METHOD(
-                    MC_eval, category_mask, CATEGORIZATION_OPTIONS, TRANSFORM_CUT, 
+                    df_eval, category_mask, CATEGORIZATION_OPTIONS, TRANSFORM_CUT, 
                     [
                         categories_dict[FOLD_TO_CATEGORIZE][f'cat{prev_cat_idx}']['cut'] 
                         for prev_cat_idx in range(1, cat_idx)
                     ] if cat_idx != 1 else None
                 )
                 new_row = [f'Merged folds - Cat {cat_idx}', best_fom]
-                pass_mask = np.logical_and(category_mask, categorization_utils.fom_mask(MC_eval))
+                pass_mask = np.logical_and(category_mask, categorization_utils.fom_mask(df_eval))
                 for i in range(len(TRANSFORM_COLUMNS)):
                     if '>' in TRANSFORM_CUT[i]:
-                        pass_mask = np.logical_and(pass_mask, MC_eval.loc[:, TRANSFORM_COLUMNS[i]].gt(best_cut[i]).to_numpy())
+                        pass_mask = np.logical_and(pass_mask, df_eval.loc[:, TRANSFORM_COLUMNS[i]].gt(best_cut[i]).to_numpy())
                     else:
-                        pass_mask = np.logical_and(pass_mask, MC_eval.loc[:, TRANSFORM_COLUMNS[i]].lt(best_cut[i]).to_numpy())
+                        pass_mask = np.logical_and(pass_mask, df_eval.loc[:, TRANSFORM_COLUMNS[i]].lt(best_cut[i]).to_numpy())
                 for sample_name in table.field_names[2:]:
                     if match_sample(sample_name, ['Data']) is not None:
-                        sideband_mask = np.logical_and(category_mask, categorization_utils.sideband_nonres_mask(MC_eval))
+                        sideband_mask = np.logical_and(category_mask, categorization_utils.sideband_nonres_mask(df_eval))
                         for i in range(len(TRANSFORM_COLUMNS)):
                             if '>' in TRANSFORM_CUT[i]:
-                                pass_sideband_mask = np.logical_and(sideband_mask, MC_eval.loc[:, TRANSFORM_COLUMNS[i]].gt(best_cut[i]).to_numpy())
+                                pass_sideband_mask = np.logical_and(sideband_mask, df_eval.loc[:, TRANSFORM_COLUMNS[i]].gt(best_cut[i]).to_numpy())
                             else:
-                                pass_sideband_mask = np.logical_and(sideband_mask, MC_eval.loc[:, TRANSFORM_COLUMNS[i]].lt(best_cut[i]).to_numpy())
+                                pass_sideband_mask = np.logical_and(sideband_mask, df_eval.loc[:, TRANSFORM_COLUMNS[i]].lt(best_cut[i]).to_numpy())
 
                         def exp_func(x, a, b): return a * np.exp(b * x)
                         _hist_, _bins_ = np.histogram(
-                            MC_eval.loc[pass_sideband_mask, 'AUX_mass'].to_numpy(), 
+                            df_eval.loc[pass_sideband_mask, 'AUX_mass'].to_numpy(), 
                             bins=np.arange(100., 180., 5.), 
-                            weights=MC_eval.loc[pass_sideband_mask, 'AUX_eventWeight'].to_numpy()
+                            weights=df_eval.loc[pass_sideband_mask, 'AUX_eventWeight'].to_numpy()
                         )
                         params, _ = curve_fit(
                             exp_func, _bins_[:-1]-_bins_[0], _hist_, p0=(_hist_[0], -0.1), 
@@ -231,9 +243,9 @@ def categorize_model():
                         print('='*60+'\n'+'='*60)
                         print(best_cut)
                         categorization_utils.ascii_hist(
-                            MC_eval.loc[pass_sideband_mask, 'AUX_mass'].to_numpy(), 
+                            df_eval.loc[pass_sideband_mask, 'AUX_mass'].to_numpy(), 
                             bins=np.arange(100., 180., 5.), 
-                            weights=MC_eval.loc[pass_sideband_mask, 'AUX_eventWeight'].to_numpy(), 
+                            weights=df_eval.loc[pass_sideband_mask, 'AUX_eventWeight'].to_numpy(), 
                             fit=exp_func(_bins_[:-1]-_bins_[0], a=params[0], b=params[1])
                         )
                         print(f"y = {params[0]:.2f}e^({params[1]:.2f}x)")
@@ -241,59 +253,58 @@ def categorize_model():
                         print('='*60+'\n'+'='*60)
                         new_row.append(est_yield)
                     else:
-                        new_row.append(MC_eval.loc[np.logical_and(pass_mask, MC_eval.loc[:, 'AUX_sample_name'].eq(sample_name).to_numpy()), 'AUX_eventWeight'].sum())
+                        new_row.append(df_eval.loc[np.logical_and(pass_mask, df_eval.loc[:, 'AUX_sample_name'].eq(sample_name).to_numpy()), 'AUX_eventWeight'].sum())
                 table.add_row(new_row)                
                 prev_category_mask = copy.deepcopy(category_mask)
                 for i in range(len(TRANSFORM_COLUMNS)):
                     if '>' in TRANSFORM_CUT[i]:
-                        prev_category_mask = np.logical_and(prev_category_mask, MC_eval.loc[:, TRANSFORM_COLUMNS[i]].gt(best_cut[i]).to_numpy())
+                        prev_category_mask = np.logical_and(prev_category_mask, df_eval.loc[:, TRANSFORM_COLUMNS[i]].gt(best_cut[i]).to_numpy())
                     else:
-                        prev_category_mask = np.logical_and(prev_category_mask, MC_eval.loc[:, TRANSFORM_COLUMNS[i]].lt(best_cut[i]).to_numpy())
+                        prev_category_mask = np.logical_and(prev_category_mask, df_eval.loc[:, TRANSFORM_COLUMNS[i]].lt(best_cut[i]).to_numpy())
                 category_mask = np.logical_and(category_mask, ~prev_category_mask)
 
                 categories_dict[str(fold_idx)][f'cat{cat_idx}']['fom'] = best_fom.item()
                 categories_dict[str(fold_idx)][f'cat{cat_idx}']['cut'] = best_cut.tolist()
 
-    if OPT_DATA_SIDEBAND:
-        for col in TRANSFORM_COLUMNS: full_DATA_eval[col] /= get_n_folds(DATASET_DIRPATH)
-        full_MC_eval = pd.concat([full_MC_eval, full_DATA_eval])
+    for col in TRANSFORM_COLUMNS: 
+        full_df_eval.loc[full_df_eval.loc[:, 'AUX_sample_name'].eq('Data'), col] /= get_n_folds(DATASET_DIRPATH)
 
     if FOLD_TO_CATEGORIZE == 'all' or FOLD_TO_CATEGORIZE == 'none':
         categories_dict[FOLD_TO_CATEGORIZE] = {}
 
-        category_mask = full_MC_eval.loc[:, match_regex('AUX_*_resolved_BDT_mask', full_MC_eval.columns)].eq(1).to_numpy()
+        full_category_mask = full_df_eval.loc[:, match_regex('AUX_*_resolved_BDT_mask', full_df_eval.columns)].eq(1).to_numpy()
 
         for cat_idx in range(1, CATEGORIZATION_OPTIONS['N_CATEGORIES']+1):
             categories_dict[FOLD_TO_CATEGORIZE][f'cat{cat_idx}'] = {}
             
             best_fom, best_cut = CATEGORIZATION_METHOD(
-                full_MC_eval, category_mask, CATEGORIZATION_OPTIONS, TRANSFORM_CUT,
+                full_df_eval, full_category_mask, CATEGORIZATION_OPTIONS, TRANSFORM_CUT,
                 [
                     categories_dict[FOLD_TO_CATEGORIZE][f'cat{prev_cat_idx}']['cut'] 
                     for prev_cat_idx in range(1, cat_idx)
                 ] if cat_idx != 1 else None
             )
             new_row = [f'Merged folds - Cat {cat_idx}', best_fom]
-            pass_mask = np.logical_and(category_mask, categorization_utils.fom_mask(full_MC_eval))
+            pass_mask = np.logical_and(category_mask, categorization_utils.fom_mask(full_df_eval))
             for i in range(len(TRANSFORM_COLUMNS)):
                 if '>' in TRANSFORM_CUT[i]:
-                    pass_mask = np.logical_and(pass_mask, full_MC_eval.loc[:, TRANSFORM_COLUMNS[i]].gt(best_cut[i]).to_numpy())
+                    pass_mask = np.logical_and(pass_mask, full_df_eval.loc[:, TRANSFORM_COLUMNS[i]].gt(best_cut[i]).to_numpy())
                 else:
-                    pass_mask = np.logical_and(pass_mask, full_MC_eval.loc[:, TRANSFORM_COLUMNS[i]].lt(best_cut[i]).to_numpy())
+                    pass_mask = np.logical_and(pass_mask, full_df_eval.loc[:, TRANSFORM_COLUMNS[i]].lt(best_cut[i]).to_numpy())
             for sample_name in table.field_names[2:]:
                 if match_sample(sample_name, ['Data']) is not None:
-                    pass_sideband_mask = np.logical_and(category_mask, categorization_utils.sideband_nonres_mask(full_MC_eval))
+                    pass_sideband_mask = np.logical_and(category_mask, categorization_utils.sideband_nonres_mask(full_df_eval))
                     for i in range(len(TRANSFORM_COLUMNS)):
                         if '>' in TRANSFORM_CUT[i]: 
-                            pass_sideband_mask = np.logical_and(pass_sideband_mask, full_MC_eval.loc[:, TRANSFORM_COLUMNS[i]].gt(best_cut[i]).to_numpy())
+                            pass_sideband_mask = np.logical_and(pass_sideband_mask, full_df_eval.loc[:, TRANSFORM_COLUMNS[i]].gt(best_cut[i]).to_numpy())
                         else: 
-                            pass_sideband_mask = np.logical_and(pass_sideband_mask, full_MC_eval.loc[:, TRANSFORM_COLUMNS[i]].lt(best_cut[i]).to_numpy())
+                            pass_sideband_mask = np.logical_and(pass_sideband_mask, full_df_eval.loc[:, TRANSFORM_COLUMNS[i]].lt(best_cut[i]).to_numpy())
 
                     def exp_func(x, a, b): return a * np.exp(b * x)
                     _hist_, _bins_ = np.histogram(
-                        full_MC_eval.loc[pass_sideband_mask, 'AUX_mass'].to_numpy(), 
+                        full_df_eval.loc[pass_sideband_mask, 'AUX_mass'].to_numpy(), 
                         bins=np.arange(100., 180., 5.), 
-                        weights=full_MC_eval.loc[pass_sideband_mask, 'AUX_eventWeight'].to_numpy()
+                        weights=full_df_eval.loc[pass_sideband_mask, 'AUX_eventWeight'].to_numpy()
                     )
                     params, _ = curve_fit(
                         exp_func, _bins_[:-1]-_bins_[0], _hist_, p0=(_hist_[0], -0.1), 
@@ -303,9 +314,9 @@ def categorize_model():
                     print('='*60+'\n'+'='*60)
                     print(best_cut)
                     categorization_utils.ascii_hist(
-                        full_MC_eval.loc[pass_sideband_mask, 'AUX_mass'].to_numpy(), 
+                        full_df_eval.loc[pass_sideband_mask, 'AUX_mass'].to_numpy(), 
                         bins=np.arange(100., 180., 5.), 
-                        weights=full_MC_eval.loc[pass_sideband_mask, 'AUX_eventWeight'].to_numpy(), 
+                        weights=full_df_eval.loc[pass_sideband_mask, 'AUX_eventWeight'].to_numpy(), 
                         fit=exp_func(_bins_[:-1]-_bins_[0], a=params[0], b=params[1])
                     )
                     print(f"y = {params[0]:.2f}e^({params[1]:.2f}x)")
@@ -313,7 +324,7 @@ def categorize_model():
                     print('='*60+'\n'+'='*60)
                     new_row.append(est_yield)
                 else:
-                    new_row.append(full_MC_eval.loc[np.logical_and(pass_mask, full_MC_eval.loc[:, 'AUX_sample_name'].eq(sample_name).to_numpy()), 'AUX_eventWeight'].sum())
+                    new_row.append(full_df_eval.loc[np.logical_and(pass_mask, full_df_eval.loc[:, 'AUX_sample_name'].eq(sample_name).to_numpy()), 'AUX_eventWeight'].sum())
             table.add_row(new_row)
 
             categories_dict[FOLD_TO_CATEGORIZE][f'cat{cat_idx}']['fom'] = best_fom.item()
@@ -322,9 +333,9 @@ def categorize_model():
             prev_category_mask = copy.deepcopy(category_mask)
             for i in range(len(TRANSFORM_COLUMNS)):
                 if '>' in TRANSFORM_CUT[i]:
-                    prev_category_mask = np.logical_and(prev_category_mask, full_MC_eval.loc[:, TRANSFORM_COLUMNS[i]].gt(best_cut[i]).to_numpy())
+                    prev_category_mask = np.logical_and(prev_category_mask, full_df_eval.loc[:, TRANSFORM_COLUMNS[i]].gt(best_cut[i]).to_numpy())
                 else:
-                    prev_category_mask = np.logical_and(prev_category_mask, full_MC_eval.loc[:, TRANSFORM_COLUMNS[i]].lt(best_cut[i]).to_numpy())
+                    prev_category_mask = np.logical_and(prev_category_mask, full_df_eval.loc[:, TRANSFORM_COLUMNS[i]].lt(best_cut[i]).to_numpy())
             category_mask = np.logical_and(category_mask, ~prev_category_mask)
             
     if VERBOSE: print(' - '.join(os.path.normpath(TRAINING_DIRPATH).split('/')[-2:]+[DISCRIMINATOR])); table.float_format = '0.4'; print(table)
