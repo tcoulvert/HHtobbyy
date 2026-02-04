@@ -177,24 +177,24 @@ def categorize_model():
                 )
             )
             if OPT_SIDEBAND == 'mc':
-                MC_eval['cat_mask'] = np.where(~sample_cut, 'SR', 'SB')
-                DATA_eval['cat_mask'] = ''
+                MC_eval.loc[:, 'cat_mask'] = np.where(~sample_cut, 'SR', 'SB')
+                DATA_eval.loc[:, 'cat_mask'] = ''
             elif OPT_SIDEBAND == 'data':
-                MC_eval['cat_mask'] = np.where(~sample_cut, 'SR', '')
-                DATA_eval['cat_mask'] = 'SB'
+                MC_eval.loc[:, 'cat_mask'] = np.where(~sample_cut, 'SR', '')
+                DATA_eval.loc[:, 'cat_mask'] = 'SB'
         else: 
-            MC_eval['cat_mask'] = 'SR'
-            DATA_eval['cat_mask'] = ''
+            MC_eval.loc[:, 'cat_mask'] = 'SR'
+            DATA_eval.loc[:, 'cat_mask'] = ''
 
-        df_eval = pd.concat([MC_eval, DATA_eval])
+        df_eval = pd.concat([MC_eval, DATA_eval]).reset_index(drop=True)
         
         if FOLD_TO_CATEGORIZE == 'all' or FOLD_TO_CATEGORIZE == 'none':
             if full_df_eval is None: 
                 full_df_eval = copy.deepcopy(df_eval)
             else: 
-                full_df_eval = pd.concat([full_df_eval, df_eval.loc[df_eval.loc[:, 'AUX_sample_name'].ne('Data')]]).reset_index(drop=True) 
+                full_df_eval = pd.concat([full_df_eval, MC_eval]).reset_index(drop=True) 
                 for col in TRANSFORM_COLUMNS: 
-                    full_df_eval.loc[full_df_eval.loc[:, 'AUX_sample_name'].eq('Data'), col] += df_eval.loc[df_eval.loc[:, 'AUX_sample_name'].eq('Data'), col]
+                    full_df_eval.loc[full_df_eval.loc[:, 'AUX_sample_name'].eq('Data'), col] += DATA_eval[col]
 
         if len(table.field_names) == 0: table.field_names = ['Category', 'FoM (s/b)'] + sorted(pd.unique(MC_eval['AUX_sample_name']).tolist())
         
