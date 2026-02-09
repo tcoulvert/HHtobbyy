@@ -131,7 +131,7 @@ CLASS_NAMES = [key for key in CLASS_SAMPLE_MAP.keys()]
 TRANSFORM_LABELS, TRANSFORM_PREDS, TRANSFORM_CUT = transform_preds_func(CLASS_NAMES, DISCRIMINATOR, cutdirbool=True)
 TRANSFORM_COLUMNS = [f"AUX_{transform_label}_prob" for transform_label in TRANSFORM_LABELS]
 assert len(TRANSFORM_COLUMNS) <= 4, f"You're trying to run categorization over a discriminator with more than 4 dimensions, this likely won't converge with the brute-force way in this file. Please write your own categorization code or use a different discriminator"
-CATEGORIZATION_COLUMNS = ['AUX_sample_name', 'AUX_eventWeight', 'AUX_mass', 'AUX_*_resolved_BDT_mask', 'AUX_label1D'] + TRANSFORM_COLUMNS
+CATEGORIZATION_COLUMNS = ['AUX_event', 'AUX_sample_name', 'AUX_eventWeight', 'AUX_mass', 'AUX_*_resolved_BDT_mask', 'AUX_label1D'] + TRANSFORM_COLUMNS
 
 CATEGORIZATION_DIRPATH = os.path.join(TRAINING_DIRPATH, "categorization", "")
 if not os.path.exists(CATEGORIZATION_DIRPATH): 
@@ -156,17 +156,17 @@ def categorize_model():
     for fold_idx in range(get_n_folds(DATASET_DIRPATH)):
         if FOLD_TO_CATEGORIZE not in ['all', 'none'] and FOLD_TO_CATEGORIZE != str(fold_idx): continue
         MC_df, MC_aux = get_train_Dataframe(DATASET_DIRPATH, fold_idx, dataset='test' if DATASET == 'train-test' else 'train', minimal=MINIMAL)
-        for col in MC_aux.columns: MC_df[col] = MC_aux[col]
+        for col in MC_aux.columns: MC_df.loc[:, col] = MC_aux.loc[:, col]
         cat_cols = [match_regex(cat_col, MC_df.columns) for cat_col in CATEGORIZATION_COLUMNS]
         assert set(cat_cols) <= set(MC_df.columns), f"The requested list of columns are not all in the file. Missing variables:\n{set(cat_cols) - set(MC_df.columns)}"
-        MC_eval = MC_df[cat_cols]
+        MC_eval = MC_df.loc[:, cat_cols]
 
         DATA_df, DATA_aux = get_test_subset_Dataframes(DATASET_DIRPATH, fold_idx, ['!2024*Data'], minimal=MINIMAL)
         DATA_aux['AUX_eventWeight'] = DATA_aux['AUX_eventWeight'] * 2.76  # lumi 22-24 / lumi 22-23
         # DATA_df, DATA_aux = get_test_subset_Dataframes(DATASET_DIRPATH, fold_idx, ['Data'], minimal=MINIMAL)
-        for col in DATA_aux.columns: DATA_df[col] = DATA_aux[col]
+        for col in DATA_aux.columns: DATA_df.loc[:, col] = DATA_aux.loc[:, col]
         assert set(cat_cols) <= set(DATA_df.columns), f"The requested list of columns are not all in the Data file. Missing variables:\n{set(cat_cols) - set(DATA_df.columns)}"
-        DATA_eval = DATA_df[cat_cols]
+        DATA_eval = DATA_df.loc[(DATA_df.loc[:, 'AUX_event'] % get_n_folds(DATASET_DIRPATH)).eq(fold_idx).to_numpy(), cat_cols]
 
         if OPT_SIDEBAND != 'none':
             sample_cut = np.logical_or(
@@ -186,15 +186,18 @@ def categorize_model():
             MC_eval.loc[:, 'cat_mask'] = 'SR'
             DATA_eval.loc[:, 'cat_mask'] = ''
 
-        df_eval = pd.concat([MC_eval, DATA_eval]).reset_index(drop=True)
+        df_eval = pd.concat([MC_eval, DATA_eval], join="inner").reset_index(drop=True)
         
         if FOLD_TO_CATEGORIZE == 'all' or FOLD_TO_CATEGORIZE == 'none':
             if full_df_eval is None: 
                 full_df_eval = copy.deepcopy(df_eval)
             else: 
-                full_df_eval = pd.concat([full_df_eval, MC_eval]).reset_index(drop=True) 
-                for col in TRANSFORM_COLUMNS: 
-                    full_df_eval.loc[full_df_eval.loc[:, 'AUX_sample_name'].eq('Data'), col] += DATA_eval[col]
+                full_df_eval = pd.concat([full_df_eval, df_eval], join="inner").reset_index(drop=True)
+                # full_df_eval = pd.concat([full_df_eval, MC_eval], join="inner").reset_index(drop=True)
+                # data_mask = full_df_eval.loc[:, 'AUX_sample_name'].eq('Data').to_numpy()
+                # # print(np.all(full_df_eval.loc[data_mask, 'AUX_mass'].to_numpy() == DATA_eval.loc[:, 'AUX_mass'].to_numpy()))
+                # for col in TRANSFORM_COLUMNS: 
+                #     full_df_eval.loc[data_mask, col] += DATA_eval.loc[:, col]
 
         if len(table.field_names) == 0: table.field_names = ['Category', 'FoM (s/b)'] + sorted(pd.unique(MC_eval['AUX_sample_name']).tolist())
         
@@ -266,8 +269,8 @@ def categorize_model():
                 categories_dict[str(fold_idx)][f'cat{cat_idx}']['fom'] = best_fom.item()
                 categories_dict[str(fold_idx)][f'cat{cat_idx}']['cut'] = best_cut.tolist()
 
-    for col in TRANSFORM_COLUMNS: 
-        full_df_eval.loc[full_df_eval.loc[:, 'AUX_sample_name'].eq('Data'), col] /= get_n_folds(DATASET_DIRPATH)
+    # for col in TRANSFORM_COLUMNS: 
+    #     full_df_eval.loc[full_df_eval.loc[:, 'AUX_sample_name'].eq('Data'), col] /= get_n_folds(DATASET_DIRPATH)
 
     if FOLD_TO_CATEGORIZE == 'all' or FOLD_TO_CATEGORIZE == 'none':
         categories_dict[FOLD_TO_CATEGORIZE] = {}
@@ -285,7 +288,7 @@ def categorize_model():
                 ] if cat_idx != 1 else None
             )
             new_row = [f'Merged folds - Cat {cat_idx}', best_fom]
-            pass_mask = np.logical_and(category_mask, categorization_utils.fom_mask(full_df_eval))
+            pass_mask = np.logical_and(full_category_mask, categorization_utils.fom_mask(full_df_eval))
             for i in range(len(TRANSFORM_COLUMNS)):
                 if '>' in TRANSFORM_CUT[i]:
                     pass_mask = np.logical_and(pass_mask, full_df_eval.loc[:, TRANSFORM_COLUMNS[i]].gt(best_cut[i]).to_numpy())
@@ -293,7 +296,7 @@ def categorize_model():
                     pass_mask = np.logical_and(pass_mask, full_df_eval.loc[:, TRANSFORM_COLUMNS[i]].lt(best_cut[i]).to_numpy())
             for sample_name in table.field_names[2:]:
                 if match_sample(sample_name, ['Data']) is not None:
-                    pass_sideband_mask = np.logical_and(category_mask, categorization_utils.sideband_nonres_mask(full_df_eval))
+                    pass_sideband_mask = np.logical_and(full_category_mask, categorization_utils.sideband_nonres_mask(full_df_eval))
                     for i in range(len(TRANSFORM_COLUMNS)):
                         if '>' in TRANSFORM_CUT[i]: 
                             pass_sideband_mask = np.logical_and(pass_sideband_mask, full_df_eval.loc[:, TRANSFORM_COLUMNS[i]].gt(best_cut[i]).to_numpy())
@@ -330,13 +333,13 @@ def categorize_model():
             categories_dict[FOLD_TO_CATEGORIZE][f'cat{cat_idx}']['fom'] = best_fom.item()
             categories_dict[FOLD_TO_CATEGORIZE][f'cat{cat_idx}']['cut'] = best_cut.tolist()
 
-            prev_category_mask = copy.deepcopy(category_mask)
+            prev_category_mask = copy.deepcopy(full_category_mask)
             for i in range(len(TRANSFORM_COLUMNS)):
                 if '>' in TRANSFORM_CUT[i]:
                     prev_category_mask = np.logical_and(prev_category_mask, full_df_eval.loc[:, TRANSFORM_COLUMNS[i]].gt(best_cut[i]).to_numpy())
                 else:
                     prev_category_mask = np.logical_and(prev_category_mask, full_df_eval.loc[:, TRANSFORM_COLUMNS[i]].lt(best_cut[i]).to_numpy())
-            category_mask = np.logical_and(category_mask, ~prev_category_mask)
+            full_category_mask = np.logical_and(full_category_mask, ~prev_category_mask)
             
     if VERBOSE: print(' - '.join(os.path.normpath(TRAINING_DIRPATH).split('/')[-2:]+[DISCRIMINATOR])); table.float_format = '0.4'; print(table)
 
