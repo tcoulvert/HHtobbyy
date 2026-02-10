@@ -43,21 +43,6 @@ def sideband_nonres_mask(df: pd.DataFrame):
         SB_mass_cut, df.loc[:, 'cat_mask'].eq('SB').to_numpy()
     )
 
-def sideband_data_mask(df: pd.DataFrame):
-    SB_mass_cut = np.logical_or(
-        np.logical_and(
-            df.loc[:, 'AUX_mass'].gt(SIDEBAND_CUTS[0][0]).to_numpy(), 
-            df.loc[:, 'AUX_mass'].lt(SIDEBAND_CUTS[0][1]).to_numpy()
-        ),
-        np.logical_and(
-            df.loc[:, 'AUX_mass'].gt(SIDEBAND_CUTS[1][0]).to_numpy(), 
-            df.loc[:, 'AUX_mass'].lt(SIDEBAND_CUTS[1][1]).to_numpy()
-        )
-    )
-    return np.logical_and(
-        SB_mass_cut, df.loc[:, 'AUX_sample_name'].eq('Data').to_numpy()
-    )
-
 
 def fom_s_over_sqrt_b(s, b):
     return s / np.sqrt(b)
@@ -91,14 +76,13 @@ def brute_force(
     signal_sr_scores: np.ndarray, signal_sr_weights: np.ndarray, 
     bkg_sr_scores: np.ndarray, bkg_sr_weights: np.ndarray, 
     bkg_sideband_scores: np.ndarray, bkg_sideband_weights: np.ndarray, bkg_sideband_mass: np.ndarray,
-    data_sideband_scores: np.ndarray, data_sideband_weights: np.ndarray,
     cuts: np.ndarray, foms: np.ndarray, cutdir: np.ndarray, sideband_fit: bool=False,
 ):
     lt_scores = lambda scores: np.column_stack([scores[:, j] for j in range(scores.shape[1]) if cutdir[j] == '<']) if any(_cutdir_ == '<' for _cutdir_ in cutdir) else None
     gt_scores = lambda scores: np.column_stack([scores[:, j] for j in range(scores.shape[1]) if cutdir[j] == '>']) if any(_cutdir_ == '>' for _cutdir_ in cutdir) else None
 
-    signal_lt_scores, bkg_lt_scores, sideband_lt_scores, data_lt_scores = lt_scores(signal_sr_scores), lt_scores(bkg_sr_scores), lt_scores(bkg_sideband_scores), lt_scores(data_sideband_scores)
-    signal_gt_scores, bkg_gt_scores, sideband_gt_scores, data_gt_scores = gt_scores(signal_sr_scores), gt_scores(bkg_sr_scores), gt_scores(bkg_sideband_scores), gt_scores(data_sideband_scores)
+    signal_lt_scores, bkg_lt_scores, sideband_lt_scores  = lt_scores(signal_sr_scores), lt_scores(bkg_sr_scores), lt_scores(bkg_sideband_scores)
+    signal_gt_scores, bkg_gt_scores, sideband_gt_scores = gt_scores(signal_sr_scores), gt_scores(bkg_sr_scores), gt_scores(bkg_sideband_scores)
     lt_cuts, gt_cuts = lt_scores(cuts), gt_scores(cuts)
 
     ncuts, ndims = cuts.shape
@@ -120,10 +104,10 @@ def brute_force(
     for i in range(ncuts):
         if i < jump_to_cut: continue
 
-        data_sideband_bool = apply_cuts(data_lt_scores, data_gt_scores, i)
+        bkg_sideband_bool = apply_cuts(sideband_lt_scores, sideband_gt_scores, i)
 
         if (
-            np.sum(data_sideband_weights[data_sideband_bool]) > 10.
+            np.sum(bkg_sideband_weights[bkg_sideband_bool]) > 4.
             # and (
             #     np.sum(bkg_sideband_weights[bkg_sideband_bool][bkg_sideband_mass[bkg_sideband_bool] < SIDEBAND_CUTS[0][1]])
             #     / np.sum(bkg_sideband_weights[bkg_sideband_bool][bkg_sideband_mass[bkg_sideband_bool] > SIDEBAND_CUTS[1][0]])
@@ -133,7 +117,6 @@ def brute_force(
             bkg_sr_bool = apply_cuts(bkg_lt_scores, bkg_gt_scores, i)
 
             if sideband_fit:
-                bkg_sideband_bool = apply_cuts(sideband_lt_scores, sideband_gt_scores, i)
                 _hist_, _bins_ = np.histogram(bkg_sideband_mass[bkg_sideband_bool], bins=np.arange(100., 180., 5.), weights=bkg_sideband_weights[bkg_sideband_bool])
                 params, _ = curve_fit(exp_func, _bins_[:-1]-_bins_[0], _hist_, p0=(_hist_[0], -0.1), sigma=np.where(np.isfinite(_hist_**-1), _hist_**-1, 0.76))
                 est_yield, _ = quad(exp_func, SR_CUTS[0], SR_CUTS[1], args=tuple(params))
@@ -165,11 +148,10 @@ def brute_force(
             jump_to_cut = i + np.argmax(cuts[i:, jump_index] != cuts[i, jump_index])
     return best_dim_foms[np.argmax(best_dim_foms)], best_dim_cuts[np.argmax(best_dim_foms)]
 
-def grid_search(df: pd.DataFrame, cat_mask: np.ndarray, options_dict: dict, cutdir: list, prev_cuts: list=None):
+def grid_search(df: pd.DataFrame, cat_mask: np.ndarray, options_dict: dict, cutdir: list, prev_cuts: list=None, sideband_fit: bool=False):
 
     sr_mask = np.logical_and(cat_mask, fom_mask(df))
     bkg_sideband_mask = np.logical_and(cat_mask, sideband_nonres_mask(df))
-    data_sideband_mask = np.logical_and(cat_mask, sideband_data_mask(df))
     assert not np.any(np.logical_and(sr_mask, bkg_sideband_mask)), print(f"Overlap between SR and Sideband definitions... THIS IS VERY BAD")
 
     best_fom, best_cut = 0., [0. for _ in options_dict['TRANSFORM_COLUMNS']]
@@ -188,9 +170,6 @@ def grid_search(df: pd.DataFrame, cat_mask: np.ndarray, options_dict: dict, cutd
     bkg_sideband_scores = df.loc[bkg_sideband_mask, options_dict['TRANSFORM_COLUMNS']].to_numpy()
     bkg_sideband_weights = df.loc[bkg_sideband_mask, 'AUX_eventWeight'].to_numpy()
     bkg_sideband_mass = df.loc[bkg_sideband_mask, 'AUX_mass'].to_numpy()
-    # Data events outside SR
-    data_sideband_scores = df.loc[data_sideband_mask, options_dict['TRANSFORM_COLUMNS']].to_numpy()
-    data_sideband_weights = df.loc[data_sideband_mask, 'AUX_eventWeight'].to_numpy()
 
     startstops = copy.deepcopy(options_dict['STARTSTOPS'])
     for zoom in range(options_dict['N_ZOOM']):
@@ -209,8 +188,7 @@ def grid_search(df: pd.DataFrame, cat_mask: np.ndarray, options_dict: dict, cutd
             signal_sr_scores, signal_sr_weights, 
             bkg_sr_scores, bkg_sr_weights, 
             bkg_sideband_scores, bkg_sideband_weights, bkg_sideband_mass,
-            data_sideband_scores, data_sideband_weights,
-            cuts, foms, np.array(cutdir), sideband_fit=np.any(df.loc[:, 'AUX_sample_name'].eq('Data').to_numpy())
+            cuts, foms, np.array(cutdir), sideband_fit=sideband_fit
         )
         all_cuts.extend(cuts[foms >= 0.])
         all_foms.extend(foms[foms >= 0.])
