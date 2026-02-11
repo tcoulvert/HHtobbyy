@@ -9,6 +9,7 @@ from scipy.integrate import quad
 
 # HEP packages
 import awkward as ak
+import hist
 
 ################################
 
@@ -19,16 +20,16 @@ SIDEBAND_CUTS = [[100., 120.], [130., 180.]]
 ################################
 
 
-def fom_mask(df: pd.DataFrame):
+def fom_mask(df: pd.DataFrame, SR_str: str='SR'):
     SR_mass_cut = np.logical_and(
         df.loc[:, 'AUX_mass'].ge(SR_CUTS[0]).to_numpy(), 
         df.loc[:, 'AUX_mass'].le(SR_CUTS[1]).to_numpy()
     )
     return np.logical_and(
-        SR_mass_cut, df.loc[:, 'cat_mask'].eq('SR').to_numpy()
+        SR_mass_cut, df.loc[:, 'cat_mask'].eq(SR_str).to_numpy()
     )
 
-def sideband_nonres_mask(df: pd.DataFrame):
+def sideband_nonres_mask(df: pd.DataFrame, SB_str: str='SB'):
     SB_mass_cut = np.logical_or(
         np.logical_and(
             df.loc[:, 'AUX_mass'].gt(SIDEBAND_CUTS[0][0]).to_numpy(), 
@@ -40,7 +41,7 @@ def sideband_nonres_mask(df: pd.DataFrame):
         )
     )
     return np.logical_and(
-        SB_mass_cut, df.loc[:, 'cat_mask'].eq('SB').to_numpy()
+        SB_mass_cut, df.loc[:, 'cat_mask'].eq(SB_str).to_numpy()
     )
 
 
@@ -106,32 +107,32 @@ def brute_force(
 
         bkg_sideband_bool = apply_cuts(sideband_lt_scores, sideband_gt_scores, i)
 
-        if (
-            np.sum(bkg_sideband_weights[bkg_sideband_bool]) > 4.
-            # and (
-            #     np.sum(bkg_sideband_weights[bkg_sideband_bool][bkg_sideband_mass[bkg_sideband_bool] < SIDEBAND_CUTS[0][1]])
-            #     / np.sum(bkg_sideband_weights[bkg_sideband_bool][bkg_sideband_mass[bkg_sideband_bool] > SIDEBAND_CUTS[1][0]])
-            # ) > 0.25
-        ):
+        if np.sum(bkg_sideband_weights[bkg_sideband_bool]) > 10.:
             signal_sr_bool = apply_cuts(signal_lt_scores, signal_gt_scores, i)
             bkg_sr_bool = apply_cuts(bkg_lt_scores, bkg_gt_scores, i)
 
             if sideband_fit:
-                _hist_, _bins_ = np.histogram(bkg_sideband_mass[bkg_sideband_bool], bins=np.arange(100., 180., 5.), weights=bkg_sideband_weights[bkg_sideband_bool])
-                params, _ = curve_fit(exp_func, _bins_[:-1]-_bins_[0], _hist_, p0=(_hist_[0], -0.1), sigma=np.where(np.isfinite(_hist_**-1), _hist_**-1, 0.76))
-                est_yield, _ = quad(exp_func, SR_CUTS[0], SR_CUTS[1], args=tuple(params))
-                # print('='*60)
-                # print(cuts[i])
-                # ascii_hist(bkg_sideband_mass[bkg_sideband_bool], bins=np.arange(100., 180., 5.), weights=bkg_sideband_weights[bkg_sideband_bool], fit=exp_func(_bins_[:-1]-_bins_[0], a=params[0], b=params[1]))
-                # print(f"y = {params[0]:.2f}e^({params[1]:.2f}x)")
-                # print(f"  -> est. non-res bkg yield in SR = {est_yield}")
-                # print(f"signal yield in SR = {np.sum(signal_sr_weights[signal_sr_bool])}, res bkg yield in SR = {np.sum(bkg_sr_weights[bkg_sr_bool])}")
-                # print('='*60)
+                _hist_ = hist.Hist(
+                    hist.axis.Regular((180-100)//5, 100, 180, name="var", growth=False, underflow=False, overflow=False), 
+                    storage='weight'
+                ).fill(var=bkg_sideband_mass[bkg_sideband_bool], weight=bkg_sideband_weights[bkg_sideband_bool])
+                params, _ = curve_fit(
+                    exp_func, _hist_.axes.centers[0]-_hist_.axes.centers[0][0], _hist_.values(), p0=(_hist_.values()[0], -0.1), 
+                    # sigma=np.where(_hist_.values() != 0, np.sqrt(_hist_.variances()), 0.76)
+                )
+                est_yield, _ = quad(exp_func, SR_CUTS[0]-_hist_.axes.centers[0][0], SR_CUTS[1]-_hist_.axes.centers[0][0], args=tuple(params))
+                print('='*60)
+                print(cuts[i])
+                ascii_hist(bkg_sideband_mass[bkg_sideband_bool], bins=np.arange(100., 180., 5.), weights=bkg_sideband_weights[bkg_sideband_bool], fit=exp_func(_hist_.axes.centers[0]-_hist_.axes.centers[0][0], a=params[0], b=params[1]))
+                print(f"y = {params[0]:.2f}e^({params[1]:.2f}x)")
+                print(f"  -> est. non-res bkg yield in SR = {est_yield}")
+                print(f"signal yield in SR = {np.sum(signal_sr_weights[signal_sr_bool])}, res bkg yield in SR = {np.sum(bkg_sr_weights[bkg_sr_bool])}, non-res bkg yield in SB = {np.sum(bkg_sideband_weights[bkg_sideband_bool])}")
+                print('='*60)
             else: est_yield = 0.
 
             foms[i] = fom_s_over_b(
                 np.sum(signal_sr_weights[signal_sr_bool]), np.sum(bkg_sr_weights[bkg_sr_bool])+est_yield,
-            ) #if (est_yield > 0.001 or est_yield == 0.) else 0.
+            )
         else: foms[i] = 0.
 
         if i > 0 and (foms[i-1] > foms[i] or (foms[i-1] == foms[i] and foms[i-1] != 0.)):
