@@ -103,7 +103,7 @@ cross_sections = {
     # Fake b-jets
     'GGJets*40to80': 318100., 'GGJets*80': 88750.,
     # Real b-jets
-    'TTGG': 16.96,
+    'TTGG': 16.96, 'SherpaNLO': 1093.,
 
     # Data-driven background #
     'DDQCDGJets': 1.,
@@ -128,7 +128,7 @@ sample_name_map = {
     # Fake b-jets
     'GGJets',
     # Real b-jets
-    'TTGG',
+    'TTGG', 'SherpaNLO',
 
     # Data-driven background #
     'DDQCDGJets',
@@ -257,6 +257,8 @@ def make_mc(sim_eras: dict):
     for sim_era, filepaths in sim_eras.items():
         for filepath in filepaths:
             if match_sample(filepath, {'_up/', '_down/'}) is not None: continue
+            if match_sample(filepath, {'SherpaNLO'}) is None: continue
+            print(filepath)
             make_dataset(filepath, sim_era)
 
 def make_data(data_eras: dict):
@@ -282,5 +284,5 @@ if __name__ == '__main__':
     data_eras = {
         os.path.join(era, ''): list() for era in DATA_ERAS
     } if len(DATA_ERAS) > 0 else None
-    make_data(data_eras)
+    # make_data(data_eras)
 

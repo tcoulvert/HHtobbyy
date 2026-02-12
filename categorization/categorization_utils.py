@@ -123,7 +123,7 @@ def brute_force(
                 est_yield, _ = quad(exp_func, SR_CUTS[0]-_hist_.axes.centers[0][0], SR_CUTS[1]-_hist_.axes.centers[0][0], args=tuple(params))
                 print('='*60)
                 print(cuts[i])
-                ascii_hist(bkg_sideband_mass[bkg_sideband_bool], bins=np.arange(100., 180., 5.), weights=bkg_sideband_weights[bkg_sideband_bool], fit=exp_func(_hist_.axes.centers[0]-_hist_.axes.centers[0][0], a=params[0], b=params[1]))
+                ascii_hist(bkg_sideband_mass[bkg_sideband_bool], bins=np.arange(100., 160., 5.), weights=bkg_sideband_weights[bkg_sideband_bool], fit=exp_func(_hist_.axes.centers[0]-_hist_.axes.centers[0][0], a=params[0], b=params[1]))
                 print(f"y = {params[0]:.2f}e^({params[1]:.2f}x)")
                 print(f"  -> est. non-res bkg yield in SR = {est_yield}")
                 print(f"signal yield in SR = {np.sum(signal_sr_weights[signal_sr_bool])}, res bkg yield in SR = {np.sum(bkg_sr_weights[bkg_sr_bool])}, non-res bkg yield in SB = {np.sum(bkg_sideband_weights[bkg_sideband_bool])}")
