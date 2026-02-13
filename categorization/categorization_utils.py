@@ -101,7 +101,7 @@ def brute_force(
 
             if sideband_fit:
                 _hist_ = hist.Hist(
-                    hist.axis.Regular((int(FIT_BINS[1]-FIT_BINS[0])//FIT_BINS[2]), FIT_BINS[0], FIT_BINS[1], name="var", growth=False, underflow=False, overflow=False), 
+                    hist.axis.Regular(int((FIT_BINS[1]-FIT_BINS[0])//FIT_BINS[2]), FIT_BINS[0], FIT_BINS[1], name="var", growth=False, underflow=False, overflow=False), 
                     storage='weight'
                 ).fill(var=bkg_sideband_mass[bkg_sideband_bool], weight=bkg_sideband_weights[bkg_sideband_bool])
                 params, _ = curve_fit(
@@ -109,13 +109,13 @@ def brute_force(
                     # sigma=np.where(_hist_.values() != 0, np.sqrt(_hist_.variances()), 0.76)
                 )
                 est_yield = quad(exp_func, SR_CUTS[0]-_hist_.axes.centers[0][0], SR_CUTS[1]-_hist_.axes.centers[0][0], args=tuple(params))[0] / FIT_BINS[2]
-                print('='*60)
-                print(cuts[i])
-                ascii_hist(bkg_sideband_mass[bkg_sideband_bool], bins=np.arange(FIT_BINS[0], FIT_BINS[1], FIT_BINS[2]), weights=bkg_sideband_weights[bkg_sideband_bool], fit=exp_func(_hist_.axes.centers[0]-_hist_.axes.centers[0][0], a=params[0], b=params[1]))
-                print(f"y = {params[0]:.2f}e^({params[1]:.2f}x)")
-                print(f"  -> est. non-res bkg yield in SR = {est_yield}")
-                print(f"signal yield in SR = {np.sum(signal_sr_weights[signal_sr_bool])}, res bkg yield in SR = {np.sum(bkg_sr_weights[bkg_sr_bool])}, non-res bkg yield in SB = {np.sum(bkg_sideband_weights[bkg_sideband_bool])}")
-                print('='*60)
+                # print('='*60)
+                # print(cuts[i])
+                # ascii_hist(bkg_sideband_mass[bkg_sideband_bool], bins=np.arange(FIT_BINS[0], FIT_BINS[1], FIT_BINS[2]), weights=bkg_sideband_weights[bkg_sideband_bool], fit=exp_func(_hist_.axes.centers[0]-_hist_.axes.centers[0][0], a=params[0], b=params[1]))
+                # print(f"y = {params[0]:.2f}e^({params[1]:.2f}x)")
+                # print(f"  -> est. non-res bkg yield in SR = {est_yield}")
+                # print(f"signal yield in SR = {np.sum(signal_sr_weights[signal_sr_bool])}, res bkg yield in SR = {np.sum(bkg_sr_weights[bkg_sr_bool])}, non-res bkg yield in SB = {np.sum(bkg_sideband_weights[bkg_sideband_bool])}")
+                # print('='*60)
             else: est_yield = 0.
 
             foms[i] = fom_s_over_b(
