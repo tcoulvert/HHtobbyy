@@ -15,7 +15,8 @@ import hist
 
 
 SR_CUTS = [122.5, 127.]
-FIT_BINS = [100., 180., 5.]  # start, stop, step
+SB_CUTS = [100., 180.]
+FIT_BINS = SB_CUTS + [5.]  # start, stop, step
 
 ################################
 
@@ -30,7 +31,13 @@ def fom_mask(df: pd.DataFrame, SR_str: str='SR'):
     )
 
 def sideband_nonres_mask(df: pd.DataFrame, SB_str: str='SB'):
-    return df.loc[:, 'cat_mask'].eq(SB_str).to_numpy()
+    SB_mass_cut = np.logical_and(
+        df.loc[:, 'AUX_mass'].ge(SB_CUTS[0]).to_numpy(), 
+        df.loc[:, 'AUX_mass'].le(SB_CUTS[1]).to_numpy()
+    )
+    return np.logical_and(
+        SB_mass_cut, df.loc[:, 'cat_mask'].eq(SB_str).to_numpy()
+    )
 
 
 def fom_s_over_sqrt_b(s, b):
