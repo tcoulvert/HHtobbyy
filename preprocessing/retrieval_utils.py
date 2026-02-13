@@ -162,13 +162,6 @@ def get_train_Dataframe(dataset_dirpath: str, fold_idx: int, dataset: str="train
             class_mask = aux['AUX_label1D'].eq(i)
             aux.loc[class_mask, 'AUX_eventWeightTrain'] = aux.loc[class_mask, 'AUX_eventWeightTrain'] * RES_BKG_RESCALE
 
-    # Sherpa: scale it to same as nonRes background
-    sherpa_mask = aux['AUX_sample_name'].eq('SherpaNLO')
-    if any(sherpa_mask):
-        # scale shepra by 1000, as mistake in cross-section fb vs pb
-        aux.loc[sherpa_mask, 'AUX_eventWeight'] *= 1000
-        aux.loc[sherpa_mask, 'AUX_eventWeightTrain'] *= 1000
-
     # Signal
     for i, key in enumerate(filepaths.keys()):
         if 'HH' in key:
@@ -251,6 +244,9 @@ def get_test_subset_Dataframes(dataset_dirpath: str, fold_idx: int, regexs: list
             if label:
                 data_idx = [i for i, key in enumerate(class_sample_map.keys()) if 'nonres' in key.lower()][0]
                 aux['AUX_label1D'] = data_idx * np.ones_like(aux['AUX_mass'])
+        elif match_sample(regex, ['SherpaNLO']) is not None and label:
+            sherpa_idx = [i for i, key in enumerate(class_sample_map.keys()) if 'nonres' in key.lower()][0]
+            aux['AUX_label1D'] = sherpa_idx * np.ones_like(aux['AUX_mass'])
         elif label:
             class_idx = [i for i, regex_list in enumerate(class_sample_map.values()) if regex in regex_list][0]
             aux['AUX_label1D'] = class_idx * np.ones_like(aux['AUX_mass'])

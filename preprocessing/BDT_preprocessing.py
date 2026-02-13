@@ -326,6 +326,7 @@ def preprocess_resolved_bdt(input_filepaths, output_dirpath):
             )
             if len(prev_test_filepaths) > 0 and ADD_TEST:
                 logger.log(1, f"{filepath[filepath.find(BASE_FILEPATH):filepath.rfind('/')]} skipped because test file already exists and \'--add_test\' option selected")
+                continue
             elif len(prev_test_filepaths) > 0 and REPLACE_TEST:
                 logger.log(1, f"{filepath[filepath.find(BASE_FILEPATH):filepath.rfind('/')]} removed because test file already exists and \'--replace_test\' option selected")
                 for prev_test_filepath in prev_test_filepaths: 
@@ -333,6 +334,7 @@ def preprocess_resolved_bdt(input_filepaths, output_dirpath):
                         subprocess.run(['xrdfs', 'root://cmseos.fnal.gov/', 'rm', '/'.join(['']+prev_test_filepath.split('/')[3:])])
                     else:
                         subprocess.run(['rm', prev_test_filepath])
+            else: print(filepath)
                         
             if MAKE_PLOTS: 
                 plot_vars(
@@ -382,7 +384,7 @@ if __name__ == '__main__':
     ADD_TEST = args.add_test
     REPLACE_TEST = args.replace_test
     args_output_dirpath = os.path.normpath(args.output_dirpath)
-    if REPLACE_TEST: CURRENT_TIME = args_output_dirpath[-len('YYYY-MM-DD_HH-MM-SS'):]
+    if REPLACE_TEST or ADD_TEST: CURRENT_TIME = args_output_dirpath[-len('YYYY-MM-DD_HH-MM-SS'):]
     else: args_output_dirpath = os.path.join(args_output_dirpath, f"{DATASET_TAG}_{CURRENT_TIME}")
     if not os.path.exists(args_output_dirpath) and not DRYRUN:
         os.makedirs(args_output_dirpath)

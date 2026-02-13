@@ -15,7 +15,7 @@ import hist
 
 
 SR_CUTS = [122.5, 127.]
-SIDEBAND_CUTS = [[100., 120.], [130., 180.]]
+FIT_BINS = [100., 180., 5.]  # start, stop, step
 
 ################################
 
@@ -30,19 +30,7 @@ def fom_mask(df: pd.DataFrame, SR_str: str='SR'):
     )
 
 def sideband_nonres_mask(df: pd.DataFrame, SB_str: str='SB'):
-    SB_mass_cut = np.logical_or(
-        np.logical_and(
-            df.loc[:, 'AUX_mass'].gt(SIDEBAND_CUTS[0][0]).to_numpy(), 
-            df.loc[:, 'AUX_mass'].lt(SIDEBAND_CUTS[0][1]).to_numpy()
-        ),
-        np.logical_and(
-            df.loc[:, 'AUX_mass'].gt(SIDEBAND_CUTS[1][0]).to_numpy(), 
-            df.loc[:, 'AUX_mass'].lt(SIDEBAND_CUTS[1][1]).to_numpy()
-        )
-    )
-    return np.logical_and(
-        SB_mass_cut, df.loc[:, 'cat_mask'].eq(SB_str).to_numpy()
-    )
+    return df.loc[:, 'cat_mask'].eq(SB_str).to_numpy()
 
 
 def fom_s_over_sqrt_b(s, b):
@@ -113,17 +101,17 @@ def brute_force(
 
             if sideband_fit:
                 _hist_ = hist.Hist(
-                    hist.axis.Regular((180-100)//5, 100, 180, name="var", growth=False, underflow=False, overflow=False), 
+                    hist.axis.Regular((int(FIT_BINS[1]-FIT_BINS[0])//FIT_BINS[2]), FIT_BINS[0], FIT_BINS[1], name="var", growth=False, underflow=False, overflow=False), 
                     storage='weight'
                 ).fill(var=bkg_sideband_mass[bkg_sideband_bool], weight=bkg_sideband_weights[bkg_sideband_bool])
                 params, _ = curve_fit(
                     exp_func, _hist_.axes.centers[0]-_hist_.axes.centers[0][0], _hist_.values(), p0=(_hist_.values()[0], -0.1), 
                     # sigma=np.where(_hist_.values() != 0, np.sqrt(_hist_.variances()), 0.76)
                 )
-                est_yield, _ = quad(exp_func, SR_CUTS[0]-_hist_.axes.centers[0][0], SR_CUTS[1]-_hist_.axes.centers[0][0], args=tuple(params))
+                est_yield = quad(exp_func, SR_CUTS[0]-_hist_.axes.centers[0][0], SR_CUTS[1]-_hist_.axes.centers[0][0], args=tuple(params))[0] / FIT_BINS[2]
                 print('='*60)
                 print(cuts[i])
-                ascii_hist(bkg_sideband_mass[bkg_sideband_bool], bins=np.arange(100., 160., 5.), weights=bkg_sideband_weights[bkg_sideband_bool], fit=exp_func(_hist_.axes.centers[0]-_hist_.axes.centers[0][0], a=params[0], b=params[1]))
+                ascii_hist(bkg_sideband_mass[bkg_sideband_bool], bins=np.arange(FIT_BINS[0], FIT_BINS[1], FIT_BINS[2]), weights=bkg_sideband_weights[bkg_sideband_bool], fit=exp_func(_hist_.axes.centers[0]-_hist_.axes.centers[0][0], a=params[0], b=params[1]))
                 print(f"y = {params[0]:.2f}e^({params[1]:.2f}x)")
                 print(f"  -> est. non-res bkg yield in SR = {est_yield}")
                 print(f"signal yield in SR = {np.sum(signal_sr_weights[signal_sr_bool])}, res bkg yield in SR = {np.sum(bkg_sr_weights[bkg_sr_bool])}, non-res bkg yield in SB = {np.sum(bkg_sideband_weights[bkg_sideband_bool])}")

@@ -150,7 +150,7 @@ CATEGORIZATION_METHOD = getattr(categorization_utils, CATEGORIZATION_OPTIONS['ME
 if 'STARTSTOPS' not in CATEGORIZATION_OPTIONS.keys():
     CATEGORIZATION_OPTIONS['STARTSTOPS'] = [[0., 1.] if '<' in TRANSFORM_CUT[i] else [1., 0.] for i in range(len(TRANSFORM_COLUMNS))]
 
-NONRES_MC_SAMPLENAMES = {'TTGG', 'GJet', 'GGJets', 'DDQCDGJets'}
+NONRES_MC_SAMPLENAMES = {'TTGG', 'GJet', 'GGJets', 'DDQCDGJets', 'SherpaNLO'}
 
 ################################
 
@@ -168,12 +168,18 @@ def categorize_model():
         assert set(cat_cols) <= set(MC_df.columns), f"The requested list of columns are not all in the file. Missing variables:\n{set(cat_cols) - set(MC_df.columns)}"
         MC_eval = MC_df.loc[:, cat_cols]
 
+        SHERPA_df, SHERPA_aux = get_test_subset_Dataframes(DATASET_DIRPATH, fold_idx, ['SherpaNLO'], minimal=MINIMAL)
+        for col in SHERPA_aux.columns: SHERPA_df.loc[:, col] = SHERPA_aux.loc[:, col]
+        assert set(cat_cols) <= set(SHERPA_df.columns), f"The requested list of columns are not all in the Sherpa file. Missing variables:\n{set(cat_cols) - set(SHERPA_df.columns)}"
+        # MC_eval = pd.concat([MC_eval.loc[MC_eval.loc[:, 'AUX_sample_name'].ne('GGJets').to_numpy()], SHERPA_df.loc[:, cat_cols]]).reset_index(drop=True)
+        MC_eval = pd.concat([MC_eval, SHERPA_df.loc[(SHERPA_df.loc[:, 'AUX_event'] % get_n_folds(DATASET_DIRPATH)).eq(fold_idx).to_numpy(), cat_cols]]).reset_index(drop=True)
+
         # DATA_df, DATA_aux = get_test_subset_Dataframes(DATASET_DIRPATH, fold_idx, ['!2024*Data'], minimal=MINIMAL)
         # DATA_aux['AUX_eventWeight'] = DATA_aux['AUX_eventWeight'] * 2.76  # lumi 22-24 / lumi 22-23
         DATA_df, DATA_aux = get_test_subset_Dataframes(DATASET_DIRPATH, fold_idx, ['Data'], minimal=MINIMAL)
         for col in DATA_aux.columns: DATA_df.loc[:, col] = DATA_aux.loc[:, col]
         assert set(cat_cols) <= set(DATA_df.columns), f"The requested list of columns are not all in the Data file. Missing variables:\n{set(cat_cols) - set(DATA_df.columns)}"
-        DATA_eval = DATA_df.loc[(DATA_df.loc[:, 'AUX_event'] % get_n_folds(DATASET_DIRPATH)).eq(fold_idx).to_numpy(), cat_cols]
+        DATA_eval = DATA_df.loc[(DATA_df.loc[:, 'AUX_event'] % get_n_folds(DATASET_DIRPATH)).eq(fold_idx).to_numpy(), cat_cols].reset_index(drop=True)
 
         if OPT_SIDEBAND != 'none':
             sample_cut = np.zeros(MC_eval.shape[0])
@@ -193,9 +199,7 @@ def categorize_model():
                 MC_eval.loc[:, 'cat_mask'] = np.where(~sample_cut, 'SR', '')
                 DATA_eval.loc[:, 'cat_mask'] = 'SB'
             if len(table.field_names) == 0: 
-                table.field_names = ['Category', 'FoM (s/b)'] + sorted([
-                    sample_name for sample_name in pd.unique(MC_eval['AUX_sample_name']).tolist() if sample_name not in NONRES_MC_SAMPLENAMES
-                ]) + ['nonRes MC -- SB fit', 'Data -- SB fit']
+                table.field_names = ['Category', 'FoM (s/b)'] + sorted(pd.unique(MC_eval['AUX_sample_name']).tolist()) + ['nonRes MC -- SB fit', 'Data -- SB fit']
         else: 
             MC_eval.loc[:, 'cat_mask'] = 'SR'
             DATA_eval.loc[:, 'cat_mask'] = ''
@@ -296,12 +300,6 @@ def categorize_model():
                 ] if cat_idx != 1 else None, sideband_fit=OPT_SIDEBAND != 'none'
             )
             new_row = [f'Merged folds - Cat {cat_idx}', best_fom]
-            pass_mask = np.logical_and(full_category_mask, categorization_utils.fom_mask(full_df_eval))
-            for i in range(len(TRANSFORM_COLUMNS)):
-                if '>' in TRANSFORM_CUT[i]:
-                    pass_mask = np.logical_and(pass_mask, full_df_eval.loc[:, TRANSFORM_COLUMNS[i]].gt(best_cut[i]).to_numpy())
-                else:
-                    pass_mask = np.logical_and(pass_mask, full_df_eval.loc[:, TRANSFORM_COLUMNS[i]].lt(best_cut[i]).to_numpy())
             for sample_name in table.field_names[2:]:
                 if match_sample(sample_name, ['Data', 'MC']) is not None:
                     pass_sideband_mask = np.logical_and(full_category_mask, categorization_utils.sideband_nonres_mask(full_df_eval, SB_str='SB' if match_sample(sample_name, [OPT_SIDEBAND]) is not None else ''))
@@ -313,21 +311,21 @@ def categorize_model():
 
                     def exp_func(x, a, b): return a * np.exp(b * x)
                     _hist_ = hist.Hist(
-                        hist.axis.Regular((180-100)//5, 100, 180, name="var", growth=False, underflow=False, overflow=False), 
+                        hist.axis.Regular(int((categorization_utils.FIT_BINS[1]-categorization_utils.FIT_BINS[0])//categorization_utils.FIT_BINS[2]), categorization_utils.FIT_BINS[0], categorization_utils.FIT_BINS[1], name="var", growth=False, underflow=False, overflow=False), 
                         storage='weight'
                     ).fill(var=full_df_eval.loc[pass_sideband_mask, 'AUX_mass'].to_numpy(), weight=full_df_eval.loc[pass_sideband_mask, 'AUX_eventWeight'].to_numpy())
                     params, _ = curve_fit(
                         exp_func, _hist_.axes.centers[0]-_hist_.axes.centers[0][0], _hist_.values(), p0=(_hist_.values()[0], -0.1), 
                         # sigma=np.where(_hist_.values() != 0, np.sqrt(_hist_.variances()), 0.76)
                     )
-                    est_yield, _ = quad(exp_func, categorization_utils.SR_CUTS[0]-_hist_.axes.centers[0][0], categorization_utils.SR_CUTS[1]-_hist_.axes.centers[0][0], args=tuple(params))
+                    est_yield = quad(exp_func, categorization_utils.SR_CUTS[0]-_hist_.axes.centers[0][0], categorization_utils.SR_CUTS[1]-_hist_.axes.centers[0][0], args=tuple(params))[0] / categorization_utils.FIT_BINS[2]
                     print('='*60+'\n'+'='*60)
                     print(sample_name)
                     print('-'*60)
                     print(best_cut)
                     categorization_utils.ascii_hist(
                         full_df_eval.loc[pass_sideband_mask, 'AUX_mass'].to_numpy(), 
-                        bins=np.arange(100., 180., 5.), 
+                        bins=np.arange(categorization_utils.FIT_BINS[0], categorization_utils.FIT_BINS[1], categorization_utils.FIT_BINS[2]), 
                         weights=full_df_eval.loc[pass_sideband_mask, 'AUX_eventWeight'].to_numpy(), 
                         fit=exp_func(_hist_.axes.centers[0]-_hist_.axes.centers[0][0], a=params[0], b=params[1])
                     )
@@ -336,6 +334,15 @@ def categorize_model():
                     print('='*60+'\n'+'='*60)
                     new_row.append(est_yield)
                 else:
+                    if OPT_SIDEBAND == 'none' or sample_name not in NONRES_MC_SAMPLENAMES: SR_str = 'SR'
+                    elif OPT_SIDEBAND == 'mc' and sample_name in NONRES_MC_SAMPLENAMES: SR_str = 'SB'
+                    elif OPT_SIDEBAND == 'data' and sample_name in NONRES_MC_SAMPLENAMES: SR_str = ''
+                    pass_mask = np.logical_and(full_category_mask, categorization_utils.fom_mask(full_df_eval, SR_str=SR_str))
+                    for i in range(len(TRANSFORM_COLUMNS)):
+                        if '>' in TRANSFORM_CUT[i]:
+                            pass_mask = np.logical_and(pass_mask, full_df_eval.loc[:, TRANSFORM_COLUMNS[i]].gt(best_cut[i]).to_numpy())
+                        else:
+                            pass_mask = np.logical_and(pass_mask, full_df_eval.loc[:, TRANSFORM_COLUMNS[i]].lt(best_cut[i]).to_numpy())
                     new_row.append(full_df_eval.loc[np.logical_and(pass_mask, full_df_eval.loc[:, 'AUX_sample_name'].eq(sample_name).to_numpy()), 'AUX_eventWeight'].sum())
             table.add_row(new_row)
 
