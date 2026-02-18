@@ -21,8 +21,7 @@ TRAIN_ONLY_SAMPLES = {
     "Zto2Q", "Wto2Q", "batch[4-6]"
 }
 TEST_ONLY_SAMPLES = {
-    "Data", "GluGlu*HH*kl-0p00", "GluGlu*HH*kl-2p45", "GluGlu*HH*kl-5p00", 
-    # "SherpaNLO"
+    "Data", "GluGlu*HH*kl-0p00", "GluGlu*HH*kl-2p45", "GluGlu*HH*kl-5p00", "SherpaNLO"
 }
 
 BASIC_VARIABLES = lambda jet_prefix: {

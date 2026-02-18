@@ -47,6 +47,16 @@ def fom_s_over_b(s, b):
     return s / b
 
 
+def ascii_hist(x, bins=10, weights=None):
+    N,X = np.histogram(x, bins=bins, weights=weights)
+    width = 50
+    nmax = np.max(N.max())
+    for (xi, n) in zip(X,N):
+        bar = '#'*int(n*width/nmax)
+        xi = '{0: <8.4g}'.format(xi).ljust(10)
+        print('{0}| {1}'.format(xi,bar))
+
+
 def ascii_hist(x, bins=10, weights=None, fit=None):
     N,X = np.histogram(x, bins=bins, weights=weights)
     width = 50
@@ -102,7 +112,7 @@ def brute_force(
 
         bkg_sideband_bool = apply_cuts(sideband_lt_scores, sideband_gt_scores, i)
 
-        if np.sum(bkg_sideband_weights[bkg_sideband_bool]) > 10.:
+        if np.sum(bkg_sideband_weights[bkg_sideband_bool]) > 5.3:
             signal_sr_bool = apply_cuts(signal_lt_scores, signal_gt_scores, i)
             bkg_sr_bool = apply_cuts(bkg_lt_scores, bkg_gt_scores, i)
 

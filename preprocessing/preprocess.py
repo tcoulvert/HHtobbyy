@@ -257,8 +257,6 @@ def make_mc(sim_eras: dict):
     for sim_era, filepaths in sim_eras.items():
         for filepath in filepaths:
             if match_sample(filepath, {'_up/', '_down/'}) is not None: continue
-            if match_sample(filepath, {'SherpaNLO'}) is None: continue
-            print(filepath)
             make_dataset(filepath, sim_era)
 
 def make_data(data_eras: dict):
@@ -284,5 +282,5 @@ if __name__ == '__main__':
     data_eras = {
         os.path.join(era, ''): list() for era in DATA_ERAS
     } if len(DATA_ERAS) > 0 else None
-    # make_data(data_eras)
+    make_data(data_eras)
 
