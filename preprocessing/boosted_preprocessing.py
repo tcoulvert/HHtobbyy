@@ -54,7 +54,7 @@ def add_bbTagWP_boosted(sample, era):
 def select_fatjets(sample, era):
     fatjet_fields = [field[field.find('fatjet1_')+len('fatjet1_'):] for field in sample.fields if re.match('fatjet1', field) is not None]
     fatjets = ak.zip({
-        fatjet_field: [sample[f'fatjet{i}_{fatjet_field}'] for i in range(1, NUM_FATJETS+1)]
+        fatjet_field: ak.concatenate([sample[f'fatjet{i}_{fatjet_field}'][:, np.newaxis] for i in range(1, NUM_FATJETS+1)], axis=1)
         for fatjet_field in fatjet_fields
     })
 
@@ -65,7 +65,7 @@ def select_fatjets(sample, era):
     selection_fatjets = selection_fatjets[ak.argsort(selection_fatjets[bbTagVar])]
 
     selected_fatjets = ak.firsts(selection_fatjets)
-    return selected_fatjets, ~ak.is_none(selected_fatjets['pt'])
+    return selected_fatjets, ~ak.is_none(selected_fatjets)
     
 def fatjet_mask(sample, i):
     fatjet_selected_4mom = ak.zip(
