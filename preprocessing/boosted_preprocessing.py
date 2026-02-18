@@ -51,14 +51,21 @@ def add_bbTagWP_boosted(sample, era):
         if i == 0: sample["fatjet_selected_bbTagWP"] = ak.zeros_like(sample["pt"])
         sample["fatjet_selected_bbTagWP"] = ak.where(sample[f"fatjet_selected_{bbTagVar}"] > WP, i, sample["fatjet_selected_bbTagWP"])
 
-def select_fatjets(sample, fatjets, era):
+def select_fatjets(sample, era):
+    fatjet_fields = [field[field.find('fatjet1_')+len('fatjet1_'):] for field in sample.fields if re.match('fatjet1', field) is not None]
+    fatjets = ak.zip({
+        fatjet_field: [sample[f'fatjet{i}_{fatjet_field}'] for i in range(1, NUM_FATJETS+1)]
+        for fatjet_field in fatjet_fields
+    })
+
     bbTagVar, _ = boosted_bbTagWPs[match_sample(era, boosted_bbTagWPs.keys())]
 
     selection_mask = (fatjets['pt'] > 250) & (fatjets['tau21'] < 0.6)
     selection_fatjets = fatjets[selection_mask]
     selection_fatjets = selection_fatjets[ak.argsort(selection_fatjets[bbTagVar])]
 
-    return ak.firsts(selection_fatjets)
+    selected_fatjets = ak.firsts(selection_fatjets)
+    return selected_fatjets, ~ak.is_none(selected_fatjets['pt'])
     
 def fatjet_mask(sample, i):
     fatjet_selected_4mom = ak.zip(
@@ -106,14 +113,7 @@ def add_vars_boosted(sample, filepath):
 
     add_bbTagNanov15_boosted(sample, filepath)
 
-    fatjet_fields = [field[field.find('fatjet1_')+len('fatjet1_'):] for field in sample.fields if re.match('fatjet1', field) is not None]
-    fatjets = ak.zip({
-        fatjet_field: [sample[f'fatjet{i}_{fatjet_field}'] for i in range(1, NUM_FATJETS+1)]
-        for fatjet_field in fatjet_fields
-    })
-
-    selected_fatjets = select_fatjets(sample, fatjets)
-    good_fatjets = ~ak.is_none(selected_fatjets['pt'])
+    selected_fatjets, good_fatjets = select_fatjets(sample, filepath)
     for field in selected_fatjets:
         sample[f'fatjet_selected_{field}'] = ak.where(good_fatjets, selected_fatjets[field], FILL_VALUE)
 
