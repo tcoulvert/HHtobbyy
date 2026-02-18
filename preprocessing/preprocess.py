@@ -37,7 +37,7 @@ parser.add_argument(
 )
 parser.add_argument(
     "--base_filepath", 
-    default='Run3_202',
+    default='Run3_20',
     help="Regex string for splitting filepath if using a new output_dirpath"
 )
 parser.add_argument(

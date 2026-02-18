@@ -90,7 +90,7 @@ TRAIN_MOD = 5
 JET_PREFIX = 'Res'  # ["Res", "Res_DNNpair", "nonRes", "nonResReg", "nonResReg_DNNpair"]
 
 SEED = 21
-BASE_FILEPATH = 'Run3_202'
+BASE_FILEPATH = 'Run3_20'
 CURRENT_TIME = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
 DF_MASK = 'default'  # 'none'
 
