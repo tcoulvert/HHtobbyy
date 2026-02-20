@@ -24,7 +24,7 @@ TEST_ONLY_SAMPLES = {
     "Data", "GluGlu*HH*kl-0p00", "GluGlu*HH*kl-2p45", "GluGlu*HH*kl-5p00", "SherpaNLO"
 }
 
-BASIC_VARIABLES = lambda jet_prefix: {
+BASIC_VARIABLES = lambda jet_prefix, sel_prefix: {
     # MET variables
     'puppiMET_pt',
 
@@ -35,25 +35,25 @@ BASIC_VARIABLES = lambda jet_prefix: {
     f'{jet_prefix}_CosThetaStar_CS', f'{jet_prefix}_CosThetaStar_gg',
 
     # fatjet vars
-    'fatjet_selected_eta',  # eta
-    'fatjet_selected_bbTagWP',  # bbTag
-    'fatjet_selected_tau21', 'fatjet_selected_tau32',
+    f'{sel_prefix}_fatjet_selected_eta',  # eta
+    f'{sel_prefix}_fatjet_selected_bbTagWP',  # bbTag
+    f'{sel_prefix}_fatjet_selected_tau21', f'{sel_prefix}_fatjet_selected_tau32',
     
     # diphoton vars
     'eta',
-    # 'pt_Over_FatjetPt'
+    # f'{sel_prefix}_pT_over_fatjet_pT'
 
     # Photon vars
-    'lead_mvaID', 'lead_sigmaE_over_E', 'deltaR_g1_fj',
+    'lead_mvaID', 'lead_sigmaE_over_E', f'{sel_prefix}_deltaR_g1_fj',
     # --------
-    'sublead_mvaID', 'sublead_sigmaE_over_E', 'deltaR_g2_fj',
+    'sublead_mvaID', 'sublead_sigmaE_over_E', f'{sel_prefix}_deltaR_g2_fj',
     
     # HH vars
     f'{jet_prefix}_HHbbggCandidate_pt', 
     f'{jet_prefix}_HHbbggCandidate_eta', 
-    f'{jet_prefix}_fatjet_pt_balance'
+    f'{jet_prefix}_{sel_prefix}_fatjet_pt_balance'
 }
-MHH_CORRELATED_VARIABLES = lambda jet_prefix: {
+MHH_CORRELATED_VARIABLES = lambda jet_prefix, sel_prefix: {
     # MHH
     f'{jet_prefix}_HHbbggCandidate_mass',
 
@@ -61,13 +61,13 @@ MHH_CORRELATED_VARIABLES = lambda jet_prefix: {
     'puppiMET_sumEt',
 
     # fatjet vars
-    'fatjet_selected_msoftdrop', 
-    'fatjet_selected_pt',
+    f'{sel_prefix}_fatjet_selected_msoftdrop', 
+    f'{sel_prefix}_fatjet_selected_pt',
 
     # diphoton vars
     'pt',
 }
-AUX_VARIABLES = lambda jet_prefix: {
+AUX_VARIABLES = lambda jet_prefix, sel_prefix: {
     # identifiable event info
     'event', 'lumi', 'hash', 'sample_name', 'sample_era',
 
@@ -79,15 +79,16 @@ AUX_VARIABLES = lambda jet_prefix: {
     f'{jet_prefix}_HHbbggCandidate_mass',
 
     # sculpting study
-    'max_nonselectedfatjet_bbtag',
+    f'{sel_prefix}_max_nonselectedfatjet_bbtag',
 
     # event masks
-    'boosted_BDT_mask',
+    f'{sel_prefix}_BDT_mask',
 }
 
 FILL_VALUE = -999
 TRAIN_MOD = 5
 JET_PREFIX = 'Res'  # ["Res", "Res_DNNpair", "nonRes", "nonResReg", "nonResReg_DNNpair"]
+SEL_PREFIX = 'Boost'  # ["Boost", "SnT_Boost"]
 
 SEED = 21
 BASE_FILEPATH = 'Run3_20'
@@ -99,5 +100,5 @@ END_FILEPATH = "preprocessed.parquet"
 ################################
 
 
-BDT_VARIABLES = BASIC_VARIABLES(JET_PREFIX) | MHH_CORRELATED_VARIABLES(JET_PREFIX)
-AUX_VARIABLES = AUX_VARIABLES(JET_PREFIX)
+BDT_VARIABLES = BASIC_VARIABLES(JET_PREFIX, SEL_PREFIX) | MHH_CORRELATED_VARIABLES(JET_PREFIX, SEL_PREFIX)
+AUX_VARIABLES = AUX_VARIABLES(JET_PREFIX, SEL_PREFIX)
