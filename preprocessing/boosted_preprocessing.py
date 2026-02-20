@@ -85,9 +85,9 @@ def select_fatjets(sample, era, selection_var):
         if var == 'genMatched_Hbb':
             if var not in sample.fields or ak.sum(fatjets[var] > 0) == 0: continue
         if direction == '<':
-            selection_mask = selection_mask & (fatjets[var] < float(value))
+            selection_mask = np.logical_and(selection_mask, fatjets[var] < float(value))
         elif direction == '>':
-            selection_mask = selection_mask & (fatjets[var] > float(value))
+            selection_mask = np.logical_and(selection_mask, fatjets[var] > float(value))
         else: raise NotImplementedError(f"The direction you passed is unknown: {direction}. Use \'<\' or \'>\'.")
     selection_fatjets = fatjets[selection_mask]
     selection_fatjets = selection_fatjets[ak.argsort(selection_fatjets[bbTagVar])]
@@ -142,7 +142,7 @@ def add_vars_boosted(sample, filepath):
     add_bbTagNanov15_boosted(sample, filepath)
 
     for selection_var in SELECTION_VARIATIONS.keys():
-        selected_fatjets, good_fatjets = select_fatjets(sample, filepath)
+        selected_fatjets, good_fatjets = select_fatjets(sample, filepath, selection_var)
         for field in selected_fatjets:
             sample[f'{selection_var}_fatjet_selected_{field}'] = ak.where(good_fatjets, selected_fatjets[field], FILL_VALUE)
 
@@ -177,7 +177,7 @@ def add_vars_boosted(sample, filepath):
         add_bbTagWP_boosted(sample, filepath, selection_var)
 
         # Max non-bb fatjet bbTag score -> sets lower limit for resampling #
-        sample[f'{selection_var}_max_nonselectedfatjet_bbtag'] = max_nonselectedfatjet_bbTag(sample, filepath)
+        sample[f'{selection_var}_max_nonselectedfatjet_bbtag'] = max_nonselectedfatjet_bbTag(sample, filepath, selection_var)
 
         # Mask for training #
         sample['pass_mva-0.7'] = ak.where(

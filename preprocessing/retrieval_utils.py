@@ -28,6 +28,18 @@ DF_SHUFFLE = True
 RNG_SEED = 21
 FILL_VALUE = -999
 
+GGJETS_RESCALE = {
+    '2016*preVFP': 1.1303,
+    '2016*postVFP': 1.3069,
+    '2017': 1.2002,
+    '2018': 1.2153,
+    '2022*preEE': 1.3980,
+    '2022*postEE': 1.3762,
+    '2023*preBPix': 1.4987,
+    '2023*postBPix': 1.5032,
+    '2024': 1.5925
+}
+
 ################################
 
 
@@ -157,17 +169,18 @@ def get_train_Dataframe(dataset_dirpath: str, fold_idx: int, dataset: str="train
         # aux.loc[DDQCD_GJET_2024_mask, 'AUX_eventWeightTrain'] = aux.loc[DDQCD_GJET_2024_mask, 'AUX_eventWeight']
 
     # Resonant background
+    res_class_mask = aux['AUX_label1D'].eq(-1).to_numpy()
     for i, key in enumerate(filepaths.keys()):
-        if 'ttH' in key or 'VH' in key:
-            class_mask = aux['AUX_label1D'].eq(i)
-            aux.loc[class_mask, 'AUX_eventWeightTrain'] = aux.loc[class_mask, 'AUX_eventWeightTrain'] * RES_BKG_RESCALE
+        if match_sample(key, ['ttH', 'VH']) is not None:
+            res_class_mask = np.logical_or(res_class_mask, aux['AUX_label1D'].eq(i).to_numpy())
+    aux.loc[res_class_mask, 'AUX_eventWeightTrain'] = aux.loc[res_class_mask, 'AUX_eventWeightTrain'] * RES_BKG_RESCALE
 
     # Signal
+    signal_class_mask = aux['AUX_label1D'].eq(-1).to_numpy()
     for i, key in enumerate(filepaths.keys()):
-        if 'HH' in key:
-            signal_mask = aux['AUX_label1D'].eq(i)
-            background_mask = aux['AUX_label1D'].ne(i)
-            aux.loc[signal_mask, 'AUX_eventWeightTrain'] = aux.loc[signal_mask, 'AUX_eventWeightTrain'] * np.sum(aux.loc[background_mask, 'AUX_eventWeightTrain']) / np.sum(aux.loc[signal_mask, 'AUX_eventWeightTrain'])
+        if match_sample(key, ['HH']) is not None:
+            signal_class_mask = np.logical_or(signal_class_mask, aux['AUX_label1D'].eq(i).to_numpy())
+    aux.loc[signal_mask, 'AUX_eventWeightTrain'] = aux.loc[signal_class_mask, 'AUX_eventWeightTrain'] * np.sum(aux.loc[~signal_class_mask, 'AUX_eventWeightTrain']) / np.sum(aux.loc[signal_class_mask, 'AUX_eventWeightTrain'])
     
     # check average weight and sum weight for each class
     for i, class_name in enumerate(filepaths.keys()):
