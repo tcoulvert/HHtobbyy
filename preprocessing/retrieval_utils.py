@@ -28,17 +28,46 @@ DF_SHUFFLE = True
 RNG_SEED = 21
 FILL_VALUE = -999
 
-GGJETS_RESCALE = {
-    '2016*preVFP': 1.1303,
-    '2016*postVFP': 1.3069,
-    '2017': 1.2002,
-    '2018': 1.2153,
-    '2022*preEE': 1.3980,
-    '2022*postEE': 1.3762,
-    '2023*preBPix': 1.4987,
-    '2023*postBPix': 1.5032,
-    '2024': 1.5925
+NONRES_RESCALE = {
+    '2016*preVFP': {
+        'DDQCDGJets': 1.1233,
+        'GGJets': 1.1303,
+    },
+    '2016*postVFP': {
+        'DDQCDGJets': 1.2077,
+        'GGJets': 1.3069,
+    },
+    '2017': {
+        'DDQCDGJets': 1.1817, 
+        'GGJets': 1.2002,
+    },
+    '2018': {
+        'DDQCDGJets': 1.1495, 
+        'GGJets': 1.2153,
+    },
+    '2022*preEE': {
+        'DDQCDGJets': 1.0498,
+        'GGJets': 1.3980,
+    },
+    '2022*postEE': {
+        'DDQCDGJets': 1.0896,
+        'GGJets': 1.3762,
+    },
+    '2023*preBPix': {
+        'DDQCDGJets': 1.0369,
+        'GGJets': 1.4987,
+    },
+    '2023*postBPix': {
+        'DDQCDGJets': 1.1814,
+        'GGJets': 1.5032,
+    },
+    '2024': {
+        'DDQCDGJets': 1.2140,
+        'GGJets': 1.5925,
+    }
 }
+for era, rescale_dict in NONRES_RESCALE.items(): rescale_dict['!DDQCDGJet*GJet'] = 2.6
+
 
 ################################
 
@@ -160,13 +189,23 @@ def get_train_Dataframe(dataset_dirpath: str, fold_idx: int, dataset: str="train
 
     # Upweight resonant background and signal samples for training #
     # Non-Resonant background #
-    if match_regex('DDQCDGJets', [filepath for filepath_class_list in filepaths.values() for filepath in filepath_class_list]) is not None:
-        DDQCD_GGJET_2024_mask = aux['AUX_sample_name'].eq('GGJets')
-        aux.loc[DDQCD_GGJET_2024_mask, 'AUX_eventWeight'] = aux.loc[DDQCD_GGJET_2024_mask, 'AUX_eventWeight'] * 1.59
-        aux.loc[DDQCD_GGJET_2024_mask, 'AUX_eventWeightTrain'] = aux.loc[DDQCD_GGJET_2024_mask, 'AUX_eventWeight']
-        # DDQCD_GJET_2024_mask = aux['AUX_sample_name'].ne('GGJets')
-        # aux.loc[DDQCD_GJET_2024_mask, 'AUX_eventWeight'] = aux.loc[DDQCD_GJET_2024_mask, 'AUX_eventWeight'] * 1.21
-        # aux.loc[DDQCD_GJET_2024_mask, 'AUX_eventWeightTrain'] = aux.loc[DDQCD_GJET_2024_mask, 'AUX_eventWeight']
+    for era, nonres_rescale_dict in NONRES_RESCALE.items():
+        for sample_name, sample_rescale in nonres_rescale_dict.items():
+            era_sample_mask = np.ones_like(aux['AUX_mass'])
+            for sub_era in era.split('*'):
+                if len(sub_era) == 0: continue
+                elif sub_era[0] == '!':
+                    era_sample_mask = np.logical_and(era_sample_mask, ~aux['AUX_sample_era'].str.contains(sub_era, regex=True).to_numpy())
+                else:
+                    era_sample_mask = np.logical_and(era_sample_mask, aux['AUX_sample_era'].str.contains(sub_era, regex=True).to_numpy())
+            for sub_sample_name in sample_name.split('*'):
+                if len(sub_sample_name) == 0: continue
+                elif sub_sample_name[0] == '!':
+                    era_sample_mask = np.logical_and(era_sample_mask, ~aux['AUX_sample_name'].str.contains(sub_sample_name, regex=True).to_numpy())
+                else:
+                    era_sample_mask = np.logical_and(era_sample_mask, aux['AUX_sample_name'].str.contains(sub_sample_name, regex=True).to_numpy())
+            aux.loc[era_sample_mask, 'AUX_eventWeight'] = aux.loc[era_sample_mask, 'AUX_eventWeight'] * sample_rescale
+            aux.loc[era_sample_mask, 'AUX_eventWeightTrain'] = aux.loc[era_sample_mask, 'AUX_eventWeight']
 
     # Resonant background
     res_class_mask = aux['AUX_label1D'].eq(-1).to_numpy()

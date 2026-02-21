@@ -126,7 +126,7 @@ sample_name_map = {
     # Fake photons
     'TTG',
     # Fake b-jets
-    'GGJets',
+    '*****GGJets*****',
     # Real b-jets
     'TTGG', 'SherpaNLO',
 
@@ -215,7 +215,7 @@ def make_dataset(filepath, era, type='MC'):
 
         # Add useful parquet meta-info
         ak_batch['sample_name'] = match_sample(filepath, sample_name_map) if match_sample(filepath, sample_name_map) is not None else filepath.split('/')[-3]
-        ak_batch['sample_era'] = era[era.find('Run3_202'):-1]
+        ak_batch['sample_era'] = era[era.find('Run3_20'):-1]
         if type.upper() == 'MC':
             print(f"lumi match = {match_sample(filepath, luminosities.keys())}")
             print(f"xs match = {match_sample(filepath, cross_sections.keys())}")
