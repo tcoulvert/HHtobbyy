@@ -154,7 +154,6 @@ def add_vars_resolved(sample, filepath):
                 FILL_VALUE
             )
 
-
         # mHH variables #
         sample[f'{prefactor}_pt_balance'] = ak.where(
             good_bjets['dijet'],
@@ -175,7 +174,6 @@ def add_vars_resolved(sample, filepath):
             FILL_VALUE
         )
 
-
         # ISR-like jet variables
         isr_jet_4mom, isr_jet_bool = zh_isr_jet(sample, dijet_4mom, jet_4moms)
         sample[f'{prefactor}_isr_jet_pt'] = ak.where(  # pt of isr jet
@@ -189,11 +187,9 @@ def add_vars_resolved(sample, filepath):
             FILL_VALUE
         )
 
-
         # max non-bjet btag score -> sets lower limit for resampling #
         sample[f'{prefactor}_max_nonbjet_btag'] = max_nonbjet_btag(sample, filepath, prefactor=prefactor)
 
-        fix_UParT_field(sample, prefactor=prefactor)
         add_bTagWP_resolved(sample, filepath, prefactor=prefactor)
 
         sample['pass_mva-0.7'] = ak.where(

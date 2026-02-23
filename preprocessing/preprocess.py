@@ -231,8 +231,11 @@ def make_dataset(filepath, era, type='MC'):
             ak_batch['weight'] =  ak.ones_like(ak_batch['pt'])
             ak_batch['eventWeight'] =  ak.ones_like(ak_batch['pt'])
 
+        print('adding resolved vars')
         add_vars_resolved(ak_batch, filepath)
+        print('finished resolved, adding boosted vars')
         add_vars_boosted(ak_batch, filepath)
+        print('finished boosted')
         if 'hash' not in ak_batch.fields:
             ak_batch['hash'] = np.arange(ak.num(ak_batch['pt'], axis=0))
 
