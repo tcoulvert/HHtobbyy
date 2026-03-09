@@ -144,7 +144,6 @@ def add_vars_boosted(sample, filepath):
     for selection_var in SELECTION_VARIATIONS.keys():
         selected_fatjets, good_fatjets = select_fatjets(sample, filepath, selection_var)
         for field in selected_fatjets.fields:
-            print(field)
             sample[f'{selection_var}_fatjet_selected_{field}'] = ak.where(good_fatjets, selected_fatjets[field], FILL_VALUE)
 
         # (Di)Photon - fatjet angular variables #

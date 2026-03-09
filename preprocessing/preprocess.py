@@ -210,7 +210,7 @@ def make_dataset(filepath, era, type='MC'):
         eos_output_filepath = '/'.join(['']+output_filepath.split('/')[3:])
         output_filepath = f"tmp{hash(output_filepath)}.parquet"
     pq_writer = None
-    for pq_batch in pq_file.iter_batches(batch_size=524_288, columns=columns):
+    for pq_batch in pq_file.iter_batches(batch_size=262_144, columns=columns):
         ak_batch = ak.from_arrow(pq_batch)
 
         # Add useful parquet meta-info

@@ -40,16 +40,20 @@ plt.rcParams.update({"axes.prop_cycle": cycler("color", cmap_petroff10)})
 ################################
 
 
-def make_hists(arrs: list, var_label: str, weights: list=None):
-    min_val, max_val = 0., 1.
-    for i, arr in enumerate(arrs):
-        var_mask = (
-            (arr != FILL_VALUE)
-            & np.isfinite(arr)
-        )
-        good_var_bool = np.any(var_mask) and np.min(arr[var_mask]) != np.max(arr[var_mask])
-        min_val = np.min(arr[var_mask]) if good_var_bool and np.min(arr[var_mask]) < min_val else min_val
-        max_val = np.max(arr[var_mask]) if good_var_bool and np.max(arr[var_mask]) > max_val else max_val
+def make_hists(arrs: list, var_label: str, weights: list=None, _bins: int=None, _range: tuple=None):
+    if _range is None:
+        min_val, max_val = 0., 1. if _range is None else _range
+        for i, arr in enumerate(arrs):
+            var_mask = (
+                (arr != FILL_VALUE)
+                & np.isfinite(arr)
+            )
+            good_var_bool = np.any(var_mask) and np.min(arr[var_mask]) != np.max(arr[var_mask])
+            min_val = np.min(arr[var_mask]) if good_var_bool and ~(np.min(arr[var_mask]) >= min_val and np.max(arr[var_mask]) <= max_val) else min_val
+            max_val = np.max(arr[var_mask]) if good_var_bool and ~(np.min(arr[var_mask]) >= min_val and np.max(arr[var_mask]) <= max_val) else max_val
+    else:
+        min_val, max_val = _range
+    if _bins is None: _bins = 50
 
     hists = []
     for i, arr in enumerate(arrs):
@@ -59,7 +63,7 @@ def make_hists(arrs: list, var_label: str, weights: list=None):
         )
 
         var_hist = hist.Hist(
-            hist.axis.Regular(50, min_val, max_val, name="var", label=var_label, growth=False, underflow=False, overflow=False), 
+            hist.axis.Regular(_bins, min_val, max_val, name="var", label=var_label, growth=False, underflow=False, overflow=False), 
             storage='weight'
         ).fill(var=arr[var_mask], weight=weights[i][var_mask] if weights is not None else np.ones_like(arr[var_mask]))
         hists.append(var_hist)
@@ -147,7 +151,7 @@ def plot_1dhist(
     weights: list|np.ndarray=None, yerr: bool=False, subplots: tuple = None, 
     histtype: str="step", stack: bool=False, labels: list|str=None, 
     logy: bool=False, density: bool=False,
-    colors: list|str=None,
+    colors: list|str=None, _bins: int=None, _range: tuple=None,
     plot_prefix: str='',  plot_postfix: str='', save_and_close: bool=False
 ):
     plot_dirpath = make_plot_dirpath(training_dirpath, plot_type)
@@ -155,7 +159,7 @@ def plot_1dhist(
     if type(arrs) is np.ndarray: arrs = [arrs]; weights = [weights]; labels = [labels]; colors = [colors]
     if len(np.shape(np.array(arrs, dtype=object))) > 2: raise IndexError(f"Input array should be either a 1D numpy array or a list of 1D numpy arrays, your shape is {np.shape(arrs)}")
 
-    hists = make_hists(arrs, var_label, weights=weights)
+    hists = make_hists(arrs, var_label, weights=weights, bins=_bins, range=_range)
     xs_order = np.argsort([np.sum(_hist_.values()) for _hist_ in hists])
     hists, weights = [hists[i] for i in xs_order], [weights[i] for i in xs_order]
 

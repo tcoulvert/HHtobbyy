@@ -8,12 +8,15 @@ import subprocess
 import sys
 
 # Common Py packages
-import matplotlib.pyplot as plt
-
-# HEP packages
 import numpy as np
 import pandas as pd
 import scipy as scp
+import matplotlib.pyplot as plt
+
+# HEP packages
+import mplhep as hep
+import hist
+from cycler import cycler
 
 ################################
 
@@ -29,9 +32,8 @@ sys.path.append(os.path.join(GIT_REPO, "training/"))
 sys.path.append(os.path.join(GIT_REPO, "evaluation/"))
 
 # Module packages
-from plot_hists import (
-    plot_1dhist
-)
+from plot_hists import plot_1dhist
+from plotting_utils import plot_filepath, make_plot_dirpath
 from retrieval_utils import (
     get_class_sample_map, get_n_folds, 
     match_sample, match_regex,
@@ -135,24 +137,32 @@ assert DISCRIMINATOR in transform_preds_options(), f"Trying to use a discriminat
 NONRES_SAMPLES = SCULPTING_CUTS.pop('nonRes_samples')
 PLOT_VARS = SCULPTING_CUTS.pop('plot_vars')
 
+plt.style.use(hep.style.CMS)
+plt.rcParams.update({'font.size': 20})
+cmap_petroff10 = ["#3f90da", "#ffa90e", "#bd1f01", "#94a4a2", "#832db6", "#a96b59", "#e76300", "#b9ac70", "#717581", "#92dadd"]
+plt.rcParams.update({"axes.prop_cycle": cycler("color", cmap_petroff10)})
+
 ################################
 
 
 def resample_from_var(
-    arr, weight, n_events, min_value=None, bins=100
+    arr, weight, n_events, min_value=None, bins=100, categorical: bool=False
 ):
     resample_rng = np.random.default_rng(seed=SEED)
 
-    np_hist, bin_edges = np.histogram(arr, bins=bins, weights=weight, density=True)
-    np_hist /= np.sum(np_hist)
+    if not categorical:
+        np_hist, bin_edges = np.histogram(arr, bins=bins, weights=weight, density=True)
+        np_hist /= np.sum(np_hist)
 
-    bin_choices = resample_rng.choice(np.arange(len(np_hist)), size=n_events, p=np_hist)
+        bin_choices = resample_rng.choice(np.arange(len(np_hist)), size=n_events, p=np_hist)
 
-    value_choices = (bin_edges[bin_choices+1] - bin_edges[bin_choices]) * resample_rng.random(size=n_events) + bin_edges[bin_choices]
+        value_choices = (bin_edges[bin_choices+1] - bin_edges[bin_choices]) * resample_rng.random(size=n_events) + bin_edges[bin_choices]
+    else:
+        value_choices = resample_rng.choice(np.unique(arr), size=n_events, replace=True, p=[np.sum(weight[arr == unique_val]) / np.sum(weight) for unique_val in np.unique(arr)])
 
     if min_value is None or np.all(value_choices > min_value):
         return value_choices
-    else:  # this is not really correct, just an approximation to make the code work faster
+    else:  # this is not really correct, just an approximation to make the code faster
         bad_choices_bool = value_choices <= min_value
 
         largest_min_value = np.max(min_value[bad_choices_bool])
@@ -170,7 +180,8 @@ def resample_grow_pd(var, n_duplicates_per_event):
     new_rows = pd.DataFrame(
         np.tile(var.to_numpy(), (n_duplicates_per_event, 1)), columns=var.columns
     )
-    new_rows['AUX_resampled'] = np.ones_like(new_rows['AUX_hash'].to_numpy(), dtype=bool)
+    if 'AUX_resampled' in var.columns:
+        new_rows['AUX_resampled'] = np.ones(new_rows.shape[0], dtype=bool)
     return pd.concat([var, new_rows], ignore_index=True)
 
 
@@ -179,7 +190,7 @@ def exp_plus_gauss(x, A, tau, B, sigma, C):
     gauss = B * np.exp(-0.5 * ((x - 125) / sigma)**2)
     return exp + gauss + C
 
-def fit_tightest(np_arr, plot_var, subplots):
+def fit_tightest(np_arr, plot_var, subplots, plot_type: str, training_dirpath: str, plot_prefix: str=None, plot_postfix: str=None, ):
 
     np_hist, bin_edges = np.histogram(np_arr, bins=plot_var['bins'], range=plot_var['range'], density=True)
     bin_centers = [(bin_edges[i] + bin_edges[i+1])/2 for i in range(len(np_hist))]
@@ -195,7 +206,17 @@ def fit_tightest(np_arr, plot_var, subplots):
 
     fig, ax = subplots
     ax.plot(x_trial, y_fit, color='blue', label=f"Fit - Exponential + Gaussian@125GeV (A={popt[2]:.2f}±{perr[2]:.2f})")
-    return fig, ax
+
+    plot_dirpath = make_plot_dirpath(training_dirpath, plot_type)
+    plt.savefig(
+        plot_filepath(plot_type, plot_dirpath, plot_prefix, plot_postfix), 
+        bbox_inches='tight'
+    )
+    plt.savefig(
+        plot_filepath(plot_type, plot_dirpath, plot_prefix, plot_postfix, format='pdf'), 
+        bbox_inches='tight'
+    )
+    plt.close()
 
 
 def sculpting_check():
@@ -209,19 +230,23 @@ def sculpting_check():
         booster = get_booster(fold_idx)
 
         get_resample_filepaths = lambda nonres_samples_key: [
-            filepath for filepath in get_filepaths(DATASET_DIRPATH, DATASET, SYST_NAME)(fold_idx) 
+            filepath 
+            for class_filepaths in get_filepaths(DATASET_DIRPATH, DATASET, SYST_NAME)(fold_idx).values() 
+            for filepath in class_filepaths 
             if match_sample(filepath, [sample[nonres_samples_key] for sample in NONRES_SAMPLES]) is not None
         ]
         nonRes_filepaths = get_resample_filepaths('name')
         nonRes_df, nonRes_aux = pd.concat([get_Dataframe(filepath) for filepath in nonRes_filepaths]), pd.concat([get_Dataframe(filepath, aux=True) for filepath in nonRes_filepaths])
-        nonRes_aux['AUX_resampled'] = np.zeros_like(nonRes_aux['AUX_hash'].to_numpy(), dtype=bool)
+        nonRes_aux['AUX_resampled'] = np.zeros(nonRes_aux.shape[0], dtype=bool)
         nonRes_df, nonRes_aux = resample_grow_pd(nonRes_df, RESAMPLE), resample_grow_pd(nonRes_aux, RESAMPLE)
 
         Res_filepaths = get_resample_filepaths('resample_from')
         Res_df, Res_aux = pd.concat([get_Dataframe(filepath) for filepath in Res_filepaths]), pd.concat([get_Dataframe(filepath, aux=True) for filepath in Res_filepaths])
 
         fold_hists = {hist_name: None for hist_name in SCULPTING_CUTS.keys()}
+        num_iterations = 0
         while True:
+            num_iterations += 1
 
             for nonRes_sample in NONRES_SAMPLES:
                 nonRes_mask = np.logical_and(
@@ -235,8 +260,16 @@ def sculpting_check():
                     assert variable is not None, f"Variable with regex string {resample_var} does not exist in Dataframe, check if the regex string is correct"
                     nonRes_df.loc[nonRes_mask, variable] = resample_from_var(
                         Res_df.loc[Res_mask, variable], weight=Res_aux.loc[Res_mask, "AUX_eventWeight"] if WEIGHTS else np.ones(np.sum(Res_mask)),
-                        n_events=np.sum(nonRes_mask), min_value=nonRes_df.loc[nonRes_mask, "AUX_max_nonbjet_btag"] if "btag" in variable and "WP" not in variable else None
+                        n_events=np.sum(nonRes_mask), #min_value=nonRes_df.loc[nonRes_mask, "AUX_max_nonbjet_btag"] if "btag" in variable and "WP" not in variable else None
+                        categorical=match_sample(variable, ['WP']) is not None,
                     )
+                    if match_sample(variable, ['bTagWP']) is not None:  # checking if using WPs, need to set other WPs appropriately
+                        init_wp, replace_wps = 'XXT', ['XXT', 'XT', 'T', 'M', 'L']
+                        for i, replace_wp in enumerate(replace_wps):
+                            if match_sample(variable, [replace_wp]) is not None: 
+                                init_wp, replace_wps = replace_wp, replace_wps[i+1:]; break
+                        for replace_wp in replace_wps:
+                            nonRes_df.loc[nonRes_mask, variable.replace(init_wp, replace_wp)] = np.where(nonRes_df.loc[nonRes_mask, variable] > 0, nonRes_df.loc[nonRes_mask, variable.replace(init_wp, replace_wp)], nonRes_df.loc[nonRes_mask, variable])
 
             nonRes_dm = get_DMatrix(nonRes_df, nonRes_aux, dataset='test', label=False)
             nonRes_preds = evaluate(booster, nonRes_dm)
@@ -249,16 +282,13 @@ def sculpting_check():
                     cut_mask = np.logical_and(
                         cut_mask, 
                         np.logical_and(
-                            transform_preds[:, int(cut_axis)] > cut_range[0],
-                            transform_preds[:, int(cut_axis)] < cut_range[1],
+                            transformed_preds[:, int(cut_axis)] > cut_range[0],
+                            transformed_preds[:, int(cut_axis)] < cut_range[1],
                         )
                     )
                 if np.sum(cut_mask) == 0: break
 
-                pass_cut_df = pd.concat([
-                    nonRes_df.loc[cut_mask, [match_regex(plot_var['name'], nonRes_df.columns) for plot_var in PLOT_VARS]],
-                    nonRes_aux.loc[cut_mask, ['AUX_hash', 'AUX_eventWeight']]
-                ])
+                pass_cut_df = nonRes_aux.loc[cut_mask, [match_regex(plot_var['name'], nonRes_aux.columns) for plot_var in PLOT_VARS]+['AUX_hash', 'AUX_eventWeight']]
             
                 if fold_hists[hist_name] is None:
                     fold_hists[hist_name] = copy.deepcopy(pass_cut_df)
@@ -279,7 +309,8 @@ def sculpting_check():
                     
                     fold_hists[hist_name] = pd.concat([fold_hists[hist_name], pass_cut_df.loc[intersect_bool]])
             
-            if all(len(fold_hist) for fold_hist in fold_hists.values() > 1000): break
+            if all(len(fold_hist) > 1000 for fold_hist in fold_hists.values()): break
+            else: print('num iterations = ', num_iterations, '\n', '\n'.join([str(len(fold_hist)) for fold_hist in fold_hists.values()]))
         
         for plot_var in PLOT_VARS:
             tightest_hist = fold_hists[list(fold_hists.keys())[-1]]
@@ -287,18 +318,19 @@ def sculpting_check():
 
             fig, ax = plt.subplots()
             plot_1dhist(
-                [hist.loc[:, var].to_numpy() for hist in fold_hists], TRAINING_DIRPATH, PLOT_TYPE, var, 
-                weights=[hist.loc[:, 'AUX_eventWeight'].to_numpy() for hist in fold_hists] 
-                if WEIGHTS else [np.ones_like(hist.loc[:, 'AUX_eventWeight']) for hist in fold_hists],
-                subplots=(fig, ax), labels=list(fold_hists.keys()), plot_prefix=DISCRIMINATOR, plot_postfix=f"fold{fold_idx}"
+                [hist.loc[:, var].to_numpy(dtype=np.float64) for hist in fold_hists.values()], 
+                TRAINING_DIRPATH, PLOT_TYPE, var, 
+                weights=[hist.loc[:, 'AUX_eventWeight'].to_numpy() for hist in fold_hists.values()] 
+                if WEIGHTS else [np.ones_like(hist.loc[:, 'AUX_eventWeight']) for hist in fold_hists.values()],
+                density=DENSITY, logy=LOGY, colors=cmap_petroff10[:len(fold_hists)], _bins=plot_var['bins'], _range=plot_var['range'],
+                subplots=(fig, ax), labels=list(fold_hists.keys()), plot_prefix=DISCRIMINATOR, plot_postfix=f"{''.join(plot_var['name'].split('*'))}_fold{fold_idx}", save_and_close=not FIT
             )
             if FIT:
-                fit_tightest(tightest_hist.loc[:, var].to_numpy(), var, (fig, ax))
-            plt.close()
+                fit_tightest(tightest_hist.loc[:, var].to_numpy(), plot_var, (fig, ax), PLOT_TYPE, TRAINING_DIRPATH, plot_prefix=DISCRIMINATOR, plot_postfix=f"{''.join(plot_var['name'].split('*'))}_fit_fold{fold_idx}")
         
-        for hist_name, hist in hists.items():
-            if hist is None: hist = copy.deepcopy(fold_hists[hist_name])
-            else: hist = pd.concat([hist, fold_hists[hist_name]])
+        for hist_name in hists.keys():
+            if hists[hist_name] is None: hists[hist_name] = copy.deepcopy(fold_hists[hist_name])
+            else: hists[hist_name] = pd.concat([hists[hist_name], fold_hists[hist_name]])
     
     for plot_var in PLOT_VARS:
         tightest_hist = hists[list(hists.keys())[-1]]
@@ -306,14 +338,15 @@ def sculpting_check():
 
         fig, ax = plt.subplots()
         plot_1dhist(
-            [hist.loc[:, var].to_numpy() for hist in hists], TRAINING_DIRPATH, PLOT_TYPE, var, 
-            weights=[hist.loc[:, 'AUX_eventWeight'].to_numpy() for hist in hists] 
-            if WEIGHTS else [np.ones_like(hist.loc[:, 'AUX_eventWeight']) for hist in hists],
-            subplots=(fig, ax), labels=list(hists.keys()), plot_prefix=DISCRIMINATOR
+            [hist.loc[:, var].to_numpy(dtype=np.float64) for hist in hists.values()], 
+            TRAINING_DIRPATH, PLOT_TYPE, var, 
+            weights=[hist.loc[:, 'AUX_eventWeight'].to_numpy() for hist in hists.values()] 
+            if WEIGHTS else [np.ones_like(hist.loc[:, 'AUX_eventWeight']) for hist in hists.values()],
+            density=DENSITY, logy=LOGY, colors=cmap_petroff10[:len(hists)], _bins=plot_var['bins'], _range=plot_var['range'],
+            subplots=(fig, ax), labels=list(hists.keys()), plot_prefix=DISCRIMINATOR, plot_postfix=f"{''.join(plot_var['name'].split('*'))}", save_and_close=not FIT
         )
         if FIT:
-            fit_tightest(tightest_hist.loc[:, var].to_numpy(), var, (fig, ax))
-        plt.close()
+            fit_tightest(tightest_hist.loc[:, var].to_numpy(), plot_var, (fig, ax), PLOT_TYPE, TRAINING_DIRPATH, plot_prefix=DISCRIMINATOR, plot_postfix=f"{''.join(plot_var['name'].split('*'))}_fit")
 
 
 if __name__ == "__main__":
