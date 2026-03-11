@@ -248,23 +248,32 @@ def get_DMatrix(df, aux, dataset: str='train', label: bool=True):
         data=df, label=label_arg, weight=np.abs(aux['AUX_eventWeightTrain'] if dataset.lower() == 'train' else aux['AUX_eventWeight']),
         missing=FILL_VALUE, feature_names=list(df.columns)
     )
-def get_train_DMatrices(dataset_dirpath: str, fold_idx: int, val_split: float=0.2, dataset: str='all', **kwargs):
+def get_train_Dataframes(dataset_dirpath: str, fold_idx: int, val_split: float=0.2, dataset: str='all', **kwargs):
     if 'res_bkg_rescale' in kwargs: RES_BKG_RESCALE = kwargs['res_bkg_rescale']
     if 'shuffle' in kwargs: DF_SHUFFLE = kwargs['shuffle']
     
     if dataset in ['all', 'train', 'val']:
         tr_df, tr_aux = get_train_Dataframe(dataset_dirpath, fold_idx)
         train_df, val_df, train_aux, val_aux = train_test_split(tr_df, tr_aux, test_size=val_split, random_state=RNG_SEED)
-        train_dm = get_DMatrix(train_df, train_aux)
-        val_dm = get_DMatrix(val_df, val_aux)
     if dataset in ['all', 'test']:
         test_df, test_aux = get_train_Dataframe(dataset_dirpath, fold_idx, 'test')
-        test_dm = get_DMatrix(test_df, test_aux, dataset='test')
 
-    if dataset == 'all': return train_dm, val_dm, test_dm
-    elif dataset == 'train': return train_dm
-    elif dataset == 'val': return val_dm
-    elif dataset == 'test': return test_dm
+    if dataset == 'all': return train_df, train_aux, val_df, val_aux, test_df, test_aux
+    elif dataset == 'train': return train_df, train_aux
+    elif dataset == 'val': return val_df, val_aux
+    elif dataset == 'test': return test_df, test_aux
+    else: raise ValueError(f"Unknown dataset: {dataset}")
+def get_train_DMatrices(dataset_dirpath: str, fold_idx: int, val_split: float=0.2, dataset: str='all', **kwargs):
+    output = get_train_Dataframes(dataset_dirpath, fold_idx, val_split=val_split, dataset=dataset)
+    
+    if dataset == 'all': 
+        train_dm = get_DMatrix(output[0], output[1])
+        val_dm = get_DMatrix(output[2], output[3])
+        test_dm = get_DMatrix(output[4], output[5])
+        return train_dm, val_dm, test_dm
+    elif dataset in ['train', 'val', 'test']:
+        dataset_dm =  get_DMatrix(output[0], output[1])
+        return dataset_dm
     else: raise ValueError(f"Unknown dataset: {dataset}")
 
 def get_test_DMatrix(filepath: str):
