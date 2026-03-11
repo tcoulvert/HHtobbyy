@@ -159,7 +159,7 @@ def plot_1dhist(
     if type(arrs) is np.ndarray: arrs = [arrs]; weights = [weights]; labels = [labels]; colors = [colors]
     if len(np.shape(np.array(arrs, dtype=object))) > 2: raise IndexError(f"Input array should be either a 1D numpy array or a list of 1D numpy arrays, your shape is {np.shape(arrs)}")
 
-    hists = make_hists(arrs, var_label, weights=weights, bins=_bins, range=_range)
+    hists = make_hists(arrs, var_label, weights=weights, _bins=_bins, _range=_range)
     xs_order = np.argsort([np.sum(_hist_.values()) for _hist_ in hists])
     hists, weights = [hists[i] for i in xs_order], [weights[i] for i in xs_order]
 
