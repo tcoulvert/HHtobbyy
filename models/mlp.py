@@ -38,7 +38,7 @@ class MLP(pl.LightningModule):
         loss.backward()
 
     def compute_loss(self, logits, y, weights):
-        loss = self.multi_loss(logits, y, reduction='none')
+        loss = self.multi_loss(logits, y)
         weighted_loss = (weights * loss).sum() / weights.sum()
         return weighted_loss
     
