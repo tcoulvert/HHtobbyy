@@ -10,7 +10,6 @@ from pathlib import Path
 
 # HEP packages
 from torch.utils.data import DataLoader
-from torch.nn.functional import gelu
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 
@@ -29,7 +28,7 @@ sys.path.append(os.path.join(GIT_REPO, "models", ""))
 import training_utils as utils
 import optimize_hyperparams_DNN as optDNN
 from retrieval_utils import (
-    get_train_Dataframes, 
+    get_train_Dataframes, get_labelND,
     get_class_sample_map, get_n_folds
 )
 from condor_training import submit
@@ -135,10 +134,10 @@ def run_training():
         print('OPTIMIZING SPACE')
         
         param = optDNN.optimize_hyperparams(
-            DATASET_DIRPATH, N_CLASSES, param_filepath, verbose=True
+            DATASET_DIRPATH, param_filepath, verbose=True
         )
     else:
-        param = optDNN.init_params(N_CLASSES)
+        param = optDNN.init_params()
 
     # Train the model
     if BATCH == "iterative":
@@ -149,29 +148,31 @@ def run_training():
             # Dataset
             train_df, train_aux, val_df,  val_aux, _, _ = get_train_Dataframes(DATASET_DIRPATH, fold_idx)
             train_data = DataLoader(
-                MLP_Dataset(train_df.to_numpy(), train_aux.loc['AUX_label1D'].to_numpy(), train_aux.loc['AUX_eventWeightTrain'].to_numpy()),
+                MLP_Dataset(train_df.to_numpy(), get_labelND(train_aux['AUX_label1D'].to_numpy()), train_aux['AUX_eventWeightTrain'].to_numpy()),
                 batch_size=param['batch_size'], shuffle=True, num_workers=param['num_workers']
             )
             val_data = DataLoader(
-                MLP_Dataset(val_df.to_numpy(), val_aux.loc['AUX_label1D'].to_numpy(), val_aux.loc['AUX_eventWeightTrain'].to_numpy()),
+                MLP_Dataset(val_df.to_numpy(), get_labelND(val_aux['AUX_label1D'].to_numpy()), val_aux['AUX_eventWeightTrain'].to_numpy()),
                 batch_size=param['batch_size'], shuffle=True, num_workers=param['num_workers']
             )
 
             # DNN model
-            model = MLP(train_df.shape[1], param['num_layers'], param['num_nodes'], N_CLASSES, gelu, param['dropout_prob'])
+            model = MLP(train_df.shape[1], param['num_layers'], param['num_nodes'], N_CLASSES, param['dropout_prob'])
 
             # Callbacks
-            callbacks = [EarlyStopping(monitor="val_loss", min_delta=param['min_delta'], patience=param['patience'], verbose=False, mode="min")]
+            callbacks = [EarlyStopping(monitor=param['monitor'], min_delta=param['min_delta'], patience=param['patience'], verbose=False, mode=param['mode'])]
 
             # Build trainer
             trainer = Trainer(
                 callbacks=callbacks,
-                default_root_dir=os.path.join(OUTPUT_DIRPATH, 'logs'),
-                weights_save_path=OUTPUT_DIRPATH,
+                default_root_dir=OUTPUT_DIRPATH,
                 max_epochs=param['max_epochs'], 
-                gpus=param['num_gpus'],
+                accelerator=param['accelerator'],
                 strategy=param['strategy'],
-                num_nodes=param['num_nodes'], num_processes=param['num_processes'],
+                num_nodes=param['num_nodes'],
+                precision=param['precision'], 
+                gradient_clip_val=param['gradient_clip_val'],
+                logger=param['logger']
             )
 
             # Train DNN

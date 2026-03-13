@@ -129,7 +129,7 @@ def get_labelND(label1D):
     """
     Returns the ND label vector (one-hot encoded) from the 1D label vector (integer encoded).
     """
-    return np.tile(np.arange(np.max(label1D)), (np.size(label1D), 1)) == label1D
+    return np.tile(np.arange(np.max(label1D)), (np.size(label1D), 1)) == np.stack([label1D for _ in np.arange(np.max(label1D))]).T
 def get_label1D(labelND):
     """
     Returns the 1D label vector (integer encoded) from the ND label vector (one-hot encoded).
@@ -219,7 +219,7 @@ def get_train_Dataframe(dataset_dirpath: str, fold_idx: int, dataset: str="train
     for i, key in enumerate(filepaths.keys()):
         if match_sample(key, ['HH']) is not None:
             signal_class_mask = np.logical_or(signal_class_mask, aux['AUX_label1D'].eq(i).to_numpy())
-    aux.loc[signal_mask, 'AUX_eventWeightTrain'] = aux.loc[signal_class_mask, 'AUX_eventWeightTrain'] * np.sum(aux.loc[~signal_class_mask, 'AUX_eventWeightTrain']) / np.sum(aux.loc[signal_class_mask, 'AUX_eventWeightTrain'])
+    aux.loc[signal_class_mask, 'AUX_eventWeightTrain'] = aux.loc[signal_class_mask, 'AUX_eventWeightTrain'] * np.sum(aux.loc[~signal_class_mask, 'AUX_eventWeightTrain']) / np.sum(aux.loc[signal_class_mask, 'AUX_eventWeightTrain'])
     
     # check average weight and sum weight for each class
     for i, class_name in enumerate(filepaths.keys()):

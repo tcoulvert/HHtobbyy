@@ -35,30 +35,34 @@ from retrieval_utils import get_train_DMatrices
 def init_params(static_params_dict: dict=None):
     param = {}
     # DNN parameters
-    param['batch_size']    = 2048    # learning rate -- 0.05
-    param['num_layers']    = 4       # number of hidden layers
-    param['num_nodes']     = 50      # dimensionality of hidden layers
-    param['dropout_prob']  = 0.3     # probability of dropping connections
+    param['batch_size']        = 2048        # learning rate -- 0.05
+    param['num_layers']        = 4           # number of hidden layers
+    param['num_nodes']         = 50          # dimensionality of hidden layers
+    param['dropout_prob']      = 0.3         # probability of dropping connections
 
     # Eary stopping parameters
-    param['min_delta']     = 0.      # smallest val_loss difference
-    param['patience']      = 4       # number of epochs to wait before early stopping
+    param['min_delta']         = 0.          # smallest val_loss difference
+    param['patience']          = 4           # number of epochs to wait before early stopping
+    param['monitor']           = "val_loss"  # what to track for EarlyStopping
+    param['mode']              = "min"       # stop when no-longer decreasing
 
     # Dataloader parameters
-    param['num_workers']   = 1       # number of workers to load data
+    param['num_workers']       = 1           # number of workers to load data
 
     # Hardware parameters
-    param['num_gpus']      = 1
     try:
         gpustat.print_gpustat()
-        param['strategy']  = 'gpu'
+        param['accelerator']   = 'gpu'       # device to use for training
     except:
-        param['strategy']  = 'cpu'
-    param['num_nodes']     = 1
-    param['num_processes'] = 1
+        param['accelerator']   = 'cpu'
+    param['strategy']          = 'auto'      # high-level how to do training
+    param['num_nodes']         = 1           # number of gpu nodes to use
+    param['precision']         = '32'        # 32-bit floating point
+    param['gradient_clip_val'] = 10.         # max abs. value for gradient
+    param['logger']            = True        # default Tensorboard logging
 
     # Safety parameters
-    param['max_epochs']   = 10      # max number of epochs to run
+    param['max_epochs']        = 10          # max number of epochs to run
 
     if static_params_dict is not None:
         for key, value in static_params_dict.items():
@@ -68,7 +72,7 @@ def init_params(static_params_dict: dict=None):
 
 
 def optimize_hyperparams(
-    dataset_dirpath: str, n_classes: int,
+    dataset_dirpath: str, 
     param_filepath: str, static_params_dict: dict=None,
     verbose: bool=False, verbose_eval: bool=False, start_point: int=0,
 ):

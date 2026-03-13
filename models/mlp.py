@@ -3,26 +3,29 @@ import pytorch_lightning as pl
 
 
 class MLP(pl.LightningModule):
-    def __init__(self, input_size, num_layers, num_nodes, output_size, act_fn, dropout_prob):
+    def __init__(self, input_size, num_layers, num_nodes, output_size, dropout_prob, class_weights=None):
         super(MLP, self).__init__()
         layers = []
 
         # Input layer
         layers.append(nn.Linear(input_size, num_nodes))
-        layers.append(act_fn())
+        layers.append(nn.GELU())
 
         # Hidden layers
         for _ in range(num_layers - 1):
             layers.append(nn.Linear(num_nodes, num_nodes))
-            layers.append(act_fn())
+            layers.append(nn.GELU())
             layers.append(nn.Dropout(p=dropout_prob))
 
         # Output layer
         layers.append(nn.Linear(num_nodes, output_size))
-        #layers.append(nn.Softmax(dim=1))
+        layers.append(nn.Softmax())
 
         # Combine all layers into a sequential model
         self.model = nn.Sequential(*layers)
+
+        # Multiclass loss
+        self.multi_loss = nn.CrossEntropyLoss(weight=class_weights, reduction='none', label_smoothing=0.)
 
     def forward(self, x):
         return self.model(x)
@@ -33,6 +36,11 @@ class MLP(pl.LightningModule):
 
     def backward(self, loss, optimizer, optimizer_idx):
         loss.backward()
+
+    def compute_loss(self, logits, y, weights):
+        loss = self.multi_loss(logits, y, reduction='none')
+        weighted_loss = (weights * loss).sum() / weights.sum()
+        return weighted_loss
     
     def training_step(self, batch, batch_idx):
         # training_step defines the train loop.
@@ -41,8 +49,7 @@ class MLP(pl.LightningModule):
 
         logits = self(x)
         
-        loss = nn.functional.cross_entropy(logits, y, reduction='none')
-        weighted_loss = (weights * loss).sum() / weights.sum()
+        weighted_loss = self.compute_loss(logits, y, weights)
 
         # Logging to TensorBoard (if installed) by default
         self.log("train_loss", weighted_loss)
@@ -53,8 +60,7 @@ class MLP(pl.LightningModule):
 
         logits = self(x)
         
-        loss = nn.functional.cross_entropy(logits, y, reduction='none')
-        weighted_loss = (weights * loss).sum() / weights.sum()
+        weighted_loss = self.compute_loss(logits, y, weights)
 
         # Logging to TensorBoard (if installed) by default
         self.log("val_loss", weighted_loss)
@@ -65,8 +71,7 @@ class MLP(pl.LightningModule):
 
         logits = self(x)
         
-        loss = nn.functional.cross_entropy(logits, y, reduction='none')
-        weighted_loss = (weights * loss).sum() / weights.sum()
+        weighted_loss = self.compute_loss(logits, y, weights)
 
         # Logging to TensorBoard (if installed) by default
         self.log("val_loss", weighted_loss)
