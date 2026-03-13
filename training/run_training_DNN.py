@@ -9,9 +9,9 @@ import sys
 from pathlib import Path
 
 # HEP packages
-import pytorch_lightning as pl
-from pytorch.utils.data import DataLoader
-from pytorch import nn
+from torch.utils.data import DataLoader
+from torch.nn.functional import gelu
+from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 
 ################################
@@ -158,13 +158,13 @@ def run_training():
             )
 
             # DNN model
-            model = MLP(train_df.shape[1], param['num_layers'], param['num_nodes'], N_CLASSES, nn.functional.gelu, param['dropout_prob'])
+            model = MLP(train_df.shape[1], param['num_layers'], param['num_nodes'], N_CLASSES, gelu, param['dropout_prob'])
 
             # Callbacks
             callbacks = [EarlyStopping(monitor="val_loss", min_delta=param['min_delta'], patience=param['patience'], verbose=False, mode="min")]
 
             # Build trainer
-            trainer = pl.Trainer(
+            trainer = Trainer(
                 callbacks=callbacks,
                 default_root_dir=os.path.join(OUTPUT_DIRPATH, 'logs'),
                 weights_save_path=OUTPUT_DIRPATH,

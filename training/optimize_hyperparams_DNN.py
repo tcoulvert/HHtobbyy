@@ -10,7 +10,6 @@ import numpy as np
 
 # HEP packages
 import gpustat
-import xgboost as xgb
 
 # ML packages
 from skopt import gp_minimize
@@ -50,7 +49,11 @@ def init_params(static_params_dict: dict=None):
 
     # Hardware parameters
     param['num_gpus']      = 1
-    param['strategy']      = 'gpu'
+    try:
+        gpustat.print_gpustat()
+        param['strategy']  = 'gpu'
+    except:
+        param['strategy']  = 'cpu'
     param['num_nodes']     = 1
     param['num_processes'] = 1
 
