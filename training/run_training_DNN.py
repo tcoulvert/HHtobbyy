@@ -148,11 +148,11 @@ def run_training():
             # Dataset
             train_df, train_aux, val_df,  val_aux, _, _ = get_train_Dataframes(DATASET_DIRPATH, fold_idx)
             train_data = DataLoader(
-                MLP_Dataset(train_df.to_numpy(), get_labelND(train_aux['AUX_label1D'].to_numpy()), train_aux['AUX_eventWeightTrain'].to_numpy()),
+                MLP_Dataset(train_df.to_numpy(), train_aux['AUX_label1D'].to_numpy(), train_aux['AUX_eventWeightTrain'].to_numpy()),
                 batch_size=param['batch_size'], shuffle=True, num_workers=param['num_workers']
             )
             val_data = DataLoader(
-                MLP_Dataset(val_df.to_numpy(), get_labelND(val_aux['AUX_label1D'].to_numpy()), val_aux['AUX_eventWeightTrain'].to_numpy()),
+                MLP_Dataset(val_df.to_numpy(), val_aux['AUX_label1D'].to_numpy(), val_aux['AUX_eventWeightTrain'].to_numpy()),
                 batch_size=param['batch_size'], shuffle=True, num_workers=param['num_workers']
             )
 
