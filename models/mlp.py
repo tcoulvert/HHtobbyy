@@ -34,7 +34,7 @@ class MLP(pl.LightningModule):
         optimizer = optim.Adam(self.parameters(), lr=1e-3)
         return optimizer
 
-    def backward(self, loss, optimizer, optimizer_idx):
+    def backward(self, loss):
         loss.backward()
 
     def compute_loss(self, logits, y, weights):
