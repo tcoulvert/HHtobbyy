@@ -1,6 +1,5 @@
 import torch
 from torch.utils.data import Dataset
-import numpy as np
 
 class MLP_Dataset(Dataset):
     def __init__(self, features, targets, weights):

@@ -153,7 +153,7 @@ def run_training():
             )
             val_data = DataLoader(
                 MLP_Dataset(val_df.to_numpy(), val_aux['AUX_label1D'].to_numpy(), val_aux['AUX_eventWeightTrain'].to_numpy()),
-                batch_size=param['batch_size'], shuffle=True, num_workers=param['num_workers']
+                batch_size=param['batch_size'], shuffle=False, num_workers=param['num_workers']
             )
 
             # DNN model

@@ -62,7 +62,7 @@ def init_params(static_params_dict: dict=None):
     param['logger']            = True        # default Tensorboard logging
 
     # Safety parameters
-    param['max_epochs']        = 10          # max number of epochs to run
+    param['max_epochs']        = 500         # max number of epochs to run
 
     if static_params_dict is not None:
         for key, value in static_params_dict.items():

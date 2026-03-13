@@ -19,7 +19,7 @@ class MLP(pl.LightningModule):
 
         # Output layer
         layers.append(nn.Linear(num_nodes, output_size))
-        layers.append(nn.LogSoftmax())
+        layers.append(nn.LogSoftmax(dim=-1))
 
         # Combine all layers into a sequential model
         self.model = nn.Sequential(*layers)
