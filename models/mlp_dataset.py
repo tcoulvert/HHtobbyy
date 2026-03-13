@@ -6,7 +6,7 @@ class MLP_Dataset(Dataset):
     def __init__(self, features, targets, weights):
         # Convert numpy arrays to PyTorch tensors
         self.X = torch.tensor(features, dtype=torch.float32)
-        self.y = torch.tensor(targets, dtype=torch.float32)
+        self.y = torch.tensor(targets, dtype=torch.int16)
         self.weights = torch.tensor(weights, dtype=torch.float32)
 
     def __len__(self):
