@@ -36,9 +36,9 @@ def init_params(static_params_dict: dict=None):
     param = {}
     # DNN parameters
     param['batch_size']        = 2048        # learning rate -- 0.05
-    param['num_layers']        = 4           # number of hidden layers
-    param['num_nodes']         = 50          # dimensionality of hidden layers
-    param['dropout_prob']      = 0.3         # probability of dropping connections
+    param['num_layers']        = 5           # number of hidden layers
+    param['num_nodes']         = 1024        # dimensionality of hidden layers
+    param['dropout_prob']      = 0.25        # probability of dropping connections
 
     # Eary stopping parameters
     param['min_delta']         = 0.          # smallest val_loss difference

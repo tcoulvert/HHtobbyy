@@ -109,7 +109,7 @@ if not os.path.exists(OUTPUT_DIRPATH):
 
 ################################
 
-
+# https://xgboost.readthedocs.io/en/stable/tutorials/external_memory.html
 def run_training():
     # txt file pointing to location of standardized dataset used for training
     #  and therefore the default location for testing
@@ -148,10 +148,10 @@ def run_training():
             if FOLD is not None and FOLD != fold_idx: continue
             print(f"fold {fold_idx}")
 
-            train_dm, val_dm, test_dm = get_train_DMatrices(DATASET_DIRPATH, fold_idx)
+            train_dm, val_dm = get_train_DMatrices(DATASET_DIRPATH, fold_idx)
 
             # Train bdt
-            evallist = [(train_dm, 'train'), (test_dm, 'test'), (val_dm, 'val')]
+            evallist = [(train_dm, 'train'), (val_dm, 'val')]
             booster = xgb.train(
                 param, train_dm, num_boost_round=num_trees, 
                 evals=evallist, early_stopping_rounds=10, 
@@ -164,7 +164,7 @@ def run_training():
                 json.dump(evals_result_dict[f"fold_{fold_idx}"], f)
             
             # Print perf on test dataset
-            print(booster.eval(test_dm, name='test', iteration=booster.best_iteration))
+            print(booster.eval(val_dm, name='val', iteration=booster.best_iteration))
             print('='*100)
     elif BATCH == "condor":
         # Runs condor submission script

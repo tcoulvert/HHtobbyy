@@ -31,7 +31,7 @@ class MLP(pl.LightningModule):
         return self.model(x)
 
     def configure_optimizers(self):
-        optimizer = optim.Adam(self.parameters(), lr=1e-3)
+        optimizer = optim.Adam(self.parameters(), lr=2e-5, weight_decay=5e-5)
         return optimizer
 
     def backward(self, loss):
@@ -48,7 +48,6 @@ class MLP(pl.LightningModule):
         x, y, weights = batch
 
         logits = self(x)
-        
         weighted_loss = self.compute_loss(logits, y, weights)
 
         # Logging to TensorBoard (if installed) by default
@@ -59,7 +58,6 @@ class MLP(pl.LightningModule):
         x, y, weights = batch
 
         logits = self(x)
-        
         weighted_loss = self.compute_loss(logits, y, weights)
 
         # Logging to TensorBoard (if installed) by default
@@ -70,7 +68,6 @@ class MLP(pl.LightningModule):
         x, y, weights = batch
 
         logits = self(x)
-        
         weighted_loss = self.compute_loss(logits, y, weights)
 
         # Logging to TensorBoard (if installed) by default
