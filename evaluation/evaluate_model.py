@@ -24,7 +24,7 @@ from training_utils import (
     get_dataset_dirpath, get_model_func
 )
 from evaluation_utils import (
-    get_filepaths, evaluate_and_save, transform_preds_options
+    get_filepaths, evaluate_BDT_on_file, transform_preds_options
 )
 
 ################################
@@ -35,6 +35,11 @@ logger = logging.getLogger(__name__)
 parser = argparse.ArgumentParser(description="Standardize BDT inputs and save out dataframe parquets.")
 parser.add_argument(
     "training_dirpath", 
+    help="Full filepath on LPC for trained model files"
+)
+parser.add_argument(
+    "model_type", 
+    choices=['BDT', 'DNN'],
     help="Full filepath on LPC for trained model files"
 )
 parser.add_argument(
@@ -70,7 +75,7 @@ def evaluate_model(
 ):
     class_sample_map = get_class_sample_map(dataset_dirpath)
     
-    get_booster = get_model_func(training_dirpath)
+    get_model = get_model_func(training_dirpath)
 
     for fold_idx in range(get_n_folds(dataset_dirpath)):
 
@@ -80,8 +85,7 @@ def evaluate_model(
 
         for class_name, class_filepaths in filepaths.items():
             for filepath in class_filepaths:
-                evaluate_and_save(filepath, booster, class_sample_map.keys(), discriminator)
-                
+                evaluate_BDT_on_file(filepath, booster, class_sample_map.keys(), discriminator, save=True)
 
 if __name__ == "__main__":
     args = parser.parse_args()

@@ -138,6 +138,8 @@ def run_training():
         )
     else:
         param = optDNN.init_params()
+    with open(param_filepath, 'w') as f:
+        json.dump(param, f)
 
     # Train the model
     if BATCH == "iterative":

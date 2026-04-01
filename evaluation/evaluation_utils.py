@@ -114,10 +114,10 @@ def DttH(multibdt_output):
     return DttH_preds
 
 
-def evaluate(booster: xgb.Booster, dmatrix: xgb.DMatrix):
+def evaluate_BDT(booster: xgb.Booster, dmatrix: xgb.DMatrix):
     return booster.predict(dmatrix, iteration_range=(0, booster.best_iteration))
 
-def evaluate_and_save(filepath: str, booster: xgb.Booster, class_names: list, transform_name: str):
+def evaluate_BDT_on_file(filepath: str, booster: xgb.Booster, class_names: list, transform_name: str, save: bool=False):
     transform_labels, transform_preds = transform_preds_func(class_names, transform_name)
 
     df = get_test_Dataframe(filepath)
@@ -129,12 +129,12 @@ def evaluate_and_save(filepath: str, booster: xgb.Booster, class_names: list, tr
     for i, transform_label in enumerate(transform_labels):
         df[f"AUX_{transform_label}_prob"] = transformed_preds[:, i]
     
-    if filepath.split('/')[1] == 'eos':
-        tmp_file = f"tmp{hash(filepath)}.parquet"
-        df.to_parquet(tmp_file)
-        subprocess.run(['xrdcp', '-f', tmp_file, 'root://cmseos.fnal.gov/'+'/'.join(['']+filepath.split('/')[3:])])
-        subprocess.run(['rm', tmp_file])
-    else:
-        df.to_parquet(filepath)
-
-    assert all(f'AUX_{transform_label}_prob' in get_test_Dataframe(filepath).columns for transform_label in transform_labels), f"{filepath.split('/')[-3:]} - evaluation and saving did not work properly"
+    if save:
+        if filepath.split('/')[1] == 'eos':
+            tmp_file = f"tmp{hash(filepath)}.parquet"
+            df.to_parquet(tmp_file)
+            subprocess.run(['xrdcp', '-f', tmp_file, 'root://cmseos.fnal.gov/'+'/'.join(['']+filepath.split('/')[3:])])
+            subprocess.run(['rm', tmp_file])
+        else:
+            df.to_parquet(filepath)
+        assert all(f'AUX_{transform_label}_prob' in get_test_Dataframe(filepath).columns for transform_label in transform_labels), f"{filepath.split('/')[-3:]} - evaluation and saving did not work properly"
