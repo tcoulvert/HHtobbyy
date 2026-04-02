@@ -12,10 +12,11 @@ import vector as vec
 ################################
 
 
-from preprocessing_utils import (
+from HHtobbyy.event_discrimination.preprocessing.preprocessing_utils import (
     deltaPhi, deltaEta, 
     match_sample
 )
+import HHtobbyy.workspace.FILL_VALUE as FILL_VALUE
 
 ################################
 
@@ -43,7 +44,6 @@ boosted_fjmass_corr = {
     '201[6-8]|202[4-5]': "globalParT3_massCorrGeneric"
 }
 
-FILL_VALUE = -999
 NUM_FATJETS = 4
 PREFACTORS = ['Res', 'Res_DNNpair']
 SELECTION_VARIATIONS = {

@@ -17,9 +17,9 @@ import vector as vec
 ################################
 
 
-from resolved_preprocessing import  add_vars_resolved
-from boosted_preprocessing import add_vars_boosted
-from preprocessing_utils import match_sample, get_era_filepaths
+from HHtobbyy.event_discrimination.preprocessing.resolved_preprocessing import  add_vars_resolved
+from HHtobbyy.event_discrimination.preprocessing.boosted_preprocessing import add_vars_boosted
+from HHtobbyy.event_discrimination.preprocessing.preprocessing_utils import match_sample, get_era_filepaths
 
 ################################
 

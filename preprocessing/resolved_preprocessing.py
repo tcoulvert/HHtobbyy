@@ -12,10 +12,11 @@ import vector as vec
 ################################
 
 
-from preprocessing_utils import (
+from HHtobbyy.event_discrimination.preprocessing.preprocessing_utils import (
     deltaPhi, deltaEta, 
     match_sample
 )
+import HHtobbyy.workspace.FILL_VALUE as FILL_VALUE
 
 ################################
 
@@ -31,7 +32,6 @@ resolved_bTagWPs = {
     '201[6-8]|202[4-5]': ("btagUParTAK4B", {'L': 0.0246, 'M': 0.1272, 'T': 0.4648, 'XT': 0.6298, 'XXT': 0.9739, '3XT': 0.9983, '4XT': 0.9987}),  # 3XT was calculated to have ggF HH kl-1p00 lead *OR* sublead bjets pass with 25% efficiency, 4XT calculated for 10% efficiency
 }
 
-FILL_VALUE = -999
 NUM_JETS = 10
 PREFACTORS = ['nonRes', 'nonResReg', 'nonResReg_DNNpair']
 
