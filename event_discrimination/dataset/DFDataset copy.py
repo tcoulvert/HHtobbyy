@@ -6,7 +6,6 @@ import json
 import logging
 import os
 import subprocess
-import sys
 
 # Common Py packages
 import numpy as np  

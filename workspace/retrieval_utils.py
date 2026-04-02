@@ -117,10 +117,6 @@ def match_regex(regex, sample_strs):
             return sample_str
         
 
-
-def copy_eos_and_remove(src_filepath: str, trgt_filepath: str):
-    
-
         
 
 

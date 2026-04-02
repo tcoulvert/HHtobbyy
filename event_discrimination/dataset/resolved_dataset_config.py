@@ -120,7 +120,7 @@ VBFHH_VARIABLES = lambda jet_prefix: {
 
     # VBF dijet vars
     'VBF_dijet_mass',
-} if 'nonRes' in jet_prefix else {}
+}
 AUX_VARIABLES = lambda jet_prefix: {
     # identifiable event info
     'event', 'lumi', 'hash', 'sample_name', 'sample_era',
@@ -140,14 +140,13 @@ AUX_VARIABLES = lambda jet_prefix: {
     f'{jet_prefix}_resolved_BDT_mask',
 }
 
-FILL_VALUE = -999
-TRAIN_MOD = 5
+N_FOLDS = 5
 JET_PREFIX = 'nonRes' if 'RESREG' not in DATASET_TAG.upper() else ('nonResReg' if 'DNN' not in DATASET_TAG.upper() else 'nonResReg_DNNpair')  # ["Res", "Res_DNNpair", "nonRes", "nonResReg", "nonResReg_DNNpair"]
 
 SEED = 21
 BASE_FILEPATH = 'Run3_20'
 CURRENT_TIME = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-DF_MASK = 'default'  # 'none'
+DF_MASK = f'{JET_PREFIX}_resolved_BDT_mask'  # 'none'
 
 END_FILEPATH = "preprocessed.parquet"
 
