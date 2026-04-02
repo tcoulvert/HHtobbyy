@@ -22,6 +22,8 @@ from HHtobbyy.workspace.retrieval_utils import FILL_VALUE
 # MODEL_CONFIG = args.MODEL_config.replace('.py', '').split('/')[-1]
 # exec(f"from {MODEL_CONFIG} import *")
 
+################################
+
 
 class DFDataset:
     def __init__(config: dict, output_dirpath: str=''):
@@ -130,3 +132,9 @@ class DFDataset:
             
             standardized_df = self.apply_standardization(df, fold)
             save_file_eos(standardized_df, make_output_filepath(filepath, self.output_dirpath, f"test{fold}"), force=force)
+
+    
+    def get_train(self, fold: int):
+        pass
+    def get_test(self, fold: int):
+        pass

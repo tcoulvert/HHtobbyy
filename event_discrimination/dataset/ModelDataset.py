@@ -1,32 +1,24 @@
 # Stdlib packages
-import argparse
-import copy
-import glob
-import json
-import logging
-import os
-import subprocess
-import sys
+from abc import ABC, abstractmethod
 
-# Common Py packages
-import numpy as np  
-import pandas as pd
-import pyarrow.parquet as pq
-
-# HEP packages
-from eos_utils import copy_eos
+# Workspace packages
+from HHtobbyy.event_discrimination.dataset.DFDataset import DFDataset
 
 ################################
 
 
-from HHtobbyy.event_discrimination.preprocessing.preprocessing_utils import (
-    get_era_filepaths
-)
-from HHtobbyy.event_discrimination.preprocessing.BDT_preprocessing_utils import (
-    no_standardize, apply_logs
-)
-from HHtobbyy.event_discrimination.preprocessing.retrieval_utils import argsorted
+class ModelDataset(ABC):
+    def __init__(dfdataset: DFDataset):
+        self.dfdataset = dfdataset
 
-################################
+    @abstractmethod
+    def get_train(self, fold: int):
+        pass
 
+    @abstractmethod
+    def get_val(self, fold: int):
+        pass
 
+    @abstractmethod
+    def get_test(self, fold: int):
+        pass
