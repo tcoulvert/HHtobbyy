@@ -17,7 +17,8 @@ from HHtobbyy.event_discrimination.dataset.DFDataset_utils import (
 )
 from HHtobbyy.event_discrimination.dataset.DFDataset_utils import make_output_filepath
 from HHtobbyy.workspace_utils.retrieval_utils import (
-    FILL_VALUE, get_traintest_filepaths_func, get_test_filepaths_func, match_sample
+    FILL_VALUE, get_traintest_filepaths_func, get_test_filepaths_func, 
+    match_sample, match_regex
 )
 
 # MODEL_CONFIG = args.MODEL_config.replace('.py', '').split('/')[-1]
@@ -137,10 +138,25 @@ class DFDataset:
 
     #############################################################
     # Additional variables
-    def sample_reweighting(df: pd.DataFrame, sample_reweight: str|dict):
-        pass
+    def sample_reweighting(df: pd.DataFrame, sample_reweight: str|dict, reweight_var: str):
+        if type(sample_reweight) is str and sample_reweight == 'none': return
+        elif type(sample_reweight) is dict:
+            df_unique_sample_tags = df[f'{self.aux_var_prefix}sample_name'].unique()
+            for sample_tag, reweight in sample_reweight.items():
+                df_sample_tag = match_regex(sample_tag, df_unique_sample_tags)
+                if df_sample_tag is not None: 
+                    df.loc[df[f'{self.aux_var_prefix}sample_name'].eq(df_sample_tag), reweight_var] *= reweight
+        else: raise NotImplementedError(f"Reweight method not yet implemented, use \'none\' or pass a dict.")
     def class_reweighting(df: pd.DataFrame, class_reweight: str|dict):
-        pass
+        if type(class_reweight) is str and class_reweight == 'none': return
+        elif type(class_reweight) is dict:
+            df_unique_sample_tags = df[f'{self.aux_var_prefix}sample_name'].unique()
+            for sample_tag, reweight in class_reweight.items():
+                df_sample_tag = match_regex(sample_tag, df_unique_sample_tags)
+                if df_sample_tag is not None: 
+                    df.loc[df[f'{self.aux_var_prefix}sample_name'].eq(df_sample_tag), reweight_var] *= reweight
+        else: raise NotImplementedError(f"Reweight method not yet implemented, use \'none\' or pass a dict.")
+
     def add_vars(self, df: pd.DataFrame, class_idx: int):
         df[f'{self.aux_var_prefix}label1D'] = class_idx
 
