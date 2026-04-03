@@ -12,11 +12,13 @@ import pyarrow.parquet as pq
 from eos_utils import save_file_eos, load_file_eos
 
 # Workspace packages
-from HHtobbyy.event_discrimination.preprocessing.BDT_preprocessing_utils import (
-    no_standardize, apply_logs
+from HHtobbyy.event_discrimination.dataset.DFDataset_utils import (
+    no_standardize, apply_logs, map_filepath_to_class
 )
 from HHtobbyy.event_discrimination.dataset.DFDataset_utils import make_output_filepath
-from HHtobbyy.workspace.retrieval_utils import FILL_VALUE, get_train_filepaths_func, get_test_filepaths_func
+from HHtobbyy.workspace_utils.retrieval_utils import (
+    FILL_VALUE, get_traintest_filepaths_func, get_test_filepaths_func, match_sample
+)
 
 # MODEL_CONFIG = args.MODEL_config.replace('.py', '').split('/')[-1]
 # exec(f"from {MODEL_CONFIG} import *")
@@ -25,12 +27,31 @@ from HHtobbyy.workspace.retrieval_utils import FILL_VALUE, get_train_filepaths_f
 
 
 class DFDataset:
-    def __init__(config: dict, output_dirpath: str=''):
+    """
+    Defines the pandas DataFrame format for the dataset. DataFrame is useful as a common
+    format that can easily be converted downstream to the model-specific format (see ModelDataset).
+    """
+
+    def __init__(config: str|dict={}, output_dirpath: str=''):
+        """
+        Arguments
+        ----------
+        config : dict
+            Configuration for the dataset
+        output_dirpath : str
+            Overrides config value for dirpath, used if loading dataset rather than making a new one
+        ----------
+        NOTE: At least one argument is required.
+        """
+
+        assert config != {} or output_dirpath != '', f"ERROR: At least one argument is required."
+        if type(config) is str: 
+            config = load_file_eos(dict, config)
+        elif config == {}:
+            config = load_file_eos(dict, os.path.join(output_dirpath, f"dataset_config.json"))
+
         reqd_keys = ['output_dirpath', 'dataset_tag', 'model_vars', 'aux_vars', 'class_sample_map']
         assert all(key in config.keys() for key in reqd_keys), f"Config file required to have some variables: {reqd_keys}, received config is missing {set(config.keys()) - set(reqd_keys)}"
-
-        # Redirector if sending data to EOS
-        self.xrd_redirector = 'root://cmseos.fnal.gov/'
 
         # Dirpath to dump dataset
         self.output_dirpath = output_dirpath
@@ -50,23 +71,32 @@ class DFDataset:
         # Method used for the standardization
         self.standardization_method = 'zscore'
 
+        # Standard prefix for auxiliary variables, i.e. variables useful 
+        #   for event-identification but *not* used in the training
+        self.aux_var_prefix = 'AUX_'
+
+        # Optional dictionaries to perform reweighting for training and testing
+        self.test_sample_reweighting = 'none'
+        self.train_sample_reweighting = 'none'
+        self.train_class_reweighting = 'none'
+
         # Processes the config
         self.process_config(config)
 
 
+    #############################################################
     def process_config(self, config: dict):
         def make_output_dirpath():
             if self.output_dirpath == '':
                 self.current_time = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')  # 'YYYY-MM-DD_HH-MM-SS'
                 self.output_dirpath = os.path.normpath(os.path.join(config['output_dirpath'], f"{config['dataset_tag']}_{self.current_time}"))
-                if not os.path.exists(self.output_dirpath):
-                    os.makedirs(self.output_dirpath)
+                os.makedirs(self.output_dirpath, exist_ok=True)
 
         def make_var_lists():
             self.model_vars = sorted(self.model_vars)
             self.aux_vars = sorted(self.aux_vars)
             self.all_vars = sorted(self.model_vars + self.aux_vars)
-            self.new_aux_vars = sorted(['AUX_' + aux_var for aux_var in self.aux_vars])
+            self.new_aux_vars = sorted([self.aux_var_prefix + aux_var for aux_var in self.aux_vars])
             self.new_all_vars = sorted(self.model_vars + self.new_aux_vars)
             self.necessary_aux_vars = {'weight', 'eventWeight', 'sample_name', 'hash'}
 
@@ -75,6 +105,13 @@ class DFDataset:
             else: setattr(self, key, value)
         make_var_lists()
 
+        config_filepath = os.path.join(self.output_dirpath, f"dataset_config.json")
+        try: load_file_eos(dict, config_filepath)
+        except: save_file_eos(config, config_filepath)
+
+
+    #############################################################
+    # Event masking
     def presel_mask(self, df: pd.DataFrame):
         if self.mask_var == 'none': return np.ones(len(df), dtype=bool)
         elif self.mask_var in df.columns: return np.asarray(df[self.mask_var] > 0, dtype=bool)
@@ -84,6 +121,9 @@ class DFDataset:
     def test_mask(self, df: pd.DataFrame, fold: int):
         return ~self.train_mask(df, fold)
     
+
+    #############################################################
+    # Basic DF build
     def make_df(self, filepath: str):
         pq_file = pq.ParquetFile(filepath)
         assert all(necessary_aux_var in pq_file.schema.keys() for necessary_aux_var in self.necessary_aux_vars), f"ERROR: Required to have all the necessary aux vars {self.necessary_aux_vars} present for downstream processing and tracking. Currently missing {self.necessary_aux_vars - set(pq_file.schema.keys())}"
@@ -94,6 +134,45 @@ class DFDataset:
             df_batch = pd.merge(df_batch.loc[:, self.model_vars], df_batch.loc[:, self.aux_vars].rename(dict(zip(self.aux_vars, self.new_aux_vars))), how='outer')
             df = pd.concat([df, df_batch.loc[mask].reset_index(drop=True)])
 
+
+    #############################################################
+    # Additional variables
+    def sample_reweighting(df: pd.DataFrame, sample_reweight: str|dict):
+        pass
+    def class_reweighting(df: pd.DataFrame, class_reweight: str|dict):
+        pass
+    def add_vars(self, df: pd.DataFrame, class_idx: int):
+        df[f'{self.aux_var_prefix}label1D'] = class_idx
+
+        
+
+        df[f'{self.aux_var_prefix}eventWeightTrain'] = df[f'{self.aux_var_prefix}eventWeight']
+
+        # Resonant background
+        res_class_mask = df['AUX_label1D'].eq(-1).to_numpy()
+        for i, key in enumerate(filepaths.keys()):
+            if match_sample(key, ['ttH', 'VH']) is not None:
+                res_class_mask = np.logical_or(res_class_mask, df['AUX_label1D'].eq(i).to_numpy())
+        df.loc[res_class_mask, f'{self.aux_var_prefix}eventWeightTrain'] = df.loc[res_class_mask, f'{self.aux_var_prefix}eventWeightTrain'] * RES_BKG_RESCALE
+
+        # Signal
+        signal_class_mask = df['AUX_label1D'].eq(-1).to_numpy()
+        for i, key in enumerate(filepaths.keys()):
+            if match_sample(key, ['HH']) is not None:
+                signal_class_mask = np.logical_or(signal_class_mask, df['AUX_label1D'].eq(i).to_numpy())
+        df.loc[signal_class_mask, f'{self.aux_var_prefix}eventWeightTrain'] = df.loc[signal_class_mask, f'{self.aux_var_prefix}eventWeightTrain'] * np.sum(df.loc[~signal_class_mask, f'{self.aux_var_prefix}eventWeightTrain']) / np.sum(df.loc[signal_class_mask, f'{self.aux_var_prefix}eventWeightTrain'])
+        
+        # check average weight and sum weight for each class
+        for i, class_name in enumerate(filepaths.keys()):
+            class_mask = df[f'{self.aux_var_prefix}label1D'].eq(i)
+            sum_weights = df.loc[class_mask, f'{self.aux_var_prefix}eventWeightTrain'].sum()
+            avg_weight = df.loc[class_mask, f'{self.aux_var_prefix}eventWeightTrain'].mean()
+            print(f"[CHECK] Class {class_name} (label {i}): number of events = {class_mask.sum()}, sum of weights = {sum_weights}, average weight = {avg_weight}")
+
+
+
+    #############################################################
+    # Standardization
     def compute_standardization(self, train_dfs: dict[str, pd.DataFrame], fold: int):
         merged_train_df = pd.concat([df.loc[:, self.model_vars] for df in train_dfs.values()]).reset_index(drop=True)
         if self.standardization_method.lower() == 'zscore': compute_zscore_standardization(merged_train_df, fold)
@@ -111,7 +190,7 @@ class DFDataset:
 
         zscore_std = {'col': self.model_vars, 'mean': x_mean.tolist(), 'std': x_std.tolist()}
         zscore_std_filepath = os.path.join(self.output_dirpath, f'zscore_standardization_fold{fold}.json')
-        save_file_eos(zscore_std, zscore_std_filepath, self.xrd_redirector)
+        save_file_eos(zscore_std, zscore_std_filepath)
 
     def apply_standardization(self, df: pd.DataFrame, fold: int):
         slimmed_df = df.loc[:, self.model_vars]
@@ -120,13 +199,15 @@ class DFDataset:
         return pd.concat([slimmed_df, df.loc[:, self.new_aux_vars]])
     def apply_zscore_standardization(self, df: pd.DataFrame, fold: int):
         zscore_std_filepath = os.path.join(self.output_dirpath, f'zscore_standardization_fold{fold}.json')
-        zscore_std = load_file_eos(zscore_std_filepath, self.xrd_redirector)
+        zscore_std = load_file_eos(dict, zscore_std_filepath)
         
         df = apply_logs(df)
         df = (np.ma.array(df, mask=(df == FILL_VALUE)) - zscore_std['mean']) / zscore_std['std']
         df = pd.DataFrame(df.filled(FILL_VALUE), columns=zscore_std['col'])
 
 
+    #############################################################
+    # Building
     def make_train(self, filepaths: list, fold: int):
         assert fold >= 0 and fold < self.n_folds, f"ERROR: Expected a fold index between 0 and {self.n_folds}, received {fold}"
 
@@ -135,6 +216,7 @@ class DFDataset:
             dfs[filepath] = self.make_df(filepath)
             mask = self.train_mask(dfs[filepath], fold)
             dfs[filepath] = dfs[filepath].loc[mask].reset_index(drop=True)
+            self.add_vars(dfs[filepath], fold, map_filepath_to_class(self.class_sample_map, filepath))
 
         self.compute_standardization(dfs)
 
@@ -147,15 +229,44 @@ class DFDataset:
 
         for filepath in filepaths:
             df = self.make_df(filepath)
-            mask = self.testmask(df, fold)
+            mask = self.test_mask(df, fold)
             df = df.loc[mask].reset_index(drop=True)
+            self.add_vars(df, fold, map_filepath_to_class(self.class_sample_map, filepath))
             
             standardized_df = self.apply_standardization(df, fold)
             save_file_eos(standardized_df, make_output_filepath(filepath, self.output_dirpath, f"test{fold}"), force=force)
 
     
     def get_train(self, fold: int):
-        class_filepaths = get_train_filepaths_func(self.output_dirpath)(fold)
-        train_df = pd.DataFrame(columns=self.model_vars)
+        df_list = []
+        aux_list = []
+
+        filepaths = get_traintest_filepaths_func(self.output_dirpath, dataset="train")(fold)
+
+        df, y = None, None
+        for i, model_class in enumerate(filepaths.keys()):
+            class_df = pd.concat(
+                [load_file_eos(pd.DataFrame, filepath) for filepath in filepaths[model_class]], ignore_index=True
+            )
+            class_aux['AUX_label1D'] = i
+            class_aux['AUX_eventWeightTrain'] = class_aux['AUX_eventWeight']
+
+        
+        if df_list:
+            df = pd.concat(df_list, ignore_index=True)
+            aux = pd.concat(aux_list, ignore_index=True)
+        else:
+            return None, None
+
+        assert 'Data' not in set(np.unique(aux['AUX_sample_name']).tolist()), f"Data is getting into train dataset... THIS IS VERY BAD"
+
+        
+        if DF_SHUFFLE:
+            rng = np.random.default_rng(seed=RNG_SEED)
+            class_shuffle_idx = rng.permutation(df.index)
+            df.reindex(class_shuffle_idx)
+            aux.reindex(class_shuffle_idx)
+
+        return df, aux
     def get_test(self, fold: int):
         pass

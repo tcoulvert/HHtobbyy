@@ -5,12 +5,8 @@ import math
 import awkward as ak
 import vector as vec
 
-################################
-
-
-vec.register_awkward()
-
-FILL_VALUE = -999
+# Workspace packages
+from HHtobbyy.workspace_utils.retrieval_utils import FILL_VALUE
 
 ################################
 

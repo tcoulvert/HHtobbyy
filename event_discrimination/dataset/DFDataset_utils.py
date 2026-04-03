@@ -5,6 +5,11 @@ import os
 # Common Py packages
 import numpy as np
 
+# Workspace packages
+from HHtobbyy.workspace_utils.retrieval_utils import (
+    match_sample, match_regex, get_class_sample_map
+)
+
 ################################
 
 
@@ -28,6 +33,16 @@ def apply_logs(df):
             mask = (df[col].to_numpy() > 0)
             df.loc[mask, col] = np.log(df.loc[mask, col])
     return df
+
+
+
+def map_filepath_to_class(class_sample_map: dict, filepath: str):
+    mapped_class_idx = -1
+    for i, (class_name, sample_names) in enumerate(class_sample_map.items()):
+        if match_sample(filepath, sample_names) is not None: 
+            mapped_class_idx = i; break
+    return mapped_class_idx
+
 
 
 def check_train_dataset(train_filepaths: list):

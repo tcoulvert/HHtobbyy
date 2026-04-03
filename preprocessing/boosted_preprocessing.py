@@ -16,7 +16,7 @@ from HHtobbyy.event_discrimination.preprocessing.preprocessing_utils import (
     deltaPhi, deltaEta, 
     match_sample
 )
-import HHtobbyy.workspace.FILL_VALUE as FILL_VALUE
+import HHtobbyy.workspace_utils.FILL_VALUE as FILL_VALUE
 
 ################################
 
