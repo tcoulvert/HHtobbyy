@@ -138,7 +138,7 @@ class DFDataset:
 
     #############################################################
     # Additional variables
-    def sample_reweighting(df: pd.DataFrame, sample_reweight: str|dict, reweight_var: str):
+    def sample_reweighting(self, df: pd.DataFrame, sample_reweight: str|dict, reweight_var: str):
         if type(sample_reweight) is str and sample_reweight == 'none': return
         elif type(sample_reweight) is dict:
             df_unique_sample_tags = df[f'{self.aux_var_prefix}sample_name'].unique()
@@ -147,22 +147,26 @@ class DFDataset:
                 if df_sample_tag is not None: 
                     df.loc[df[f'{self.aux_var_prefix}sample_name'].eq(df_sample_tag), reweight_var] *= reweight
         else: raise NotImplementedError(f"Reweight method not yet implemented, use \'none\' or pass a dict.")
-    def class_reweighting(df: pd.DataFrame, class_reweight: str|dict):
+    def class_reweighting(self, df: pd.DataFrame, class_reweight: str|dict, reweight_var: str):
         if type(class_reweight) is str and class_reweight == 'none': return
         elif type(class_reweight) is dict:
-            df_unique_sample_tags = df[f'{self.aux_var_prefix}sample_name'].unique()
-            for sample_tag, reweight in class_reweight.items():
-                df_sample_tag = match_regex(sample_tag, df_unique_sample_tags)
-                if df_sample_tag is not None: 
-                    df.loc[df[f'{self.aux_var_prefix}sample_name'].eq(df_sample_tag), reweight_var] *= reweight
+            assert set(class_reweight.keys()).issubset(set(self.class_sample_map.keys())), f"ERROR: Input class_reweight dictionary has classes not in the class_sample_map: {set(class_reweight.keys()) - set(self.class_sample_map.keys())}"
+            sample_reweight = {
+                sample_tag: reweight for class_tag, reweight in class_reweight.items() for sample_tag in self.class_sample_map[class_tag]
+            }
+            self.sample_reweighting(df, sample_reweight, reweight_var)
         else: raise NotImplementedError(f"Reweight method not yet implemented, use \'none\' or pass a dict.")
 
     def add_vars(self, df: pd.DataFrame, class_idx: int):
         df[f'{self.aux_var_prefix}label1D'] = class_idx
 
-        
+        # Reweighting eventWeight if improperly preprocessed
+        self.sample_reweighting(df, self.test_sample_reweighting, f'{self.aux_var_prefix}eventWeight')
 
+        # Creating and reweighting eventWeightTrain for training
         df[f'{self.aux_var_prefix}eventWeightTrain'] = df[f'{self.aux_var_prefix}eventWeight']
+        self.sample_reweighting(df, self.train_sample_reweighting, f'{self.aux_var_prefix}eventWeight')
+        self.sample_reweighting(df, self.train_class_reweighting, f'{self.aux_var_prefix}eventWeight')
 
         # Resonant background
         res_class_mask = df['AUX_label1D'].eq(-1).to_numpy()
@@ -191,7 +195,7 @@ class DFDataset:
     # Standardization
     def compute_standardization(self, train_dfs: dict[str, pd.DataFrame], fold: int):
         merged_train_df = pd.concat([df.loc[:, self.model_vars] for df in train_dfs.values()]).reset_index(drop=True)
-        if self.standardization_method.lower() == 'zscore': compute_zscore_standardization(merged_train_df, fold)
+        if self.standardization_method.lower() == 'zscore': self.compute_zscore_standardization(merged_train_df, fold)
         else: raise NotImplementedError(f"Standardization method not yet implemented, use \'zscore\'.")
     def compute_zscore_standardization(self, merged_train_df: pd.DataFrame, fold: int):
         merged_train_df = merged_train_df.sample(frac=1, random_state=self.seed).reset_index(drop=True)
@@ -210,7 +214,7 @@ class DFDataset:
 
     def apply_standardization(self, df: pd.DataFrame, fold: int):
         slimmed_df = df.loc[:, self.model_vars]
-        if self.standardization_method.lower() == 'zscore': apply_zscore_standardization(slimmed_df, fold)
+        if self.standardization_method.lower() == 'zscore': self.apply_zscore_standardization(slimmed_df, fold)
         else: raise NotImplementedError(f"Standardization method not yet implemented, use \'zscore\'.")
         return pd.concat([slimmed_df, df.loc[:, self.new_aux_vars]])
     def apply_zscore_standardization(self, df: pd.DataFrame, fold: int):
@@ -259,13 +263,15 @@ class DFDataset:
 
         filepaths = get_traintest_filepaths_func(self.output_dirpath, dataset="train")(fold)
 
+        df = pd.concat(
+            [load_file_eos(pd.DataFrame, filepath) for model_class in filepaths.keys() for filepath in filepaths[model_class]], 
+            ignore_index=True
+        )
+        
+
         df, y = None, None
         for i, model_class in enumerate(filepaths.keys()):
-            class_df = pd.concat(
-                [load_file_eos(pd.DataFrame, filepath) for filepath in filepaths[model_class]], ignore_index=True
-            )
-            class_aux['AUX_label1D'] = i
-            class_aux['AUX_eventWeightTrain'] = class_aux['AUX_eventWeight']
+            class_df = 
 
         
         if df_list:
