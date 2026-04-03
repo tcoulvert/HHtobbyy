@@ -8,6 +8,7 @@ from torch.utils.data import Dataset, DataLoader
 
 
 from HHtobbyy.event_discrimination.dataset import DFDataset
+from HHtobbyy.event_discrimination.models.MLP import MLP_TorchDataset
 
 
 class MLP_Dataset(DFDataset):
@@ -28,29 +29,14 @@ class MLP_Dataset(DFDataset):
     def process_config(self, config: dict):
         for key, value in config.items():
             setattr(self, key, value)
-
-    #############################################################
-    # Structure for pytorch dataset
-    class MLP_TorchDataset(Dataset):
-        def __init__(self, features: np.ndarray, targets: np.ndarray, weights: np.ndarray):
-            # Convert numpy arrays to PyTorch tensors
-            self.X = torch.tensor(features, dtype=torch.float32)
-            self.y = torch.tensor(targets, dtype=torch.long)
-            self.weights = torch.tensor(weights, dtype=torch.float32)
-
-        def __len__(self):
-            # Return the total number of samples
-            return len(self.X)
-
-        def __getitem__(self, idx):
-            # Return a single sample (features, label, weight) at the given index
-            return self.X[idx], self.y[idx], self.weights[idx]
         
+
     #############################################################
     # Common model get
     def get_MLPTorch(self, df: pd.DataFrame, event_weight: str):
-        return self.MLP_TorchDataset(df[self.dfdataset.model_vars].values, df[f"{self.dfdataset.aux_var_prefix}label1D"].values, np.abs(df[f"{self.dfdataset.aux_var_prefix}{event_weight}"].values))
+        return MLP_TorchDataset(df[self.dfdataset.model_vars].values, df[f"{self.dfdataset.aux_var_prefix}label1D"].values, np.abs(df[f"{self.dfdataset.aux_var_prefix}{event_weight}"].values))
         
+
     #############################################################
     # Overriding get functions
     def get_train(self, fold: int, syst_name: str='nominal', for_eval: bool=False):

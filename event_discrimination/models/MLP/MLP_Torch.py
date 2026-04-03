@@ -2,9 +2,9 @@ from torch import optim, nn
 import pytorch_lightning as pl
 
 
-class MLP(pl.LightningModule):
+class MLP_Torch(pl.LightningModule):
     def __init__(self, input_size, num_layers, num_nodes, output_size, dropout_prob, class_weights=None):
-        super(MLP, self).__init__()
+        super(MLP_Torch, self).__init__()
         layers = []
 
         # Input layer
