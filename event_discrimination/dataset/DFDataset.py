@@ -1,8 +1,7 @@
 # Stdlib packages
-import argparse
 import datetime
-import logging
 import os
+import subprocess
 
 # Common Py packages
 import numpy as np  
@@ -17,7 +16,7 @@ from HHtobbyy.event_discrimination.preprocessing.BDT_preprocessing_utils import 
     no_standardize, apply_logs
 )
 from HHtobbyy.event_discrimination.dataset.DFDataset_utils import make_output_filepath
-from HHtobbyy.workspace.retrieval_utils import FILL_VALUE
+from HHtobbyy.workspace.retrieval_utils import FILL_VALUE, get_train_filepaths_func, get_test_filepaths_func
 
 # MODEL_CONFIG = args.MODEL_config.replace('.py', '').split('/')[-1]
 # exec(f"from {MODEL_CONFIG} import *")
@@ -27,33 +26,54 @@ from HHtobbyy.workspace.retrieval_utils import FILL_VALUE
 
 class DFDataset:
     def __init__(config: dict, output_dirpath: str=''):
-        self.xrd_redirector = config['xrd_redirector']  # 'root://cmseos.fnal.gov/'
-        if output_dirpath == '':
-            self.current_time = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')  # 'YYYY-MM-DD_HH-MM-SS'
-            self.output_dirpath = os.path.normpath(os.path.join(config['output_dirpath'], f"{config['dataset_tag']}_{self.current_time}"))
-            if not os.path.exists(self.output_dirpath):
-                os.makedirs(self.output_dirpath)
+        reqd_keys = ['output_dirpath', 'dataset_tag', 'model_vars', 'aux_vars', 'class_sample_map']
+        assert all(key in config.keys() for key in reqd_keys), f"Config file required to have some variables: {reqd_keys}, received config is missing {set(config.keys()) - set(reqd_keys)}"
 
-            config_filepath = os.path.join(self.output_dirpath, f'dataset_config.json')
-            save_file_eos(config, config_filepath, self.xrd_redirector)
-        else:
-            self.output_dirpath = output_dirpath
+        # Redirector if sending data to EOS
+        self.xrd_redirector = 'root://cmseos.fnal.gov/'
 
-        self.pq_batch_size = config['pq_batch_size']  # 524_288
-        self.seed = config['seed']
+        # Dirpath to dump dataset
+        self.output_dirpath = output_dirpath
 
-        self.model_vars = sorted(config['model_vars'])
-        self.aux_vars = sorted(config['aux_vars'])
-        self.all_vars = sorted(self.model_vars + self.aux_vars)
-        self.new_aux_vars = sorted(['AUX_' + aux_var for aux_var in self.aux_vars])
-        self.new_all_vars = sorted(self.model_vars + self.new_aux_vars)
-        self.necessary_aux_vars = {'weight', 'eventWeight', 'sample_name', 'hash'}
+        # Batch size for loading parquets
+        self.pq_batch_size = 524_288
 
-        self.mask_var = config['mask_var']
+        # RNG seed
+        self.seed = 21
 
-        self.n_folds = config['n_folds']
+        # Mask variable for preselection, 'none' for no extra pre-selection
+        self.mask_var = 'none'
 
-        self.standardization_method = config['standardization_method']
+        # Number of folds, one model per fold
+        self.n_folds = 5
+
+        # Method used for the standardization
+        self.standardization_method = 'zscore'
+
+        # Processes the config
+        self.process_config(config)
+
+
+    def process_config(self, config: dict):
+        def make_output_dirpath():
+            if self.output_dirpath == '':
+                self.current_time = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')  # 'YYYY-MM-DD_HH-MM-SS'
+                self.output_dirpath = os.path.normpath(os.path.join(config['output_dirpath'], f"{config['dataset_tag']}_{self.current_time}"))
+                if not os.path.exists(self.output_dirpath):
+                    os.makedirs(self.output_dirpath)
+
+        def make_var_lists():
+            self.model_vars = sorted(self.model_vars)
+            self.aux_vars = sorted(self.aux_vars)
+            self.all_vars = sorted(self.model_vars + self.aux_vars)
+            self.new_aux_vars = sorted(['AUX_' + aux_var for aux_var in self.aux_vars])
+            self.new_all_vars = sorted(self.model_vars + self.new_aux_vars)
+            self.necessary_aux_vars = {'weight', 'eventWeight', 'sample_name', 'hash'}
+
+        for key, value in config.items():
+            if key == 'output_dirpath': make_output_dirpath()
+            else: setattr(self, key, value)
+        make_var_lists()
 
     def presel_mask(self, df: pd.DataFrame):
         if self.mask_var == 'none': return np.ones(len(df), dtype=bool)
@@ -135,6 +155,7 @@ class DFDataset:
 
     
     def get_train(self, fold: int):
-        pass
+        class_filepaths = get_train_filepaths_func(self.output_dirpath)(fold)
+        train_df = pd.DataFrame(columns=self.model_vars)
     def get_test(self, fold: int):
         pass
