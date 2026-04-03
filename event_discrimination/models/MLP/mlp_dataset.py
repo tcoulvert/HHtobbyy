@@ -22,6 +22,13 @@ class MLP_Dataset(DFDataset):
         # Number of workers for DataLoader
         self.num_workers = 1
 
+        # Processes the config
+        self.process_config(config)
+
+    def process_config(self, config: dict):
+        for key, value in config.items():
+            setattr(self, key, value)
+
     #############################################################
     # Structure for pytorch dataset
     class MLP_TorchDataset(Dataset):
