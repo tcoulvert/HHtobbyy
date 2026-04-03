@@ -7,6 +7,9 @@ import numpy as np
 import pandas as pd
 import pyarrow.parquet as pq
 
+# ML packages
+from sklearn.model_selection import train_test_split
+
 # HEP packages
 from eos_utils import save_file_eos, load_file_eos
 
@@ -69,6 +72,12 @@ class DFDataset:
 
         # Number of folds, one model per fold
         self.n_folds = 5
+
+        # Fraction of training data to use for validation, if using
+        self.val_split = 0.2
+
+        # Method to split train and val
+        self.train_val_split_method == 'scikit'
 
         # Method used for the standardization
         self.standardization_method = 'zscore'
@@ -217,6 +226,13 @@ class DFDataset:
         df = apply_logs(df)
         df = (np.ma.array(df, mask=(df == FILL_VALUE)) - zscore_std['mean']) / zscore_std['std']
         df = pd.DataFrame(df.filled(FILL_VALUE), columns=zscore_std['col'])
+
+
+    #############################################################
+    # Train/Val splitting
+    def train_val_split(self):
+        if self.train_val_split_method == 'scikit': return train_test_split
+        else: raise NotImplementedError(f"Train/Val split method not yet implemented, use \'scikit\'.")
 
 
     #############################################################

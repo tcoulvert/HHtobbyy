@@ -60,13 +60,11 @@ def map_filepath_to_class(class_sample_map: dict, filepath: str):
     return mapped_class_idx
 
 
-
+#############################################################
+# Output train/test files
 def make_output_filepath(filepath, base_output_dirpath, extra_text):
     filename = filepath[filepath.rfind('/')+1:]
-    output_dirpath = os.path.join(
-        base_output_dirpath,
-        filepath[:filepath.rfind('/')]
-    )
+    output_dirpath = os.path.join(base_output_dirpath, filepath[:filepath.rfind('/')])
     os.makedirs(output_dirpath, exist_ok=True)
 
     filename = filename[:filename.rfind('.')] + f"_{extra_text}" + filename[filename.rfind('.'):]

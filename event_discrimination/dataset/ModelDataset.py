@@ -12,13 +12,13 @@ class ModelDataset(ABC):
         self.dfdataset = dfdataset
 
     @abstractmethod
-    def get_train(self, fold: int):
+    def get_train(self, fold: int, syst_name: str='nominal', for_eval: bool=False):
         pass
 
     @abstractmethod
-    def get_val(self, fold: int):
+    def get_val(self, fold: int, syst_name: str='nominal', for_eval: bool=False):
         pass
 
     @abstractmethod
-    def get_test(self, fold: int):
+    def get_test(self, fold: int, syst_name: str='nominal', regex: str=''):
         pass

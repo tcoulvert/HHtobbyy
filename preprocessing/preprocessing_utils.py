@@ -3,7 +3,6 @@ import math
 
 # HEP packages
 import awkward as ak
-import vector as vec
 
 # Workspace packages
 from HHtobbyy.workspace_utils.retrieval_utils import FILL_VALUE
