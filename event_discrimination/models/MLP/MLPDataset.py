@@ -4,16 +4,16 @@ import pandas as pd
 
 # ML packages
 import torch
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import DataLoader
 
 
-from HHtobbyy.event_discrimination.dataset import DFDataset
-from HHtobbyy.event_discrimination.models.MLP import MLP_TorchDataset
+from HHtobbyy.event_discrimination.dataset import DFDataset, ModelDataset
+from HHtobbyy.event_discrimination.models.MLP import MLPTorchDataset
 
 
-class MLP_Dataset(DFDataset):
-    def __init__(self, dfdataset: DFDataset, config: dict={}):
-        super().__init__(dfdataset)
+class MLPDataset(ModelDataset):
+    def __init__(self, dfdataset: DFDataset, config: dict):
+        self.dfdataset = dfdataset
 
         # Batch sizes for training
         self.train_batch_size = 2048
@@ -24,17 +24,13 @@ class MLP_Dataset(DFDataset):
         self.num_workers = 1
 
         # Processes the config
-        self.process_config(config)
-
-    def process_config(self, config: dict):
-        for key, value in config.items():
-            setattr(self, key, value)
+        super().process_config(config)
         
 
     #############################################################
     # Common model get
     def get_MLPTorch(self, df: pd.DataFrame, event_weight: str):
-        return MLP_TorchDataset(df[self.dfdataset.model_vars].values, df[f"{self.dfdataset.aux_var_prefix}label1D"].values, np.abs(df[f"{self.dfdataset.aux_var_prefix}{event_weight}"].values))
+        return MLPTorchDataset(df[self.dfdataset.model_vars].values, df[f"{self.dfdataset.aux_var_prefix}label1D"].values, np.abs(df[f"{self.dfdataset.aux_var_prefix}{event_weight}"].values))
         
 
     #############################################################
@@ -55,7 +51,7 @@ class MLP_Dataset(DFDataset):
         else: event_weight = 'eventWeightTrain'
         return DataLoader(self.get_MLPTorch(val_df, event_weight), batch_size=self.val_batch_size, num_workers=self.num_workers, shuffle=not for_eval)
 
-    def get_test(self, fold: int, syst_name: str='nominal', regex: str=''):
+    def get_test(self, fold: int, syst_name: str='nominal', regex: str|list[str]=''):
         test_df = self.dfdataset.get_test(fold, syst_name=syst_name, regex=regex)
         
         return DataLoader(self.get_MLPTorch(test_df, 'eventWeight'), batch_size=self.test_batch_size, num_workers=self.num_workers, shuffle=False)

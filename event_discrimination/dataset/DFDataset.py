@@ -11,7 +11,7 @@ import pyarrow.parquet as pq
 from sklearn.model_selection import train_test_split
 
 # HEP packages
-from eos_utils import save_file_eos, load_file_eos
+import eos_utils as eos
 
 # Workspace packages
 from HHtobbyy.event_discrimination.dataset.DFDataset_utils import (
@@ -48,12 +48,9 @@ class DFDataset:
 
         assert config != {} or output_dirpath != '', f"ERROR: At least one argument is required."
         if type(config) is str: 
-            config = load_file_eos(dict, config)
+            config = eos.load_file_eos(dict, config)
         elif config == {}:
-            config = load_file_eos(dict, os.path.join(output_dirpath, self.config_filename))
-
-        reqd_keys = ['output_dirpath', 'dataset_tag', 'model_vars', 'aux_vars', 'class_sample_map']
-        assert all(key in config.keys() for key in reqd_keys), f"Config file required to have some variables: {reqd_keys}, received config is missing {set(config.keys()) - set(reqd_keys)}"
+            config = eos.load_file_eos(dict, os.path.join(output_dirpath, self.config_filename))
 
         # Dirpath to dump dataset
         self.output_dirpath = output_dirpath
@@ -103,6 +100,9 @@ class DFDataset:
     #############################################################
     # Configuration preocessing
     def process_config(self, config: dict):
+        reqd_keys = ['output_dirpath', 'dataset_tag', 'model_vars', 'aux_vars', 'class_sample_map']
+        assert all(key in config.keys() for key in reqd_keys), f"Config file required to have some variables: {reqd_keys}, received config is missing {set(config.keys()) - set(reqd_keys)}"
+
         def make_output_dirpath():
             if self.output_dirpath == '':
                 self.output_dirpath = os.path.normpath(os.path.join(config['output_dirpath'], f"{config['dataset_tag']}_{self.current_time}"))
@@ -118,16 +118,20 @@ class DFDataset:
 
         for key, value in config.items():
             if key == 'output_dirpath': make_output_dirpath()
-            else: setattr(self, key, value)
+            else: 
+                if hasattr(self, key): setattr(self, key, value)
         make_var_lists()
 
+        # Number of classes
+        self.n_classes = len(self.class_sample_map)
+
         class_sample_map_filepath = os.path.join(self.output_dirpath, self.class_sample_map_filename)
-        try: load_file_eos(dict, class_sample_map_filepath)
-        except: save_file_eos(self.class_sample_map, class_sample_map_filepath)
+        try: eos.load_file_eos(dict, class_sample_map_filepath)
+        except: eos.save_file_eos(self.class_sample_map, class_sample_map_filepath)
 
         config_filepath = os.path.join(self.output_dirpath, self.config_filename)
-        try: load_file_eos(dict, config_filepath)
-        except: save_file_eos(config, config_filepath)
+        try: eos.load_file_eos(dict, config_filepath)
+        except: eos.save_file_eos(config, config_filepath)
 
 
     #############################################################
@@ -212,7 +216,7 @@ class DFDataset:
 
         zscore_std = {'col': self.model_vars, 'mean': x_mean.tolist(), 'std': x_std.tolist()}
         zscore_std_filepath = os.path.join(self.output_dirpath, f'zscore_{self.standardization_subfilename}{fold}.json')
-        save_file_eos(zscore_std, zscore_std_filepath)
+        eos.save_file_eos(zscore_std, zscore_std_filepath)
 
     def apply_standardization(self, df: pd.DataFrame, fold: int):
         slimmed_df = df.loc[:, self.model_vars]
@@ -221,7 +225,7 @@ class DFDataset:
         return pd.concat([slimmed_df, df.loc[:, self.new_aux_vars]])
     def apply_zscore_standardization(self, df: pd.DataFrame, fold: int):
         zscore_std_filepath = os.path.join(self.output_dirpath, f'zscore_{self.standardization_subfilename}{fold}.json')
-        zscore_std = load_file_eos(dict, zscore_std_filepath)
+        zscore_std = eos.load_file_eos(dict, zscore_std_filepath)
         
         df = apply_logs(df)
         df = (np.ma.array(df, mask=(df == FILL_VALUE)) - zscore_std['mean']) / zscore_std['std']
@@ -253,7 +257,7 @@ class DFDataset:
 
         for filepath in filepaths:
             standardized_df = self.apply_standardization(dfs[filepath], fold)
-            save_file_eos(standardized_df, make_output_filepath(filepath[filepath.find(self.base_filepath):], self.output_dirpath, f"train{fold}"))
+            eos.save_file_eos(standardized_df, make_output_filepath(filepath[filepath.find(self.base_filepath):], self.output_dirpath, f"train{fold}"))
 
     def make_test(self, filepaths: list, fold: int, force: bool=False):
         assert fold >= 0 and fold < self.n_folds, f"ERROR: Expected a fold index between 0 and {self.n_folds}, received {fold}"
@@ -265,7 +269,7 @@ class DFDataset:
             self.add_vars(df, fold, map_filepath_to_class(self.class_sample_map, filepath[filepath.find(self.base_filepath):]))
             
             standardized_df = self.apply_standardization(df, fold)
-            save_file_eos(standardized_df, make_output_filepath(filepath[filepath.find(self.base_filepath):], self.output_dirpath, f"test{fold}"), force=force)
+            eos.save_file_eos(standardized_df, make_output_filepath(filepath[filepath.find(self.base_filepath):], self.output_dirpath, f"test{fold}"), force=force)
 
     
     #############################################################
@@ -274,7 +278,7 @@ class DFDataset:
         filepaths = get_traintest_filepaths_func(self.output_dirpath, dataset="train", syst_name=syst_name)(fold)
 
         df = pd.concat(
-            [load_file_eos(pd.DataFrame, filepath) for model_class in filepaths.keys() for filepath in filepaths[model_class]], 
+            [eos.load_file_eos(pd.DataFrame, filepath) for model_class in filepaths.keys() for filepath in filepaths[model_class]], 
             ignore_index=True
         )
         assert 'Data' not in set(np.unique(df[f'{self.aux_var_prefix}sample_name']).tolist()), f"Data is getting into train dataset... THIS IS VERY BAD"
@@ -285,14 +289,14 @@ class DFDataset:
 
         return df
     
-    def get_test(self, fold: int, syst_name: str='nominal', regex: str=''):
+    def get_test(self, fold: int, syst_name: str='nominal', regex: str|list[str]=''):
         if regex == 'test_of_train':
             filepaths = get_traintest_filepaths_func(self.output_dirpath, dataset="test", syst_name=syst_name)(fold)
         else:
             filepaths = get_test_filepaths_func(self.output_dirpath, syst_name=syst_name, regex=regex)(fold)
 
         df = pd.concat(
-            [load_file_eos(pd.DataFrame, filepath) for model_class in filepaths.keys() for filepath in filepaths[model_class]], 
+            [eos.load_file_eos(pd.DataFrame, filepath) for model_class in filepaths.keys() for filepath in filepaths[model_class]], 
             ignore_index=True
         )
 

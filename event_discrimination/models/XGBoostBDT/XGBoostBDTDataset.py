@@ -5,13 +5,16 @@ import pandas as pd
 # ML packages
 import xgboost as xgb
 
-from HHtobbyy.event_discrimination.dataset import DFDataset
+from HHtobbyy.event_discrimination.dataset import DFDataset, ModelDataset
 from HHtobbyy.workspace_utils.retrieval_utils import FILL_VALUE
 
 
-class XGBoostBDT_Dataset(DFDataset):
-    def __init__(self, dfdataset: DFDataset):
-        super().__init__(dfdataset)
+class XGBoostBDTDataset(ModelDataset):
+    def __init__(self, dfdataset: DFDataset, config: dict):
+        self.dfdataset = dfdataset
+        
+        # Processes the config
+        super().process_config(config)
 
     #############################################################
     # Common model get
@@ -41,7 +44,7 @@ class XGBoostBDT_Dataset(DFDataset):
         else: event_weight = 'eventWeightTrain'
         return self.get_DMatrix(val_df, event_weight)
 
-    def get_test(self, fold: int, syst_name: str='nominal', regex: str=''):
+    def get_test(self, fold: int, syst_name: str='nominal', regex: str|list[str]=''):
         test_df = self.dfdataset.get_test(fold, syst_name=syst_name, regex=regex)
         
         return self.get_DMatrix(test_df, 'eventWeight')

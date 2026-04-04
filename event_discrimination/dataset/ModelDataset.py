@@ -8,8 +8,11 @@ from HHtobbyy.event_discrimination.dataset.DFDataset import DFDataset
 
 
 class ModelDataset(ABC):
-    def __init__(dfdataset: DFDataset):
-        self.dfdataset = dfdataset
+    dfdataset: DFDataset
+
+    def process_config(self, config: dict):
+        for key, value in config.items():
+            if hasattr(self, key): setattr(self, key, value)
 
     @abstractmethod
     def get_train(self, fold: int, syst_name: str='nominal', for_eval: bool=False):

@@ -1,5 +1,4 @@
 # Stdlib packages
-import copy
 import glob
 import json
 import os
@@ -211,7 +210,7 @@ def get_traintest_filepaths_func(dataset_dirpath: str, dataset: str="train", sys
             )
         ) for class_name, sample_names in class_sample_map.items()
     }
-def get_test_filepaths_func(dataset_dirpath: str, syst_name: str='nominal', regex: str=''):
+def get_test_filepaths_func(dataset_dirpath: str, syst_name: str='nominal', regex: str|list[str]=''):
     return lambda fold_idx: {
         'test': sorted(
             set(
@@ -220,7 +219,7 @@ def get_test_filepaths_func(dataset_dirpath: str, syst_name: str='nominal', rege
                 if ( 
                     (syst_name == "nominal" and match_sample(sample_filepath[len(dataset_dirpath):], ["_up", "_down"]) is None) 
                     or match_sample(sample_filepath[len(dataset_dirpath):], [syst_name]) is not None
-                ) and match_sample(sample_filepath[len(dataset_dirpath):], [regex]) is not None
+                ) and match_sample(sample_filepath[len(dataset_dirpath):], [regex] if type(regex) is str else regex) is not None
             )
         )
     }
@@ -235,15 +234,3 @@ def argsorted(objects):
     sorted_objects = sorted(objects)
     sorted_indices = [object_to_index[object] for object in sorted_objects]
     return sorted_indices
-
-
-
-
-#############################################################
-def get_DMatrix(df, aux, dataset: str='train', label: bool=True):
-    if label: label_arg = aux['AUX_label1D']
-    else: label_arg = None
-    return xgb.DMatrix(
-        data=df, label=label_arg, weight=np.abs(aux['AUX_eventWeightTrain'] if dataset.lower() == 'train' else aux['AUX_eventWeight']),
-        missing=FILL_VALUE, feature_names=list(df.columns)
-    )

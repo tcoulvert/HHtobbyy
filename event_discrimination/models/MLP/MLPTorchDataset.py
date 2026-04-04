@@ -8,7 +8,7 @@ from torch.utils.data import Dataset
 
 #############################################################
 # Structure for pytorch dataset
-class MLP_TorchDataset(Dataset):
+class MLPTorchDataset(Dataset):
     def __init__(self, features: np.ndarray, targets: np.ndarray, weights: np.ndarray):
         # Convert numpy arrays to PyTorch tensors
         self.X = torch.tensor(features, dtype=torch.float32)
