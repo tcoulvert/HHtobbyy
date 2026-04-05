@@ -17,7 +17,7 @@ from HHtobbyy.event_discrimination.models.XGBoostBDT import XGBoostBDTDataset, X
 
 
 class XGBoostBDT(Model):
-    def __init__(self, dfdataset: DFDataset, config: dict):
+    def __init__(self, dfdataset: DFDataset, config: dict, output_dirpath: str=''):
         self.dfdataset = dfdataset
         self.modeldataset = XGBoostBDTDataset(self.dfdataset, config)
         self.modelconfig = XGBoostBDTConfig(self.dfdataset, config)
@@ -53,7 +53,10 @@ class XGBoostBDT(Model):
         eos.save_file_eos(eval_result, os.path.join(self.output_dirpath, f'{self.eval_filename}{fold}.json'))
 
     def evaluate(self, fold: int, syst_name: str='nominal', regex: str|list[str]=''):
-        booster =  xgb.Booster(
+        booster = xgb.Booster(
             params=self.modelconfig.load_config(), 
-            model_file=os.path.join(training_dirpath, f"{training_dirpath.split('/')[-2]}_BDT_fold{fold_idx}.model")
+            model_file=os.path.join(self.output_dirpath, f"{self.model_filename}{fold}.model")
         )
+
+        eval_data = self.modeldataset.get_test(fold, syst_name=syst_name, regex=regex)
+        booster.predict(eval_data, iteration_range=(0, booster.best_iteration))

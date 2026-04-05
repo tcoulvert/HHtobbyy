@@ -158,27 +158,7 @@ def run_training():
                 batch_size=param['batch_size'], shuffle=False, num_workers=param['num_workers']
             )
 
-            # DNN model
-            model = MLP(train_df.shape[1], param['num_layers'], param['num_nodes'], N_CLASSES, param['dropout_prob'])
-
-            # Callbacks
-            callbacks = [EarlyStopping(monitor=param['monitor'], min_delta=param['min_delta'], patience=param['patience'], verbose=False, mode=param['mode'])]
-
-            # Build trainer
-            trainer = Trainer(
-                callbacks=callbacks,
-                default_root_dir=OUTPUT_DIRPATH,
-                max_epochs=param['max_epochs'], 
-                accelerator=param['accelerator'],
-                strategy=param['strategy'],
-                num_nodes=param['num_nodes'],
-                precision=param['precision'], 
-                gradient_clip_val=param['gradient_clip_val'],
-                logger=param['logger']
-            )
-
-            # Train DNN
-            trainer.fit(model, train_data, val_data)
+            
 
     elif BATCH == "condor":
         pass
