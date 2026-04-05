@@ -14,12 +14,10 @@ import awkward as ak
 import pyarrow.parquet as pq
 import vector as vec
 
-################################
-
-
-from HHtobbyy.event_discrimination.preprocessing.resolved_preprocessing import  add_vars_resolved
-from HHtobbyy.event_discrimination.preprocessing.boosted_preprocessing import add_vars_boosted
-from HHtobbyy.event_discrimination.preprocessing.preprocessing_utils import match_sample, get_era_filepaths
+# Workspace packages
+from HHtobbyy.preprocessing.resolved_preprocessing import add_vars_resolved
+from HHtobbyy.preprocessing.boosted_preprocessing import add_vars_boosted
+from HHtobbyy.workspace_utils.retrieval_utils import match_sample, get_era_filepaths
 
 ################################
 

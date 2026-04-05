@@ -64,12 +64,6 @@ NONRES_RESCALE = {
 for era, rescale_dict in NONRES_RESCALE.items(): rescale_dict['!DDQCDGJet*GJet'] = 2.6
 
 
-################################
-
-
-
-
-
 #############################################################
 def get_era_filepaths(input_eras: str, split_data_mc_eras: bool=False):
     MC_eras, Data_eras = set(), set()
@@ -85,10 +79,8 @@ def get_era_filepaths(input_eras: str, split_data_mc_eras: bool=False):
     else: return (MC_eras | Data_eras)
 
 
-
-
 #############################################################
-def check_train_dataset(train_filepaths: list):
+def check_train_filepaths(train_filepaths: list, eras: list):
     good_dataset_bool = True
     for glob_name in [glob_name for glob_names in CLASS_SAMPLE_MAP.values() for glob_name in glob_names]:
         for era in get_era_filepaths(args.input_eras, split_data_mc_eras=True)[0]:
@@ -105,18 +97,19 @@ def check_train_dataset(train_filepaths: list):
         if not good_dataset_bool: break
     return good_dataset_bool
 
-def get_input_filepaths():
-    input_filepaths = {'train-test': list(), 'train': list(), 'test': list()}
+def get_input_filepaths(eras: str|list[str], regex: str|list[str]=""):
+    if type(eras) is str: eras = get_era_filepaths(eras)
+    input_filepaths = []
     
-    for era in ERAS:
+    for era in eras:
         sample_filepaths = glob.glob(os.path.join(era, "**", f"*{END_FILEPATH}"), recursive=True)
         for sample_filepath in sample_filepaths:
             sub_sample_filepath = sample_filepath[len(era):]
-            if (
-                match_sample(sub_sample_filepath, TEST_ONLY_SAMPLES) is not None
-                and match_sample(sub_sample_filepath, {glob_name for glob_names in CLASS_SAMPLE_MAP.values() for glob_name in glob_names}) is None
-            ):
-                input_filepaths['test'].append(sample_filepath)
+            if match_sample(
+                sub_sample_filepath, 
+                {glob_name for glob_names in CLASS_SAMPLE_MAP.values() for glob_name in glob_names}
+            ) is not None:
+                input_filepaths.append(sample_filepath)
             elif (
                 match_sample(sub_sample_filepath, {glob_name for glob_names in CLASS_SAMPLE_MAP.values() for glob_name in glob_names}) is not None 
                 and match_sample(sub_sample_filepath, TRAIN_ONLY_SAMPLES) is not None
@@ -133,8 +126,6 @@ def get_input_filepaths():
         assert check_train_dataset(input_filepaths['train-test']+input_filepaths['train']), f"Train dataset is missing some samples for some eras."
     
     return input_filepaths
-
-
 
 
 #############################################################
@@ -171,8 +162,6 @@ def match_regex(regex, sample_strs):
             return sample_str
         
 
-        
-
 #############################################################
 def format_class_names(class_names):
     return [class_name.replace(' ', '').replace('+', '') for class_name in class_names]
@@ -182,17 +171,6 @@ def get_class_sample_map(dataset_dirpath: str):
     with open(class_sample_map_filepath, "r") as f:
         class_sample_map = json.load(f)
     return class_sample_map
-
-
-#############################################################
-def get_n_folds(dataset_dirpath: str):
-    filepaths = glob.glob(os.path.join(dataset_dirpath, "**", f"*train*.parquet"), recursive=True)
-    max_fold = max([
-        int(filepath[re.search('train[0-9]', filepath).end()-1]) for filepath in filepaths
-    ])  # only works for up to 10 folds -- currently using 5, not likely to increase due to low-stats
-    return max_fold + 1
-
-
 
 
 #############################################################
@@ -223,14 +201,3 @@ def get_test_filepaths_func(dataset_dirpath: str, syst_name: str='nominal', rege
             )
         )
     }
-
-
-
-#############################################################
-def argsorted(objects):
-    object_to_index = {}
-    for index, object in enumerate(objects):
-        object_to_index[object] = index
-    sorted_objects = sorted(objects)
-    sorted_indices = [object_to_index[object] for object in sorted_objects]
-    return sorted_indices

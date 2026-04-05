@@ -1,6 +1,5 @@
 # Stdlib packages
 import copy
-import re
 
 # Common Py packages
 import numpy as np
@@ -9,13 +8,9 @@ import numpy as np
 import awkward as ak
 import vector as vec
 
-################################
-
-
-from HHtobbyy.event_discrimination.preprocessing.preprocessing_utils import (
-    deltaPhi, deltaEta, 
-    match_sample
-)
+# Workspace packages
+from HHtobbyy.preprocessing.preprocessing_utils import deltaPhi, deltaEta
+from HHtobbyy.workspace_utils.retrieval_utils import match_sample
 import HHtobbyy.workspace_utils.FILL_VALUE as FILL_VALUE
 
 ################################

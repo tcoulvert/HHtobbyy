@@ -16,6 +16,8 @@ from HHtobbyy.event_discrimination.models.XGBoostBDT import XGBoostBDTDataset, X
 ################################
 
 
+# https://xgboost.readthedocs.io/en/stable/tutorials/external_memory.html
+#  -> For tne next iteration of BDT?
 class XGBoostBDT(Model):
     def __init__(self, dfdataset: DFDataset, config: dict):
         self.dfdataset = dfdataset
@@ -57,5 +59,6 @@ class XGBoostBDT(Model):
 
         # Test data predictions
         predictions = booster.predict(eval_data, iteration_range=(0, booster.best_iteration))
+        print(predictions)
 
         return predictions

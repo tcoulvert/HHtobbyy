@@ -1,11 +1,6 @@
-# Stdlib packages
-import datetime
-import os
-
 # ML packages
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
-from torch import Tensor
 
 # Workspace packages
 from HHtobbyy.event_discrimination.dataset import DFDataset
