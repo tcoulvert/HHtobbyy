@@ -1,4 +1,6 @@
 # Stdlib packages
+import datetime
+import os
 from abc import ABC, abstractmethod
 
 # HEP packages
@@ -16,7 +18,13 @@ class ModelConfig(ABC):
 
     def process_config(self, config: dict):
         assert "output_dirpath" in config.keys(), f"ERROR: Required to provide the output_dirpath for the model"
-        self.output_dirpath = config.output_dirpath
+
+        if 'model_time' not in config: 
+            config['model_time'] = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')  # 'YYYY-MM-DD_HH-MM-SS'
+        self.output_dirpath = os.path.join(config.output_dirpath, config.model_time)
+
+        self.dfdataset_dirpath = self.dfdataset.output_dirpath
+        
         for key, value in config.items():
             if hasattr(self, key): setattr(self, key, value)
 

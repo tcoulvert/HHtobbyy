@@ -5,6 +5,7 @@ import os
 # ML packages
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
+from torch import Tensor
 
 # Workspace packages
 from HHtobbyy.event_discrimination.dataset import DFDataset
@@ -19,42 +20,51 @@ class MLP(Model):
         self.dfdataset = dfdataset
         self.modeldataset = MLPDataset(self.dfdataset, config)
         self.modelconfig = MLPConfig(self.dfdataset, config)
-
-        # Current time of execution
-        self.current_time = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')  # 'YYYY-MM-DD_HH-MM-SS'
-
-        # Output dirpath for model files
-        self.output_dirpath = os.path.join(self.modelconfig.output_dirpath, self.dfdataset.dataset_tag, self.current_time)
-
-    def train(self, fold: int):
+        
         # Save config
         self.modelconfig.save_config()
-        
-        # Data
-        train_data = self.modeldataset.get_train(fold)
-        val_data = self.modeldataset.get_val(fold)
 
+    def load_model_and_trainer(self, eval: bool=False):
         # DNN model
-        model = MLPTorch(train_data.shape[1], self.modelconfig.num_layers, self.modelconfig.num_nodes, self.dfdataset.n_classes, self.modelconfig.dropout_prob)
+        model = MLPTorch(len(self.dfdataset.model_vars), self.modelconfig.num_layers, self.modelconfig.num_nodes, self.dfdataset.n_classes, self.modelconfig.dropout_prob)
 
         # Callbacks
         callbacks = [EarlyStopping(monitor=self.modelconfig.monitor, min_delta=self.modelconfig.min_delta, patience=self.modelconfig.patience, verbose=False, mode=self.modelconfig.mode)]
 
-        # Build trainer
         trainer = Trainer(
             callbacks=callbacks,
-            default_root_dir=self.output_dirpath,
+            default_root_dir=self.modelconfig.output_dirpath,
             max_epochs=self.modelconfig.max_epochs, 
             accelerator=self.modelconfig.accelerator,
             strategy=self.modelconfig.strategy,
             num_nodes=self.modelconfig.num_nodes,
             precision=self.modelconfig.precision, 
             gradient_clip_val=self.modelconfig.gradient_clip_val,
-            logger=self.modelconfig.logger
+            logger=self.modelconfig.logger,
+            devices=1 if eval else 'auto',
         )
+
+        return model, trainer
+
+    def train(self, fold: int):
+        # Data
+        train_data = self.modeldataset.get_train(fold)
+        val_data = self.modeldataset.get_val(fold)
+
+        # DNN model and trainer
+        model, trainer = self.load_model_and_trainer()
 
         # Train DNN
         trainer.fit(model, train_data, val_data)
 
     def evaluate(self, fold: int, syst_name: str='nominal', regex: str|list[str]=''):
-        pass
+        eval_data = self.modeldataset.get_test(fold, syst_name=syst_name, regex=regex)
+
+        # DNN model and trainer
+        model, trainer = self.load_model_and_trainer(eval=True)
+
+        # Test data predictions
+        predictions = trainer.predict(model, eval_data, ckpt_path="best")
+        print(predictions)
+        
+        return predictions

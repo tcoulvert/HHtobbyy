@@ -29,7 +29,7 @@ class DFDataset:
     format that can easily be converted downstream to the model-specific format (see ModelDataset).
     """
 
-    def __init__(config: str|dict={}, output_dirpath: str=''):
+    def __init__(self, config: str|dict={}, output_dirpath: str=''):
         """
         Arguments
         ----------
@@ -46,17 +46,18 @@ class DFDataset:
         self.standardization_subfilename = 'standardization_fold'
         self.class_sample_map_filename = 'class_sample_map.json'
 
+        # Current time of execution
+        self.current_time = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')  # 'YYYY-MM-DD_HH-MM-SS'
+
         assert config != {} or output_dirpath != '', f"ERROR: At least one argument is required."
         if type(config) is str: 
             config = eos.load_file_eos(dict, config)
         elif config == {}:
             config = eos.load_file_eos(dict, os.path.join(output_dirpath, self.config_filename))
+            self.current_time = os.path.normpath(output_dirpath).split('_')[-1]
 
         # Dirpath to dump dataset
         self.output_dirpath = output_dirpath
-
-        # Current time of execution
-        self.current_time = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')  # 'YYYY-MM-DD_HH-MM-SS'
 
         # Batch size for loading parquets
         self.pq_batch_size = 524_288

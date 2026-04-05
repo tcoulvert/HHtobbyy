@@ -17,25 +17,19 @@ from HHtobbyy.event_discrimination.models.XGBoostBDT import XGBoostBDTDataset, X
 
 
 class XGBoostBDT(Model):
-    def __init__(self, dfdataset: DFDataset, config: dict, output_dirpath: str=''):
+    def __init__(self, dfdataset: DFDataset, config: dict):
         self.dfdataset = dfdataset
         self.modeldataset = XGBoostBDTDataset(self.dfdataset, config)
         self.modelconfig = XGBoostBDTConfig(self.dfdataset, config)
-
-        # Current time of execution
-        self.current_time = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')  # 'YYYY-MM-DD_HH-MM-SS'
-
-        # Output dirpath for model files
-        self.output_dirpath = os.path.join(self.modelconfig.output_dirpath, self.dfdataset.dataset_tag, self.current_time)
         
         # General filenames
-        self.model_filename = f'{self.current_time}_BDT_fold'
-        self.eval_filename = f'{self.current_time}_eval_fold'
+        self.model_filename = f'{self.modelconfig.model_time}_BDT_fold'
+        self.eval_filename = f'{self.modelconfig.model_time}_eval_fold'
 
-    def train(self, fold: int):
         # Save config
         self.modelconfig.save_config()
-        
+
+    def train(self, fold: int):
         # Data
         train_data = self.modeldataset.get_train(fold)
         val_data = self.modeldataset.get_val(fold)
@@ -49,14 +43,19 @@ class XGBoostBDT(Model):
             verbose_eval=self.modelconfig.verbose_eval, evals_result=eval_result,
         )
 
-        booster.save_model(os.path.join(self.output_dirpath, f'{self.model_filename}{fold}.model'))
-        eos.save_file_eos(eval_result, os.path.join(self.output_dirpath, f'{self.eval_filename}{fold}.json'))
+        booster.save_model(os.path.join(self.modelconfig.output_dirpath, f'{self.model_filename}{fold}.model'))
+        eos.save_file_eos(eval_result, os.path.join(self.modelconfig.output_dirpath, f'{self.eval_filename}{fold}.json'))
 
     def evaluate(self, fold: int, syst_name: str='nominal', regex: str|list[str]=''):
+        eval_data = self.modeldataset.get_test(fold, syst_name=syst_name, regex=regex)
+
+        # Initialize trained BDT model
         booster = xgb.Booster(
             params=self.modelconfig.load_config(), 
-            model_file=os.path.join(self.output_dirpath, f"{self.model_filename}{fold}.model")
+            model_file=os.path.join(self.modelconfig.output_dirpath, f"{self.model_filename}{fold}.model")
         )
 
-        eval_data = self.modeldataset.get_test(fold, syst_name=syst_name, regex=regex)
-        booster.predict(eval_data, iteration_range=(0, booster.best_iteration))
+        # Test data predictions
+        predictions = booster.predict(eval_data, iteration_range=(0, booster.best_iteration))
+
+        return predictions
