@@ -75,7 +75,7 @@ class DFDataset:
         self.val_split = 0.2
 
         # Method to split train and val
-        self.train_val_split_method == 'scikit'
+        self.train_val_split_method = 'scikit'
 
         # Method used for the standardization
         self.standardization_method = 'zscore'
