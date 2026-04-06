@@ -80,10 +80,10 @@ def get_era_filepaths(input_eras: str, split_data_mc_eras: bool=False):
 
 
 #############################################################
-def check_train_filepaths(train_filepaths: list, eras: list):
+def check_train_filepaths(train_filepaths: list, eras: list, class_sample_map: dict):
     good_dataset_bool = True
-    for glob_name in [glob_name for glob_names in CLASS_SAMPLE_MAP.values() for glob_name in glob_names]:
-        for era in get_era_filepaths(args.input_eras, split_data_mc_eras=True)[0]:
+    for glob_name in [glob_name for glob_names in class_sample_map.values() for glob_name in glob_names]:
+        for era in get_era_filepaths(eras, split_data_mc_eras=True)[0]:
             if 'data' in era: continue
             if match_regex(f"{era}*{glob_name}", train_filepaths) is None:
                 if not (
@@ -97,33 +97,21 @@ def check_train_filepaths(train_filepaths: list, eras: list):
         if not good_dataset_bool: break
     return good_dataset_bool
 
-def get_input_filepaths(eras: str|list[str], regex: str|list[str]=""):
+def get_input_filepaths(eras: str|list[str], class_sample_map: dict, regex: str|list[str]=""):
     if type(eras) is str: eras = get_era_filepaths(eras)
     input_filepaths = []
     
     for era in eras:
-        sample_filepaths = glob.glob(os.path.join(era, "**", f"*{END_FILEPATH}"), recursive=True)
+        sample_filepaths = glob.glob(os.path.join(era, "**", regex), recursive=True)
         for sample_filepath in sample_filepaths:
             sub_sample_filepath = sample_filepath[len(era):]
             if match_sample(
                 sub_sample_filepath, 
-                {glob_name for glob_names in CLASS_SAMPLE_MAP.values() for glob_name in glob_names}
+                {glob_name for glob_names in class_sample_map.values() for glob_name in glob_names}
             ) is not None:
                 input_filepaths.append(sample_filepath)
-            elif (
-                match_sample(sub_sample_filepath, {glob_name for glob_names in CLASS_SAMPLE_MAP.values() for glob_name in glob_names}) is not None 
-                and match_sample(sub_sample_filepath, TRAIN_ONLY_SAMPLES) is not None
-            ):
-                input_filepaths['train'].append(sample_filepath)
-            elif match_sample(sub_sample_filepath, {glob_name for glob_names in CLASS_SAMPLE_MAP.values() for glob_name in glob_names}) is not None:
-                input_filepaths['train-test'].append(sample_filepath)
-            else:
-                if DEBUG:
-                    logger.warning(f"{sample_filepath} \nSample not found in any dict (TRAIN_TEST_SAMPLES, TRAIN_ONLY_SAMPLES, TEST_ONLY_SAMPLES). Continuing with other samples.")
-                continue
 
-    if not args.dont_check_dataset:
-        assert check_train_dataset(input_filepaths['train-test']+input_filepaths['train']), f"Train dataset is missing some samples for some eras."
+    assert check_train_filepaths(input_filepaths, eras, class_sample_map), f"Train dataset is missing some samples for some eras."
     
     return input_filepaths
 

@@ -84,6 +84,10 @@ class DFDataset:
         #   for event-identification but *not* used in the training
         self.aux_var_prefix = 'AUX_'
 
+        # End of filepath for files to pull using eras selection
+        #  (doesn't matter if passing filepaths directly)
+        self.filepostfix = 'preprocessed.parquet'
+
         # Basic fileprefix to separate local machine directories from HiggsDNA 
         #   (or equivalent preprocessor) directories
         self.base_filepath = 'Run3_20'
@@ -242,6 +246,8 @@ class DFDataset:
 
     #############################################################
     # Building
+    def make_all_train(self, filepaths: list):
+        for fold in range(self.n_folds): self.make_train(filepaths, fold)
     def make_train(self, filepaths: list, fold: int):
         assert fold >= 0 and fold < self.n_folds, f"ERROR: Expected a fold index between 0 and {self.n_folds}, received {fold}"
 
@@ -260,6 +266,8 @@ class DFDataset:
             standardized_df = self.apply_standardization(dfs[filepath], fold)
             eos.save_file_eos(standardized_df, make_output_filepath(filepath[filepath.find(self.base_filepath):], self.output_dirpath, f"train{fold}"))
 
+    def make_all_test(self, filepaths: list, force: bool=False):
+        for fold in range(self.n_folds): self.make_test(filepaths, fold, force=force)
     def make_test(self, filepaths: list, fold: int, force: bool=False):
         assert fold >= 0 and fold < self.n_folds, f"ERROR: Expected a fold index between 0 and {self.n_folds}, received {fold}"
 

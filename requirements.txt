@@ -30,5 +30,3 @@ torchvision
 torchaudio
 
 pytorch-lightning
-
-eos-utils

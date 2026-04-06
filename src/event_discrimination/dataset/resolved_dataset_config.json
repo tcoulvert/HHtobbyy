@@ -1,5 +1,5 @@
 {
-    "output_dirpath": "",
+    "output_dirpath": "root://cmseos.fnal.gov//store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/DFDatasets/v0",
 
     "dataset_tag": "22to24_bTagWP",
 
