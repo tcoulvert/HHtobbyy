@@ -1,0 +1,4 @@
+{
+    "METHOD": "grid_search",
+    "N_CATEGORIES": 4, "N_STEPS": 10, "N_ZOOM": 6
+}
