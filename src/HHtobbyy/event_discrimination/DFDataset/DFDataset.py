@@ -303,6 +303,10 @@ class DFDataset:
     
     #############################################################
     # Retrieving
+    def get_all_train(self, syst_name: str='nominal', shuffle: bool=True):
+        dfs = []
+        for fold in range(self.n_folds): dfs.append(self.get_train(fold, syst_name=syst_name, shuffle=shuffle))
+        return pd.concat(dfs)
     def get_train(self, fold: int, syst_name: str='nominal', shuffle: bool=True):
         filepaths = self.get_traintest_filepaths(fold, dataset="train", syst_name=syst_name)(fold)
 
@@ -318,6 +322,10 @@ class DFDataset:
 
         return df
     
+    def get_all_test(self, syst_name: str='nominal', regex: str|list[str]=''):
+        dfs = []
+        for fold in range(self.n_folds): dfs.append(self.get_test(fold, syst_name=syst_name, regex=regex))
+        return pd.concat(dfs)
     def get_test(self, fold: int, syst_name: str='nominal', regex: str|list[str]=''):
         if regex == 'test_of_train':
             filepaths = self.get_traintest_filepaths(fold, dataset="test", syst_name=syst_name)(fold)

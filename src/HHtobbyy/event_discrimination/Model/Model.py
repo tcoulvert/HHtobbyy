@@ -1,6 +1,9 @@
 # Stdlib packages
 from abc import ABC, abstractmethod
 
+# Common Py packages
+import numpy as np
+
 # Workspace packages
 from HHtobbyy.event_discrimination.DFDataset import DFDataset
 from HHtobbyy.event_discrimination.Model import ModelConfig, ModelDataset
@@ -17,11 +20,11 @@ class Model(ABC):
         for fold in range(self.dfdataset.n_folds): 
             self.train(fold)
 
-    def evaluate_all_folds(self, syst_name: str='nominal', regex: str|list[str]='') -> list:
+    def evaluate_all_folds(self, syst_name: str='nominal', regex: str|list[str]='') -> np.ndarray:
         outputs = []
         for fold in range(self.dfdataset.n_folds): 
             outputs.append(self.evaluate(fold, syst_name=syst_name, regex=regex))
-        return outputs
+        return np.concatenate(outputs)
 
     @abstractmethod
     def train(self, fold: int) -> None:

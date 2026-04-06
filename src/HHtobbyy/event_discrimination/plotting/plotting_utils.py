@@ -1,36 +1,14 @@
 # Stdlib packages
 import copy
 import os
-import subprocess
-import sys
 
 # Common Py packages
 import numpy as np
 
-################################
-
-
-GIT_REPO = (
-    subprocess.Popen(["git", "rev-parse", "--show-toplevel"], stdout=subprocess.PIPE)
-    .communicate()[0]
-    .rstrip()
-    .decode("utf-8")
-)
-sys.path.append(os.path.join(GIT_REPO, "preprocessing/"))
-sys.path.append(os.path.join(GIT_REPO, "training/"))
-sys.path.append(os.path.join(GIT_REPO, "evaluation/"))
-
-# Module packages
-from retrieval_utils import (
-    get_class_sample_map, get_n_folds, get_train_DMatrices,
-    get_test_subset_DMatrix
-)
-from training_utils import (
-    get_model_func
-)
-from evaluation_utils import (
-    evaluate, transform_preds_func
-)
+# Workspace packages
+from HHtobbyy.event_discrimination.DFDataset import DFDataset
+from HHtobbyy.event_discrimination.Model import Model
+from HHtobbyy.event_discrimination.evaluation import transform_preds
 
 ################################
 
@@ -90,17 +68,41 @@ def project_1D_output(
         )
 
 def make_plot_data(
-    training_dirpath: str, dataset_dirpath: str, 
-    dataset: str, discriminator: str, plot_type: str, plot_func, 
+    model: Model, discriminator: str, plot_type: str, plot_func, 
     project_1D: bool=False
 ):
-    plot_dirpath = make_plot_dirpath(training_dirpath, plot_type)
+    plot_dirpath = make_plot_dirpath(model.modelconfig.output_dirpath, plot_type)
 
-    get_booster = get_model_func(training_dirpath)
-    CLASS_SAMPLE_MAP = get_class_sample_map(dataset_dirpath)
-    CLASS_NAMES = [key for key in CLASS_SAMPLE_MAP.keys()]
+    weights = model.dfdataset.get_all_test().loc[:, f"{model.dfdataset.aux_var_prefix}eventWeight"].to_numpy()
+    labels = model.dfdataset.get_all_test().loc[:, f"{model.dfdataset.aux_var_prefix}label1D"].to_numpy()
+    samples = model.dfdataset.get_all_test().loc[:, f"{model.dfdataset.aux_var_prefix}sample_name"].to_numpy()
 
-    transform_labels, transform_preds = transform_preds_func(CLASS_NAMES, discriminator)
+    predictions = model.evaluate_all_folds()
+    transformed_labels, transformed_predictions, _ = transform_preds(model.dfdataset.class_sample_map.keys(), discriminator, predictions)
+
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     plot_data = {}
     for fold_idx in range(get_n_folds(dataset_dirpath)):
