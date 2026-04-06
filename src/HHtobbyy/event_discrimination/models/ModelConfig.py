@@ -15,22 +15,25 @@ from HHtobbyy.event_discrimination.dataset import ModelDataset
 
 class ModelConfig(ABC):
     dfdataset: DFDataset
+    config_filename = "model_config.json"
 
     def process_config(self, config: dict):
         assert "output_dirpath" in config.keys(), f"ERROR: Required to provide the output_dirpath for the model"
 
         if 'model_time' not in config: 
             config['model_time'] = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')  # 'YYYY-MM-DD_HH-MM-SS'
-        self.output_dirpath = os.path.join(config.output_dirpath, config.model_time)
-
-        self.dfdataset_dirpath = self.dfdataset.output_dirpath
+        self.output_dirpath = os.path.join(config['output_dirpath'], config['model_time'])
+        os.makedirs(self.output_dirpath, exist_ok=True)
         
         for key, value in config.items():
             if hasattr(self, key): setattr(self, key, value)
 
-    def save_config(self, filepath: str):
-        assert filepath.endswith('.json'), f"ERROR: Currently only supporting \'json\' type config serializations"
-        eos.eos_save_file(self.__dict__, filepath)
+    def toJSON(self):
+        return {**self.__dict__, **{'dfdataset': self.dfdataset.__dict__}}
+
+    def save_config(self, filename: str=config_filename):
+        assert filename.endswith('.json'), f"ERROR: Currently only supporting \'json\' type config serializations"
+        eos.save_file_eos(self.toJSON(), os.path.join(self.output_dirpath, filename))
 
     @abstractmethod
     def optimize_params(self, model_dataset: ModelDataset, static_params: dict={}, verbose: bool=False):

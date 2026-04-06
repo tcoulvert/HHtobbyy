@@ -3,12 +3,11 @@ import numpy as np
 import pandas as pd
 
 # ML packages
-import torch
 from torch.utils.data import DataLoader
 
 
 from HHtobbyy.event_discrimination.dataset import DFDataset, ModelDataset
-from HHtobbyy.event_discrimination.models.MLP import MLPTorchDataset
+from HHtobbyy.event_discrimination.models.MLP.MLPTorchDataset import MLPTorchDataset
 
 
 class MLPDataset(ModelDataset):

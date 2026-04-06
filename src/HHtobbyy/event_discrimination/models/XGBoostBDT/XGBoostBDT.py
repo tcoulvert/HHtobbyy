@@ -11,7 +11,8 @@ import eos_utils as eos
 # Workspace packages
 from HHtobbyy.event_discrimination.dataset import DFDataset
 from HHtobbyy.event_discrimination.models import Model
-from HHtobbyy.event_discrimination.models.XGBoostBDT import XGBoostBDTDataset, XGBoostBDTConfig
+from HHtobbyy.event_discrimination.models.XGBoostBDT.XGBoostBDTDataset import XGBoostBDTDataset
+from HHtobbyy.event_discrimination.models.XGBoostBDT.XGBoostBDTConfig import XGBoostBDTConfig
 
 ################################
 
