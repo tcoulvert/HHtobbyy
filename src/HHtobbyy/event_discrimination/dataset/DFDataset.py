@@ -124,7 +124,7 @@ class DFDataset:
         for key, value in config.items():
             if key == 'output_dirpath': make_output_dirpath()
             else: 
-                if hasattr(self, key): setattr(self, key, value)
+                if hasattr(self, key) or key in reqd_keys: setattr(self, key, value)
         make_var_lists()
 
         # Number of classes
