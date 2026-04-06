@@ -8,7 +8,6 @@ import pandas as pd
 # Workspace packages
 from HHtobbyy.workspace_utils.retrieval_utils import match_sample
 
-
 #############################################################
 # Standardization
 def no_standardize(column: str):
@@ -59,7 +58,7 @@ def map_filepath_to_class(class_sample_map: dict, filepath: str):
 
 #############################################################
 # Output train/test files
-def make_output_filepath(filepath, base_output_dirpath, extra_text):
+def make_output_filepath(filepath: str, base_output_dirpath: str, extra_text: str):
     filename = filepath[filepath.rfind('/')+1:]
     output_dirpath = os.path.join(base_output_dirpath, filepath[:filepath.rfind('/')])
     os.makedirs(output_dirpath, exist_ok=True)
@@ -67,3 +66,5 @@ def make_output_filepath(filepath, base_output_dirpath, extra_text):
     filename = filename[:filename.rfind('.')] + f"_{extra_text}" + filename[filename.rfind('.'):]
 
     return os.path.join(output_dirpath, filename)
+
+

@@ -1,5 +1,6 @@
 # Stdlib packages
 import datetime
+import glob
 import os
 
 # Common Py packages
@@ -19,7 +20,7 @@ from HHtobbyy.event_discrimination.dataset.DFDataset_utils import (
 )
 from HHtobbyy.event_discrimination.dataset.DFDataset_utils import make_output_filepath
 from HHtobbyy.workspace_utils.retrieval_utils import (
-    FILL_VALUE, get_traintest_filepaths_func, get_test_filepaths_func, match_regex
+    FILL_VALUE, match_sample, match_regex
 )
 
 
@@ -29,7 +30,7 @@ class DFDataset:
     format that can easily be converted downstream to the model-specific format (see ModelDataset).
     """
 
-    def __init__(self, config: str|dict={}, output_dirpath: str=''):
+    def __init__(self, config: str|dict):
         """
         Arguments
         ----------
@@ -41,23 +42,30 @@ class DFDataset:
         NOTE: At least one argument is required.
         """
 
+        if type(config) is str: 
+            config = eos.load_file_eos(dict, config)
+
         # Filenames for common retrieval
         self.config_filename = 'dataset_config.json'
         self.standardization_subfilename = 'standardization_fold'
-        self.class_sample_map_filename = 'class_sample_map.json'
 
-        # Current time of execution
-        self.current_time = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')  # 'YYYY-MM-DD_HH-MM-SS'
-
-        assert config != {} or output_dirpath != '', f"ERROR: At least one argument is required."
-        if type(config) is str: 
-            config = eos.load_file_eos(dict, config)
-        elif config == {}:
-            config = eos.load_file_eos(dict, os.path.join(output_dirpath, self.config_filename))
-            self.current_time = os.path.normpath(output_dirpath).split('_')[-1]
-
+        #########################
+        # REQUIRED CONFIG KEYS
         # Dirpath to dump dataset
-        self.output_dirpath = output_dirpath
+        self.output_dirpath = ''
+
+        # Short tagline to describe dataset
+        self.dataset_tag = ''
+
+        # Model variables used in training
+        self.model_vars = []
+
+        # Auxiliary variables not used in training, but important downstream
+        self.aux_vars = []
+
+        # aping between sample filenames and class groupings
+        self.class_sample_map = {}
+        #########################
 
         # Batch size for loading parquets
         self.pq_batch_size = 524_288
@@ -108,35 +116,40 @@ class DFDataset:
         reqd_keys = ['output_dirpath', 'dataset_tag', 'model_vars', 'aux_vars', 'class_sample_map']
         assert all(key in config.keys() for key in reqd_keys), f"Config file required to have some variables: {reqd_keys}, received config is missing {set(config.keys()) - set(reqd_keys)}"
 
-        def make_output_dirpath():
-            if self.output_dirpath == '':
-                self.output_dirpath = os.path.normpath(os.path.join(config['output_dirpath'], f"{config['dataset_tag']}_{self.current_time}"))
-                os.makedirs(self.output_dirpath, exist_ok=True)
-
-        def make_var_lists():
-            self.model_vars = sorted(self.model_vars)
-            self.aux_vars = sorted(self.aux_vars)
-            self.all_vars = sorted(self.model_vars + self.aux_vars)
-            self.new_aux_vars = sorted([self.aux_var_prefix + aux_var for aux_var in self.aux_vars])
-            self.new_all_vars = sorted(self.model_vars + self.new_aux_vars)
-            self.necessary_aux_vars = {'weight', 'eventWeight', 'sample_name', 'hash'}
-
         for key, value in config.items():
-            if key == 'output_dirpath': make_output_dirpath()
-            else: 
-                if hasattr(self, key) or key in reqd_keys: setattr(self, key, value)
-        make_var_lists()
+            if hasattr(self, key): 
+                setattr(self, key, sorted(value) if type(value) is list else value)
+        
+        # All variables
+        self.all_vars = sorted(self.model_vars + self.aux_vars)
+
+        # Aux variables after renaming with prefix
+        self.new_aux_vars = sorted([self.aux_var_prefix + aux_var for aux_var in self.aux_vars])
+
+        # All variables after renaming with prefix
+        self.new_all_vars = sorted(self.model_vars + self.new_aux_vars)
+
+        # Reuired aux variables for downstream tasks
+        self.necessary_aux_vars = sorted(['weight', 'eventWeight', 'sample_name', 'sample_era', 'hash'])
 
         # Number of classes
         self.n_classes = len(self.class_sample_map)
 
-        class_sample_map_filepath = os.path.join(self.output_dirpath, self.class_sample_map_filename)
-        try: eos.load_file_eos(dict, class_sample_map_filepath)
-        except: eos.save_file_eos(self.class_sample_map, class_sample_map_filepath)
+        # Checking if config already exists at output_dirpath
+        #   otherwise creating dirpath and saving
+        if not self.check_output_dirpath():
+            self.dataset_time = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')  # 'YYYY-MM-DD_HH-MM-SS'
+            self.output_dirpath = os.path.join(self.output_dirpath, f"{self.dataset_tag}_{self.dataset_time}")
 
+            config_filepath = os.path.join(self.output_dirpath, self.config_filename)
+            eos.save_file_eos(config, config_filepath)
+
+    def check_output_dirpath(self):
         config_filepath = os.path.join(self.output_dirpath, self.config_filename)
-        try: eos.load_file_eos(dict, config_filepath)
-        except: eos.save_file_eos(config, config_filepath)
+        
+        try: eos.load_file_eos(dict, config_filepath); exists = True
+        except: exists = False
+        return exists
 
 
     #############################################################
@@ -155,7 +168,9 @@ class DFDataset:
     # Basic DF build
     def make_df(self, filepath: str):
         pq_file = pq.ParquetFile(filepath)
-        assert all(necessary_aux_var in pq_file.schema.keys() for necessary_aux_var in self.necessary_aux_vars), f"ERROR: Required to have all the necessary aux vars {self.necessary_aux_vars} present for downstream processing and tracking. Currently missing {self.necessary_aux_vars - set(pq_file.schema.keys())}"
+        assert all(necessary_aux_var in pq_file.schema.keys() for necessary_aux_var in self.necessary_aux_vars), f"ERROR: Required to have all the necessary aux vars {self.necessary_aux_vars} present for downstream processing and tracking. Currently missing {set(self.necessary_aux_vars) - set(pq_file.schema.keys())}"
+        assert all(var in pq_file.schema.keys() for var in self.all_vars), f"ERROR: Requested vars do not exists in input data. Currently missing {set(self.all_vars) - set(pq_file.schema.keys())}"
+
         df = pd.DataFrame(columns=self.new_all_vars).astype([value for key, value in pq_file.schema.items() if key in self.all_vars])
         for pq_batch in pq_file.iter_batches(batch_size=self.pq_batch_size, columns=list(set(self.all_vars))):
             df_batch = pq_batch.to_pandas()
@@ -169,11 +184,17 @@ class DFDataset:
     def sample_reweighting(self, df: pd.DataFrame, sample_reweight: str|dict, reweight_var: str):
         if type(sample_reweight) is str and sample_reweight == 'none': return
         elif type(sample_reweight) is dict:
+            df_unique_era_tags = df[f'{self.aux_var_prefix}sample_era'].unique()
             df_unique_sample_tags = df[f'{self.aux_var_prefix}sample_name'].unique()
-            for sample_tag, reweight in sample_reweight.items():
+            for sample_era_tag, reweight in sample_reweight.items():
+                sample_tag, era_tag = tuple(sample_era_tag.split('<>'))
+                df_era_tag = match_regex(era_tag, df_unique_era_tags)
                 df_sample_tag = match_regex(sample_tag, df_unique_sample_tags)
-                if df_sample_tag is not None: 
-                    df.loc[df[f'{self.aux_var_prefix}sample_name'].eq(df_sample_tag), reweight_var] *= reweight
+
+                reweight_mask = df[f'{self.aux_var_prefix}sample_name'].eq(df_sample_tag)
+                if era_tag.lower() != 'all':
+                    reweight_mask = np.logical_and(reweight_mask, df[f'{self.aux_var_prefix}sample_era'].eq(df_era_tag))
+                df.loc[reweight_mask, reweight_var] *= reweight
         else: raise NotImplementedError(f"Reweight method not yet implemented, use \'none\' or pass a dict.")
     def class_reweighting(self, df: pd.DataFrame, class_reweight: str|dict, reweight_var: str):
         if type(class_reweight) is str and class_reweight == 'none': return
@@ -284,7 +305,7 @@ class DFDataset:
     #############################################################
     # Retrieving
     def get_train(self, fold: int, syst_name: str='nominal', shuffle: bool=True):
-        filepaths = get_traintest_filepaths_func(self.output_dirpath, dataset="train", syst_name=syst_name)(fold)
+        filepaths = self.get_traintest_filepaths(fold, dataset="train", syst_name=syst_name)(fold)
 
         df = pd.concat(
             [eos.load_file_eos(pd.DataFrame, filepath) for model_class in filepaths.keys() for filepath in filepaths[model_class]], 
@@ -300,9 +321,9 @@ class DFDataset:
     
     def get_test(self, fold: int, syst_name: str='nominal', regex: str|list[str]=''):
         if regex == 'test_of_train':
-            filepaths = get_traintest_filepaths_func(self.output_dirpath, dataset="test", syst_name=syst_name)(fold)
+            filepaths = self.get_traintest_filepaths(fold, dataset="test", syst_name=syst_name)(fold)
         else:
-            filepaths = get_test_filepaths_func(self.output_dirpath, syst_name=syst_name, regex=regex)(fold)
+            filepaths = self.get_test_filepaths(fold, syst_name=syst_name, regex=regex)(fold)
 
         df = pd.concat(
             [eos.load_file_eos(pd.DataFrame, filepath) for model_class in filepaths.keys() for filepath in filepaths[model_class]], 
@@ -310,3 +331,32 @@ class DFDataset:
         )
 
         return df
+    
+    #############################################################
+    # Retrieve train/test files
+    def get_traintest_filepaths(self, fold: int, dataset: str="train", syst_name: str='nominal'):
+        return {
+            class_name: sorted(
+                set(
+                    sample_filepath
+                    for sample_filepath in glob.glob(os.path.join(self.output_dirpath, "**", f"*{dataset}{fold}*.parquet"), recursive=True)
+                    if (
+                        (syst_name == "nominal" and match_sample(sample_filepath[len(self.output_dirpath):], ["_up", "_down"]) is None) 
+                        or match_sample(sample_filepath[len(self.output_dirpath):], [syst_name]) is not None
+                    ) and match_sample(sample_filepath[len(self.output_dirpath):], sample_names) is not None
+                )
+            ) for class_name, sample_names in self.class_sample_map.items()
+        }
+    def get_test_filepaths(self, fold: int, syst_name: str='nominal', regex: str|list[str]=''):
+        return {
+            'test': sorted(
+                set(
+                    sample_filepath
+                    for sample_filepath in glob.glob(os.path.join(self.output_dirpath, "**", f"*test{fold}*.parquet"), recursive=True)
+                    if ( 
+                        (syst_name == "nominal" and match_sample(sample_filepath[len(self.output_dirpath):], ["_up", "_down"]) is None) 
+                        or match_sample(sample_filepath[len(self.output_dirpath):], [syst_name]) is not None
+                    ) and match_sample(sample_filepath[len(self.output_dirpath):], [regex] if type(regex) is str else regex) is not None
+                )
+            )
+        }

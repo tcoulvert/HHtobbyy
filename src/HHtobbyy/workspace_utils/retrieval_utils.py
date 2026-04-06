@@ -1,68 +1,12 @@
 # Stdlib packages
 import glob
-import json
 import os
 import re
-
-# Common Py packages
-import numpy as np
-import pandas as pd
-import pyarrow.parquet as pq
-
-# HEP packages
-import xgboost as xgb
-
-# ML packages
-from sklearn.model_selection import train_test_split
 
 ################################
 
 
-RES_BKG_RESCALE = 100
-DF_SHUFFLE = True
-RNG_SEED = 21
 FILL_VALUE = -999
-
-NONRES_RESCALE = {
-    '2016*preVFP': {
-        'DDQCDGJets': 1.1233,
-        'GGJets': 1.1303,
-    },
-    '2016*postVFP': {
-        'DDQCDGJets': 1.2077,
-        'GGJets': 1.3069,
-    },
-    '2017': {
-        'DDQCDGJets': 1.1817, 
-        'GGJets': 1.2002,
-    },
-    '2018': {
-        'DDQCDGJets': 1.1495, 
-        'GGJets': 1.2153,
-    },
-    '2022*preEE': {
-        'DDQCDGJets': 1.0498,
-        'GGJets': 1.3980,
-    },
-    '2022*postEE': {
-        'DDQCDGJets': 1.0896,
-        'GGJets': 1.3762,
-    },
-    '2023*preBPix': {
-        'DDQCDGJets': 1.0369,
-        'GGJets': 1.4987,
-    },
-    '2023*postBPix': {
-        'DDQCDGJets': 1.1814,
-        'GGJets': 1.5032,
-    },
-    '2024': {
-        'DDQCDGJets': 1.2140,
-        'GGJets': 1.5925,
-    }
-}
-for era, rescale_dict in NONRES_RESCALE.items(): rescale_dict['!DDQCDGJet*GJet'] = 2.6
-
 
 #############################################################
 def get_era_filepaths(input_eras: str, split_data_mc_eras: bool=False):
@@ -83,7 +27,7 @@ def get_era_filepaths(input_eras: str, split_data_mc_eras: bool=False):
 def check_train_filepaths(train_filepaths: list, eras: list, class_sample_map: dict):
     good_dataset_bool = True
     for glob_name in [glob_name for glob_names in class_sample_map.values() for glob_name in glob_names]:
-        for era in get_era_filepaths(eras, split_data_mc_eras=True)[0]:
+        for era in eras:
             if 'data' in era: continue
             if match_regex(f"{era}*{glob_name}", train_filepaths) is None:
                 if not (
@@ -153,39 +97,3 @@ def match_regex(regex, sample_strs):
 #############################################################
 def format_class_names(class_names):
     return [class_name.replace(' ', '').replace('+', '') for class_name in class_names]
-
-def get_class_sample_map(dataset_dirpath: str):
-    class_sample_map_filepath = os.path.join(dataset_dirpath, "class_sample_map.json")
-    with open(class_sample_map_filepath, "r") as f:
-        class_sample_map = json.load(f)
-    return class_sample_map
-
-
-#############################################################
-def get_traintest_filepaths_func(dataset_dirpath: str, dataset: str="train", syst_name: str='nominal'):
-    class_sample_map = get_class_sample_map(dataset_dirpath)
-    return lambda fold_idx: {
-        class_name: sorted(
-            set(
-                sample_filepath
-                for sample_filepath in glob.glob(os.path.join(dataset_dirpath, "**", f"*{dataset}{fold_idx}*.parquet"), recursive=True)
-                if (
-                    (syst_name == "nominal" and match_sample(sample_filepath[len(dataset_dirpath):], ["_up", "_down"]) is None) 
-                    or match_sample(sample_filepath[len(dataset_dirpath):], [syst_name]) is not None
-                ) and match_sample(sample_filepath[len(dataset_dirpath):], sample_names) is not None
-            )
-        ) for class_name, sample_names in class_sample_map.items()
-    }
-def get_test_filepaths_func(dataset_dirpath: str, syst_name: str='nominal', regex: str|list[str]=''):
-    return lambda fold_idx: {
-        'test': sorted(
-            set(
-                sample_filepath
-                for sample_filepath in glob.glob(os.path.join(dataset_dirpath, "**", f"*test{fold_idx}*.parquet"), recursive=True)
-                if ( 
-                    (syst_name == "nominal" and match_sample(sample_filepath[len(dataset_dirpath):], ["_up", "_down"]) is None) 
-                    or match_sample(sample_filepath[len(dataset_dirpath):], [syst_name]) is not None
-                ) and match_sample(sample_filepath[len(dataset_dirpath):], [regex] if type(regex) is str else regex) is not None
-            )
-        )
-    }
