@@ -5,7 +5,9 @@ import pandas as pd
 # ML packages
 import xgboost as xgb
 
-from HHtobbyy.event_discrimination.dataset import DFDataset, ModelDataset
+# Workspace packages
+from HHtobbyy.event_discrimination.DFDataset import DFDataset
+from HHtobbyy.event_discrimination.Model import ModelDataset
 from HHtobbyy.workspace_utils.retrieval_utils import FILL_VALUE
 
 

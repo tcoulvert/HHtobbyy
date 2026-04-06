@@ -9,8 +9,8 @@ import xgboost as xgb
 import eos_utils as eos
 
 # Workspace packages
-from HHtobbyy.event_discrimination.dataset import DFDataset
-from HHtobbyy.event_discrimination.models import Model
+from HHtobbyy.event_discrimination.DFDataset import DFDataset
+from HHtobbyy.event_discrimination.Model import Model
 from HHtobbyy.event_discrimination.models.XGBoostBDT.XGBoostBDTDataset import XGBoostBDTDataset
 from HHtobbyy.event_discrimination.models.XGBoostBDT.XGBoostBDTConfig import XGBoostBDTConfig
 

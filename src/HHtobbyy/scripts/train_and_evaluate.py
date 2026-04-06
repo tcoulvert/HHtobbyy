@@ -6,9 +6,9 @@ import logging
 import eos_utils as eos
 
 # Workspace packages
-from HHtobbyy.event_discrimination.dataset import DFDataset
+from HHtobbyy.event_discrimination.DFDataset import DFDataset
+from HHtobbyy.event_discrimination.Model import Model
 from HHtobbyy.event_discrimination.models import map_model_to_Model
-from HHtobbyy.event_discrimination.models import Model
 from HHtobbyy.workspace_utils.retrieval_utils import get_input_filepaths
 
 ################################

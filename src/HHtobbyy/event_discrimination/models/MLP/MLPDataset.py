@@ -5,8 +5,9 @@ import pandas as pd
 # ML packages
 from torch.utils.data import DataLoader
 
-
-from HHtobbyy.event_discrimination.dataset import DFDataset, ModelDataset
+# Workspace packages
+from HHtobbyy.event_discrimination.DFDataset import DFDataset
+from HHtobbyy.event_discrimination.Model import ModelDataset
 from HHtobbyy.event_discrimination.models.MLP.MLPTorchDataset import MLPTorchDataset
 
 

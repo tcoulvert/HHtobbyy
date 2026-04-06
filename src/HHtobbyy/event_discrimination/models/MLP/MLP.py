@@ -3,8 +3,8 @@ from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 
 # Workspace packages
-from HHtobbyy.event_discrimination.dataset import DFDataset
-from HHtobbyy.event_discrimination.models import Model
+from HHtobbyy.event_discrimination.DFDataset import DFDataset
+from HHtobbyy.event_discrimination.Model import Model
 from HHtobbyy.event_discrimination.models.MLP.MLPTorch import MLPTorch
 from HHtobbyy.event_discrimination.models.MLP.MLPDataset import MLPDataset
 from HHtobbyy.event_discrimination.models.MLP.MLPConfig import MLPConfig

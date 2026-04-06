@@ -11,8 +11,8 @@ from skopt.space import Real, Integer
 from skopt.utils import use_named_args
 
 # Workspace packages
-from HHtobbyy.event_discrimination.dataset import DFDataset
-from HHtobbyy.event_discrimination.models import ModelConfig
+from HHtobbyy.event_discrimination.DFDataset import DFDataset
+from HHtobbyy.event_discrimination.Model import ModelConfig
 from HHtobbyy.event_discrimination.models.XGBoostBDT.XGBoostBDTDataset import XGBoostBDTDataset
 
 ################################

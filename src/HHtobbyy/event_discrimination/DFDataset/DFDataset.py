@@ -15,10 +15,9 @@ from sklearn.model_selection import train_test_split
 import eos_utils as eos
 
 # Workspace packages
-from HHtobbyy.event_discrimination.dataset.DFDataset_utils import (
-    no_standardize, apply_logs, map_filepath_to_class
+from HHtobbyy.event_discrimination.DFDataset.DFDataset_utils import (
+    no_standardize, apply_logs, map_filepath_to_class, make_output_filepath
 )
-from HHtobbyy.event_discrimination.dataset.DFDataset_utils import make_output_filepath
 from HHtobbyy.workspace_utils.retrieval_utils import (
     FILL_VALUE, match_sample, match_regex
 )
@@ -167,11 +166,11 @@ class DFDataset:
     #############################################################
     # Basic DF build
     def make_df(self, filepath: str):
-        pq_file = pq.ParquetFile(filepath)
-        assert all(necessary_aux_var in pq_file.schema.keys() for necessary_aux_var in self.necessary_aux_vars), f"ERROR: Required to have all the necessary aux vars {self.necessary_aux_vars} present for downstream processing and tracking. Currently missing {set(self.necessary_aux_vars) - set(pq_file.schema.keys())}"
-        assert all(var in pq_file.schema.keys() for var in self.all_vars), f"ERROR: Requested vars do not exists in input data. Currently missing {set(self.all_vars) - set(pq_file.schema.keys())}"
+        pq_file, pq_schema = pq.ParquetFile(filepath), pq.read_schema(filepath)
+        assert all(necessary_aux_var in pq_schema.names for necessary_aux_var in self.necessary_aux_vars), f"ERROR: Required to have all the necessary aux vars {self.necessary_aux_vars} present for downstream processing and tracking. Currently missing {set(self.necessary_aux_vars) - set(pq_schema.names)}"
+        assert all(var in pq_schema.names for var in self.all_vars), f"ERROR: Requested vars do not exists in input data. Currently missing {set(self.all_vars) - set(pq_schema.names)}"
 
-        df = pd.DataFrame(columns=self.new_all_vars).astype([value for key, value in pq_file.schema.items() if key in self.all_vars])
+        df = pd.DataFrame(columns=self.new_all_vars).astype([value for key, value in zip(pq_schema.names, pq_schema.types) if key in self.all_vars])
         for pq_batch in pq_file.iter_batches(batch_size=self.pq_batch_size, columns=list(set(self.all_vars))):
             df_batch = pq_batch.to_pandas()
             mask = self.presel_mask(df_batch)

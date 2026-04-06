@@ -2,7 +2,7 @@
 import gpustat
 
 # Workspace packages
-from HHtobbyy.event_discrimination.dataset import DFDataset
+from HHtobbyy.event_discrimination.DFDataset import DFDataset
 from HHtobbyy.event_discrimination.models import ModelConfig
 
 ################################

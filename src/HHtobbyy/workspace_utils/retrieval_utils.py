@@ -19,8 +19,8 @@ def get_era_filepaths(input_eras: str, split_data_mc_eras: bool=False):
             if 'sim' in stdline.lower(): MC_eras.add(stdline)
             elif 'data' in stdline.lower(): Data_eras.add(stdline)
             else: raise KeyError(f"Era {stdline} does not seem to be MC or Data, check the filepath is correct")
-    if split_data_mc_eras: return MC_eras, Data_eras
-    else: return (MC_eras | Data_eras)
+    if split_data_mc_eras: return sorted(MC_eras), sorted(Data_eras)
+    else: return sorted(MC_eras | Data_eras)
 
 
 #############################################################
