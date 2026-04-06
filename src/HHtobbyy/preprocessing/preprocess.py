@@ -139,11 +139,8 @@ sample_name_map = {
 
 
 def has_magic_bytes(parquet_filepath: str):
-    try:
-        pq.read_schema(parquet_filepath)
-        return True
-    except:
-        return False
+    try: pq.read_schema(parquet_filepath); return True
+    except: return False
 
 def get_files(eras, type='MC'):
     for era in eras.keys():
@@ -229,11 +226,11 @@ def make_dataset(filepath, era, type='MC'):
             ak_batch['weight'] =  ak.ones_like(ak_batch['pt'])
             ak_batch['eventWeight'] =  ak.ones_like(ak_batch['pt'])
 
-        print('adding resolved vars')
+        print('Adding resolved vars')
         add_vars_resolved(ak_batch, filepath)
-        print('finished resolved, adding boosted vars')
+        print('Finished resolved vars, adding boosted vars')
         add_vars_boosted(ak_batch, filepath)
-        print('finished boosted')
+        print('Finished boosted vars')
         if 'hash' not in ak_batch.fields:
             ak_batch['hash'] = np.arange(ak.num(ak_batch['pt'], axis=0))
 
@@ -249,7 +246,7 @@ def make_dataset(filepath, era, type='MC'):
 
 def make_mc(sim_eras: dict):
     if sim_eras is None:
-        logger.log(1, "Not processing any MC files")
+        logger.log(1, "Not processing any MC files"); return
     
     # Pull MC sample dir_list
     get_files(sim_eras)
@@ -262,7 +259,7 @@ def make_mc(sim_eras: dict):
 
 def make_data(data_eras: dict):
     if data_eras is None:
-        logger.log(1, "Not processing any Data files")
+        logger.log(1, "Not processing any Data files"); return
     
     # Pull Data sample dir_list
     get_files(data_eras, type='Data')
@@ -283,5 +280,5 @@ if __name__ == '__main__':
     data_eras = {
         os.path.join(era, ''): list() for era in DATA_ERAS
     } if len(DATA_ERAS) > 0 else None
-    make_data(data_eras)
+    # make_data(data_eras)
 

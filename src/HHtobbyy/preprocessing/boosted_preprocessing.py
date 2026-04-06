@@ -71,7 +71,7 @@ def select_fatjets(sample, era, selection_var):
 
     bbTagVar, _ = boosted_bbTagWPs[match_sample(era, boosted_bbTagWPs.keys())]
 
-    selection_mask = ak.ones_like(sample['pt'])
+    selection_mask = ak.ones_like(fatjets[fatjets.fields[0]])
     for cut in SELECTION_VARIATIONS[selection_var]:
         var, direction, value = cut.split(' ')
         if var.lower() == 'bbtag': 
