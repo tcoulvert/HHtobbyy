@@ -54,13 +54,13 @@ def main(dfdataset: DFDataset, model: Model, filepaths: list):
     dfdataset.make_all_train(filepaths)
 
     # Training the model
-    model.super().train_all_folds()
+    model.train_all_folds()
 
     # Building test DFDataset
     dfdataset.make_all_test(filepaths)
 
     # Evaluating the model
-    predictions = model.super().evaluate_all_folds()
+    predictions = model.evaluate_all_folds()
 
 
 

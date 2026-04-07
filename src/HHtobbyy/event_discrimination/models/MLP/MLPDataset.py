@@ -24,7 +24,7 @@ class MLPDataset(ModelDataset):
         self.num_workers = 1
 
         # Processes the config
-        super().process_config(config)
+        self.process_config(config)
         
 
     #############################################################

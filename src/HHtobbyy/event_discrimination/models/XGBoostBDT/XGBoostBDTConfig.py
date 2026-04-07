@@ -54,7 +54,7 @@ class XGBoostBDTConfig(ModelConfig):
         # Safety parameters
         self.num_trees            = 500         # max number of trees to make
 
-        super().process_config(config)
+        self.process_config(config)
 
     def optimize_params(self, model_dataset: XGBoostBDTDataset, static_params: dict={}, verbose: bool=False):
         # order and grouping of optimization taken from: 
@@ -281,5 +281,5 @@ class XGBoostBDTConfig(ModelConfig):
 
         print("Best parameters: {}".format(param))
         
-        super().process_config(param)
+        self.process_config(param)
         

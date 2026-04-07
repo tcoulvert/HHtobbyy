@@ -141,7 +141,7 @@ class DFDataset:
             self.output_dirpath = os.path.join(self.output_dirpath, f"{self.dataset_tag}_{self.dataset_time}")
 
             config_filepath = os.path.join(self.output_dirpath, self.config_filename)
-            eos.save_file_eos(config, config_filepath)
+            eos.save_file_eos(self.__dir__, config_filepath)
 
     def check_output_dirpath(self):
         config_filepath = os.path.join(self.output_dirpath, self.config_filename)
@@ -316,12 +316,17 @@ class DFDataset:
         for fold in range(self.n_folds): dfs.append(self.get_train(fold, syst_name=syst_name, shuffle=shuffle))
         return pd.concat(dfs)
     def get_train(self, fold: int, syst_name: str='nominal', shuffle: bool=True):
-        filepaths = self.get_traintest_filepaths(fold, dataset="train", syst_name=syst_name)(fold)
+        filepaths = self.get_traintest_filepaths(fold, dataset="train", syst_name=syst_name)
+        for model_class in filepaths.keys():
+            for filepath in filepaths[model_class]:
+                print(filepath)
+                print(eos.load_file_eos(pd.DataFrame, filepath))
 
         df = pd.concat(
             [eos.load_file_eos(pd.DataFrame, filepath) for model_class in filepaths.keys() for filepath in filepaths[model_class]], 
             ignore_index=True
         )
+
         assert 'Data' not in set(np.unique(df[f'{self.aux_var_prefix}sample_name']).tolist()), f"Data is getting into train dataset... THIS IS VERY BAD"
         
         if shuffle:
@@ -336,9 +341,9 @@ class DFDataset:
         return pd.concat(dfs)
     def get_test(self, fold: int, syst_name: str='nominal', regex: str|list[str]=''):
         if regex == 'test_of_train':
-            filepaths = self.get_traintest_filepaths(fold, dataset="test", syst_name=syst_name)(fold)
+            filepaths = self.get_traintest_filepaths(fold, dataset="test", syst_name=syst_name)
         else:
-            filepaths = self.get_test_filepaths(fold, syst_name=syst_name, regex=regex)(fold)
+            filepaths = self.get_test_filepaths(fold, syst_name=syst_name, regex=regex)
 
         df = pd.concat(
             [eos.load_file_eos(pd.DataFrame, filepath) for model_class in filepaths.keys() for filepath in filepaths[model_class]], 
@@ -350,6 +355,8 @@ class DFDataset:
     #############################################################
     # Retrieve train/test files
     def get_traintest_filepaths(self, fold: int, dataset: str="train", syst_name: str='nominal'):
+        print(os.path.join(self.output_dirpath, "**", f"*{dataset}{fold}*.parquet"))
+        print(glob.glob(os.path.join(self.output_dirpath, "**", f"*{dataset}{fold}*.parquet"), recursive=True))
         return {
             class_name: sorted(
                 set(

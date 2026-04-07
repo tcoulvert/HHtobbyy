@@ -16,7 +16,7 @@ class XGBoostBDTDataset(ModelDataset):
         self.dfdataset = dfdataset
         
         # Processes the config
-        super().process_config(config)
+        self.process_config(config)
 
     #############################################################
     # Common model get

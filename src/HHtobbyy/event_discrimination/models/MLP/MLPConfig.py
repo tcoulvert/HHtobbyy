@@ -38,7 +38,7 @@ class MLPConfig(ModelConfig):
         # Safety parameters
         self.max_epochs        = 500         # max number of epochs to run
 
-        super().process_config(config)
+        self.process_config(config)
 
     def optimize_params(self, fold: int, static_params: dict={}):
         pass
