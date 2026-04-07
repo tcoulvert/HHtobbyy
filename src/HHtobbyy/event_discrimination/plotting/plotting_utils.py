@@ -50,99 +50,60 @@ def float_to_str(floating_point: float):
     return new_str
 
 
-def project_1D_output(
-    plot_data: dict, transform_labels: list, plot_dirpath: str, plot_func,
-    plot_prefix: str='', plot_postfix: str=''
-):
-    for pred_idx, pred_label in enumerate(transform_labels):
-        plot_data_1D = {
-            class_name: {
-                'preds': class_data['preds'][:, pred_idx], 
-                'labels': class_data['labels'], 
-                'weights': class_data['weights']
-            } for class_name, class_data in plot_data.items()
-        }
-        new_plot_prefix = combine_prepostfix(plot_prefix, pred_label, fixtype='prefix')
-        plot_func(
-            plot_data_1D, plot_dirpath, pred_idx, plot_prefix=new_plot_prefix, plot_postfix=plot_postfix
-        )
+# def project_1D_output(
+#     plot_data: dict, transform_labels: list, plot_dirpath: str, plot_func,
+#     plot_prefix: str='', plot_postfix: str=''
+# ):
+#     for pred_idx, pred_label in enumerate(transform_labels):
+#         plot_data_1D = {
+#             class_name: {
+#                 'preds': class_data['preds'][:, pred_idx], 
+#                 'labels': class_data['labels'], 
+#                 'weights': class_data['weights']
+#             } for class_name, class_data in plot_data.items()
+#         }
+#         new_plot_prefix = combine_prepostfix(plot_prefix, pred_label, fixtype='prefix')
+#         plot_func(
+#             plot_data_1D, plot_dirpath, pred_idx, plot_prefix=new_plot_prefix, plot_postfix=plot_postfix
+#         )
 
-def make_plot_data(
-    model: Model, discriminator: str, plot_type: str, plot_func, 
-    project_1D: bool=False
-):
-    plot_dirpath = make_plot_dirpath(model.modelconfig.output_dirpath, plot_type)
+def make_plot_data(model: Model, discriminator: str, fold: int=-1, syst_name: str = 'nominal', regex: str | list[str] = ''):
+    if fold >= 0: return make_fold_plot_data(model, discriminator, fold, syst_name=syst_name, regex=regex)
+    else: return make_all_plot_data(model, discriminator, syst_name=syst_name, regex=regex)
+def make_all_plot_data(model: Model, discriminator: str, syst_name: str = 'nominal', regex: str | list[str] = ''):
+    weights = model.dfdataset.get_all_test(syst_name=syst_name, regex=regex).loc[:, f"{model.dfdataset.aux_var_prefix}eventWeight"].to_numpy()
+    labels = model.dfdataset.get_all_test(syst_name=syst_name, regex=regex).loc[:, f"{model.dfdataset.aux_var_prefix}label1D"].to_numpy()
+    samples = model.dfdataset.get_all_test(syst_name=syst_name, regex=regex).loc[:, f"{model.dfdataset.aux_var_prefix}sample_name"].to_numpy()
 
-    weights = model.dfdataset.get_all_test().loc[:, f"{model.dfdataset.aux_var_prefix}eventWeight"].to_numpy()
-    labels = model.dfdataset.get_all_test().loc[:, f"{model.dfdataset.aux_var_prefix}label1D"].to_numpy()
-    samples = model.dfdataset.get_all_test().loc[:, f"{model.dfdataset.aux_var_prefix}sample_name"].to_numpy()
-
-    predictions = model.evaluate_all_folds()
+    predictions = model.evaluate_all_folds(syst_name=syst_name, regex=regex)
     transformed_labels, transformed_predictions, _ = transform_preds(model.dfdataset.class_sample_map.keys(), discriminator, predictions)
 
-    
+    return transformed_labels, {'preds': transformed_predictions, 'weights': weights, 'labels': labels, 'samples': samples}
+def make_fold_plot_data(model: Model, discriminator: str, fold: int, syst_name: str = 'nominal', regex: str | list[str] = ''):
+    weights = model.dfdataset.get_test(fold, syst_name=syst_name, regex=regex).loc[:, f"{model.dfdataset.aux_var_prefix}eventWeight"].to_numpy()
+    labels = model.dfdataset.get_test(fold, syst_name=syst_name, regex=regex).loc[:, f"{model.dfdataset.aux_var_prefix}label1D"].to_numpy()
+    samples = model.dfdataset.get_test(fold, syst_name=syst_name, regex=regex).loc[:, f"{model.dfdataset.aux_var_prefix}sample_name"].to_numpy()
 
+    predictions = model.evaluate(fold, syst_name=syst_name, regex=regex)
+    transformed_labels, transformed_predictions, _ = transform_preds(model.dfdataset.class_sample_map.keys(), discriminator, predictions)
 
+    return transformed_labels, {'preds': transformed_predictions, 'weights': weights, 'labels': labels, 'samples': samples}
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    plot_data = {}
-    for fold_idx in range(get_n_folds(dataset_dirpath)):
-        booster = get_booster(fold_idx)
-
-        fold_plot_data =  {}
-
-        if dataset == "train-test": 
-            dm = get_train_DMatrices(dataset_dirpath, fold_idx, dataset='test')
-        elif dataset == "train":
-            dm = get_train_DMatrices(dataset_dirpath, fold_idx, dataset='train')
-        else:
-            dm = get_test_subset_DMatrix(dataset_dirpath, fold_idx, dataset.split('&'))
-
-        preds = evaluate(booster, dm)
-        labels = dm.get_label()
-        weights = dm.get_weight()
-
-        for j, class_name in enumerate(CLASS_NAMES):
-            event_mask = (labels == j)
-            if np.all(~event_mask): continue
-            fold_plot_data[class_name] = {}
-            if class_name not in plot_data.keys(): plot_data[class_name] = {}
-
-            nD_preds = preds[event_mask]
-            transformed_preds = transform_preds(nD_preds)
-
-            # Add preds to full list for cross-fold evaluation
-            fold_plot_data[class_name]['preds'] = transformed_preds
-            fold_plot_data[class_name]['labels'] = labels[event_mask]
-            fold_plot_data[class_name]['weights'] = weights[event_mask]
-            for data_name, data in fold_plot_data[class_name].items():
-                if data_name not in plot_data[class_name].keys():
-                    plot_data[class_name][data_name] = copy.deepcopy(data)
-                else:
-                    plot_data[class_name][data_name] = np.concatenate([plot_data[class_name][data_name], data])
-
-        if get_n_folds(dataset_dirpath) > 1:
-            if not project_1D: plot_func(fold_plot_data, transform_labels, plot_dirpath, plot_postfix=f'fold{fold_idx}')
-            else: project_1D_output(fold_plot_data, transform_labels, plot_dirpath, plot_func, plot_postfix=f'fold{fold_idx}')
-        
-    if not project_1D: plot_func(plot_data, transform_labels, plot_dirpath)
-    else: project_1D_output(plot_data, transform_labels, plot_dirpath, plot_func)
+def split_plot_data_by_class(model: Model, plot_data: dict):
+    class_plot_data = {}
+    for j, class_name in enumerate(model.dfdataset.class_sample_map.keys()):
+        event_mask = (plot_data['labels'] == j)
+        if np.all(~event_mask): continue
+        class_plot_data[class_name] = {
+            key: value[event_mask] for key, value in plot_data.items()
+        }
+    return class_plot_data
+def split_plot_data_by_sample(model: Model, plot_data: dict):
+    sample_plot_data = {}
+    for sample_name in np.unique(plot_data['samples']):
+        event_mask = (plot_data['sample_name'] == sample_name)
+        if np.all(~event_mask): continue
+        sample_plot_data[sample_name] = {
+            key: value[event_mask] for key, value in plot_data.items()
+        }
+    return sample_plot_data

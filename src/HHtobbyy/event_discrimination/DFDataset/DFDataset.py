@@ -170,7 +170,7 @@ class DFDataset:
         assert all(necessary_aux_var in pq_schema.names for necessary_aux_var in self.necessary_aux_vars), f"ERROR: Required to have all the necessary aux vars {self.necessary_aux_vars} present for downstream processing and tracking. Currently missing {set(self.necessary_aux_vars) - set(pq_schema.names)}"
         assert all(var in pq_schema.names for var in self.all_vars), f"ERROR: Requested vars do not exists in input data. Currently missing {set(self.all_vars) - set(pq_schema.names)}"
 
-        df = pd.DataFrame(columns=self.new_all_vars).astype([value for key, value in zip(pq_schema.names, pq_schema.types) if key in self.all_vars])
+        df = pd.DataFrame(columns=self.new_all_vars).astype([value.to_pandas_dtype() for key, value in zip(pq_schema.names, pq_schema.types) if key in self.all_vars])
         for pq_batch in pq_file.iter_batches(batch_size=self.pq_batch_size, columns=list(set(self.all_vars))):
             df_batch = pq_batch.to_pandas()
             mask = self.presel_mask(df_batch)

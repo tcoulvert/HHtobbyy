@@ -2,7 +2,7 @@
 from abc import ABC, abstractmethod
 
 # Workspace packages
-from HHtobbyy.event_discrimination.dataset.DFDataset import DFDataset
+from HHtobbyy.event_discrimination.DFDataset import DFDataset
 
 ################################
 
