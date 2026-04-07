@@ -61,7 +61,6 @@ def map_filepath_to_class(class_sample_map: dict, filepath: str):
 def make_output_filepath(filepath: str, base_output_dirpath: str, extra_text: str):
     filename = filepath[filepath.rfind('/')+1:]
     output_dirpath = os.path.join(base_output_dirpath, filepath[:filepath.rfind('/')])
-    os.makedirs(output_dirpath, exist_ok=True)
 
     filename = filename[:filename.rfind('.')] + f"_{extra_text}" + filename[filename.rfind('.'):]
 

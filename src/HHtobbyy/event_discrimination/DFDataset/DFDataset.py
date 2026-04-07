@@ -118,15 +118,15 @@ class DFDataset:
         for key, value in config.items():
             if hasattr(self, key): 
                 setattr(self, key, sorted(value) if type(value) is list else value)
-        
+
         # All variables
-        self.all_vars = sorted(self.model_vars + self.aux_vars)
+        self.all_vars = self.model_vars + self.aux_vars
 
-        # Aux variables after renaming with prefix
-        self.new_aux_vars = sorted([self.aux_var_prefix + aux_var for aux_var in self.aux_vars])
-
+        # Aux variables map
+        self.aux_vars_map = {var: self.aux_var_prefix + var for var in self.aux_vars}
+        
         # All variables after renaming with prefix
-        self.new_all_vars = sorted(self.model_vars + self.new_aux_vars)
+        self.new_all_vars = list(self.model_vars) + list(self.aux_vars_map.values())
 
         # Reuired aux variables for downstream tasks
         self.necessary_aux_vars = sorted(['weight', 'eventWeight', 'sample_name', 'sample_era', 'hash'])
@@ -170,12 +170,20 @@ class DFDataset:
         assert all(necessary_aux_var in pq_schema.names for necessary_aux_var in self.necessary_aux_vars), f"ERROR: Required to have all the necessary aux vars {self.necessary_aux_vars} present for downstream processing and tracking. Currently missing {set(self.necessary_aux_vars) - set(pq_schema.names)}"
         assert all(var in pq_schema.names for var in self.all_vars), f"ERROR: Requested vars do not exists in input data. Currently missing {set(self.all_vars) - set(pq_schema.names)}"
 
-        df = pd.DataFrame(columns=self.new_all_vars).astype([value.to_pandas_dtype() for key, value in zip(pq_schema.names, pq_schema.types) if key in self.all_vars])
+        col_dtype_map = {
+            var_map[name]: dtype.to_pandas_dtype()
+            for name, dtype in zip(pq_schema.names, pq_schema.types)
+            for var_map in [dict(zip(self.model_vars, self.model_vars)), self.aux_vars_map]
+            if name in var_map
+        }
+        df = pd.DataFrame(columns=self.new_all_vars).astype(col_dtype_map)
         for pq_batch in pq_file.iter_batches(batch_size=self.pq_batch_size, columns=list(set(self.all_vars))):
             df_batch = pq_batch.to_pandas()
             mask = self.presel_mask(df_batch)
-            df_batch = pd.merge(df_batch.loc[:, self.model_vars], df_batch.loc[:, self.aux_vars].rename(dict(zip(self.aux_vars, self.new_aux_vars))), how='outer')
+
+            df_batch = df_batch.loc[:, self.model_vars].join(df_batch.loc[:, self.aux_vars].rename(columns=self.aux_vars_map))
             df = pd.concat([df, df_batch.loc[mask].reset_index(drop=True)])
+        return df
 
 
     #############################################################
@@ -247,7 +255,7 @@ class DFDataset:
         slimmed_df = df.loc[:, self.model_vars]
         if self.standardization_method.lower() == 'zscore': self.apply_zscore_standardization(slimmed_df, fold)
         else: raise NotImplementedError(f"Standardization method not yet implemented, use \'zscore\'.")
-        return pd.concat([slimmed_df, df.loc[:, self.new_aux_vars]])
+        return pd.concat([slimmed_df, df.loc[:, self.aux_vars_map.values()]])
     def apply_zscore_standardization(self, df: pd.DataFrame, fold: int):
         zscore_std_filepath = os.path.join(self.output_dirpath, f'zscore_{self.standardization_subfilename}{fold}.json')
         zscore_std = eos.load_file_eos(dict, zscore_std_filepath)
@@ -276,9 +284,9 @@ class DFDataset:
             dfs[filepath] = self.make_df(filepath)
             mask = self.train_mask(dfs[filepath], fold)
             dfs[filepath] = dfs[filepath].loc[mask].reset_index(drop=True)
-            self.add_vars(dfs[filepath], fold, map_filepath_to_class(self.class_sample_map, filepath[filepath.find(self.base_filepath):]))
+            self.add_vars(dfs[filepath], map_filepath_to_class(self.class_sample_map, filepath[filepath.find(self.base_filepath):]))
 
-        self.compute_standardization(dfs)
+        self.compute_standardization(dfs, fold)
 
         self.class_reweighting(pd.concat(dfs.values()).reset_index(drop=True), self.train_class_reweighting, f'{self.aux_var_prefix}eventWeightTrain')
 
@@ -295,7 +303,7 @@ class DFDataset:
             df = self.make_df(filepath)
             mask = self.test_mask(df, fold)
             df = df.loc[mask].reset_index(drop=True)
-            self.add_vars(df, fold, map_filepath_to_class(self.class_sample_map, filepath[filepath.find(self.base_filepath):]))
+            self.add_vars(df, map_filepath_to_class(self.class_sample_map, filepath[filepath.find(self.base_filepath):]))
             
             standardized_df = self.apply_standardization(df, fold)
             eos.save_file_eos(standardized_df, make_output_filepath(filepath[filepath.find(self.base_filepath):], self.output_dirpath, f"test{fold}"), force=force)
