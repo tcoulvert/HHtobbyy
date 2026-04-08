@@ -34,8 +34,8 @@ boosted_bbTagWPs = {
     ),
 }
 boosted_fjmass_corr = {
-    '202[2-3]': "particleNet_massCorr",
-    '201[6-8]|202[4-5]': "globalParT3_massCorrGeneric"
+    '202[23]': "particleNet_massCorr",
+    '(201[x678])|(202[45])': "globalParT3_massCorrGeneric"
 }
 
 NUM_FATJETS = 4
