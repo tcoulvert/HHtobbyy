@@ -124,7 +124,7 @@ sample_name_map = {
     # Fake photons
     'TTG',
     # Fake b-jets
-    '*****GGJets*****',
+    'GGJets',
     # Real b-jets
     'TTGG', 'SherpaNLO',
 

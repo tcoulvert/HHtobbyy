@@ -12,6 +12,9 @@ class MLPConfig(ModelConfig):
     def __init__(self, dfdataset: DFDataset, config: dict):
         self.dfdataset = dfdataset
 
+        # Required configs
+        self.output_dirpath = ''
+
         # Architecture parameters
         self.num_layers        = 5           # number of hidden layers
         self.num_nodes         = 1024        # dimensionality of hidden layers

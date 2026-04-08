@@ -19,14 +19,14 @@ class ModelConfig(ABC):
 
     def process_config(self, config: dict):
         assert "output_dirpath" in config.keys(), f"ERROR: Required to provide the output_dirpath for the model"
-
-        if 'model_time' not in config: 
-            config['model_time'] = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')  # 'YYYY-MM-DD_HH-MM-SS'
-        self.output_dirpath = os.path.join(config['output_dirpath'], config['model_time'])
-        os.makedirs(self.output_dirpath, exist_ok=True)
         
         for key, value in config.items():
             if hasattr(self, key): setattr(self, key, value)
+        
+        if not hasattr(self, 'model_time'): 
+            self.model_time = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')  # 'YYYY-MM-DD_HH-MM-SS'
+            self.output_dirpath = os.path.join(self.output_dirpath, self.model_time)
+            os.makedirs(self.output_dirpath, exist_ok=True)
 
     def toJSON(self):
         return {**self.__dict__, **{'dfdataset': self.dfdataset.__dict__}}

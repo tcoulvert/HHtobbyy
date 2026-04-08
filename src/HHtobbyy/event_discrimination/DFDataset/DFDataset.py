@@ -255,7 +255,7 @@ class DFDataset:
         slimmed_df = df.loc[:, self.model_vars]
         if self.standardization_method.lower() == 'zscore': self.apply_zscore_standardization(slimmed_df, fold)
         else: raise NotImplementedError(f"Standardization method not yet implemented, use \'zscore\'.")
-        return pd.concat([slimmed_df, df.loc[:, self.aux_vars_map.values()]])
+        return pd.concat([slimmed_df, df.loc[:, [col for col in df.columns if col not in self.model_vars]]])
     def apply_zscore_standardization(self, df: pd.DataFrame, fold: int):
         zscore_std_filepath = os.path.join(self.output_dirpath, f'zscore_{self.standardization_subfilename}{fold}.json')
         zscore_std = eos.load_file_eos(dict, zscore_std_filepath)
@@ -317,17 +317,15 @@ class DFDataset:
         return pd.concat(dfs)
     def get_train(self, fold: int, syst_name: str='nominal', shuffle: bool=True):
         filepaths = self.get_traintest_filepaths(fold, dataset="train", syst_name=syst_name)
-        for model_class in filepaths.keys():
-            for filepath in filepaths[model_class]:
-                print(filepath)
-                print(eos.load_file_eos(pd.DataFrame, filepath))
 
         df = pd.concat(
             [eos.load_file_eos(pd.DataFrame, filepath) for model_class in filepaths.keys() for filepath in filepaths[model_class]], 
             ignore_index=True
         )
 
-        assert 'Data' not in set(np.unique(df[f'{self.aux_var_prefix}sample_name']).tolist()), f"Data is getting into train dataset... THIS IS VERY BAD"
+        print(df[f'{self.aux_var_prefix}sample_name'].eq(np.nan).sum())
+        print(df.shape[0])
+        assert 'Data' not in set(df[f'{self.aux_var_prefix}sample_name'].unique().tolist()), f"Data is getting into train dataset... THIS IS VERY BAD"
         
         if shuffle:
             rng = np.random.default_rng(seed=self.seed)
@@ -361,7 +359,7 @@ class DFDataset:
             class_name: sorted(
                 set(
                     sample_filepath
-                    for sample_filepath in glob.glob(os.path.join(self.output_dirpath, "**", f"*{dataset}{fold}*.parquet"), recursive=True)
+                    for sample_filepath in eos.glob_eos(os.path.join(self.output_dirpath, "**", f"*{dataset}{fold}*.parquet"), recursive=True)
                     if (
                         (syst_name == "nominal" and match_sample(sample_filepath[len(self.output_dirpath):], ["_up", "_down"]) is None) 
                         or match_sample(sample_filepath[len(self.output_dirpath):], [syst_name]) is not None
@@ -374,7 +372,7 @@ class DFDataset:
             'test': sorted(
                 set(
                     sample_filepath
-                    for sample_filepath in glob.glob(os.path.join(self.output_dirpath, "**", f"*test{fold}*.parquet"), recursive=True)
+                    for sample_filepath in eos.glob_eos(os.path.join(self.output_dirpath, "**", f"*test{fold}*.parquet"), recursive=True)
                     if ( 
                         (syst_name == "nominal" and match_sample(sample_filepath[len(self.output_dirpath):], ["_up", "_down"]) is None) 
                         or match_sample(sample_filepath[len(self.output_dirpath):], [syst_name]) is not None

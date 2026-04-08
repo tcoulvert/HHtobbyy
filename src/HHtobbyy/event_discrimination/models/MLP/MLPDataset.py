@@ -30,6 +30,7 @@ class MLPDataset(ModelDataset):
     #############################################################
     # Common model get
     def get_MLPTorch(self, df: pd.DataFrame, event_weight: str):
+        print(df.columns)
         return MLPTorchDataset(df[self.dfdataset.model_vars].values, df[f"{self.dfdataset.aux_var_prefix}label1D"].values, np.abs(df[f"{self.dfdataset.aux_var_prefix}{event_weight}"].values))
         
 
