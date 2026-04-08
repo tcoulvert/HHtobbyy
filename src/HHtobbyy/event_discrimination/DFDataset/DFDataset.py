@@ -322,9 +322,7 @@ class DFDataset:
             [eos.load_file_eos(pd.DataFrame, filepath) for model_class in filepaths.keys() for filepath in filepaths[model_class]], 
             ignore_index=True
         )
-
-        print(df[f'{self.aux_var_prefix}sample_name'].eq(np.nan).sum())
-        print(df.shape[0])
+        
         assert 'Data' not in set(df[f'{self.aux_var_prefix}sample_name'].unique().tolist()), f"Data is getting into train dataset... THIS IS VERY BAD"
         
         if shuffle:
