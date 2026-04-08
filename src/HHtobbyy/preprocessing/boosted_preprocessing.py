@@ -18,14 +18,14 @@ from HHtobbyy.workspace_utils.retrieval_utils import FILL_VALUE, match_sample
 vec.register_awkward()
 
 boosted_bbTagWPs = {
-    '202[2-3]': (
+    '202[23]': (
         "particleNet_XbbVsQCD", 
         {
             'Boost': {'L': 0.4, 'M': 0.6, 'T': 0.8, 'XT': 0.9, 'XXT': 0.95},
             'SnT_Boost': {'L': 0.4, 'M': 0.83, 'T': 0.89, 'XT': 0.925, 'XXT': 0.96},
         }
     ),
-    '(201[6-8])|(202[4-5])': (
+    '(201[x678])|(202[45])': (
         "globalParT3_XbbVsQCD", 
         {
             'Boost': {'L': 0.25, 'M': 0.5, 'T': 0.8, 'XT': 0.9, 'XXT': 0.95},
