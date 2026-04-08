@@ -1,0 +1,17 @@
+[project]
+name = "HHtobbyy"
+version = "1.0.0"
+authors = [
+  { name="Thomas Sievert", email="63161166+tcoulvert@users.noreply.github.com" },
+]
+description = "A package for the workflow for the HH to bbyy CMS analysis."
+readme = "README.md"
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+license = "MIT"
+
+[project.urls]
+Homepage = "https://github.com/tcoulvert/HHtobbyy"

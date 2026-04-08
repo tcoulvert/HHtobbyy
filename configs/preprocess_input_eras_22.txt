@@ -1,0 +1,3 @@
+# MC
+/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/central_HDNA_copies/v3/Run3_2022/sim/preEE
+/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/central_HDNA_copies/v3/Run3_2022/sim/postEE

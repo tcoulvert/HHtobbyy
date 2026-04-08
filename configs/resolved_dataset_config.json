@@ -1,0 +1,117 @@
+{
+    "output_dirpath": "root://cmseos.fnal.gov//store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/DFDatasets/v0",
+
+    "dataset_tag": "22_catWP",
+
+    "class_sample_map": {
+        "ggF HH": ["GluGlu*HH*kl-1p00"],
+        "ttH + bbH": ["ttH", "bbH"],
+        "VH": ["VH", "ZH", "Wm*H", "Wp*H"],
+        "nonRes + ggFH + VBFH": ["!DDQCDGJet*GGJets", "!DDQCDGJet*GJet", "TTGG", "GluGluH*GG", "VBFH*GG"]
+    },
+
+    "model_vars": [
+        "puppiMET_pt",
+
+        "nonResReg_DeltaPhi_j1MET", "nonResReg_DeltaPhi_j2MET", 
+        "n_jets", "nonResReg_chi_t0", "nonResReg_chi_t1",
+
+        "lepton1_pt", 
+        "lepton1_pfIsoId", "lepton1_mvaID",
+        "DeltaR_b1l1",
+        
+        "nonResReg_CosThetaStar_CS", "nonResReg_CosThetaStar_jj", "nonResReg_CosThetaStar_gg",
+
+        "nonResReg_lead_bjet_eta", "nonResReg_lead_bjet_bTagWP",
+        "nonResReg_sublead_bjet_eta", "nonResReg_sublead_bjet_bTagWP",
+        
+        "eta",
+
+        "lead_mvaID", "lead_sigmaE_over_E",
+        "sublead_mvaID", "sublead_sigmaE_over_E",
+        
+        "nonResReg_HHbbggCandidate_pt", 
+        "nonResReg_HHbbggCandidate_eta", 
+        "nonResReg_pt_balance",
+
+        "nonResReg_DeltaPhi_jj",
+        "nonResReg_DeltaPhi_isr_jet_z",
+
+        "puppiMET_sumEt",
+
+        "nonResReg_DeltaR_jg_min",
+
+        "nonResReg_dijet_mass_DNNreg",
+        "nonResReg_dijet_pt",
+
+        "nonResReg_lead_bjet_pt",
+        "nonResReg_lead_bjet_sigmapT_over_pT",
+        "nonResReg_lead_bjet_pt_over_Mjj",
+        "nonResReg_sublead_bjet_pt",
+        "nonResReg_sublead_bjet_sigmapT_over_pT",
+        "nonResReg_sublead_bjet_pt_over_Mjj",
+
+        "pt",
+
+        "nonResReg_DeltaEta_jj",
+        "nonResReg_isr_jet_pt"
+    ],
+
+    "aux_vars": [
+        "event", "lumi", "hash", "sample_name", "sample_era",
+
+        "weight", "eventWeight",
+
+        "mass", 
+        "nonResReg_dijet_mass_DNNreg",
+        "nonResReg_HHbbggCandidate_mass",
+
+        "nonResReg_max_nonbjet_btag",
+
+        "nonResReg_resolved_BDT_mask"
+    ],
+
+    "test_sample_reweighting": {
+        "2016*preVFP<>DDQCDGJets": 1.1233,
+        "2016*preVFP<>GGJets": 1.1303,
+        "2016*preVFP<>!DDQCDGJet*GJet": 2.6,
+        
+        "2016*postVFP<>DDQCDGJets": 1.2077,
+        "2016*postVFP<>GGJets": 1.3069,
+        "2016*postVFP<>!DDQCDGJet*GJet": 2.6,
+        
+        "2017<>DDQCDGJets": 1.1817, 
+        "2017<>GGJets": 1.2002,
+        "2017<>!DDQCDGJet*GJet": 2.6,
+        
+        "2018<>DDQCDGJets": 1.1495, 
+        "2018<>GGJets": 1.2153,
+        "2018<>!DDQCDGJet*GJet": 2.6,
+        
+        "2022*preEE<>DDQCDGJets": 1.0498,
+        "2022*preEE<>GGJets": 1.3980,
+        "2022*preEE<>!DDQCDGJet*GJet": 2.6,
+        
+        "2022*postEE<>DDQCDGJets": 1.0896,
+        "2022*postEE<>GGJets": 1.3762,
+        "2022*postEE<>!DDQCDGJet*GJet": 2.6,
+        
+        "2023*preBPix<>DDQCDGJets": 1.0369,
+        "2023*preBPix<>GGJets": 1.4987,
+        "2023*preBPix<>!DDQCDGJet*GJet": 2.6,
+        
+        "2023*postBPix<>DDQCDGJets": 1.1814,
+        "2023*postBPix<>GGJets": 1.5032,
+        "2023*postBPix<>!DDQCDGJet*GJet": 2.6,
+        
+        "2024<>DDQCDGJets": 1.2140,
+        "2024<>GGJets": 1.5925,
+        "2024<>!DDQCDGJet*GJet": 2.6
+    },
+
+    "class_sample_reweighting": {
+        "ttH + bbH": [100, ["ttH + bbH"]],
+        "VH": [100, ["VH"]],
+        "ggF HH": [100, ["ttH + bbH", "VH", "nonRes + ggFH + VBFH"]]
+    }
+}
