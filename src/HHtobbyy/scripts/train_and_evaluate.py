@@ -60,8 +60,9 @@ def main(dfdataset: DFDataset, model: Model, filepaths: list):
     dfdataset.make_all_test(filepaths)
 
     # Evaluating the model
+    test_df = dfdataset.get_all_test(regex='test_of_train')
     predictions = model.evaluate_all_folds()
-
+    #### map predictions onto DF and save out new DF ####
 
 
 if __name__ == "__main__":
