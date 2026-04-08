@@ -19,13 +19,12 @@ class MLPTorch(pl.LightningModule):
 
         # Output layer
         layers.append(nn.Linear(num_nodes, output_size))
-        layers.append(nn.LogSoftmax(dim=-1))
 
         # Combine all layers into a sequential model
         self.model = nn.Sequential(*layers)
 
         # Multiclass loss
-        self.multi_loss = nn.NLLLoss(weight=class_weights, reduction='none')
+        self.multi_loss = nn.CrossEntropyLoss(weight=class_weights, reduction='none')
 
     def forward(self, x):
         return self.model(x)

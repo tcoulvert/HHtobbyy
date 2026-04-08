@@ -11,6 +11,7 @@ import numpy as np
 
 # HEP packages
 import awkward as ak
+import eos_utils as eos
 import pyarrow.parquet as pq
 import vector as vec
 
@@ -35,7 +36,7 @@ parser.add_argument(
 )
 parser.add_argument(
     "--base_filepath", 
-    default='Run3_20',
+    default='Run._20..',
     help="Regex string for splitting filepath if using a new output_dirpath"
 )
 parser.add_argument(
@@ -145,9 +146,10 @@ def has_magic_bytes(parquet_filepath: str):
 def get_files(eras, type='MC'):
     for era in eras.keys():
         glob_dirs_set = lambda end_filepath: set(
-            glob.glob(os.path.join(era, "**", f"*{end_filepath}"), recursive=True)
+            eos.glob_eos(os.path.join(era, "**", f"*{end_filepath}"), recursive=True)
         )
         all_dirs_set = set(elem for end_filepath in END_FILEPATHS for elem in glob_dirs_set(end_filepath))
+
         if OUTPUT_DIRPATH is None:
             ran_dirs_set = set(
                 parquet_filepath for parquet_filepath in glob_dirs_set(NEW_END_FILEPATH) 
@@ -156,7 +158,7 @@ def get_files(eras, type='MC'):
         else:
             ran_dirs_set = set(
                 parquet_filepath 
-                for parquet_filepath in glob.glob(os.path.join(OUTPUT_DIRPATH, "**", f"*{NEW_END_FILEPATH}"), recursive=True)
+                for parquet_filepath in eos.glob_eos(os.path.join(OUTPUT_DIRPATH, "**", f"*{NEW_END_FILEPATH}"), recursive=True)
                 if has_magic_bytes(parquet_filepath)
             )
 
@@ -275,10 +277,10 @@ if __name__ == '__main__':
     sim_eras = {
         os.path.join(era, ''): list() for era in SIM_ERAS
     } if len(SIM_ERAS) > 0 else None
-    make_mc(sim_eras)
+    # make_mc(sim_eras)
 
     data_eras = {
         os.path.join(era, ''): list() for era in DATA_ERAS
     } if len(DATA_ERAS) > 0 else None
-    # make_data(data_eras)
+    make_data(data_eras)
 

@@ -141,7 +141,7 @@ class DFDataset:
             self.output_dirpath = os.path.join(self.output_dirpath, f"{self.dataset_tag}_{self.dataset_time}")
 
             config_filepath = os.path.join(self.output_dirpath, self.config_filename)
-            eos.save_file_eos(self.__dir__, config_filepath)
+            eos.save_file_eos(self.__dict__, config_filepath)
 
     def check_output_dirpath(self):
         config_filepath = os.path.join(self.output_dirpath, self.config_filename)
@@ -182,8 +182,11 @@ class DFDataset:
             mask = self.presel_mask(df_batch)
 
             df_batch = df_batch.loc[:, self.model_vars].join(df_batch.loc[:, self.aux_vars].rename(columns=self.aux_vars_map))
-            df = pd.concat([df, df_batch.loc[mask].reset_index(drop=True)])
+            df = pd.concat([df, df_batch.loc[mask]], ignore_index=True)
         return df
+    def good_df(self, df: pd.DataFrame):
+        assert not df.isnull().values.any(), f"ERROR: DFDataset contains NaN values, something likely went wrong with the DF mergings"
+        assert set(self.model_vars + list(self.aux_vars_map.values())).issubset(set(df.columns)), f"ERROR: DFDataset missing necessary columns: {set(self.model_vars + list(self.aux_vars_map.values())) - set(df.columns)}"
 
 
     #############################################################
@@ -233,7 +236,7 @@ class DFDataset:
     #############################################################
     # Standardization
     def compute_standardization(self, train_dfs: dict[str, pd.DataFrame], fold: int):
-        merged_train_df = pd.concat([df.loc[:, self.model_vars] for df in train_dfs.values()]).reset_index(drop=True)
+        merged_train_df = pd.concat([df.loc[:, self.model_vars] for df in train_dfs.values()], ignore_index=True)
         if self.standardization_method.lower() == 'zscore': self.compute_zscore_standardization(merged_train_df, fold)
         else: raise NotImplementedError(f"Standardization method not yet implemented, use \'zscore\'.")
     def compute_zscore_standardization(self, merged_train_df: pd.DataFrame, fold: int):
@@ -255,7 +258,7 @@ class DFDataset:
         slimmed_df = df.loc[:, self.model_vars]
         if self.standardization_method.lower() == 'zscore': self.apply_zscore_standardization(slimmed_df, fold)
         else: raise NotImplementedError(f"Standardization method not yet implemented, use \'zscore\'.")
-        return pd.concat([slimmed_df, df.loc[:, [col for col in df.columns if col not in self.model_vars]]])
+        return slimmed_df.join(df.loc[:, [col for col in df.columns if col not in self.model_vars]])
     def apply_zscore_standardization(self, df: pd.DataFrame, fold: int):
         zscore_std_filepath = os.path.join(self.output_dirpath, f'zscore_{self.standardization_subfilename}{fold}.json')
         zscore_std = eos.load_file_eos(dict, zscore_std_filepath)
@@ -288,10 +291,11 @@ class DFDataset:
 
         self.compute_standardization(dfs, fold)
 
-        self.class_reweighting(pd.concat(dfs.values()).reset_index(drop=True), self.train_class_reweighting, f'{self.aux_var_prefix}eventWeightTrain')
+        self.class_reweighting(pd.concat(dfs.values(), ignore_index=True), self.train_class_reweighting, f'{self.aux_var_prefix}eventWeightTrain')
 
         for filepath in filepaths:
             standardized_df = self.apply_standardization(dfs[filepath], fold)
+            self.good_df(standardized_df)
             eos.save_file_eos(standardized_df, make_output_filepath(filepath[filepath.find(self.base_filepath):], self.output_dirpath, f"train{fold}"))
 
     def make_all_test(self, filepaths: list, force: bool=False):
@@ -306,6 +310,7 @@ class DFDataset:
             self.add_vars(df, map_filepath_to_class(self.class_sample_map, filepath[filepath.find(self.base_filepath):]))
             
             standardized_df = self.apply_standardization(df, fold)
+            self.good_df(standardized_df)
             eos.save_file_eos(standardized_df, make_output_filepath(filepath[filepath.find(self.base_filepath):], self.output_dirpath, f"test{fold}"), force=force)
 
     
@@ -314,13 +319,13 @@ class DFDataset:
     def get_all_train(self, syst_name: str='nominal', shuffle: bool=True):
         dfs = []
         for fold in range(self.n_folds): dfs.append(self.get_train(fold, syst_name=syst_name, shuffle=shuffle))
-        return pd.concat(dfs)
+        return pd.concat(dfs, ignore_index=True)
     def get_train(self, fold: int, syst_name: str='nominal', shuffle: bool=True):
         filepaths = self.get_traintest_filepaths(fold, dataset="train", syst_name=syst_name)
 
         df = pd.concat(
             [eos.load_file_eos(pd.DataFrame, filepath) for model_class in filepaths.keys() for filepath in filepaths[model_class]], 
-            ignore_index=True
+            ignore_index=True, join="inner"
         )
         
         assert 'Data' not in set(df[f'{self.aux_var_prefix}sample_name'].unique().tolist()), f"Data is getting into train dataset... THIS IS VERY BAD"
@@ -334,7 +339,7 @@ class DFDataset:
     def get_all_test(self, syst_name: str='nominal', regex: str|list[str]=''):
         dfs = []
         for fold in range(self.n_folds): dfs.append(self.get_test(fold, syst_name=syst_name, regex=regex))
-        return pd.concat(dfs)
+        return pd.concat(dfs, ignore_index=True)
     def get_test(self, fold: int, syst_name: str='nominal', regex: str|list[str]=''):
         if regex == 'test_of_train':
             filepaths = self.get_traintest_filepaths(fold, dataset="test", syst_name=syst_name)
@@ -351,8 +356,6 @@ class DFDataset:
     #############################################################
     # Retrieve train/test files
     def get_traintest_filepaths(self, fold: int, dataset: str="train", syst_name: str='nominal'):
-        print(os.path.join(self.output_dirpath, "**", f"*{dataset}{fold}*.parquet"))
-        print(glob.glob(os.path.join(self.output_dirpath, "**", f"*{dataset}{fold}*.parquet"), recursive=True))
         return {
             class_name: sorted(
                 set(
