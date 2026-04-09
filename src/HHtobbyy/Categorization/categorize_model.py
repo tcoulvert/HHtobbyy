@@ -127,7 +127,7 @@ NONRES_MC_SAMPLENAMES = {'TTGG', 'GJet', 'GGJets', 'DDQCDGJets', 'SherpaNLO'}
 ################################
 
 
-def categorize_model(dfdataset: DFDataset):
+def categorize_model(dfdataset: DFDataset, config: ):
     categories_dict = {}
 
     MC_names = sorted(pd.unique(dfdataset.get_all_test(regex='!Data').loc[:,f"{dfdataset.aux_var_prefix}sample_name"].tolist()))

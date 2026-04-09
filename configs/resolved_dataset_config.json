@@ -1,7 +1,7 @@
 {
     "output_dirpath": "root://cmseos.fnal.gov//store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/DFDatasets/v1",
 
-    "dataset_tag": "2224_catWP",
+    "dataset_tag": "24_catWP",
 
     "class_sample_map": {
         "ggF HH": ["GluGlu*HH*kl-1p00"],
