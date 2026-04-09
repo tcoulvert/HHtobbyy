@@ -1,1 +1,1 @@
-from HHtobbyy.event_discrimination.DFDataset.DFDataset import DFDataset
+from .DFDataset import DFDataset

@@ -1,1 +1,1 @@
-from HHtobbyy.event_discrimination.models.MLP.MLP import MLP
+from .MLP import MLP

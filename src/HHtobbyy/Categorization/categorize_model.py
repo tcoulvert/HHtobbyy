@@ -15,34 +15,14 @@ from scipy.optimize import curve_fit
 from scipy.integrate import quad
 
 # HEP packages
-# import mplhep as hep
 import hist
 
-################################
-
-
-GIT_REPO = (
-    subprocess.Popen(["git", "rev-parse", "--show-toplevel"], stdout=subprocess.PIPE)
-    .communicate()[0]
-    .rstrip()
-    .decode("utf-8")
-)
-sys.path.append(os.path.join(GIT_REPO, "preprocessing/"))
-sys.path.append(os.path.join(GIT_REPO, "training/"))
-sys.path.append(os.path.join(GIT_REPO, "evaluation/"))
-
-from preprocessing_utils import match_regex, match_sample
-from retrieval_utils import (
-    get_class_sample_map, get_n_folds,
-    get_train_Dataframe, get_test_subset_Dataframes
-)
-from training_utils import (
-    get_dataset_dirpath,
-)
-from evaluation_utils import (
-    transform_preds_options, transform_preds_func
-)
-import HHtobbyy.categorization.categorization_utils as categorization_utils
+# Workspace packages
+from HHtobbyy.event_discrimination.DFDataset import DFDataset
+from HHtobbyy.event_discrimination.Model import Model
+from HHtobbyy.workspace_utils.retrieval_utils import match_regex, match_sample
+from HHtobbyy.event_discrimination.evaluation import transform_preds_options, transform_preds
+from HHtobbyy.categorization.categorization_utils import *
 
 ################################
 
@@ -147,9 +127,27 @@ NONRES_MC_SAMPLENAMES = {'TTGG', 'GJet', 'GGJets', 'DDQCDGJets', 'SherpaNLO'}
 ################################
 
 
-def categorize_model():
+def categorize_model(dfdataset: DFDataset):
     categories_dict = {}
-    table = pt.PrettyTable()
+
+    MC_names = sorted(pd.unique(dfdataset.get_all_test(regex='!Data').loc[:,f"{dfdataset.aux_var_prefix}sample_name"].tolist()))
+    MCnonRes = dfdataset.get_all_test(regex=['TTGG', 'GJet', 'GGJets', 'DDQCDGJets'])
+    MCsherpa = dfdataset.get_all_test(regex='SherpaNLO')
+    Data = dfdataset.get_all_test(regex='Data')
+
+    field_names = ['Category', 'FoM (s/b)'] + MC_names + ['nonRes MC -- SB fit', 'Data -- SB fit']
+    table = pt.PrettyTable(field_names=field_names)
+
+    table.field_names = ['Category', 'FoM (s/b)'] + sorted(pd.unique(MC_eval['AUX_sample_name']).tolist())
+
+    for cat_idx in range(1, CATEGORIZATION_OPTIONS['N_CATEGORIES']+1):
+
+
+
+
+
+
+
 
     full_df_eval = None
     for fold_idx in range(get_n_folds(DATASET_DIRPATH)):

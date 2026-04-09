@@ -1,3 +1,3 @@
-from HHtobbyy.event_discrimination.Model.Model import Model
-from HHtobbyy.event_discrimination.Model.ModelConfig import ModelConfig
-from HHtobbyy.event_discrimination.Model.ModelDataset import ModelDataset
+from .Model import Model
+from .ModelConfig import ModelConfig
+from .ModelDataset import ModelDataset

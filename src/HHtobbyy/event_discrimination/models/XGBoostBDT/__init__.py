@@ -1,1 +1,1 @@
-from HHtobbyy.event_discrimination.models.XGBoostBDT.XGBoostBDT import XGBoostBDT
+from .XGBoostBDT import XGBoostBDT

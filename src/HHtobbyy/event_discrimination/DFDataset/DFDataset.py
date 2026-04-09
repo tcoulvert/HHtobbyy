@@ -336,11 +336,11 @@ class DFDataset:
 
         return df
     
-    def get_all_test(self, syst_name: str='nominal', regex: str|list[str]=''):
+    def get_all_test(self, syst_name: str='nominal', regex: str|list[str]='test_of_train'):
         dfs = []
         for fold in range(self.n_folds): dfs.append(self.get_test(fold, syst_name=syst_name, regex=regex))
         return pd.concat(dfs, ignore_index=True)
-    def get_test(self, fold: int, syst_name: str='nominal', regex: str|list[str]=''):
+    def get_test(self, fold: int, syst_name: str='nominal', regex: str|list[str]='test_of_train'):
         if regex == 'test_of_train':
             filepaths = self.get_traintest_filepaths(fold, dataset="test", syst_name=syst_name)
         else:
