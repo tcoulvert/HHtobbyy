@@ -14,30 +14,33 @@ import hist
 ################################
 
 
-SR_CUTS = [122.5, 127.]
-SB_CUTS = [100., 180.]
-FIT_BINS = SB_CUTS + [5.]  # start, stop, step
-
-################################
-
-
-def fom_mask(df: pd.DataFrame, SR_str: str='SR'):
-    SR_mass_cut = np.logical_and(
-        df.loc[:, 'AUX_mass'].ge(SR_CUTS[0]).to_numpy(), 
-        df.loc[:, 'AUX_mass'].le(SR_CUTS[1]).to_numpy()
-    )
+def mass_cut(df: pd.DataFrame, cuts: list[float]):
     return np.logical_and(
-        SR_mass_cut, df.loc[:, 'cat_mask'].eq(SR_str).to_numpy()
+        df.loc[:, 'mass'].ge(cuts[0]).to_numpy(), 
+        df.loc[:, 'mass'].le(cuts[1]).to_numpy()
     )
 
-def sideband_nonres_mask(df: pd.DataFrame, SB_str: str='SB'):
-    SB_mass_cut = np.logical_and(
-        df.loc[:, 'AUX_mass'].ge(SB_CUTS[0]).to_numpy(), 
-        df.loc[:, 'AUX_mass'].le(SB_CUTS[1]).to_numpy()
-    )
-    return np.logical_and(
-        SB_mass_cut, df.loc[:, 'cat_mask'].eq(SB_str).to_numpy()
-    )
+# def fom_mask(df: pd.DataFrame, srcuts: list[float]):
+#     SR_mass_cut = np.logical_and(
+#         df.loc[:, 'AUX_mass'].ge(srcuts[0]).to_numpy(), 
+#         df.loc[:, 'AUX_mass'].le(srcuts[1]).to_numpy()
+#     )
+#     return SR_mass_cut
+
+# def sideband_mc_mask(df: pd.DataFrame, sbcuts: list[float]):
+#     SB_mass_cut = np.logical_and(
+#         df.loc[:, 'AUX_mass'].ge(sbcuts[0]).to_numpy(), 
+#         df.loc[:, 'AUX_mass'].le(sbcuts[1]).to_numpy()
+#     )
+#     return SB_mass_cut
+
+# def sideband_data_mask(df: pd.DataFrame, datacuts: list[float], blind: bool=True):
+#     Data_mass_cut = sideband_mc_mask(df, datacuts)
+#     if blind: Data_mass_cut = np.logical_and(
+#         Data_mass_cut,
+
+#     )
+#     return SB_mass_cut
 
 
 def fom_s_over_sqrt_b(s, b):
@@ -154,30 +157,35 @@ def brute_force(
             jump_to_cut = i + np.argmax(cuts[i:, jump_index] != cuts[i, jump_index])
     return best_dim_foms[np.argmax(best_dim_foms)], best_dim_cuts[np.argmax(best_dim_foms)]
 
-def grid_search(df: pd.DataFrame, cat_mask: np.ndarray, options_dict: dict, cutdir: list, prev_cuts: list=None, sideband_fit: bool=False):
+def grid_search(MCsignal: pd.DataFrame, MCres: pd.DataFrame, MCnonRes: pd.DataFrame, Data: pd.DataFrame, catconfig):
 
-    sr_mask = np.logical_and(cat_mask, fom_mask(df))
-    bkg_sideband_mask = np.logical_and(cat_mask, sideband_nonres_mask(df))
-    assert not np.any(np.logical_and(sr_mask, bkg_sideband_mask)), print(f"Overlap between SR and Sideband definitions... THIS IS VERY BAD")
-
-    best_fom, best_cut = 0., [0. for _ in options_dict['TRANSFORM_COLUMNS']]
+    best_fom, best_cut = 0., [0. for _ in catconfig.transform_names]
 
     all_foms, all_cuts = [], []
 
     # Signal events inside SR
-    signal_sr_mask = np.logical_and(sr_mask, df.loc[:, 'AUX_label1D'].eq(options_dict['SIGNAL_LABEL']).to_numpy())
-    signal_sr_scores = df.loc[signal_sr_mask, options_dict['TRANSFORM_COLUMNS']].to_numpy()
-    signal_sr_weights = df.loc[signal_sr_mask, 'AUX_eventWeight'].to_numpy()
-    # Bkg events inside SR
-    bkg_sr_mask = np.logical_and(sr_mask, df.loc[:, 'AUX_label1D'].ne(options_dict['SIGNAL_LABEL']).to_numpy())
-    bkg_sr_scores = df.loc[bkg_sr_mask, options_dict['TRANSFORM_COLUMNS']].to_numpy()
-    bkg_sr_weights = df.loc[bkg_sr_mask, 'AUX_eventWeight'].to_numpy()
-    # Bkg events outside SR
-    bkg_sideband_scores = df.loc[bkg_sideband_mask, options_dict['TRANSFORM_COLUMNS']].to_numpy()
-    bkg_sideband_weights = df.loc[bkg_sideband_mask, 'AUX_eventWeight'].to_numpy()
-    bkg_sideband_mass = df.loc[bkg_sideband_mask, 'AUX_mass'].to_numpy()
+    signal_sr_mask = mass_cut(MCsignal, catconfig.SR_masscut)
+    signal_sr_scores = MCsignal.loc[signal_sr_mask, catconfig.transform_names].to_numpy()
+    signal_sr_weights = MCsignal.loc[signal_sr_mask, 'eventWeight'].to_numpy()
+    # Res events inside SR
+    res_sr_mask = mass_cut(MCres, catconfig.SB_masscut)
+    res_sr_scores = MCres.loc[res_sr_mask, catconfig.transform_names].to_numpy()
+    res_sr_weights = MCres.loc[res_sr_mask, 'eventWeight'].to_numpy()
+    # nonRes events in SB
+    nonres_sb_mask = mass_cut(MCnonRes, catconfig.SB_masscut)
+    nonres_sb_scores = MCres.loc[nonres_sb_mask, catconfig.transform_names].to_numpy()
+    nonres_sb_weights = MCnonRes.loc[nonres_sb_mask, 'eventWeight'].to_numpy()
+    nonres_sb_mass = MCnonRes.loc[nonres_sb_mask, 'mass'].to_numpy()
+    # Data events in SB
+    data_mask = np.logical_and(
+        mass_cut(Data, catconfig.SB_masscut),
+        ~mass_cut(Data, [120. 130.]) if catconfig.blind_data else np.ones(len(Data), dtype=bool)
+    )
+    data_scores = Data.loc[data_mask, catconfig.transform_names].to_numpy()
+    data_weights = np.ones(np.sum(data_mask), dtype=bool)
+    data_mass = Data.loc[data_mask, 'mass'].to_numpy()
 
-    startstops = copy.deepcopy(options_dict['STARTSTOPS'])
+    startstops = [[0., 1.] if '<' in catconfig.cutdir[i] else [1., 0.] for i in range(len(catconfig.transform_names))]
     for zoom in range(options_dict['N_ZOOM']):
         print(f"Zoom {zoom}")
         steps = [
