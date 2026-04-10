@@ -20,9 +20,6 @@ class CategorizationConfig:
 
         # Base filename for output categories
         self.cat_filename = f"{self.cat_time}_categories.json"
-        
-        # Performs category optimization using fit to sidebands for estimation of non-resonant background in SR
-        self.opt_sideband = "mc"  # 'none', 'data', 'mc'
 
         # Defines the discriminator to use for categorization, discriminators are implemented in evaluation_utils
         self.discriminator = transform_preds_options()[0]
@@ -62,25 +59,25 @@ class CategorizationConfig:
 
         # Processes the input config file
         self.process_config(config)
-
-
-    def get_fom(self):
-        if self.maximization_func == "s_over_b": fom_s_over_b
-        elif self.maximization_func == "s_over_sqrt_b": fom_s_over_sqrt_b
-        else: raise NotImplementedError(f"Maximization method not yet implemented, use \'s_over_b\' or \'s_over_sqrt_b\'.")
-
-    def get_catmethod(self):
-        if self.cat_method == "grid_search": grid_search
-        else: raise NotImplementedError(f"Maximization method not yet implemented, use \'grid_search\'.")
+    
 
     def get_transform(self):
         self.transform_names, _, self.cutdir = transform_preds_func(self.dfdataset.class_sample_map, self.discriminator)
+        self.n_dims = len(self.transform_names)
 
     def get_optcolumns(self):
         self.opt_columns_map = {self.dfdataset.aux_var_prefix + col: col for col in self.transform_names+['mass', 'eventWeight']}
 
     def get_transform_dict(self):
         return {'names': self.transform_names, 'cutdir': self.cutdir}
+    
+    def get_fom(self):
+        if self.maximization_func == "s_over_b": fom_s_over_b
+        elif self.maximization_func == "s_over_sqrt_b": fom_s_over_sqrt_b
+        else: raise NotImplementedError(f"Maximization method not yet implemented, use \'s_over_b\' or \'s_over_sqrt_b\'.")
+    def get_catmethod(self):
+        if self.cat_method == "grid_search": grid_search
+        else: raise NotImplementedError(f"Maximization method not yet implemented, use \'grid_search\'.")
 
     def process_config(self, config: dict):
         for key, value in config.items():

@@ -14,42 +14,21 @@ import hist
 ################################
 
 
-def mass_cut(df: pd.DataFrame, cuts: list[float]):
+def mass_cut(df: pd.DataFrame, cuts: list[float]) -> np.ndarray[bool]:
     return np.logical_and(
         df.loc[:, 'mass'].ge(cuts[0]).to_numpy(), 
         df.loc[:, 'mass'].le(cuts[1]).to_numpy()
     )
 
-# def fom_mask(df: pd.DataFrame, srcuts: list[float]):
-#     SR_mass_cut = np.logical_and(
-#         df.loc[:, 'AUX_mass'].ge(srcuts[0]).to_numpy(), 
-#         df.loc[:, 'AUX_mass'].le(srcuts[1]).to_numpy()
-#     )
-#     return SR_mass_cut
-
-# def sideband_mc_mask(df: pd.DataFrame, sbcuts: list[float]):
-#     SB_mass_cut = np.logical_and(
-#         df.loc[:, 'AUX_mass'].ge(sbcuts[0]).to_numpy(), 
-#         df.loc[:, 'AUX_mass'].le(sbcuts[1]).to_numpy()
-#     )
-#     return SB_mass_cut
-
-# def sideband_data_mask(df: pd.DataFrame, datacuts: list[float], blind: bool=True):
-#     Data_mass_cut = sideband_mc_mask(df, datacuts)
-#     if blind: Data_mass_cut = np.logical_and(
-#         Data_mass_cut,
-
-#     )
-#     return SB_mass_cut
-
-
+#############################################################
+# Figure of Merit
 def fom_s_over_sqrt_b(s, b):
     return s / np.sqrt(b)
-
 def fom_s_over_b(s, b):
     return s / b
 
-
+#############################################################
+# ASCii histogram for rapid plotting
 def ascii_hist(x, bins=10, weights=None):
     N,X = np.histogram(x, bins=bins, weights=weights)
     width = 50
@@ -58,8 +37,6 @@ def ascii_hist(x, bins=10, weights=None):
         bar = '#'*int(n*width/nmax)
         xi = '{0: <8.4g}'.format(xi).ljust(10)
         print('{0}| {1}'.format(xi,bar))
-
-
 def ascii_hist(x, bins=10, weights=None, fit=None):
     N,X = np.histogram(x, bins=bins, weights=weights)
     width = 50
@@ -80,18 +57,38 @@ def ascii_hist(x, bins=10, weights=None, fit=None):
 
 def exp_func(x, a, b):
     return a * np.exp(b * x)
+def exp_mass_fit(mass: np.ndarray, weight: np.ndarray, fit_bins: list[float], sigma: bool=False):
+    _hist_ = hist.Hist(
+        hist.axis.Regular(int((fit_bins[1]-fit_bins[0])//fit_bins[2]), fit_bins[0], fit_bins[1], name="var", growth=False, underflow=False, overflow=False), 
+        storage='weight'
+    ).fill(var=mass, weight=weight)
+    params, _ = curve_fit(
+        exp_func, _hist_.axes.centers[0]-_hist_.axes.centers[0][0], _hist_.values(), p0=(_hist_.values()[0], -0.1), 
+        sigma=np.where(_hist_.values() != 0, np.sqrt(_hist_.variances()), 0.76) if sigma else None
+    )
+    return _hist_, params
+def est_yield(mass: np.ndarray, weight: np.ndarray, fit_bins: list[float], sr_masscut: list[float], sigma: bool=False):
+    _hist_, fit_params = exp_mass_fit(mass, weight, fit_bins, sigma=sigma)
+    return quad(exp_func, sr_masscut[0]-_hist_.axes.centers[0][0], sr_masscut[1]-_hist_.axes.centers[0][0], args=tuple(fit_params))[0] / fit_bins[2]
+
 
 def brute_force(
+    # Input NPs
     signal_sr_scores: np.ndarray, signal_sr_weights: np.ndarray, 
-    bkg_sr_scores: np.ndarray, bkg_sr_weights: np.ndarray, 
-    bkg_sideband_scores: np.ndarray, bkg_sideband_weights: np.ndarray, bkg_sideband_mass: np.ndarray,
-    cuts: np.ndarray, foms: np.ndarray, cutdir: np.ndarray, sideband_fit: bool=False,
+    res_sr_scores: np.ndarray, res_sr_weights: np.ndarray, 
+    nonres_sb_scores: np.ndarray, nonres_sb_weights: np.ndarray, nonres_sb_mass: np.ndarray,
+    # Cut options
+    cutdir: np.ndarray, fit_bins: list[float], SR_masscut: list[float],
+    # Optimization options
+    fom, 
+    # Output arrays
+    cuts: np.ndarray, foms: np.ndarray,
 ):
     lt_scores = lambda scores: np.column_stack([scores[:, j] for j in range(scores.shape[1]) if cutdir[j] == '<']) if any(_cutdir_ == '<' for _cutdir_ in cutdir) else None
     gt_scores = lambda scores: np.column_stack([scores[:, j] for j in range(scores.shape[1]) if cutdir[j] == '>']) if any(_cutdir_ == '>' for _cutdir_ in cutdir) else None
 
-    signal_lt_scores, bkg_lt_scores, sideband_lt_scores  = lt_scores(signal_sr_scores), lt_scores(bkg_sr_scores), lt_scores(bkg_sideband_scores)
-    signal_gt_scores, bkg_gt_scores, sideband_gt_scores = gt_scores(signal_sr_scores), gt_scores(bkg_sr_scores), gt_scores(bkg_sideband_scores)
+    signal_lt_scores, res_lt_scores, nonres_lt_scores = lt_scores(signal_sr_scores), lt_scores(res_sr_scores), lt_scores(nonres_sb_scores)
+    signal_gt_scores, res_gt_scores, nonres_gt_scores = gt_scores(signal_sr_scores), gt_scores(res_sr_scores), gt_scores(nonres_sb_scores)
     lt_cuts, gt_cuts = lt_scores(cuts), gt_scores(cuts)
 
     ncuts, ndims = cuts.shape
@@ -113,33 +110,23 @@ def brute_force(
     for i in range(ncuts):
         if i < jump_to_cut: continue
 
-        bkg_sideband_bool = apply_cuts(sideband_lt_scores, sideband_gt_scores, i)
+        nonres_sb_bool = apply_cuts(nonres_lt_scores, nonres_gt_scores, i)
 
-        if np.sum(bkg_sideband_weights[bkg_sideband_bool]) > 5.3:
+        if np.sum(nonres_sb_weights[nonres_sb_bool]) > 5.3:
             signal_sr_bool = apply_cuts(signal_lt_scores, signal_gt_scores, i)
-            bkg_sr_bool = apply_cuts(bkg_lt_scores, bkg_gt_scores, i)
+            res_sr_bool = apply_cuts(res_lt_scores, res_gt_scores, i)
 
-            if sideband_fit:
-                _hist_ = hist.Hist(
-                    hist.axis.Regular(int((FIT_BINS[1]-FIT_BINS[0])//FIT_BINS[2]), FIT_BINS[0], FIT_BINS[1], name="var", growth=False, underflow=False, overflow=False), 
-                    storage='weight'
-                ).fill(var=bkg_sideband_mass[bkg_sideband_bool], weight=bkg_sideband_weights[bkg_sideband_bool])
-                params, _ = curve_fit(
-                    exp_func, _hist_.axes.centers[0]-_hist_.axes.centers[0][0], _hist_.values(), p0=(_hist_.values()[0], -0.1), 
-                    # sigma=np.where(_hist_.values() != 0, np.sqrt(_hist_.variances()), 0.76)
-                )
-                est_yield = quad(exp_func, SR_CUTS[0]-_hist_.axes.centers[0][0], SR_CUTS[1]-_hist_.axes.centers[0][0], args=tuple(params))[0] / FIT_BINS[2]
-                # print('='*60)
-                # print(cuts[i])
-                # ascii_hist(bkg_sideband_mass[bkg_sideband_bool], bins=np.arange(FIT_BINS[0], FIT_BINS[1], FIT_BINS[2]), weights=bkg_sideband_weights[bkg_sideband_bool], fit=exp_func(_hist_.axes.centers[0]-_hist_.axes.centers[0][0], a=params[0], b=params[1]))
-                # print(f"y = {params[0]:.2f}e^({params[1]:.2f}x)")
-                # print(f"  -> est. non-res bkg yield in SR = {est_yield}")
-                # print(f"signal yield in SR = {np.sum(signal_sr_weights[signal_sr_bool])}, res bkg yield in SR = {np.sum(bkg_sr_weights[bkg_sr_bool])}, non-res bkg yield in SB = {np.sum(bkg_sideband_weights[bkg_sideband_bool])}")
-                # print('='*60)
-            else: est_yield = 0.
+            sb_est_yield = est_yield(nonres_sb_mass[nonres_sb_bool], nonres_sb_weights[nonres_sb_bool], fit_bins, SR_masscut)
+            # print('='*60)
+            # print(cuts[i])
+            # ascii_hist(bkg_sideband_mass[bkg_sideband_bool], bins=np.arange(fit_bins[0], fit_bins[1], fit_bins[2]), weights=bkg_sideband_weights[bkg_sideband_bool], fit=exp_func(_hist_.axes.centers[0]-_hist_.axes.centers[0][0], a=params[0], b=params[1]))
+            # print(f"y = {params[0]:.2f}e^({params[1]:.2f}x)")
+            # print(f"  -> est. non-res bkg yield in SR = {est_yield}")
+            # print(f"signal yield in SR = {np.sum(signal_sr_weights[signal_sr_bool])}, res bkg yield in SR = {np.sum(bkg_sr_weights[bkg_sr_bool])}, non-res bkg yield in SB = {np.sum(bkg_sideband_weights[bkg_sideband_bool])}")
+            # print('='*60)
 
-            foms[i] = fom_s_over_b(
-                np.sum(signal_sr_weights[signal_sr_bool]), np.sum(bkg_sr_weights[bkg_sr_bool])+est_yield,
+            foms[i] = fom(
+                np.sum(signal_sr_weights[signal_sr_bool]), np.sum(res_sr_weights[res_sr_bool]) + sb_est_yield,
             )
         else: foms[i] = 0.
 
@@ -157,7 +144,7 @@ def brute_force(
             jump_to_cut = i + np.argmax(cuts[i:, jump_index] != cuts[i, jump_index])
     return best_dim_foms[np.argmax(best_dim_foms)], best_dim_cuts[np.argmax(best_dim_foms)]
 
-def grid_search(MCsignal: pd.DataFrame, MCres: pd.DataFrame, MCnonRes: pd.DataFrame, Data: pd.DataFrame, catconfig):
+def grid_search(MCsignal: pd.DataFrame, MCres: pd.DataFrame, MCnonRes: pd.DataFrame, catconfig, prev_cuts: list[float]=None):
 
     best_fom, best_cut = 0., [0. for _ in catconfig.transform_names]
 
@@ -176,38 +163,36 @@ def grid_search(MCsignal: pd.DataFrame, MCres: pd.DataFrame, MCnonRes: pd.DataFr
     nonres_sb_scores = MCres.loc[nonres_sb_mask, catconfig.transform_names].to_numpy()
     nonres_sb_weights = MCnonRes.loc[nonres_sb_mask, 'eventWeight'].to_numpy()
     nonres_sb_mass = MCnonRes.loc[nonres_sb_mask, 'mass'].to_numpy()
-    # Data events in SB
-    data_mask = np.logical_and(
-        mass_cut(Data, catconfig.SB_masscut),
-        ~mass_cut(Data, [120. 130.]) if catconfig.blind_data else np.ones(len(Data), dtype=bool)
-    )
-    data_scores = Data.loc[data_mask, catconfig.transform_names].to_numpy()
-    data_weights = np.ones(np.sum(data_mask), dtype=bool)
-    data_mass = Data.loc[data_mask, 'mass'].to_numpy()
 
     startstops = [[0., 1.] if '<' in catconfig.cutdir[i] else [1., 0.] for i in range(len(catconfig.transform_names))]
-    for zoom in range(options_dict['N_ZOOM']):
+    for zoom in range(1, catconfig.method_options['n_zoom']+1):
         print(f"Zoom {zoom}")
         steps = [
             np.linspace(
-                startstops[i][1], startstops[i][0], options_dict['N_STEPS'], endpoint=False
-            )[::-1] for i in range(len(options_dict['TRANSFORM_COLUMNS']))
+                startstops[i][1], startstops[i][0], catconfig.method_options['n_steps'], endpoint=False
+            )[::-1] for i in range(catconfig.n_dims)
         ]
         cuts = np.array(ak.to_list(ak.cartesian(steps, axis=0)))
         if prev_cuts is not None:
-            cuts = np.array([cut for cut in cuts if all((cut[i] < prev_cut[i] if cutdir[i] == '>' else cut[i] > prev_cut[i]) for prev_cut in prev_cuts for i in range(len(prev_cut)))])
+            cuts = np.array([cut for cut in cuts if all((cut[i] < prev_cut[i] if catconfig.cutdir[i] == '>' else cut[i] > prev_cut[i]) for prev_cut in prev_cuts for i in range(len(prev_cut)))])
         foms = -np.ones(np.shape(cuts)[0])
 
         fom, cut = brute_force(
+            # Input NPs
             signal_sr_scores, signal_sr_weights, 
-            bkg_sr_scores, bkg_sr_weights, 
-            bkg_sideband_scores, bkg_sideband_weights, bkg_sideband_mass,
-            cuts, foms, np.array(cutdir), sideband_fit=sideband_fit
+            res_sr_scores, res_sr_weights, 
+            nonres_sb_scores, nonres_sb_weights, nonres_sb_mass,
+            # Cut options
+            np.array(catconfig.cutdir),
+            # Optimization options
+            catconfig.get_fom(),
+            # Output arrays
+            cuts, foms
         )
         all_cuts.extend(cuts[foms >= 0.])
         all_foms.extend(foms[foms >= 0.])
 
-        step_sizes = [(stop - start) / options_dict['N_STEPS'] for start, stop in startstops]
+        step_sizes = [(stop - start) / catconfig.method_options['n_steps'] for start, stop in startstops]
         startstops = [[cut[i] - step_sizes[i], cut[i] + step_sizes[i]] for i in range(len(step_sizes))]
 
         if fom > best_fom: best_fom = fom; best_cut = cut; print(f"best cut = {cut}, best fom = {fom}")

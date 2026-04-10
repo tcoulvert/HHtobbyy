@@ -53,6 +53,9 @@ class Categorization:
             prev_cuts = []
             for cat_ in cats_.values(): prev_cuts.apend(cat_['cut'])
             return prev_cuts
+        
+        def slim_df(df: pd.DataFrame, mask: np.ndarray, col_map: dict):
+            return df.loc[mask, col_map.keys()].rename(col_map)
 
         cats = {}
         signal_mask, res_mask, nonRes_mask, data_mask = (
@@ -61,17 +64,22 @@ class Categorization:
         )
         for cat_idx in range(1, self.catconfig.n_cats+1):
             prev_cut = get_prev_cuts(cats)
-            best_fom, best_cut, best_evals = self.catconfig.get_catmethod()(
-                MCsignal.loc[signal_mask, self.catconfig.opt_columns_map.keys()].rename(self.catconfig.opt_columns_map), 
-                MCres.loc[res_mask, self.catconfig.opt_columns_map.keys()].rename(self.catconfig.opt_columns_map), 
-                MCnonRes.loc[nonRes_mask, self.catconfig.opt_columns_map.keys()].rename(self.catconfig.opt_columns_map), 
-                Data.loc[data_mask, self.catconfig.opt_columns_map.keys()].rename(self.catconfig.opt_columns_map), 
+            best_fom, best_cut = self.catconfig.get_catmethod()(
+                slim_df(MCsignal, signal_mask, self.catconfig.opt_columns_map),
+                slim_df(MCres, res_mask, self.catconfig.opt_columns_map),
+                slim_df(MCnonRes, nonRes_mask, self.catconfig.opt_columns_map),
+                slim_df(Data, data_mask, self.catconfig.opt_columns_map),
+                self.catconfig,
                 prev_cut
             )
 
-            cats[f'cat{cat_idx}']['fom'] = best_fom.item()
-            cats[f'cat{cat_idx}']['cut'] = best_cut.tolist()
-            cats[f'cat{cat_idx}']['evals'] = best_evals.tolist()
+            best_evals = {
+                name: np.sum(slim_df(MCres, res_mask, self.catconfig.opt_columns_map).loc[np.logical_and(self.apply_cut(MCres), mass_cut(MCres.rename({f})))
+            }
+
+            cats[f'cat{cat_idx}'] = {
+                'fom': best_fom.item(), 'cut': best_cut.tolist(), 'evals': best_evals.tolist()
+            }
 
             signal_mask, res_mask, nonRes_mask, data_mask = (
                 self.apply_cut(MCsignal, best_cut, anti=True), 

@@ -67,6 +67,6 @@ class MLP(Model):
         model, trainer = self.load_model_and_trainer(eval=True)
 
         # Test data predictions
-        predictions = trainer.predict(model, eval_data, ckpt_path="best")
+        predictions = trainer.predict(model, eval_data)
         
         return predictions
