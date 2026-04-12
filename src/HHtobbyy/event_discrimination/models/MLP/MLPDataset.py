@@ -21,7 +21,7 @@ class MLPDataset(ModelDataset):
         self.test_batch_size = 4096
 
         # Number of workers for DataLoader
-        self.num_workers = 1
+        self.num_workers = 15
 
         # Processes the config
         self.process_config(config)

@@ -63,6 +63,12 @@ class MLPTorch(pl.LightningModule):
         self.log("val_loss", weighted_loss)
         return weighted_loss
     
+    def predict_step(self, batch, batch_idx):
+        x, _, _ = batch
+
+        logits = self(x)
+        return logits
+    
     def test_step(self, batch, batch_idx):
         x, y, weights = batch
 
@@ -70,5 +76,5 @@ class MLPTorch(pl.LightningModule):
         weighted_loss = self.compute_loss(logits, y, weights)
 
         # Logging to TensorBoard (if installed) by default
-        self.log("val_loss", weighted_loss)
+        self.log("test_loss", weighted_loss)
         return weighted_loss

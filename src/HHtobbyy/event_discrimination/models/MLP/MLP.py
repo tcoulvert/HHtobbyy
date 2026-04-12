@@ -1,7 +1,3 @@
-# Stdlib packages
-import glob
-import os
-
 # ML packages
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
@@ -28,9 +24,17 @@ class MLP(Model):
         self.modeldataset = MLPDataset(self.dfdataset, config)
         self.modelconfig = MLPConfig(self.dfdataset, config)
 
-    def load_model_and_trainer(self, eval: bool=False):
+    def load_model_and_trainer(self, ckpt_path: str='', eval: bool=False):
         # DNN model
-        model = MLPTorch(len(self.dfdataset.model_vars), self.modelconfig.num_layers, self.modelconfig.num_nodes, self.dfdataset.n_classes, self.modelconfig.dropout_prob)
+        if ckpt_path != '':
+            model = MLPTorch.load_from_checkpoint(
+                ckpt_path, weights_only=False, 
+                **{'input_size': len(self.dfdataset.model_vars), 'num_layers': self.modelconfig.num_layers, 'num_nodes': self.modelconfig.num_nodes, 'output_size': self.dfdataset.n_classes, 'dropout_prob': self.modelconfig.dropout_prob}
+            )
+        else:
+            model = MLPTorch(
+                len(self.dfdataset.model_vars), self.modelconfig.num_layers, self.modelconfig.num_nodes, self.dfdataset.n_classes, self.modelconfig.dropout_prob
+            )
 
         # Callbacks
         callbacks = [EarlyStopping(monitor=self.modelconfig.monitor, min_delta=self.modelconfig.min_delta, patience=self.modelconfig.patience, verbose=False, mode=self.modelconfig.mode)]
@@ -45,12 +49,12 @@ class MLP(Model):
             precision=self.modelconfig.precision, 
             gradient_clip_val=self.modelconfig.gradient_clip_val,
             logger=self.modelconfig.logger,
-            devices=1 if eval else 'auto',
+            devices=1 if eval else self.modelconfig.devices,
         )
 
         return model, trainer
 
-    def train(self, fold: int):
+    def train(self, fold: int, resume_from_ckpt: bool=False):
         # Data
         train_data = self.modeldataset.get_train(fold)
         val_data = self.modeldataset.get_val(fold)
@@ -59,16 +63,24 @@ class MLP(Model):
         model, trainer = self.load_model_and_trainer()
 
         # Train DNN
-        trainer.fit(model, train_data, val_data)
+        trainer.fit(model, train_data, val_data, ckpt_path=self.modelconfig.get_ckpt_path(fold) if resume_from_ckpt else None)
 
-    def evaluate(self, fold: int, syst_name: str='nominal', regex: str|list[str]=''):
+    def test(self, fold: int, syst_name: str='nominal', regex: str|list[str]='test_of_train'):
         eval_data = self.modeldataset.get_test(fold, syst_name=syst_name, regex=regex)
 
         # DNN model and trainer
-        model, trainer = self.load_model_and_trainer(eval=True)
+        model, trainer = self.load_model_and_trainer(ckpt_path=self.modelconfig.get_ckpt_path(fold), eval=True)
 
         # Test data predictions
-        ckpt_path = glob.glob(os.path.join(self.modelconfig.output_dirpath, "lightning_logs", f"version_{fold}", "checkpoints", "*.ckpt"))[-1]
-        predictions = trainer.predict(model, eval_data, ckpt_path=ckpt_path)
+        trainer.test(model, eval_data)
+    
+    def predict(self, fold: int, syst_name: str='nominal', regex: str|list[str]=''):
+        eval_data = self.modeldataset.get_test(fold, syst_name=syst_name, regex=regex)
+
+        # DNN model and trainer
+        model, trainer = self.load_model_and_trainer(ckpt_path=self.modelconfig.get_ckpt_path(fold), eval=True)
+
+        # Test data predictions
+        predictions = trainer.predict(model, eval_data)
         
         return predictions

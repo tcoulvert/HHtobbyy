@@ -23,5 +23,5 @@ class ModelDataset(ABC):
         pass
 
     @abstractmethod
-    def get_test(self, fold: int, syst_name: str='nominal', regex: str=''):
+    def get_test(self, fold: int, syst_name: str='nominal', regex: str|list[str]='test_of_train'):
         pass

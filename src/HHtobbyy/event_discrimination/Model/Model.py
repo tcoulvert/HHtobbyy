@@ -20,10 +20,14 @@ class Model(ABC):
         for fold in range(self.dfdataset.n_folds): 
             self.train(fold)
 
-    def evaluate_all_folds(self, syst_name: str='nominal', regex: str|list[str]='') -> np.ndarray:
+    def test_all_folds(self, syst_name: str='nominal', regex: str|list[str]='') -> np.ndarray:
+        for fold in range(self.dfdataset.n_folds): 
+            self.test(fold, syst_name=syst_name, regex=regex)
+
+    def predict_all_folds(self, syst_name: str='nominal', regex: str|list[str]='') -> np.ndarray:
         outputs = []
         for fold in range(self.dfdataset.n_folds): 
-            outputs.append(self.evaluate(fold, syst_name=syst_name, regex=regex))
+            outputs.append(self.predict(fold, syst_name=syst_name, regex=regex))
         return np.concatenate(outputs)
 
     @abstractmethod
@@ -31,5 +35,9 @@ class Model(ABC):
         pass
 
     @abstractmethod
-    def evaluate(self, fold: int, syst_name: str='nominal', regex: str|list[str]='') -> list:
+    def test(self, fold: int, syst_name: str='nominal', regex: str|list[str]='test_of_train') -> list:
+        pass
+
+    @abstractmethod
+    def predict(self, fold: int, syst_name: str='nominal', regex: str|list[str]='') -> list:
         pass

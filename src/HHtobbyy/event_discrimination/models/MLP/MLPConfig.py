@@ -1,3 +1,7 @@
+# Stdlib packages
+import glob
+import os
+
 # ML packages
 import gpustat
 
@@ -33,6 +37,7 @@ class MLPConfig(ModelConfig):
         except:
             self.accelerator   = 'cpu'
         self.strategy          = 'auto'      # high-level how to do training
+        self.devices           = 'auto'      # Device to use for model
         self.num_nodes         = 1           # number of gpu nodes to use
         self.precision         = '32'        # 32-bit floating point
         self.gradient_clip_val = 10.         # max abs. value for gradient
@@ -42,6 +47,9 @@ class MLPConfig(ModelConfig):
         self.max_epochs        = 500         # max number of epochs to run
 
         self.process_config(config)
+
+    def get_ckpt_path(self, fold: int):
+        return glob.glob(os.path.join(self.output_dirpath, "lightning_logs", f"version_{fold}", "checkpoints", "*.ckpt"))[-1]
 
     def optimize_params(self, fold: int, static_params: dict={}):
         pass
