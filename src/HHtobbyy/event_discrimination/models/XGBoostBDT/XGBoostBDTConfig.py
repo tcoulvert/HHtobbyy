@@ -54,8 +54,6 @@ class XGBoostBDTConfig(ModelConfig):
         # Safety parameters
         self.num_trees            = 500         # max number of trees to make
 
-        self.process_config(config)
-
     def optimize_params(self, model_dataset: XGBoostBDTDataset, static_params: dict={}, verbose: bool=False):
         # order and grouping of optimization taken from: 
         #   https://www.analyticsvidhya.com/blog/2016/03/complete-guide-parameter-tuning-xgboost-with-codes-python/#:~:text=min_child_weight%20%3D%201%3A%20A%20smaller%20value,%2C%20anyways%2C%20be%20tuned%20later.

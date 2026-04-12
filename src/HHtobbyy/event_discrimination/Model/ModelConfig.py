@@ -22,11 +22,14 @@ class ModelConfig(ABC):
         
         for key, value in config.items():
             if hasattr(self, key): setattr(self, key, value)
+
+        print()
         
-        if not hasattr(self, 'model_time'): 
+        if self.config_filename not in os.listdir(self.output_dirpath): 
             self.model_time = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')  # 'YYYY-MM-DD_HH-MM-SS'
             self.output_dirpath = os.path.join(self.output_dirpath, self.model_time)
             os.makedirs(self.output_dirpath, exist_ok=True)
+            self.save_config(self.config_filename)
 
     def toJSON(self):
         return {**self.__dict__, **{'dfdataset': self.dfdataset.__dict__}}

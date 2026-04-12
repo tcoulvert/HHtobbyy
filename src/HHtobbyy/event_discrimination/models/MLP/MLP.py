@@ -1,12 +1,16 @@
+# Stdlib packages
+import glob
+import os
+
 # ML packages
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 
-# check
-import os
-os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
-os.environ['TORCH_USE_CUDA_DSA'] = "1"
-import torch
+# # check
+# import os
+# os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
+# os.environ['TORCH_USE_CUDA_DSA'] = "1"
+# import torch
 
 # Workspace packages
 from HHtobbyy.event_discrimination.DFDataset import DFDataset
@@ -23,9 +27,6 @@ class MLP(Model):
         self.dfdataset = dfdataset
         self.modeldataset = MLPDataset(self.dfdataset, config)
         self.modelconfig = MLPConfig(self.dfdataset, config)
-        
-        # Save config
-        self.modelconfig.save_config()
 
     def load_model_and_trainer(self, eval: bool=False):
         # DNN model
@@ -67,6 +68,7 @@ class MLP(Model):
         model, trainer = self.load_model_and_trainer(eval=True)
 
         # Test data predictions
-        predictions = trainer.predict(model, eval_data)
+        ckpt_path = glob.glob(os.path.join(self.modelconfig.output_dirpath, "lightning_logs", f"version_{fold}", "checkpoints", "*.ckpt"))[-1]
+        predictions = trainer.predict(model, eval_data, ckpt_path=ckpt_path)
         
         return predictions

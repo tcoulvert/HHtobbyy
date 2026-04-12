@@ -1,5 +1,4 @@
 # Stdlib packages
-import datetime
 import os
 
 # ML packages
