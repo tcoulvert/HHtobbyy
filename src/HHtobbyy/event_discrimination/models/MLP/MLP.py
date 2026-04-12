@@ -50,6 +50,7 @@ class MLP(Model):
             gradient_clip_val=self.modelconfig.gradient_clip_val,
             logger=self.modelconfig.logger,
             devices=1 if eval else self.modelconfig.devices,
+            enable_checkpointing=not eval
         )
 
         return model, trainer
