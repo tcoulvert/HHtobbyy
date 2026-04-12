@@ -19,6 +19,7 @@ class CategorizationConfig:
         self.cat_time = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')  # 'YYYY-MM-DD_HH-MM-SS'
 
         # Base filename for output categories
+        self.catconfig_filename = f"{self.cat_time}_catconfig.json"
         self.cat_filename = f"{self.cat_time}_categories.json"
 
         # Defines the discriminator to use for categorization, discriminators are implemented in evaluation_utils
@@ -66,7 +67,7 @@ class CategorizationConfig:
         self.n_dims = len(self.transform_names)
 
     def get_optcolumns(self):
-        self.opt_columns_map = {self.dfdataset.aux_var_prefix + col: col for col in self.transform_names+['mass', 'eventWeight']}
+        self.columns = [self.dfdataset.aux_var_prefix + col for col in self.transform_names+['mass', 'eventWeight']]
 
     def get_transform_dict(self):
         return {'names': self.transform_names, 'cutdir': self.cutdir}
@@ -94,5 +95,5 @@ class CategorizationConfig:
         assert self.cat_filename.endswith('.json'), f"ERROR: Currently only supporting \'json\' type config serializations"
         
         os.makedirs(self.output_dirpath, exist_ok=True)
-        eos.save_file_eos(self.toJSON(), os.path.join(self.output_dirpath, self.cat_filename))
+        eos.save_file_eos(self.toJSON(), os.path.join(self.output_dirpath, self.catconfig_filename))
             

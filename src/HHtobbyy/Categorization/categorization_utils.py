@@ -14,10 +14,10 @@ import hist
 ################################
 
 
-def mass_cut(df: pd.DataFrame, cuts: list[float]) -> np.ndarray[bool]:
+def mass_cut(df: pd.DataFrame, cuts: list[float], aux_prefix: str) -> np.ndarray[bool]:
     return np.logical_and(
-        df.loc[:, 'mass'].ge(cuts[0]).to_numpy(), 
-        df.loc[:, 'mass'].le(cuts[1]).to_numpy()
+        df.loc[:, f'{aux_prefix}mass'].ge(cuts[0]).to_numpy(), 
+        df.loc[:, f'{aux_prefix}mass'].le(cuts[1]).to_numpy()
     )
 
 #############################################################
@@ -151,18 +151,18 @@ def grid_search(MCsignal: pd.DataFrame, MCres: pd.DataFrame, MCnonRes: pd.DataFr
     all_foms, all_cuts = [], []
 
     # Signal events inside SR
-    signal_sr_mask = mass_cut(MCsignal, catconfig.SR_masscut)
+    signal_sr_mask = mass_cut(MCsignal, catconfig.SR_masscut, catconfig.aux_var_prefix)
     signal_sr_scores = MCsignal.loc[signal_sr_mask, catconfig.transform_names].to_numpy()
     signal_sr_weights = MCsignal.loc[signal_sr_mask, 'eventWeight'].to_numpy()
     # Res events inside SR
-    res_sr_mask = mass_cut(MCres, catconfig.SB_masscut)
+    res_sr_mask = mass_cut(MCres, catconfig.SB_masscut, catconfig.aux_var_prefix)
     res_sr_scores = MCres.loc[res_sr_mask, catconfig.transform_names].to_numpy()
-    res_sr_weights = MCres.loc[res_sr_mask, 'eventWeight'].to_numpy()
+    res_sr_weights = MCres.loc[res_sr_mask, f'{catconfig.aux_var_prefix}eventWeight'].to_numpy()
     # nonRes events in SB
-    nonres_sb_mask = mass_cut(MCnonRes, catconfig.SB_masscut)
+    nonres_sb_mask = mass_cut(MCnonRes, catconfig.SB_masscut, catconfig.aux_var_prefix)
     nonres_sb_scores = MCres.loc[nonres_sb_mask, catconfig.transform_names].to_numpy()
-    nonres_sb_weights = MCnonRes.loc[nonres_sb_mask, 'eventWeight'].to_numpy()
-    nonres_sb_mass = MCnonRes.loc[nonres_sb_mask, 'mass'].to_numpy()
+    nonres_sb_weights = MCnonRes.loc[nonres_sb_mask, f'{catconfig.aux_var_prefix}eventWeight'].to_numpy()
+    nonres_sb_mass = MCnonRes.loc[nonres_sb_mask, f'{catconfig.aux_var_prefix}mass'].to_numpy()
 
     startstops = [[0., 1.] if '<' in catconfig.cutdir[i] else [1., 0.] for i in range(len(catconfig.transform_names))]
     for zoom in range(1, catconfig.method_options['n_zoom']+1):

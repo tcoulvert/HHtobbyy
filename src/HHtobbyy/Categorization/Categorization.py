@@ -1,25 +1,16 @@
 # Stdlib packages
-import argparse
-import copy
-import json
-import logging
 import os
-import subprocess
-import sys
 
 # Common Py packages
 import numpy as np
 import pandas as pd
 import prettytable as pt
-from scipy.optimize import curve_fit
-from scipy.integrate import quad
 
 # HEP packages
-import hist
+import eos_utils as eos
 
 # Workspace packages
 from HHtobbyy.event_discrimination.DFDataset import DFDataset
-from HHtobbyy.event_discrimination.Model import Model
 from HHtobbyy.Categorization import CategorizationConfig
 from HHtobbyy.Categorization.categorization_utils import *
 
@@ -38,7 +29,16 @@ class Categorization:
         if anti: return ~cut_mask
         else: return cut_mask
 
-    def run(self, model: Model):
+    def get_sr_cut_mask(self, df: pd.DataFrame, cut: list):
+        return np.logical_and(
+            self.apply_cut(df, cut), 
+            mass_cut(df, self.catconfig.SR_masscut, self.dfdataset.aux_var_prefix)
+        )
+    def get_yield_from_cut(self, df: pd.DataFrame, cut: list):
+        sr_cut_mask = self.get_sr_cut_mask(df, cut)
+        return df.loc[sr_cut_mask, f"{self.dfdataset.aux_var_prefix}eventWeight"].sum()
+
+    def run(self):
         MCsignal = self.dfdataset.get_all_test(regex=self.catconfig.signal_samples)
         MCres = self.dfdataset.get_all_test(regex=self.catconfig.res_samples)
         MCnonRes = self.dfdataset.get_all_test(regex=self.catconfig.nonres_samples)
@@ -53,9 +53,6 @@ class Categorization:
             prev_cuts = []
             for cat_ in cats_.values(): prev_cuts.apend(cat_['cut'])
             return prev_cuts
-        
-        def slim_df(df: pd.DataFrame, mask: np.ndarray, col_map: dict):
-            return df.loc[mask, col_map.keys()].rename(col_map)
 
         cats = {}
         signal_mask, res_mask, nonRes_mask, data_mask = (
@@ -65,20 +62,32 @@ class Categorization:
         for cat_idx in range(1, self.catconfig.n_cats+1):
             prev_cut = get_prev_cuts(cats)
             best_fom, best_cut = self.catconfig.get_catmethod()(
-                slim_df(MCsignal, signal_mask, self.catconfig.opt_columns_map),
-                slim_df(MCres, res_mask, self.catconfig.opt_columns_map),
-                slim_df(MCnonRes, nonRes_mask, self.catconfig.opt_columns_map),
-                slim_df(Data, data_mask, self.catconfig.opt_columns_map),
+                MCsignal.loc[signal_mask, self.catconfig.columns],
+                MCres.loc[res_mask, self.catconfig.columns],
+                MCnonRes.loc[nonRes_mask, self.catconfig.columns],
+                Data.loc[data_mask, self.catconfig.columns],
                 self.catconfig,
                 prev_cut
             )
 
             best_evals = {
-                name: np.sum(slim_df(MCres, res_mask, self.catconfig.opt_columns_map).loc[np.logical_and(self.apply_cut(MCres), mass_cut(MCres.rename({f})))
+                name: self.get_yield_from_cut(
+                    MCres.loc[
+                        np.logical_and(res_mask, MCres[f"{self.dfdataset.aux_var_prefix}sample_name"].eq(name))
+                    ], best_cut
+                )
+                for name in pd.unique(MCres[f"{self.dfdataset.aux_var_prefix}sample_name"])
+            } + {
+                name: est_yield(
+                    df.loc[self.get_sr_cut_mask(df, best_cut), f"{self.dfdataset.aux_var_prefix}mass"],
+                    df.loc[self.get_sr_cut_mask(df, best_cut), f"{self.dfdataset.aux_var_prefix}eventWeight"],
+                    self.catconfig.fit_bins, self.catconfig.SR_masscut
+                )
+                for name, df in zip(['nonRes MC -- SB fit', 'Data -- SB fit'], [MCnonRes, Data])
             }
 
             cats[f'cat{cat_idx}'] = {
-                'fom': best_fom.item(), 'cut': best_cut.tolist(), 'evals': best_evals.tolist()
+                'fom': best_fom.item(), 'cut': best_cut.tolist(), 'evals': best_evals
             }
 
             signal_mask, res_mask, nonRes_mask, data_mask = (
@@ -90,3 +99,5 @@ class Categorization:
 
             new_row = [f'Merged folds - Cat {cat_idx}', best_fom] + [best_evals[name] for name in MC_names]
             table.add_row(new_row)
+
+        eos.save_file_eos(cats, os.path.join(self.catconfig.output_dirpath, self.catconfig.cat_filename))
