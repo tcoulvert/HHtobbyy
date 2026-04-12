@@ -48,7 +48,7 @@ class XGBoostBDT(Model):
         booster.save_model(os.path.join(self.modelconfig.output_dirpath, f'{self.model_filename}{fold}.model'))
         eos.save_file_eos(eval_result, os.path.join(self.modelconfig.output_dirpath, f'{self.eval_filename}{fold}.json'))
 
-    def evaluate(self, fold: int, syst_name: str='nominal', regex: str|list[str]=''):
+    def test(self, fold: int, syst_name: str='nominal', regex: str|list[str]='test_of_train'):
         eval_data = self.modeldataset.get_test(fold, syst_name=syst_name, regex=regex)
 
         # Initialize trained BDT model
@@ -59,6 +59,18 @@ class XGBoostBDT(Model):
 
         # Test data predictions
         predictions = booster.predict(eval_data, iteration_range=(0, booster.best_iteration))
-        print(predictions)
+        # loss = predictions - eval_data[label]
+    
+    def predict(self, fold: int, syst_name: str='nominal', regex: str|list[str]=''):
+        eval_data = self.modeldataset.get_test(fold, syst_name=syst_name, regex=regex)
+
+        # Initialize trained BDT model
+        booster = xgb.Booster(
+            params=self.modelconfig.load_config(), 
+            model_file=os.path.join(self.modelconfig.output_dirpath, f"{self.model_filename}{fold}.model")
+        )
+
+        # Test data predictions
+        predictions = booster.predict(eval_data, iteration_range=(0, booster.best_iteration))
 
         return predictions
