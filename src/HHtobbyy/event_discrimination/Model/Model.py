@@ -26,9 +26,9 @@ class Model(ABC):
         for fold in range(self.dfdataset.n_folds): 
             self.test(fold, syst_name=syst_name, regex=regex)
 
-    def predict_all_folds(self, syst_name: str='nominal', regex: str|list[str]='', **kwargs) -> None:
+    def predict_all_folds(self, syst_name: str='nominal', regex: str|list[str]='', **model_kwargs) -> None:
         for fold in range(self.dfdataset.n_folds): 
-            self.predict(fold, syst_name=syst_name, regex=regex, kwargs=kwargs)
+            self.predict(fold, syst_name=syst_name, regex=regex, model_kwargs=model_kwargs)
 
     @abstractmethod
     def train(self, fold: int) -> None:
