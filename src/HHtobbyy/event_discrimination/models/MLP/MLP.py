@@ -24,12 +24,12 @@ class MLP(Model):
         self.modeldataset = MLPDataset(self.dfdataset, config)
         self.modelconfig = MLPConfig(self.dfdataset, config)
 
-    def load_model_and_trainer(self, ckpt_path: str='', eval: bool=False):
+    def load_model_and_trainer(self, ckpt_path: str='', log_path: str='', eval: bool=False):
         # DNN model
         if ckpt_path != '':
             model = MLPTorch.load_from_checkpoint(
                 ckpt_path, weights_only=False, 
-                **{'input_size': len(self.dfdataset.model_vars), 'num_layers': self.modelconfig.num_layers, 'num_nodes': self.modelconfig.num_nodes, 'output_size': self.dfdataset.n_classes, 'dropout_prob': self.modelconfig.dropout_prob}
+                **{'input_size': len(self.dfdataset.model_vars), 'num_layers': self.modelconfig.num_layers, 'num_nodes': self.modelconfig.num_nodes, 'output_size': self.dfdataset.n_classes, 'dropout_prob': self.modelconfig.dropout_prob, 'nonsense': 0}
             )
         else:
             model = MLPTorch(
@@ -48,9 +48,8 @@ class MLP(Model):
             num_nodes=self.modelconfig.num_nodes,
             precision=self.modelconfig.precision, 
             gradient_clip_val=self.modelconfig.gradient_clip_val,
-            logger=self.modelconfig.logger,
+            logger=False if eval and log_path == '' else (log_path if log_path != '' else self.modelconfig.logger),
             devices=1 if eval else self.modelconfig.devices,
-            enable_checkpointing=not eval
         )
 
         return model, trainer
@@ -70,7 +69,7 @@ class MLP(Model):
         eval_data = self.modeldataset.get_test(fold, syst_name=syst_name, regex=regex)
 
         # DNN model and trainer
-        model, trainer = self.load_model_and_trainer(ckpt_path=self.modelconfig.get_ckpt_path(fold), eval=True)
+        model, trainer = self.load_model_and_trainer(ckpt_path=self.modelconfig.get_ckpt_path(fold), log_path=self.modelconfig.get_log_path(fold), eval=True)
 
         # Test data predictions
         trainer.test(model, eval_data)
@@ -81,7 +80,7 @@ class MLP(Model):
         # DNN model and trainer
         model, trainer = self.load_model_and_trainer(ckpt_path=self.modelconfig.get_ckpt_path(fold), eval=True)
 
-        # Test data predictions
-        predictions = trainer.predict(model, eval_data)
-        
+        predictions = trainer.predict(model, eval_data)[0]
+        predictions = [prediction.numpy(force=True) for prediction in predictions]
+
         return predictions

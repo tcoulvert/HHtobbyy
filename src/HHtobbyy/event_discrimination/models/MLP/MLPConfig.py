@@ -48,8 +48,11 @@ class MLPConfig(ModelConfig):
 
         self.process_config(config)
 
+    def get_log_path(self, fold: int):
+        return os.path.join(self.output_dirpath, "lightning_logs", f"version_{fold}")
+
     def get_ckpt_path(self, fold: int):
-        return glob.glob(os.path.join(self.output_dirpath, "lightning_logs", f"version_{fold}", "checkpoints", "*.ckpt"))[-1]
+        return glob.glob(os.path.join(self.get_log_path(fold), "checkpoints", "*.ckpt"))[-1]
 
     def optimize_params(self, fold: int, static_params: dict={}):
         pass

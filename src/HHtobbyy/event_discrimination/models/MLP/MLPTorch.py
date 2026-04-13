@@ -1,4 +1,5 @@
 from torch import optim, nn
+from torch.nn import functional as F
 import pytorch_lightning as pl
 
 
@@ -25,6 +26,9 @@ class MLPTorch(pl.LightningModule):
 
         # Multiclass loss
         self.multi_loss = nn.CrossEntropyLoss(weight=class_weights, reduction='none')
+
+        # Store hyperparameters in checkpoint
+        self.save_hyperparameters()
 
     def forward(self, x):
         return self.model(x)
@@ -67,7 +71,8 @@ class MLPTorch(pl.LightningModule):
         x, _, _ = batch
 
         logits = self(x)
-        return logits
+        probs = F.softmax(logits)
+        return probs
     
     def test_step(self, batch, batch_idx):
         x, y, weights = batch
