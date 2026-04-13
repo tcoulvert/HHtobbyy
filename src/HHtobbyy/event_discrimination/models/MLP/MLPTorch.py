@@ -71,7 +71,7 @@ class MLPTorch(pl.LightningModule):
         x, _, _ = batch
 
         logits = self(x)
-        probs = F.softmax(logits)
+        probs = F.softmax(logits, dim=1)
         return probs
     
     def test_step(self, batch, batch_idx):

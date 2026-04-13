@@ -26,15 +26,8 @@ class MLP(Model):
 
     def load_model_and_trainer(self, ckpt_path: str='', log_path: str='', eval: bool=False):
         # DNN model
-        if ckpt_path != '':
-            model = MLPTorch.load_from_checkpoint(
-                ckpt_path, weights_only=False, 
-                **{'input_size': len(self.dfdataset.model_vars), 'num_layers': self.modelconfig.num_layers, 'num_nodes': self.modelconfig.num_nodes, 'output_size': self.dfdataset.n_classes, 'dropout_prob': self.modelconfig.dropout_prob, 'nonsense': 0}
-            )
-        else:
-            model = MLPTorch(
-                len(self.dfdataset.model_vars), self.modelconfig.num_layers, self.modelconfig.num_nodes, self.dfdataset.n_classes, self.modelconfig.dropout_prob
-            )
+        if ckpt_path != '': model = MLPTorch.load_from_checkpoint(ckpt_path, weights_only=False, **self.modelconfig.__dict__)
+        else: model = MLPTorch(**self.modelconfig.__dict__)
 
         # Callbacks
         callbacks = [EarlyStopping(monitor=self.modelconfig.monitor, min_delta=self.modelconfig.min_delta, patience=self.modelconfig.patience, verbose=False, mode=self.modelconfig.mode)]

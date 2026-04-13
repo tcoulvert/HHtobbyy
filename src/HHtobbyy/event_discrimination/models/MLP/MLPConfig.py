@@ -16,13 +16,19 @@ class MLPConfig(ModelConfig):
     def __init__(self, dfdataset: DFDataset, config: dict):
         self.dfdataset = dfdataset
 
-        # Required configs
-        self.output_dirpath = ''
+        # Cross-saved parameters
+        self.input_size        = len(dfdataset.model_vars)
+
+        # Required parameters
+        self.output_dirpath    = ''
 
         # Architecture parameters
         self.num_layers        = 5           # number of hidden layers
         self.num_nodes         = 1024        # dimensionality of hidden layers
         self.dropout_prob      = 0.25        # probability of dropping connections
+
+        # Dataset parameters
+        self.class_weights     = None        # Extra class-weighting for training (can be done via DFDataset, which is preferred)
 
         # Eary stopping parameters
         self.min_delta         = 0.          # smallest val_loss difference
