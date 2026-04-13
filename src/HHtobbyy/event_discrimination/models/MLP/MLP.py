@@ -69,7 +69,7 @@ class MLP(Model):
         # DNN model and trainer
         model, trainer = self.load_model_and_trainer(ckpt_path=self.modelconfig.get_ckpt_path(fold), eval=True)
 
-        predictions = trainer.predict(model, data)[0]
+        predictions = trainer.predict(model, data)
         predictions = [prediction.numpy(force=True) for prediction in predictions]
 
         return predictions

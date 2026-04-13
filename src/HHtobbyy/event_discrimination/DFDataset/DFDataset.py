@@ -384,7 +384,7 @@ class DFDataset:
         try: old_df = eos.load_file_eos(pd.DataFrame, filepath)
         except: raise KeyError(f"ERROR: Filepath could not be loaded successfully, check that file exists before trying to modify it")
 
-        assert len(old_df) == len(df), "ERROR: Original DF and new DF have different number of rows, this function is intended to modify/add/remove columns. If you would like to change the selections and modify the number of rows, please make a new DFDataset"
+        assert len(old_df) == len(df), f"ERROR: Original DF and new DF have different number of rows ({len(old_df)} vs. {len(df)}), this function is intended to modify/add/remove columns. If you would like to change the selections and modify the number of rows, please make a new DFDataset"
         new_df = df.copy()
         if f"{self.aux_var_prefix}{self.sort_var}" not in new_df.columns: 
             print(f"WARNING: Variable \'{f"{self.aux_var_prefix}{self.sort_var}"}\' not found in input DF, assuming identical ordering of the original and new DFs")
