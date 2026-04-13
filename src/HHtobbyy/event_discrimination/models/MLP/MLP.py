@@ -1,5 +1,5 @@
 # Common Py packages
-import pandas as pd
+import numpy as np
 
 # ML packages
 from torch.utils.data import DataLoader
@@ -70,6 +70,8 @@ class MLP(Model):
         model, trainer = self.load_model_and_trainer(ckpt_path=self.modelconfig.get_ckpt_path(fold), eval=True)
 
         predictions = trainer.predict(model, data)
-        predictions = [prediction.numpy(force=True) for prediction in predictions]
+        print(predictions)
+        predictions = np.concatenate([prediction.numpy(force=True) for prediction in predictions])
+        print(predictions)
 
         return predictions
