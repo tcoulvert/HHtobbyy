@@ -18,7 +18,7 @@ class ModelDataset(ABC):
             if hasattr(self, key): setattr(self, key, value)
 
     @abstractmethod
-    def get_data(self, df: pd.DataFrame):
+    def get_data(self, df: pd.DataFrame, event_weight: str):
         pass
 
     @abstractmethod

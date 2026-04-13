@@ -26,9 +26,9 @@ class Model(ABC):
         for fold in range(self.dfdataset.n_folds): 
             self.test(fold, syst_name=syst_name, regex=regex)
 
-    def predict_all_folds(self, syst_name: str='nominal', regex: str|list[str]='') -> None:
+    def predict_all_folds(self, syst_name: str='nominal', regex: str|list[str]='', **kwargs) -> None:
         for fold in range(self.dfdataset.n_folds): 
-            self.predict(fold, syst_name=syst_name, regex=regex)
+            self.predict(fold, syst_name=syst_name, regex=regex, kwargs=kwargs)
 
     @abstractmethod
     def train(self, fold: int) -> None:
@@ -42,11 +42,11 @@ class Model(ABC):
     def predict_data(self, data: object, fold: int) -> np.ndarray:
         pass
 
-    def predict(self, fold: int, syst_name: str='nominal', regex: str|list[str]=''):
+    def predict(self, fold: int, syst_name: str='nominal', regex: str|list[str]='', model_kwargs: dict={}):
         test_filepaths = self.dfdataset.get_test_filepaths(fold, syst_name=syst_name, regex=regex)['test']
         for filepath in test_filepaths:
             df = self.dfdataset.get_df(filepath)
-            data = self.modeldataset.get_data(df)
+            data = self.modeldataset.get_data(df, self.dfdataset.event_weight_var, **model_kwargs)
             predictions = self.predict_data(data, fold)
             new_df = pd.DataFrame(predictions, columns=class_discriminator_columns(self.dfdataset.class_sample_map.keys()))
             self.dfdataset.save_df(filepath, new_df)

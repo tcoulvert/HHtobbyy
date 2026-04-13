@@ -39,7 +39,7 @@ class MLPDataset(ModelDataset):
 
     #############################################################
     # Overriding get functions
-    def get_data(self, df: pd.DataFrame, *, event_weight: str, batch_size: int=2048, shuffle: bool=False):
+    def get_data(self, df: pd.DataFrame, event_weight: str, batch_size: int=2048, shuffle: bool=False):
         return DataLoader(self.get_MLPTorch(df, event_weight), batch_size=batch_size, num_workers=self.num_workers, shuffle=shuffle)
     
     def get_train(self, fold: int, syst_name: str='nominal', for_eval: bool=False):
