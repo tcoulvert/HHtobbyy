@@ -393,7 +393,7 @@ class DFDataset:
         assert np.all(new_df[f"{self.aux_var_prefix}{self.sort_var}"].to_numpy() == old_df[f"{self.aux_var_prefix}{self.sort_var}"].to_numpy()), f"ERROR: Re-sort failed, cannot combine DFs"
 
         for col in new_df.columns:
-            old_df.loc[:, col] = new_df.loc[:, col]
+            old_df[col] = new_df[col].to_numpy()
 
         eos.save_file_eos(old_df, filepath, force=True)
     
