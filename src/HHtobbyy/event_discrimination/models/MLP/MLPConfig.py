@@ -18,6 +18,7 @@ class MLPConfig(ModelConfig):
 
         # Cross-saved parameters
         self.input_size        = len(dfdataset.model_vars)
+        self.output_size       = dfdataset.n_classes
 
         # Required parameters
         self.output_dirpath    = ''
