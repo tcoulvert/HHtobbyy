@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 
 # Common Py packages
 import numpy as np
+import pandas as pd
 
 # Workspace packages
 from HHtobbyy.event_discrimination.DFDataset import DFDataset
@@ -36,6 +37,10 @@ class Model(ABC):
 
     @abstractmethod
     def test(self, fold: int, syst_name: str='nominal', regex: str|list[str]='test_of_train') -> list:
+        pass
+
+    @abstractmethod
+    def predict_data(self, data: object, fold: int) -> np.ndarray:
         pass
 
     @abstractmethod

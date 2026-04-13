@@ -60,10 +60,8 @@ class XGBoostBDT(Model):
         # Test data predictions
         predictions = booster.predict(eval_data, iteration_range=(0, booster.best_iteration))
         # loss = predictions - eval_data[label]
-    
-    def predict(self, fold: int, syst_name: str='nominal', regex: str|list[str]=''):
-        eval_data = self.modeldataset.get_test(fold, syst_name=syst_name, regex=regex)
 
+    def predict_data(self, data: xgb.DMatrix, fold: int):
         # Initialize trained BDT model
         booster = xgb.Booster(
             params=self.modelconfig.load_config(), 
@@ -71,6 +69,12 @@ class XGBoostBDT(Model):
         )
 
         # Test data predictions
-        predictions = booster.predict(eval_data, iteration_range=(0, booster.best_iteration))
+        predictions = booster.predict(data, iteration_range=(0, booster.best_iteration))
 
         return predictions
+    
+    def predict(self, fold: int, syst_name: str='nominal', regex: str|list[str]=''):
+        eval_data = self.modeldataset.get_test(fold, syst_name=syst_name, regex=regex)
+        return self.predict_data(eval_data, fold)
+
+        

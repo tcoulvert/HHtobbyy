@@ -72,6 +72,9 @@ class DFDataset:
         # RNG seed
         self.seed = 21
 
+        # Fill value for bad data
+        self.fill_value = FILL_VALUE
+
         # Mask variable for preselection, 'none' for no extra pre-selection
         self.mask_var = 'none'
 
@@ -90,6 +93,17 @@ class DFDataset:
         # Standard prefix for auxiliary variables, i.e. variables useful 
         #   for event-identification but *not* used in the training
         self.aux_var_prefix = 'AUX_'
+
+        # Variable to use when matching up two DFs (with the same events) to combine correctly
+        self.sort_var = "hash"
+        # Variable to use for genweight / sum_of_genw normalization
+        self.gen_weight_var = "weight"
+        # Variable to use for genweight * xs * lumi / sum_of_genw normalization
+        self.event_weight_var = "eventWeight"
+        # Variable to use for separating by sample
+        self.sample_var = "sample_name"
+        # Variable to use for separating by era
+        self.era_var = "sample_era"
 
         # End of filepath for files to pull using eras selection
         #  (doesn't matter if passing filepaths directly)
@@ -129,7 +143,7 @@ class DFDataset:
         self.new_all_vars = list(self.model_vars) + list(self.aux_vars_map.values())
 
         # Reuired aux variables for downstream tasks
-        self.necessary_aux_vars = sorted(['weight', 'eventWeight', 'sample_name', 'sample_era', 'hash'])
+        self.necessary_aux_vars = sorted([self.sort_var, self.gen_weight_var, self.event_weight_var, self.sample_var, self.era_var])
 
         # Number of classes
         self.n_classes = len(self.class_sample_map)
@@ -194,16 +208,16 @@ class DFDataset:
     def sample_reweighting(self, df: pd.DataFrame, sample_reweight: str|dict, reweight_var: str):
         if type(sample_reweight) is str and sample_reweight == 'none': return
         elif type(sample_reweight) is dict:
-            df_unique_era_tags = df[f'{self.aux_var_prefix}sample_era'].unique()
-            df_unique_sample_tags = df[f'{self.aux_var_prefix}sample_name'].unique()
+            df_unique_era_tags = df[f'{self.aux_var_prefix}{self.era_var}'].unique()
+            df_unique_sample_tags = df[f'{self.aux_var_prefix}{self.sample_var}'].unique()
             for sample_era_tag, reweight in sample_reweight.items():
                 sample_tag, era_tag = tuple(sample_era_tag.split('<>'))
                 df_era_tag = match_regex(era_tag, df_unique_era_tags)
                 df_sample_tag = match_regex(sample_tag, df_unique_sample_tags)
 
-                reweight_mask = df[f'{self.aux_var_prefix}sample_name'].eq(df_sample_tag)
+                reweight_mask = df[f'{self.aux_var_prefix}{self.sample_var}'].eq(df_sample_tag)
                 if era_tag.lower() != 'all':
-                    reweight_mask = np.logical_and(reweight_mask, df[f'{self.aux_var_prefix}sample_era'].eq(df_era_tag))
+                    reweight_mask = np.logical_and(reweight_mask, df[f'{self.aux_var_prefix}{self.era_var}'].eq(df_era_tag))
                 df.loc[reweight_mask, reweight_var] *= reweight
         else: raise NotImplementedError(f"Reweight method not yet implemented, use \'none\' or pass a dict.")
     def class_reweighting(self, df: pd.DataFrame, class_reweight: str|dict, reweight_var: str):
@@ -226,11 +240,11 @@ class DFDataset:
         df[f'{self.aux_var_prefix}label1D'] = class_idx
 
         # Reweighting eventWeight if improperly preprocessed
-        self.sample_reweighting(df, self.test_sample_reweighting, f'{self.aux_var_prefix}eventWeight')
+        self.sample_reweighting(df, self.test_sample_reweighting, f'{self.aux_var_prefix}{self.event_weight_var}')
 
         # Creating and reweighting eventWeightTrain for training
-        df[f'{self.aux_var_prefix}eventWeightTrain'] = df[f'{self.aux_var_prefix}eventWeight']
-        self.sample_reweighting(df, self.train_sample_reweighting, f'{self.aux_var_prefix}eventWeightTrain')
+        df[f'{self.aux_var_prefix}{self.event_weight_var}Train'] = df[f'{self.aux_var_prefix}{self.event_weight_var}']
+        self.sample_reweighting(df, self.train_sample_reweighting, f'{self.aux_var_prefix}{self.event_weight_var}Train')
 
 
     #############################################################
@@ -242,7 +256,7 @@ class DFDataset:
     def compute_zscore_standardization(self, merged_train_df: pd.DataFrame, fold: int):
         merged_train_df = merged_train_df.sample(frac=1, random_state=self.seed).reset_index(drop=True)
         merged_train_df = apply_logs(merged_train_df)
-        masked_x_sample = np.ma.array(merged_train_df, mask=(merged_train_df == FILL_VALUE))
+        masked_x_sample = np.ma.array(merged_train_df, mask=(merged_train_df == self.fill_value))
 
         x_mean = masked_x_sample.mean(axis=0)
         x_std = masked_x_sample.std(axis=0)
@@ -264,8 +278,8 @@ class DFDataset:
         zscore_std = eos.load_file_eos(dict, zscore_std_filepath)
         
         df = apply_logs(df)
-        df = (np.ma.array(df, mask=(df == FILL_VALUE)) - zscore_std['mean']) / zscore_std['std']
-        df = pd.DataFrame(df.filled(FILL_VALUE), columns=zscore_std['col'])
+        df = (np.ma.array(df, mask=(df == self.fill_value)) - zscore_std['mean']) / zscore_std['std']
+        df = pd.DataFrame(df.filled(self.fill_value), columns=zscore_std['col'])
 
 
     #############################################################
@@ -291,7 +305,7 @@ class DFDataset:
 
         self.compute_standardization(dfs, fold)
 
-        self.class_reweighting(pd.concat(dfs.values(), ignore_index=True), self.train_class_reweighting, f'{self.aux_var_prefix}eventWeightTrain')
+        self.class_reweighting(pd.concat(dfs.values(), ignore_index=True), self.train_class_reweighting, f'{self.aux_var_prefix}{self.event_weight_var}Train')
 
         for filepath in filepaths:
             standardized_df = self.apply_standardization(dfs[filepath], fold)
@@ -316,6 +330,9 @@ class DFDataset:
     
     #############################################################
     # Retrieving
+    def get_df(self, filepath: str):
+        return eos.load_file_eos(pd.DataFrame, filepath)
+    
     def get_all_train(self, syst_name: str='nominal', shuffle: bool=True):
         dfs = []
         for fold in range(self.n_folds): dfs.append(self.get_train(fold, syst_name=syst_name, shuffle=shuffle))
@@ -324,11 +341,11 @@ class DFDataset:
         filepaths = self.get_traintest_filepaths(fold, dataset="train", syst_name=syst_name)
 
         df = pd.concat(
-            [eos.load_file_eos(pd.DataFrame, filepath) for model_class in filepaths.keys() for filepath in filepaths[model_class]], 
+            [self.get_df(filepath) for model_class in filepaths.keys() for filepath in filepaths[model_class]], 
             ignore_index=True, join="inner"
         )
         
-        assert 'Data' not in set(df[f'{self.aux_var_prefix}sample_name'].unique().tolist()), f"Data is getting into train dataset... THIS IS VERY BAD"
+        assert 'Data' not in set(df[f'{self.aux_var_prefix}{self.sample_var}'].unique().tolist()), f"Data is getting into train dataset... THIS IS VERY BAD"
         
         if shuffle:
             rng = np.random.default_rng(seed=self.seed)
@@ -347,11 +364,38 @@ class DFDataset:
             filepaths = self.get_test_filepaths(fold, syst_name=syst_name, regex=regex)
 
         df = pd.concat(
-            [eos.load_file_eos(pd.DataFrame, filepath) for model_class in filepaths.keys() for filepath in filepaths[model_class]], 
+            [self.get_df(filepath) for model_class in filepaths.keys() for filepath in filepaths[model_class]], 
             ignore_index=True
         )
 
         return df
+    
+
+    #############################################################
+    # Save new version of DF
+    def sort_dfs(self, sorter: pd.DataFrame, sortee: pd.DataFrame):
+        sortee_order = sortee[f"{self.aux_var_prefix}{self.sort_var}"].argsort()
+        sorter_order = sorter[f"{self.aux_var_prefix}{self.sort_var}"].argsort()
+        sortee_reorder = np.argsort(sorter_order)
+
+        return sortee_order[sortee_reorder]
+    
+    def save_df(self, filepath: str, df: pd.DataFrame):
+        try: old_df = eos.load_file_eos(pd.DataFrame, filepath)
+        except: raise KeyError(f"ERROR: Filepath could not be loaded successfully, check that file exists before trying to modify it")
+
+        assert len(old_df) == len(df), "ERROR: Original DF and new DF have different number of rows, this function is intended to modify/add/remove columns. If you would like to change the selections and modify the number of rows, please make a new DFDataset"
+        new_df = df.copy()
+        if f"{self.aux_var_prefix}{self.sort_var}" not in new_df.columns: 
+            print(f"WARNING: Variable \'{f"{self.aux_var_prefix}{self.sort_var}"}\' not found in input DF, assuming identical ordering of the original and new DFs")
+            new_df[f"{self.aux_var_prefix}{self.sort_var}"] = old_df[f"{self.aux_var_prefix}{self.sort_var}"].to_numpy()
+        new_df = df.reset_index(drop=True).reindex(self.sort_dfs(old_df, df))
+        assert np.all(new_df[f"{self.aux_var_prefix}{self.sort_var}"].to_numpy() == old_df[f"{self.aux_var_prefix}{self.sort_var}"].to_numpy()), f"ERROR: Re-sort failed, cannot combine DFs"
+
+        for col in new_df.columns:
+            old_df.loc[:, col] = new_df.loc[:, col]
+
+        eos.save_file_eos(old_df, filepath, force=True)
     
     #############################################################
     # Retrieve train/test files

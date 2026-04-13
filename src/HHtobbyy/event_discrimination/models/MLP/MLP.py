@@ -1,4 +1,8 @@
+# Common Py packages
+import pandas as pd
+
 # ML packages
+from torch.utils.data import DataLoader
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 
@@ -60,14 +64,16 @@ class MLP(Model):
 
         # Test data predictions
         trainer.test(model, eval_data)
-    
-    def predict(self, fold: int, syst_name: str='nominal', regex: str|list[str]=''):
-        eval_data = self.modeldataset.get_test(fold, syst_name=syst_name, regex=regex)
-
+        
+    def predict_data(self, data: DataLoader, fold: int):
         # DNN model and trainer
         model, trainer = self.load_model_and_trainer(ckpt_path=self.modelconfig.get_ckpt_path(fold), eval=True)
 
-        predictions = trainer.predict(model, eval_data)[0]
+        predictions = trainer.predict(model, data)[0]
         predictions = [prediction.numpy(force=True) for prediction in predictions]
 
         return predictions
+    
+    def predict(self, fold: int, syst_name: str='nominal', regex: str|list[str]=''):
+        eval_data = self.modeldataset.get_test(fold, syst_name=syst_name, regex=regex)
+        return self.predict_data(eval_data, fold)
