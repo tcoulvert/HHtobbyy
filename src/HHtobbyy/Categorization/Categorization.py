@@ -100,4 +100,5 @@ class Categorization:
             new_row = [f'Merged folds - Cat {cat_idx}', best_fom] + [best_evals[name] for name in MC_names]
             table.add_row(new_row)
 
+        print(table)
         eos.save_file_eos(cats, os.path.join(self.catconfig.output_dirpath, self.catconfig.cat_filename))

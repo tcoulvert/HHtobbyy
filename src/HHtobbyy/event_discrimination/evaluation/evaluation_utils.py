@@ -10,7 +10,7 @@ from HHtobbyy.workspace_utils.retrieval_utils import format_class_names
 TRANSFORM_PREDS = [
     {
         'name': 'nD', 
-        'output': lambda class_names: ['D'+ formatted_class_name for formatted_class_name in format_class_names(class_names)], 
+        'output': lambda class_names: class_discriminator_columns(class_names), 
         'ROC_bkgeffs': lambda class_names: [1e-3 for _ in class_names],
         'func': lambda multibdt_output: multibdt_output,
         'cutdir': ['>', '<', '<', '<']
@@ -33,6 +33,11 @@ TRANSFORM_PREDS = [
 
 ################################
 
+
+def discriminator_columns(columns: list[str]):
+    return ['D'+column for column in columns]
+def class_discriminator_columns(class_names: list[str]):
+    return discriminator_columns(format_class_names(class_names))
 
 def transform_preds_options():
     return [transformation['name'] for transformation in TRANSFORM_PREDS]

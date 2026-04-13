@@ -73,7 +73,3 @@ class MLP(Model):
         predictions = [prediction.numpy(force=True) for prediction in predictions]
 
         return predictions
-    
-    def predict(self, fold: int, syst_name: str='nominal', regex: str|list[str]=''):
-        eval_data = self.modeldataset.get_test(fold, syst_name=syst_name, regex=regex)
-        return self.predict_data(eval_data, fold)
