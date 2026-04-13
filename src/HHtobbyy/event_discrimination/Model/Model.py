@@ -26,7 +26,7 @@ class Model(ABC):
         for fold in range(self.dfdataset.n_folds): 
             self.test(fold, syst_name=syst_name, regex=regex)
 
-    def predict_all_folds(self, syst_name: str='nominal', regex: str|list[str]='') -> np.ndarray:
+    def predict_all_folds(self, syst_name: str='nominal', regex: str|list[str]='') -> None:
         for fold in range(self.dfdataset.n_folds): 
             self.predict(fold, syst_name=syst_name, regex=regex)
 
