@@ -389,7 +389,7 @@ class DFDataset:
         if f"{self.aux_var_prefix}{self.sort_var}" not in new_df.columns: 
             print(f"WARNING: Variable \'{f"{self.aux_var_prefix}{self.sort_var}"}\' not found in input DF, assuming identical ordering of the original and new DFs")
             new_df[f"{self.aux_var_prefix}{self.sort_var}"] = old_df[f"{self.aux_var_prefix}{self.sort_var}"].to_numpy()
-        new_df = df.reset_index(drop=True).reindex(self.sort_dfs(old_df, df))
+        new_df = new_df.reindex(self.sort_dfs(old_df, new_df))
         assert np.all(new_df[f"{self.aux_var_prefix}{self.sort_var}"].to_numpy() == old_df[f"{self.aux_var_prefix}{self.sort_var}"].to_numpy()), f"ERROR: Re-sort failed, cannot combine DFs"
 
         for col in new_df.columns:

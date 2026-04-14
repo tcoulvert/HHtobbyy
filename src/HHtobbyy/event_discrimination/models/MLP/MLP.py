@@ -70,8 +70,6 @@ class MLP(Model):
         model, trainer = self.load_model_and_trainer(ckpt_path=self.modelconfig.get_ckpt_path(fold), eval=True)
 
         predictions = trainer.predict(model, data)
-        print(predictions)
         predictions = np.concatenate([prediction.numpy(force=True) for prediction in predictions])
-        print(predictions)
 
         return predictions
