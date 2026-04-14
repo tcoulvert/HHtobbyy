@@ -41,7 +41,7 @@ def check_train_filepaths(train_filepaths: list, eras: list, class_sample_map: d
         if not good_dataset_bool: break
     return good_dataset_bool
 
-def get_input_filepaths(eras: str|list[str], class_sample_map: dict, regex: str|list[str]=""):
+def get_input_filepaths(eras: str|list[str], class_sample_map: dict, regex: str|list[str]="", check_dataset: bool=False):
     if type(eras) is str: eras = get_era_filepaths(eras)
     input_filepaths = []
     
@@ -52,10 +52,10 @@ def get_input_filepaths(eras: str|list[str], class_sample_map: dict, regex: str|
             if match_sample(
                 sub_sample_filepath, 
                 {glob_name for glob_names in class_sample_map.values() for glob_name in glob_names}
-            ) is not None:
+            ) is not None or match_sample(sub_sample_filepath, ['Data']):
                 input_filepaths.append(sample_filepath)
 
-    assert check_train_filepaths(input_filepaths, eras, class_sample_map), f"Train dataset is missing some samples for some eras."
+    if check_dataset: assert check_train_filepaths(input_filepaths, eras, class_sample_map), f"Train dataset is missing some samples for some eras."
     
     return input_filepaths
 

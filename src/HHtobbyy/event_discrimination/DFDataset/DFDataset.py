@@ -184,12 +184,14 @@ class DFDataset:
         assert all(necessary_aux_var in pq_schema.names for necessary_aux_var in self.necessary_aux_vars), f"ERROR: Required to have all the necessary aux vars {self.necessary_aux_vars} present for downstream processing and tracking. Currently missing {set(self.necessary_aux_vars) - set(pq_schema.names)}"
         assert all(var in pq_schema.names for var in self.all_vars), f"ERROR: Requested vars do not exists in input data. Currently missing {set(self.all_vars) - set(pq_schema.names)}"
 
-        col_dtype_map = {
-            var_map[name]: dtype.to_pandas_dtype()
-            for name, dtype in zip(pq_schema.names, pq_schema.types)
-            for var_map in [dict(zip(self.model_vars, self.model_vars)), self.aux_vars_map]
-            if name in var_map
-        }
+
+        col_dtype_map = {}
+        for var_map in [dict(zip(self.model_vars, self.model_vars)), self.aux_vars_map]:
+            for name, dtype in zip(pq_schema.names, pq_schema.types):
+                if name not in var_map: continue
+                try: col_dtype_map[var_map[name]] = dtype.to_pandas_dtype()
+                except: col_dtype_map[var_map[name]] = 'float64'
+        
         df = pd.DataFrame(columns=self.new_all_vars).astype(col_dtype_map)
         for pq_batch in pq_file.iter_batches(batch_size=self.pq_batch_size, columns=list(set(self.all_vars))):
             df_batch = pq_batch.to_pandas()
