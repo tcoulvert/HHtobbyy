@@ -12,6 +12,8 @@ from .categorization_utils import *
 
 class CategorizationConfig:
     def __init__(self, dfdataset: DFDataset, config: dict):
+        self.dfdataset = dfdataset
+        
         # DFDataset dirpath -- store the categorization nearby
         self.output_dirpath = os.path.join(dfdataset.output_dirpath, 'categories')
 
