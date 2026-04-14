@@ -40,8 +40,8 @@ class Categorization:
         return df.loc[sr_cut_mask, f"{self.dfdataset.aux_var_prefix}eventWeight"].sum()
     
     def get_opt_df(self, df: pd.DataFrame):
-        disc_columns = class_discriminator_columns
-        nD_predictions = df[disc_columns].to_numpy()
+        disc_columns = class_discriminator_columns(self.dfdataset.class_sample_map.keys())
+        nD_predictions = df[disc_columns].to_numpy(copy=True)
         trns_predictions = self.catconfig.transform_func(nD_predictions)
         for i, trans_name in enumerate(self.catconfig.transform_names):
             df[trans_name] = trns_predictions[:, i]
@@ -50,7 +50,7 @@ class Categorization:
     def run(self):
         MCsignal = self.get_opt_df(self.dfdataset.get_all_test(regex=self.catconfig.signal_samples))
         MCres = self.get_opt_df(self.dfdataset.get_all_test(regex=self.catconfig.res_samples))
-        MCnonRes = self.get_opt_df(elf.dfdataset.get_all_test(regex=self.catconfig.nonres_samples))
+        MCnonRes = self.get_opt_df(self.dfdataset.get_all_test(regex=self.catconfig.nonres_samples))
         Data = self.get_opt_df(self.dfdataset.get_all_test(regex='Data'))
 
         MC_names = sorted(pd.unique(MCres.loc[:,f"{self.dfdataset.aux_var_prefix}sample_name"].tolist()))
