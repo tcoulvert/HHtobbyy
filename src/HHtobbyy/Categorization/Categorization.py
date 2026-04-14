@@ -53,7 +53,7 @@ class Categorization:
         MCnonRes = self.get_opt_df(self.dfdataset.get_all_test(regex=self.catconfig.nonres_samples))
         Data = self.get_opt_df(self.dfdataset.get_all_test(regex='Data'))
 
-        MC_names = sorted(pd.unique(MCres.loc[:,f"{self.dfdataset.aux_var_prefix}sample_name"].tolist()))
+        MC_names = sorted(pd.unique(MCres.loc[:,f"{self.dfdataset.aux_var_prefix}sample_name"]).tolist())
         field_names = ['Category', 'FoM (s/b)'] + MC_names + ['nonRes MC -- SB fit', 'Data -- SB fit']
         table = pt.PrettyTable(field_names=field_names)
 
