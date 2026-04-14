@@ -11,8 +11,9 @@ import eos_utils as eos
 
 # Workspace packages
 from HHtobbyy.event_discrimination.DFDataset import DFDataset
-from HHtobbyy.Categorization import CategorizationConfig
-from HHtobbyy.Categorization.categorization_utils import *
+from HHtobbyy.event_discrimination.evaluation import class_discriminator_columns
+from .CategorizationConfig import CategorizationConfig
+from .categorization_utils import *
 
 ################################
 
@@ -37,12 +38,20 @@ class Categorization:
     def get_yield_from_cut(self, df: pd.DataFrame, cut: list):
         sr_cut_mask = self.get_sr_cut_mask(df, cut)
         return df.loc[sr_cut_mask, f"{self.dfdataset.aux_var_prefix}eventWeight"].sum()
+    
+    def get_opt_df(self, df: pd.DataFrame):
+        disc_columns = class_discriminator_columns
+        nD_predictions = df[disc_columns].to_numpy()
+        trns_predictions = self.catconfig.transform_func(nD_predictions)
+        for i, trans_name in enumerate(self.catconfig.transform_names):
+            df[trans_name] = trns_predictions[:, i]
+        return df
 
     def run(self):
-        MCsignal = self.dfdataset.get_all_test(regex=self.catconfig.signal_samples)
-        MCres = self.dfdataset.get_all_test(regex=self.catconfig.res_samples)
-        MCnonRes = self.dfdataset.get_all_test(regex=self.catconfig.nonres_samples)
-        Data = self.dfdataset.get_all_test(regex='Data')
+        MCsignal = self.get_opt_df(self.dfdataset.get_all_test(regex=self.catconfig.signal_samples))
+        MCres = self.get_opt_df(self.dfdataset.get_all_test(regex=self.catconfig.res_samples))
+        MCnonRes = self.get_opt_df(elf.dfdataset.get_all_test(regex=self.catconfig.nonres_samples))
+        Data = self.get_opt_df(self.dfdataset.get_all_test(regex='Data'))
 
         MC_names = sorted(pd.unique(MCres.loc[:,f"{self.dfdataset.aux_var_prefix}sample_name"].tolist()))
         field_names = ['Category', 'FoM (s/b)'] + MC_names + ['nonRes MC -- SB fit', 'Data -- SB fit']
@@ -50,9 +59,7 @@ class Categorization:
 
         def get_prev_cuts(cats_: dict):
             if len(cats_) == 0: return None
-            prev_cuts = []
-            for cat_ in cats_.values(): prev_cuts.apend(cat_['cut'])
-            return prev_cuts
+            return [cat_['cut'] for cat_ in cats_.values()]
 
         cats = {}
         signal_mask, res_mask, nonRes_mask, data_mask = (
@@ -62,12 +69,8 @@ class Categorization:
         for cat_idx in range(1, self.catconfig.n_cats+1):
             prev_cut = get_prev_cuts(cats)
             best_fom, best_cut = self.catconfig.get_catmethod()(
-                MCsignal.loc[signal_mask, self.catconfig.columns],
-                MCres.loc[res_mask, self.catconfig.columns],
-                MCnonRes.loc[nonRes_mask, self.catconfig.columns],
-                Data.loc[data_mask, self.catconfig.columns],
-                self.catconfig,
-                prev_cut
+                MCsignal.loc[signal_mask], MCres.loc[res_mask], MCnonRes.loc[nonRes_mask],
+                self.catconfig, prev_cut
             )
 
             best_evals = {
@@ -79,11 +82,11 @@ class Categorization:
                 for name in pd.unique(MCres[f"{self.dfdataset.aux_var_prefix}sample_name"])
             } + {
                 name: est_yield(
-                    df.loc[self.get_sr_cut_mask(df, best_cut), f"{self.dfdataset.aux_var_prefix}mass"],
-                    df.loc[self.get_sr_cut_mask(df, best_cut), f"{self.dfdataset.aux_var_prefix}eventWeight"],
+                    df.loc[np.logical_and(mask, self.get_sr_cut_mask(df, best_cut)), f"{self.dfdataset.aux_var_prefix}mass"],
+                    df.loc[np.logical_and(mask, self.get_sr_cut_mask(df, best_cut)), f"{self.dfdataset.aux_var_prefix}eventWeight"],
                     self.catconfig.fit_bins, self.catconfig.SR_masscut
                 )
-                for name, df in zip(['nonRes MC -- SB fit', 'Data -- SB fit'], [MCnonRes, Data])
+                for name, df, mask in zip(['nonRes MC -- SB fit', 'Data -- SB fit'], [MCnonRes, Data], [nonRes_mask, data_mask])
             }
 
             cats[f'cat{cat_idx}'] = {
@@ -91,10 +94,8 @@ class Categorization:
             }
 
             signal_mask, res_mask, nonRes_mask, data_mask = (
-                self.apply_cut(MCsignal, best_cut, anti=True), 
-                self.apply_cut(MCres, best_cut, anti=True),
-                self.apply_cut(MCnonRes, best_cut, anti=True), 
-                self.apply_cut(Data, best_cut, anti=True),
+                self.apply_cut(MCsignal, best_cut, anti=True), self.apply_cut(MCres, best_cut, anti=True), 
+                self.apply_cut(MCnonRes, best_cut, anti=True), self.apply_cut(Data, best_cut, anti=True),
             )
 
             new_row = [f'Merged folds - Cat {cat_idx}', best_fom] + [best_evals[name] for name in MC_names]

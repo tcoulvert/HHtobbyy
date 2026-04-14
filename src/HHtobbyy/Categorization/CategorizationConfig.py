@@ -63,7 +63,7 @@ class CategorizationConfig:
     
 
     def get_transform(self):
-        self.transform_names, _, self.cutdir = transform_preds_func(self.dfdataset.class_sample_map, self.discriminator)
+        self.transform_names, self.transform_func, self.cutdir = transform_preds_func(self.dfdataset.class_sample_map, self.discriminator)
         self.n_dims = len(self.transform_names)
 
     def get_optcolumns(self):
@@ -89,7 +89,7 @@ class CategorizationConfig:
         self.save_config()
 
     def toJSON(self):
-        return {key: value for key, value in self.__dict__.items()}
+        return {key: value for key, value in self.__dict__.items() if key != 'transform_func'}
 
     def save_config(self):
         assert self.cat_filename.endswith('.json'), f"ERROR: Currently only supporting \'json\' type config serializations"
