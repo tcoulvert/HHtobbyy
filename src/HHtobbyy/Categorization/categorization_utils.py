@@ -125,9 +125,7 @@ def brute_force(
             # print(f"signal yield in SR = {np.sum(signal_sr_weights[signal_sr_bool])}, res bkg yield in SR = {np.sum(bkg_sr_weights[bkg_sr_bool])}, non-res bkg yield in SB = {np.sum(bkg_sideband_weights[bkg_sideband_bool])}")
             # print('='*60)
 
-            foms[i] = fom(
-                np.sum(signal_sr_weights[signal_sr_bool]), np.sum(res_sr_weights[res_sr_bool]) + sb_est_yield,
-            )
+            foms[i] = fom(np.sum(signal_sr_weights[signal_sr_bool]), np.sum(res_sr_weights[res_sr_bool]) + sb_est_yield)
         else: foms[i] = 0.
 
         if i > 0 and (foms[i-1] > foms[i] or (foms[i-1] == foms[i] and foms[i-1] != 0.)):

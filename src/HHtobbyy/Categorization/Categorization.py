@@ -74,19 +74,22 @@ class Categorization:
             )
 
             best_evals = {
-                name: self.get_yield_from_cut(
-                    MCres.loc[
-                        np.logical_and(res_mask, MCres[f"{self.dfdataset.aux_var_prefix}sample_name"].eq(name))
-                    ], best_cut
-                )
-                for name in pd.unique(MCres[f"{self.dfdataset.aux_var_prefix}sample_name"])
-            } + {
-                name: est_yield(
-                    df.loc[np.logical_and(mask, self.get_sr_cut_mask(df, best_cut)), f"{self.dfdataset.aux_var_prefix}mass"],
-                    df.loc[np.logical_and(mask, self.get_sr_cut_mask(df, best_cut)), f"{self.dfdataset.aux_var_prefix}eventWeight"],
-                    self.catconfig.fit_bins, self.catconfig.SR_masscut
-                )
-                for name, df, mask in zip(['nonRes MC -- SB fit', 'Data -- SB fit'], [MCnonRes, Data], [nonRes_mask, data_mask])
+                **{
+                    name: self.get_yield_from_cut(
+                        MCres.loc[
+                            np.logical_and(res_mask, MCres[f"{self.dfdataset.aux_var_prefix}sample_name"].eq(name))
+                        ], best_cut
+                    )
+                    for name in pd.unique(MCres[f"{self.dfdataset.aux_var_prefix}sample_name"])
+                },
+                **{
+                    name: est_yield(
+                        df.loc[np.logical_and(mask, self.get_sr_cut_mask(df, best_cut)), f"{self.dfdataset.aux_var_prefix}mass"],
+                        df.loc[np.logical_and(mask, self.get_sr_cut_mask(df, best_cut)), f"{self.dfdataset.aux_var_prefix}eventWeight"],
+                        self.catconfig.fit_bins, self.catconfig.SR_masscut
+                    )
+                    for name, df, mask in zip(['nonRes MC -- SB fit', 'Data -- SB fit'], [MCnonRes, Data], [nonRes_mask, data_mask])
+                }
             }
 
             cats[f'cat{cat_idx}'] = {
