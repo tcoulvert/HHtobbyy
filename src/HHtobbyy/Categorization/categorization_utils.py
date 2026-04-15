@@ -153,14 +153,14 @@ def grid_search(MCsignal: pd.DataFrame, MCres: pd.DataFrame, MCnonRes: pd.DataFr
     # Signal events inside SR
     signal_sr_mask = mass_cut(MCsignal, catconfig.SR_masscut, catconfig.dfdataset.aux_var_prefix)
     signal_sr_scores = MCsignal.loc[signal_sr_mask, catconfig.transform_names].to_numpy()
-    signal_sr_weights = MCsignal.loc[signal_sr_mask, 'eventWeight'].to_numpy()
+    signal_sr_weights = MCsignal.loc[signal_sr_mask, f'{catconfig.dfdataset.aux_var_prefix}eventWeight'].to_numpy()
     # Res events inside SR
     res_sr_mask = mass_cut(MCres, catconfig.SB_masscut, catconfig.dfdataset.aux_var_prefix)
     res_sr_scores = MCres.loc[res_sr_mask, catconfig.transform_names].to_numpy()
     res_sr_weights = MCres.loc[res_sr_mask, f'{catconfig.dfdataset.aux_var_prefix}eventWeight'].to_numpy()
     # nonRes events in SB
     nonres_sb_mask = mass_cut(MCnonRes, catconfig.SB_masscut, catconfig.dfdataset.aux_var_prefix)
-    nonres_sb_scores = MCres.loc[nonres_sb_mask, catconfig.transform_names].to_numpy()
+    nonres_sb_scores = MCnonRes.loc[nonres_sb_mask, catconfig.transform_names].to_numpy()
     nonres_sb_weights = MCnonRes.loc[nonres_sb_mask, f'{catconfig.dfdataset.aux_var_prefix}eventWeight'].to_numpy()
     nonres_sb_mass = MCnonRes.loc[nonres_sb_mask, f'{catconfig.dfdataset.aux_var_prefix}mass'].to_numpy()
 
@@ -183,7 +183,7 @@ def grid_search(MCsignal: pd.DataFrame, MCres: pd.DataFrame, MCnonRes: pd.DataFr
             res_sr_scores, res_sr_weights, 
             nonres_sb_scores, nonres_sb_weights, nonres_sb_mass,
             # Cut options
-            np.array(catconfig.cutdir),
+            np.array(catconfig.cutdir), catconfig.fit_bins, catconfig.SR_masscut,
             # Optimization options
             catconfig.get_fom(),
             # Output arrays
