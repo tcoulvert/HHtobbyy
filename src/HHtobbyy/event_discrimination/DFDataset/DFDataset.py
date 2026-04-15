@@ -204,7 +204,6 @@ class DFDataset:
         assert not df.isnull().values.any(), f"ERROR: DFDataset contains NaN values, something likely went wrong with the DF mergings"
         assert set(self.model_vars + list(self.aux_vars_map.values())).issubset(set(df.columns)), f"ERROR: DFDataset missing necessary columns: {set(self.model_vars + list(self.aux_vars_map.values())) - set(df.columns)}"
 
-
     #############################################################
     # Additional variables
     def sample_reweighting(self, df: pd.DataFrame, sample_reweight: str|dict, reweight_var: str):

@@ -48,10 +48,10 @@ class Categorization:
         return df
 
     def run(self):
-        MCsignal = self.get_opt_df(self.dfdataset.get_all_test(regex=self.catconfig.signal_samples))
-        MCres = self.get_opt_df(self.dfdataset.get_all_test(regex=self.catconfig.res_samples))
-        MCnonRes = self.get_opt_df(self.dfdataset.get_all_test(regex=self.catconfig.nonres_samples))
-        Data = self.get_opt_df(self.dfdataset.get_all_test(regex='Data'))
+        MCsignal = self.get_opt_df(self.dfdataset.get_all_test(regex=['preEE*'+ sampl for sampl in self.catconfig.signal_samples]))
+        MCres = self.get_opt_df(self.dfdataset.get_all_test(regex=['preEE*'+ sampl for sampl in self.catconfig.res_samples]))
+        MCnonRes = self.get_opt_df(self.dfdataset.get_all_test(regex=['preEE*'+ sampl for sampl in self.catconfig.nonres_samples]))
+        Data = self.get_opt_df(self.dfdataset.get_all_test(regex='2022*Data'))
 
         MC_names = sorted(pd.unique(MCres.loc[:,f"{self.dfdataset.aux_var_prefix}sample_name"]).tolist())
         field_names = ['Category', 'FoM (s/b)'] + MC_names + ['nonRes MC -- SB fit', 'Data -- SB fit']

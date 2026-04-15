@@ -109,7 +109,7 @@
         "2024<>!DDQCDGJet*GJet": 2.6
     },
 
-    "class_sample_reweighting": {
+    "train_class_reweighting": {
         "ttH + bbH": [100, ["ttH + bbH"]],
         "VH": [100, ["VH"]],
         "ggF HH": [100, ["ttH + bbH", "VH", "nonRes + ggFH + VBFH"]]
