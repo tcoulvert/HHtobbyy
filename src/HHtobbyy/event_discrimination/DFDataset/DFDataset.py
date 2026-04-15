@@ -212,7 +212,7 @@ class DFDataset:
             df_unique_era_tags = df[f'{self.aux_var_prefix}{self.era_var}'].unique()
             df_unique_sample_tags = df[f'{self.aux_var_prefix}{self.sample_var}'].unique()
             for sample_era_tag, reweight in sample_reweight.items():
-                sample_tag, era_tag = tuple(sample_era_tag.split('<>'))
+                era_tag, sample_tag = tuple(sample_era_tag.split('<>'))
                 df_era_tag = match_regex(era_tag, df_unique_era_tags)
                 df_sample_tag = match_regex(sample_tag, df_unique_sample_tags)
 
@@ -227,7 +227,7 @@ class DFDataset:
             assert set(class_reweight.keys()).issubset(set(self.class_sample_map.keys())), f"ERROR: Input class_reweight dictionary has target classes not in the class_sample_map: {set(class_reweight.keys()) - set(self.class_sample_map.keys())}"
             assert set([class_name for value in class_reweight.values() for class_name in value[1]]).issubset(set(self.class_sample_map.keys())), f"ERROR: Input class_reweight dictionary has reference classes not in the class_sample_map: {set(class_reweight.keys()) - set(self.class_sample_map.keys())}"
             sample_reweight = {
-                sample_tag: reweight * (
+                'all<>'+sample_tag: reweight * (
                     df.loc[df[f'{self.aux_var_prefix}label1D'].isin([i for i, ref_class_tag in enumerate(self.class_sample_map.keys()) if ref_class_tag in ref_class_tags]), reweight_var].sum()
                     / df.loc[df[f'{self.aux_var_prefix}label1D'].eq(list(self.class_sample_map).index(class_tag)), reweight_var].sum()
                 )
