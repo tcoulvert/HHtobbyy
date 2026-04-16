@@ -54,7 +54,8 @@ def ascii_hist(x, bins=10, weights=None, fit=None):
             xi = '{0: <8.4g}'.format(xi).ljust(10)
             print('{0}| {1}'.format(xi,bar))
 
-
+#############################################################
+# Sideband fit functions for nonRes bkg estimaton
 def exp_func(x, a, b):
     return a * np.exp(b * x)
 def sd_hist(mass: np.ndarray, weight: np.ndarray, fit_bins: list[float]):
@@ -113,29 +114,12 @@ def brute_force(
         if i < jump_to_cut: continue
 
         nonres_sb_bool = apply_cuts(nonres_lt_scores, nonres_gt_scores, i)
-        #### BEGIN REMOVE BLOCK ####
-        signal_sr_bool = apply_cuts(signal_lt_scores, signal_gt_scores, i)
-        res_sr_bool = apply_cuts(res_lt_scores, res_gt_scores, i)
-        print(f"{i}: {cuts[i]}, nonres SB yield = {np.sum(nonres_sb_weights[nonres_sb_bool])}")
-        print(f"{i}: {cuts[i]}, signal SR yield = {np.sum(signal_sr_weights[signal_sr_bool])}")
-        print(f"{i}: {cuts[i]}, res SR yield = {np.sum(res_sr_weights[res_sr_bool])}")
-        #### END REMOVE BLOCK ####
 
         if np.sum(nonres_sb_weights[nonres_sb_bool]) > 5.3:
             signal_sr_bool = apply_cuts(signal_lt_scores, signal_gt_scores, i)
             res_sr_bool = apply_cuts(res_lt_scores, res_gt_scores, i)
 
             sb_est_yield = est_yield(nonres_sb_mass[nonres_sb_bool], nonres_sb_weights[nonres_sb_bool], fit_bins, SR_masscut)
-            #### BEGIN REMOVE BLOCK ####
-            print('='*60)
-            print(cuts[i])
-            _hist_, params = exp_mass_fit(nonres_sb_mass[nonres_sb_bool], nonres_sb_weights[nonres_sb_bool], fit_bins)
-            ascii_hist(nonres_sb_mass[nonres_sb_bool], bins=np.arange(fit_bins[0], fit_bins[1], fit_bins[2]), weights=nonres_sb_weights[nonres_sb_bool], fit=exp_func(_hist_.axes.centers[0]-_hist_.axes.centers[0][0], a=params[0], b=params[1]))
-            print(f"y = {params[0]:.2f}e^({params[1]:.2f}x)")
-            print(f"  -> est. non-res bkg yield in SR = {sb_est_yield}")
-            print(f"signal yield in SR = {np.sum(signal_sr_weights[signal_sr_bool])}, res bkg yield in SR = {np.sum(nonres_sb_weights[nonres_sb_bool])}, non-res bkg yield in SB = {np.sum(nonres_sb_weights[nonres_sb_bool])}")
-            print('='*60)
-            #### END REMOVE BLOCK ####
 
             foms[i] = fom(np.sum(signal_sr_weights[signal_sr_bool]), np.sum(res_sr_weights[res_sr_bool]) + sb_est_yield)
         else: foms[i] = 0.
