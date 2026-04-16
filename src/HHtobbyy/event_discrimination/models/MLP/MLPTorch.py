@@ -1,10 +1,10 @@
-from torch import optim, nn
+from torch import optim, nn, Tensor
 from torch.nn import functional as F
 import pytorch_lightning as pl
 
 
 class MLPTorch(pl.LightningModule):
-    def __init__(self, input_size, num_layers, num_nodes, output_size, dropout_prob, class_weights=None):
+    def __init__(self, input_size, num_layers, num_nodes, output_size, dropout_prob, class_weights: Tensor=None, **kwargs):
         super(MLPTorch, self).__init__()
         layers = []
 

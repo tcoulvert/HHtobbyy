@@ -185,7 +185,7 @@ def grid_search(MCsignal: pd.DataFrame, MCres: pd.DataFrame, MCnonRes: pd.DataFr
         cuts = np.array(ak.to_list(ak.cartesian(steps, axis=0)))
         if prev_cuts is not None:
             cuts = np.array([cut for cut in cuts if all((cut[i] < prev_cut[i] if catconfig.cutdir[i] == '>' else cut[i] > prev_cut[i]) for prev_cut in prev_cuts for i in range(len(prev_cut)))])
-            foms = -np.ones(np.shape(cuts)[0])
+        foms = -np.ones(np.shape(cuts)[0])
 
         fom, cut = brute_force(
             # Input NPs
