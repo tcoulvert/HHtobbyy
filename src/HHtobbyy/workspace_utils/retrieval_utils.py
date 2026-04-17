@@ -2,11 +2,27 @@
 import glob
 import os
 import re
+import time
+from threading import Thread 
 
 ################################
 
 
 FILL_VALUE = -999
+
+#############################################################
+def multifold(func, args, n_folds, parallel: bool=False, condor: dict={}):
+    for fold in range(n_folds):
+        if parallel: 
+            thread = Thread(target=func, name=f"Fold {fold}", args=(fold)+args)
+            thread.start()
+            time.sleep(30)
+        elif condor != {}:
+            raise NotImplementedError(f"Multifold via Condor not yet implemented, use \'iterative\' or set \'parallel\' to True for multithreading.")
+        else:
+            func(**args)
+    if parallel: thread.join()  # Joins final thread to block code until all functions finished
+
 
 #############################################################
 def get_era_filepaths(input_eras: str, split_data_mc_eras: bool=False):

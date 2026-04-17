@@ -1,6 +1,5 @@
 # Stdlib packages
 from abc import ABC, abstractmethod
-from threading import Thread
 
 # Common Py packages
 import numpy as np
@@ -10,6 +9,7 @@ import pandas as pd
 from HHtobbyy.event_discrimination.DFDataset import DFDataset
 from HHtobbyy.event_discrimination.Model import ModelConfig, ModelDataset
 from HHtobbyy.event_discrimination.evaluation.evaluation_utils import class_discriminator_columns
+from HHtobbyy.workspace_utils import multifold
 
 ################################
 
@@ -19,22 +19,14 @@ class Model(ABC):
     modeldataset: ModelDataset
     modelconfig: ModelConfig
 
-    def train_all_folds(self, parallel: bool=False) -> None:
-        for fold in range(self.dfdataset.n_folds):
-            if parallel: 
-                thread = Thread(target=self.train, name=f"Fold {fold}", args=(fold, ))
-                thread.start()
-            else:
-                self.train(fold)
-        thread.join()  # Joins final thread to pause code until all training finished
+    def train_all_folds(self, parallel: bool=False, condor: dict={}) -> None:
+        multifold(self.train, (), self.dfdataset.n_folds, parallel=parallel, condor=condor)
 
-    def test_all_folds(self, syst_name: str='nominal', regex: str|list[str]='') -> np.ndarray:
-        for fold in range(self.dfdataset.n_folds): 
-            self.test(fold, syst_name=syst_name, regex=regex)
+    def test_all_folds(self, syst_name: str='nominal', regex: str|list[str]='', parallel: bool=False, condor: dict={}) -> np.ndarray:
+        multifold(self.test, (syst_name, regex), self.dfdataset.n_folds, parallel=parallel, condor=condor)
 
     def predict_all_folds(self, syst_name: str='nominal', regex: str|list[str]='', **model_kwargs) -> None:
-        for fold in range(self.dfdataset.n_folds): 
-            self.predict(fold, syst_name=syst_name, regex=regex, model_kwargs=model_kwargs)
+        multifold(self.predict, (syst_name, regex, model_kwargs), self.dfdataset.n_folds, parallel=parallel, condor=condor)
 
     @abstractmethod
     def train(self, fold: int) -> None:

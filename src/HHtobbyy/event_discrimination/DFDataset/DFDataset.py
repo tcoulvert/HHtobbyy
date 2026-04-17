@@ -19,7 +19,7 @@ from HHtobbyy.event_discrimination.DFDataset.DFDataset_utils import (
     no_standardize, apply_logs, map_filepath_to_class, make_output_filepath
 )
 from HHtobbyy.workspace_utils.retrieval_utils import (
-    FILL_VALUE, match_sample, match_regex
+    FILL_VALUE, match_sample, match_regex, multifold
 )
 
 
@@ -295,9 +295,9 @@ class DFDataset:
 
     #############################################################
     # Building
-    def make_all_train(self, filepaths: list):
-        for fold in range(self.n_folds): self.make_train(filepaths, fold)
-    def make_train(self, filepaths: list, fold: int):
+    def make_all_train(self, filepaths: list, parallel: bool=False, condor: dict={}):
+        multifold(self.make_train, (filepaths, ), self.n_folds, parallel=parallel, condor=condor)
+    def make_train(self, fold: int, filepaths: list):
         assert fold >= 0 and fold < self.n_folds, f"ERROR: Expected a fold index between 0 and {self.n_folds}, received {fold}"
 
         dfs = {}
@@ -322,9 +322,9 @@ class DFDataset:
             self.good_df(standardized_df)
             eos.save_file_eos(standardized_df, make_output_filepath(filepath[filepath.find(self.base_filepath):], self.output_dirpath, f"train{fold}"))
 
-    def make_all_test(self, filepaths: list, force: bool=False):
-        for fold in range(self.n_folds): self.make_test(filepaths, fold, force=force)
-    def make_test(self, filepaths: list, fold: int, force: bool=False):
+    def make_all_test(self, filepaths: list, force: bool=False, parallel: bool=False, condor: dict={}):
+        multifold(self.make_test, (filepaths, force), self.n_folds, parallel=parallel, condor=condor)
+    def make_test(self, fold: int, filepaths: list, force: bool=False):
         assert fold >= 0 and fold < self.n_folds, f"ERROR: Expected a fold index between 0 and {self.n_folds}, received {fold}"
 
         for filepath in filepaths:
