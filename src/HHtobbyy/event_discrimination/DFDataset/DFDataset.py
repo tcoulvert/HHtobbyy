@@ -209,34 +209,26 @@ class DFDataset:
     def sample_reweighting(self, df: pd.DataFrame, sample_reweight: str|dict, reweight_var: str):
         if type(sample_reweight) is str and sample_reweight == 'none': return
         elif type(sample_reweight) is dict:
-            print(sample_reweight)
             df_unique_era_tags = df[f'{self.aux_var_prefix}{self.era_var}'].unique()
             df_unique_sample_tags = df[f'{self.aux_var_prefix}{self.sample_var}'].unique()
             for sample_era_tag, reweight in sample_reweight.items():
                 era_tag, sample_tag = tuple(sample_era_tag.split('<>'))
-                print(f"{sample_era_tag}: {reweight}")
-                print(era_tag, ', ', sample_tag)
                 assert era_tag != '' and sample_tag != '', f"ERROR: Specified era or sample are empty, this will match to a single random sample. If you'd like to match to everything use the keywor \'all\'"
                 df_era_tag = match_regex(era_tag, df_unique_era_tags)
                 df_sample_tag = match_regex(sample_tag, df_unique_sample_tags)
-                print(df_unique_era_tags)
-                print(df_unique_sample_tags)
-                print(df_era_tag)
-                print(df_sample_tag)
 
                 reweight_mask = df[f'{self.aux_var_prefix}{self.sample_var}'].eq(df_sample_tag)
                 if era_tag.lower() != 'all':
                     reweight_mask = np.logical_and(reweight_mask, df[f'{self.aux_var_prefix}{self.era_var}'].eq(df_era_tag))
-                print(f"sum before weighting = {df.loc[reweight_mask, reweight_var].sum()}")
                 df.loc[reweight_mask, reweight_var] *= reweight
-                print(f"sum after weighting = {df.loc[reweight_mask, reweight_var].sum()}")
         else: raise NotImplementedError(f"Reweight method not yet implemented, use \'none\' or pass a dict.")
-    def class_reweighting(self, df: pd.DataFrame, class_reweight: str|dict, reweight_var: str):
+    def class_reweighting(self, dfs: dict[str, pd.DataFrame], class_reweight: str|dict, reweight_var: str):
         if type(class_reweight) is str and class_reweight == 'none': return
         elif type(class_reweight) is dict:
             assert set(class_reweight.keys()).issubset(set(self.class_sample_map.keys())), f"ERROR: Input class_reweight dictionary has target classes not in the class_sample_map: {set(class_reweight.keys()) - set(self.class_sample_map.keys())}"
             assert set([class_name for value in class_reweight.values() for class_name in value[1]]).issubset(set(self.class_sample_map.keys())), f"ERROR: Input class_reweight dictionary has reference classes not in the class_sample_map: {set(class_reweight.keys()) - set(self.class_sample_map.keys())}"
             for class_tag, (reweight, ref_class_tags) in class_reweight.items():
+                df = pd.concat(dfs.values(), ignore_index=True)  # Re-concat to account for changing scales of classes
                 sample_tags = pd.unique(df.loc[df[f'{self.aux_var_prefix}label1D'].eq(list(self.class_sample_map).index(class_tag)), f'{self.aux_var_prefix}{self.sample_var}'])
                 sample_reweight = {
                     'all<>'+sample_tag: reweight * (
@@ -245,7 +237,7 @@ class DFDataset:
                     )
                     for sample_tag in sample_tags
                 }
-                self.sample_reweighting(df, sample_reweight, reweight_var)
+                for _df_ in dfs.values(): self.sample_reweighting(_df_, sample_reweight, reweight_var)
         else: raise NotImplementedError(f"Reweight method not yet implemented, use \'none\' or pass a dict.")
 
     def add_vars(self, df: pd.DataFrame, class_idx: int):
@@ -310,18 +302,20 @@ class DFDataset:
 
         dfs = {}
         for filepath in filepaths:
-            print('-'*60)
-            print(filepath)
             dfs[filepath] = self.make_df(filepath)
             mask = self.train_mask(dfs[filepath], fold)
             dfs[filepath] = dfs[filepath].loc[mask].reset_index(drop=True)
+
             self.add_vars(dfs[filepath], map_filepath_to_class(self.class_sample_map, filepath[filepath.find(self.base_filepath):]))
 
         self.compute_standardization(dfs, fold)
 
-        print('-'*60)
-        print('class reweighting')
-        self.class_reweighting(pd.concat(dfs.values(), ignore_index=True), self.train_class_reweighting, f'{self.aux_var_prefix}{self.event_weight_var}Train')
+        # print('-'*60)
+        # print('class reweighting')
+        # concat_df = pd.concat(dfs.values(), ignore_index=True)
+        # for filepath, _df_ in dfs.items():
+        #     print(f"sum eventWeightTrain before class weighting for file {filepath}\n   = {_df_.loc[:, 'AUX_eventWeightTrain'].sum()}")
+        self.class_reweighting(dfs, self.train_class_reweighting, f'{self.aux_var_prefix}{self.event_weight_var}Train')
 
         for filepath in filepaths:
             standardized_df = self.apply_standardization(dfs[filepath], fold)

@@ -1,5 +1,6 @@
 # Stdlib packages
 from abc import ABC, abstractmethod
+from threading import Thread
 
 # Common Py packages
 import numpy as np
@@ -18,9 +19,14 @@ class Model(ABC):
     modeldataset: ModelDataset
     modelconfig: ModelConfig
 
-    def train_all_folds(self) -> None:
-        for fold in range(self.dfdataset.n_folds): 
-            self.train(fold)
+    def train_all_folds(self, parallel: bool=False) -> None:
+        for fold in range(self.dfdataset.n_folds):
+            if parallel: 
+                thread = Thread(target=self.train, name=f"Fold {fold}", args=(fold, ))
+                thread.start()
+            else:
+                self.train(fold)
+        thread.join()  # Joins final thread to pause code until all training finished
 
     def test_all_folds(self, syst_name: str='nominal', regex: str|list[str]='') -> np.ndarray:
         for fold in range(self.dfdataset.n_folds): 

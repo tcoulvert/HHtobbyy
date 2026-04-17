@@ -112,6 +112,6 @@
     "train_class_reweighting": {
         "ttH + bbH": [100, ["ttH + bbH"]],
         "VH": [100, ["VH"]],
-        "ggF HH": [100, ["ttH + bbH", "VH", "nonRes + ggFH + VBFH"]]
+        "ggF HH": [1, ["ttH + bbH", "VH", "nonRes + ggFH + VBFH"]]
     }
 }
