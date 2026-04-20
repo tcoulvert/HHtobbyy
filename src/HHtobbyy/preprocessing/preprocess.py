@@ -107,6 +107,40 @@ cross_sections = {
     # Data-driven background #
     'DDQCDGJets': 1.,
 }
+# Sample reweighting
+sample_era_reweighting = {
+    "2016*preVFP*DDQCDGJets": 1.1233,
+    "2016*preVFP*GGJets": 1.1303,
+    
+    "2016*postVFP*DDQCDGJets": 1.2077,
+    "2016*postVFP*GGJets": 1.3069,
+    
+    "2017*DDQCDGJets": 1.1817, 
+    "2017*GGJets": 1.2002,
+    
+    "2018*DDQCDGJets": 1.1495, 
+    "2018*GGJets": 1.2153,
+    
+    "2022*preEE*DDQCDGJets": 1.0498,
+    "2022*preEE*GGJets": 1.3980,
+    
+    "2022*postEE*DDQCDGJets": 1.0896,
+    "2022*postEE*GGJets": 1.3762,
+    
+    "2023*preBPix*DDQCDGJets": 1.0369,
+    "2023*preBPix*GGJets": 1.4987,
+    
+    "2023*postBPix*DDQCDGJets": 1.1814,
+    "2023*postBPix*GGJets": 1.5032,
+    
+    "2024*DDQCDGJets": 1.2140,
+    "2024*GGJets": 1.5925,
+
+    "!DDQCDGJet*GJet": 2.6,
+
+    # Matches to everything, so returns 1 for sample-eras that don't match to the other keys
+    "": 1
+},
 sample_name_map = {
     # Signal #
     'GluGluToHH', 'VBFHH',
@@ -224,6 +258,7 @@ def make_dataset(filepath, era, type='MC'):
                 )
             else: 
                 ak_batch['eventWeight'] = ak_batch['weight']
+            ak_batch['eventWeight'] *= sample_era_reweighting[match_sample(filepath, sample_era_reweighting.keys())]
         else: 
             ak_batch['weight'] =  ak.ones_like(ak_batch['pt'])
             ak_batch['eventWeight'] =  ak.ones_like(ak_batch['pt'])

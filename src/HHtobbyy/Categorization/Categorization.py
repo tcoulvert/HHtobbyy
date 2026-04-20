@@ -48,12 +48,12 @@ class Categorization:
         return df
 
     def run(self):
-        MCsignal = self.get_opt_df(self.dfdataset.get_all_test(regex=['preEE*'+ sampl for sampl in self.catconfig.signal_samples]))
-        MCres = self.get_opt_df(self.dfdataset.get_all_test(regex=['preEE*'+ sampl for sampl in self.catconfig.res_samples]))
-        MCnonRes = self.get_opt_df(self.dfdataset.get_all_test(regex=['preEE*'+ sampl for sampl in self.catconfig.nonres_samples]))
-        Data = self.get_opt_df(self.dfdataset.get_all_test(regex='2022*Data'))
+        MCsignal = self.get_opt_df(self.dfdataset.get_all_test(regex=[sampl for sampl in self.catconfig.signal_samples]))
+        MCres = self.get_opt_df(self.dfdataset.get_all_test(regex=[sampl for sampl in self.catconfig.res_samples]))
+        MCnonRes = self.get_opt_df(self.dfdataset.get_all_test(regex=[sampl for sampl in self.catconfig.nonres_samples]))
+        Data = self.get_opt_df(self.dfdataset.get_all_test(regex='Data'))
 
-        MC_names = sorted(pd.unique(MCres.loc[:,f"{self.dfdataset.aux_var_prefix}sample_name"]).tolist())
+        MC_names = sorted(pd.unique(MCsignal.loc[:,f"{self.dfdataset.aux_var_prefix}sample_name"]).tolist()) + sorted(pd.unique(MCres.loc[:,f"{self.dfdataset.aux_var_prefix}sample_name"]).tolist())
         field_names = ['Category', 'FoM (s/b)'] + MC_names + ['nonRes MC -- SB fit', 'Data -- SB fit']
         table = pt.PrettyTable(field_names=field_names)
 
@@ -76,11 +76,12 @@ class Categorization:
             best_evals = {
                 **{
                     name: self.get_yield_from_cut(
-                        MCres.loc[
-                            np.logical_and(res_mask, MCres[f"{self.dfdataset.aux_var_prefix}sample_name"].eq(name))
+                        df.loc[
+                            np.logical_and(mask, df[f"{self.dfdataset.aux_var_prefix}sample_name"].eq(name))
                         ], best_cut
                     )
-                    for name in pd.unique(MCres[f"{self.dfdataset.aux_var_prefix}sample_name"])
+                    for names, df, mask in zip([sorted(pd.unique(MCsignal.loc[:,f"{self.dfdataset.aux_var_prefix}sample_name"]).tolist()), sorted(pd.unique(MCres.loc[:,f"{self.dfdataset.aux_var_prefix}sample_name"]).tolist())], [MCsignal, MCres], [signal_mask, res_mask])
+                    for name in names
                 },
                 **{
                     name: est_yield(
@@ -101,7 +102,7 @@ class Categorization:
                 self.apply_cut(MCnonRes, best_cut, anti=True), self.apply_cut(Data, best_cut, anti=True),
             )
 
-            new_row = [f'Merged folds - Cat {cat_idx}', best_fom] + [best_evals[name] for name in MC_names]
+            new_row = [f'Merged folds - Cat {cat_idx}', best_fom] + [best_evals[name] for name in best_evals.keys()]
             table.add_row(new_row)
 
         print(table)

@@ -14,7 +14,7 @@ FILL_VALUE = -999
 def multifold(func, args, n_folds, parallel: bool=False, condor: dict={}):
     for fold in range(n_folds):
         if parallel: 
-            thread = Thread(target=func, name=f"Fold {fold}", args=(fold)+args)
+            thread = Thread(target=func, name=f"Fold {fold}", args=(fold, )+args)
             thread.start()
             time.sleep(30)
         elif condor != {}:

@@ -25,7 +25,7 @@ class Model(ABC):
     def test_all_folds(self, syst_name: str='nominal', regex: str|list[str]='', parallel: bool=False, condor: dict={}) -> np.ndarray:
         multifold(self.test, (syst_name, regex), self.dfdataset.n_folds, parallel=parallel, condor=condor)
 
-    def predict_all_folds(self, syst_name: str='nominal', regex: str|list[str]='', **model_kwargs) -> None:
+    def predict_all_folds(self, syst_name: str='nominal', regex: str|list[str]='', parallel: bool=False, condor: dict={}, **model_kwargs) -> None:
         multifold(self.predict, (syst_name, regex, model_kwargs), self.dfdataset.n_folds, parallel=parallel, condor=condor)
 
     @abstractmethod
