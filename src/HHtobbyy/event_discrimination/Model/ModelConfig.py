@@ -22,8 +22,6 @@ class ModelConfig(ABC):
         
         for key, value in config.items():
             if hasattr(self, key): setattr(self, key, value)
-
-        print()
         
         if self.config_filename not in os.listdir(self.output_dirpath): 
             self.model_time = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')  # 'YYYY-MM-DD_HH-MM-SS'

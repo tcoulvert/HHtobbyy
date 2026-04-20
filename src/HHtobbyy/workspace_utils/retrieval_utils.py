@@ -2,7 +2,6 @@
 import glob
 import os
 import re
-import time
 from threading import Thread 
 
 ################################
@@ -12,16 +11,18 @@ FILL_VALUE = -999
 
 #############################################################
 def multifold(func, args, n_folds, parallel: bool=False, condor: dict={}):
+    threads = []
     for fold in range(n_folds):
+        arg = (fold, )+args
         if parallel: 
-            thread = Thread(target=func, name=f"Fold {fold}", args=(fold, )+args)
-            thread.start()
-            time.sleep(30)
+            thread = Thread(target=func, name=f"Fold {fold}", args=arg)
+            thread.start(); threads.append(thread)
         elif condor != {}:
             raise NotImplementedError(f"Multifold via Condor not yet implemented, use \'iterative\' or set \'parallel\' to True for multithreading.")
         else:
-            func(*(fold, )+args)
-    if parallel: thread.join()  # Joins final thread to block code until all functions finished
+            func(*arg)
+    for thread in threads: thread.join()
+        
 
 
 #############################################################

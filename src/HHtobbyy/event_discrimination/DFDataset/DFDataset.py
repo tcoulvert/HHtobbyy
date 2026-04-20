@@ -1,7 +1,7 @@
 # Stdlib packages
 import datetime
-import glob
 import os
+from queue import Queue
 
 # Common Py packages
 import numpy as np  
@@ -299,8 +299,8 @@ class DFDataset:
 
     #############################################################
     # Building
-    def make_all_train(self, filepaths: list, parallel: bool=False, condor: dict={}):
-        multifold(self.make_train, (filepaths, ), self.n_folds, parallel=parallel, condor=condor)
+    def make_all_train(self, filepaths: list, **kwargs):
+        multifold(self.make_train, (filepaths, ), self.n_folds, **kwargs)
     def make_train(self, fold: int, filepaths: list):
         assert fold >= 0 and fold < self.n_folds, f"ERROR: Expected a fold index between 0 and {self.n_folds}, received {fold}"
 
@@ -321,8 +321,8 @@ class DFDataset:
             self.good_df(standardized_df)
             eos.save_file_eos(standardized_df, make_output_filepath(filepath[filepath.find(self.base_filepath):], self.output_dirpath, f"train{fold}"))
 
-    def make_all_test(self, filepaths: list, force: bool=False, parallel: bool=False, condor: dict={}):
-        multifold(self.make_test, (filepaths, force), self.n_folds, parallel=parallel, condor=condor)
+    def make_all_test(self, filepaths: list, force: bool=False, **kwargs):
+        multifold(self.make_test, (filepaths, force), self.n_folds,  **kwargs)
     def make_test(self, fold: int, filepaths: list, force: bool=False):
         assert fold >= 0 and fold < self.n_folds, f"ERROR: Expected a fold index between 0 and {self.n_folds}, received {fold}"
 
@@ -342,10 +342,10 @@ class DFDataset:
     def get_df(self, filepath: str):
         return eos.load_file_eos(pd.DataFrame, filepath)
     
-    def get_all_train(self, syst_name: str='nominal', shuffle: bool=True):
-        dfs = []
-        for fold in range(self.n_folds): dfs.append(self.get_train(fold, syst_name=syst_name, shuffle=shuffle))
-        return pd.concat(dfs, ignore_index=True)
+    def get_all_train(self, syst_name: str='nominal', shuffle: bool=True, **kwargs):
+        queue, arg = Queue(), (syst_name, shuffle)
+        multifold(lambda q, arg: q.put(self.get_train(arg)), (queue, arg), self.dfdataset.n_folds, **kwargs)
+        return pd.concat([queue.get() for _ in range(queue.qsize())], ignore_index=True)
     def get_train(self, fold: int, syst_name: str='nominal', shuffle: bool=True):
         filepaths = self.get_traintest_filepaths(fold, dataset="train", syst_name=syst_name)
 
@@ -362,10 +362,10 @@ class DFDataset:
 
         return df
     
-    def get_all_test(self, syst_name: str='nominal', regex: str|list[str]='test_of_train'):
-        dfs = []
-        for fold in range(self.n_folds): dfs.append(self.get_test(fold, syst_name=syst_name, regex=regex))
-        return pd.concat(dfs, ignore_index=True)
+    def get_all_test(self, syst_name: str='nominal', regex: str|list[str]='test_of_train', **kwargs):
+        queue, arg = Queue(), (syst_name, regex)
+        multifold(lambda q, arg: q.put(self.get_test(arg)), (queue, arg), self.dfdataset.n_folds, **kwargs)
+        return pd.concat([queue.get() for _ in range(queue.qsize())], ignore_index=True)
     def get_test(self, fold: int, syst_name: str='nominal', regex: str|list[str]='test_of_train'):
         if regex == 'test_of_train':
             filepaths = self.get_traintest_filepaths(fold, dataset="test", syst_name=syst_name)
