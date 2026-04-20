@@ -62,9 +62,12 @@ class DFDataset:
         # Auxiliary variables not used in training, but important downstream
         self.aux_vars = []
 
-        # aping between sample filenames and class groupings
+        # Mapping between sample filenames and class groupings
         self.class_sample_map = {}
         #########################
+
+        # Boolean to sort the input variables alphabetically
+        self.sort_inputs = True
 
         # Batch size for loading parquets
         self.pq_batch_size = 524_288
@@ -129,9 +132,10 @@ class DFDataset:
         reqd_keys = ['output_dirpath', 'dataset_tag', 'model_vars', 'aux_vars', 'class_sample_map']
         assert all(key in config.keys() for key in reqd_keys), f"Config file required to have some variables: {reqd_keys}, received config is missing {set(config.keys()) - set(reqd_keys)}"
 
+        if "sort_inputs" in config: self.sort_inputs = config["sort_inputs"]
         for key, value in config.items():
             if hasattr(self, key): 
-                setattr(self, key, sorted(value) if type(value) is list else value)
+                setattr(self, key, sorted(value) if type(value) is list and self.sort_inputs else value)
 
         # All variables
         self.all_vars = self.model_vars + self.aux_vars
@@ -310,11 +314,6 @@ class DFDataset:
 
         self.compute_standardization(dfs, fold)
 
-        # print('-'*60)
-        # print('class reweighting')
-        # concat_df = pd.concat(dfs.values(), ignore_index=True)
-        # for filepath, _df_ in dfs.items():
-        #     print(f"sum eventWeightTrain before class weighting for file {filepath}\n   = {_df_.loc[:, 'AUX_eventWeightTrain'].sum()}")
         self.class_reweighting(dfs, self.train_class_reweighting, f'{self.aux_var_prefix}{self.event_weight_var}Train')
 
         for filepath in filepaths:

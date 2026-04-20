@@ -20,7 +20,7 @@ def multifold(func, args, n_folds, parallel: bool=False, condor: dict={}):
         elif condor != {}:
             raise NotImplementedError(f"Multifold via Condor not yet implemented, use \'iterative\' or set \'parallel\' to True for multithreading.")
         else:
-            func(**args)
+            func(*(fold, )+args)
     if parallel: thread.join()  # Joins final thread to block code until all functions finished
 
 

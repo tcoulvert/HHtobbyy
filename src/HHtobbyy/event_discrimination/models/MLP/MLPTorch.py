@@ -4,22 +4,22 @@ import pytorch_lightning as pl
 
 
 class MLPTorch(pl.LightningModule):
-    def __init__(self, input_size, num_layers, num_nodes, output_size, dropout_prob, class_weights: Tensor=None, **kwargs):
+    def __init__(self, input_size, num_layers, hidden_dim, output_size, dropout_prob, activation_func, class_weights: Tensor=None, **kwargs):
         super(MLPTorch, self).__init__()
         layers = []
 
         # Input layer
-        layers.append(nn.Linear(input_size, num_nodes))
-        layers.append(nn.GELU())
+        layers.append(nn.Linear(input_size, hidden_dim))
+        layers.append(getattr(nn, activation_func)())
 
         # Hidden layers
         for _ in range(num_layers - 1):
-            layers.append(nn.Linear(num_nodes, num_nodes))
-            layers.append(nn.GELU())
+            layers.append(nn.Linear(hidden_dim, hidden_dim))
+            layers.append(getattr(nn, activation_func)())
             layers.append(nn.Dropout(p=dropout_prob))
 
         # Output layer
-        layers.append(nn.Linear(num_nodes, output_size))
+        layers.append(nn.Linear(hidden_dim, output_size))
 
         # Combine all layers into a sequential model
         self.model = nn.Sequential(*layers)

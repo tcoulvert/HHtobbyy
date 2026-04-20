@@ -27,7 +27,7 @@ resolved_bTagWPs = {
 }
 
 NUM_JETS = 10
-PREFACTORS = ['nonRes', 'nonResReg', 'nonResReg_DNNpair']
+PREFACTORS = ['nonRes', 'nonResReg', 'nonResReg_vbfpair']
 
 ################################
 
@@ -94,6 +94,10 @@ def max_nonbjet_btag(sample, era, prefactor='nonRes'):
     return max_btag_score
 
 def add_vars_resolved(sample, filepath):
+    if all(match_sample(field, ['nonResReg_vbfpair']) is None for field in sample.fields):
+        for field in sample.fields:
+            if match_sample(field, ['nonResReg']) is None and not field.startswith('VBF'): continue
+            sample['nonResReg_vbfpair_'+field.replace('nonResReg_', '')] = sample[field]
     prefactors = [prefactor for prefactor in PREFACTORS if any(match_sample(field, PREFACTORS) == prefactor for field in sample.fields)]
 
     # Regressed jet kinematics #
@@ -185,6 +189,14 @@ def add_vars_resolved(sample, filepath):
         sample[f'{prefactor}_max_nonbjet_btag'] = max_nonbjet_btag(sample, filepath, prefactor=prefactor)
 
         add_bTagWP_resolved(sample, filepath, prefactor=prefactor)
+
+        ### BEGIN Manos variables ###
+        sample["diphoton_PtOverM_ggjj"] = sample.pt / sample[f"{prefactor}_HHbbggCandidate_mass"]
+        sample[f"{prefactor}_dijet_PtOverM_ggjj"] = sample[f"{prefactor}_dijet_pt"] / sample[f"{prefactor}_HHbbggCandidate_mass"]
+
+        sample[f"{prefactor}_lead_bjet_over_M_regressed"] = sample[f"{prefactor}_lead_bjet_pt"] / sample[f"{prefactor}_dijet_mass_DNNreg"]
+        sample[f"{prefactor}_sublead_bjet_over_M_regressed"] = sample[f"{prefactor}_sublead_bjet_pt"] / sample[f"{prefactor}_dijet_mass_DNNreg"]
+        ### END Manos variables ###
 
         sample['pass_mva-0.7'] = ak.where(
             (sample['lead_mvaID'] > -0.7)

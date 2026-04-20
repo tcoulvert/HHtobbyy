@@ -25,8 +25,9 @@ class MLPConfig(ModelConfig):
 
         # Architecture parameters
         self.num_layers        = 5           # number of hidden layers
-        self.num_nodes         = 1024        # dimensionality of hidden layers
+        self.hidden_dim        = 1024        # dimensionality of hidden layers
         self.dropout_prob      = 0.25        # probability of dropping connections
+        self.activation_func   = 'GELU'      # activation function for nonlinearity
 
         # Dataset parameters
         self.class_weights     = None        # Extra class-weighting for training (can be done via DFDataset, which is preferred)

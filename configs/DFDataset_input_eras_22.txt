@@ -1,5 +1,0 @@
-# MC
-/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/preprocessed/v6/Run3_2022/sim/preEE
-/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/preprocessed/v6/Run3_2022/sim/postEE
-# Data
-/eos/uscms/store/group/lpcdihiggsboost/tsievert/HiggsDNA_parquet/preprocessed/v6/Run3_2022/data
