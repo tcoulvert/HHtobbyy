@@ -140,7 +140,7 @@ sample_era_reweighting = {
 
     # Matches to everything, so returns 1 for sample-eras that don't match to the other keys
     "": 1
-},
+}
 sample_name_map = {
     # Signal #
     'GluGluToHH', 'VBFHH',
@@ -312,10 +312,10 @@ if __name__ == '__main__':
     sim_eras = {
         os.path.join(era, ''): list() for era in SIM_ERAS
     } if len(SIM_ERAS) > 0 else None
-    # make_mc(sim_eras)
+    make_mc(sim_eras)
 
     data_eras = {
         os.path.join(era, ''): list() for era in DATA_ERAS
     } if len(DATA_ERAS) > 0 else None
-    make_data(data_eras)
+    # make_data(data_eras)
 

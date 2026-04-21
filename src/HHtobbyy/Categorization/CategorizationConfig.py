@@ -96,6 +96,5 @@ class CategorizationConfig:
     def save_config(self):
         assert self.cat_filename.endswith('.json'), f"ERROR: Currently only supporting \'json\' type config serializations"
         
-        os.makedirs(self.output_dirpath, exist_ok=True)
         eos.save_file_eos(self.toJSON(), os.path.join(self.output_dirpath, self.catconfig_filename))
             

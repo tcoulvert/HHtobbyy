@@ -344,7 +344,7 @@ class DFDataset:
     
     def get_all_train(self, syst_name: str='nominal', shuffle: bool=True, **kwargs):
         queue, arg = Queue(), (syst_name, shuffle)
-        multifold(lambda q, arg: q.put(self.get_train(arg)), (queue, arg), self.dfdataset.n_folds, **kwargs)
+        multifold(lambda q, arg: q.put(self.get_train(arg)), (queue, arg), self.n_folds, **kwargs)
         return pd.concat([queue.get() for _ in range(queue.qsize())], ignore_index=True)
     def get_train(self, fold: int, syst_name: str='nominal', shuffle: bool=True):
         filepaths = self.get_traintest_filepaths(fold, dataset="train", syst_name=syst_name)
@@ -364,7 +364,7 @@ class DFDataset:
     
     def get_all_test(self, syst_name: str='nominal', regex: str|list[str]='test_of_train', **kwargs):
         queue, arg = Queue(), (syst_name, regex)
-        multifold(lambda q, arg: q.put(self.get_test(arg)), (queue, arg), self.dfdataset.n_folds, **kwargs)
+        multifold(lambda q, arg: q.put(self.get_test(arg)), (queue, arg), self.n_folds, **kwargs)
         return pd.concat([queue.get() for _ in range(queue.qsize())], ignore_index=True)
     def get_test(self, fold: int, syst_name: str='nominal', regex: str|list[str]='test_of_train'):
         if regex == 'test_of_train':
