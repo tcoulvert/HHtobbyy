@@ -258,7 +258,7 @@ def make_dataset(filepath, era, type='MC'):
                 )
             else: 
                 ak_batch['eventWeight'] = ak_batch['weight']
-            ak_batch['eventWeight'] *= sample_era_reweighting[match_sample(filepath, sample_era_reweighting.keys())]
+            ak_batch['eventWeight'] = ak_batch['eventWeight'] * sample_era_reweighting[match_sample(filepath, sample_era_reweighting.keys())]
         else: 
             ak_batch['weight'] =  ak.ones_like(ak_batch['pt'])
             ak_batch['eventWeight'] =  ak.ones_like(ak_batch['pt'])

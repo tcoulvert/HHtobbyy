@@ -42,6 +42,7 @@ class DFDataset:
         """
 
         if type(config) is str: 
+            assert config.endswith('.json'), f"ERROR: Config file does not appear to be a json, only JSON is supported currently."
             config = eos.load_file_eos(dict, config)
 
         # Filenames for common retrieval
@@ -187,7 +188,6 @@ class DFDataset:
         pq_file, pq_schema = pq.ParquetFile(filepath), pq.read_schema(filepath)
         assert all(necessary_aux_var in pq_schema.names for necessary_aux_var in self.necessary_aux_vars), f"ERROR: Required to have all the necessary aux vars {self.necessary_aux_vars} present for downstream processing and tracking. Currently missing {set(self.necessary_aux_vars) - set(pq_schema.names)}"
         assert all(var in pq_schema.names for var in self.all_vars), f"ERROR: Requested vars do not exists in input data. Currently missing {set(self.all_vars) - set(pq_schema.names)}"
-
 
         col_dtype_map = {}
         for var_map in [dict(zip(self.model_vars, self.model_vars)), self.aux_vars_map]:
@@ -343,9 +343,9 @@ class DFDataset:
         return eos.load_file_eos(pd.DataFrame, filepath)
     
     def get_all_train(self, syst_name: str='nominal', shuffle: bool=True, **kwargs):
-        queue, arg = Queue(), (syst_name, shuffle)
-        multifold(lambda q, arg: q.put(self.get_train(arg)), (queue, arg), self.n_folds, **kwargs)
-        return pd.concat([queue.get() for _ in range(queue.qsize())], ignore_index=True)
+        dfs = []
+        for fold in range(self.n_folds): dfs.append(self.get_train(fold, syst_name=syst_name, shuffle=shuffle))
+        return pd.concat(dfs, ignore_index=True)
     def get_train(self, fold: int, syst_name: str='nominal', shuffle: bool=True):
         filepaths = self.get_traintest_filepaths(fold, dataset="train", syst_name=syst_name)
 
@@ -363,9 +363,9 @@ class DFDataset:
         return df
     
     def get_all_test(self, syst_name: str='nominal', regex: str|list[str]='test_of_train', **kwargs):
-        queue, arg = Queue(), (syst_name, regex)
-        multifold(lambda q, arg: q.put(self.get_test(arg)), (queue, arg), self.n_folds, **kwargs)
-        return pd.concat([queue.get() for _ in range(queue.qsize())], ignore_index=True)
+        dfs = []
+        for fold in range(self.n_folds): dfs.append(self.get_test(fold, syst_name=syst_name, regex=regex))
+        return pd.concat(dfs, ignore_index=True)
     def get_test(self, fold: int, syst_name: str='nominal', regex: str|list[str]='test_of_train'):
         if regex == 'test_of_train':
             filepaths = self.get_traintest_filepaths(fold, dataset="test", syst_name=syst_name)
