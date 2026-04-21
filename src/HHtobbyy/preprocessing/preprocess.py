@@ -75,7 +75,6 @@ luminosities = {
     '2023*preBPix': 17.794,
     '2023*postBPix': 9.451,
     '2024': 109.08,
-    '*****DDQCDGJets*****': 1.
 }
 # Name: cross section [fb] @ sqrrt{s}=13.6 TeV & m_H=125.09 GeV #
 cross_sections = {
@@ -292,6 +291,7 @@ def make_mc(sim_eras: dict):
     for sim_era, filepaths in sim_eras.items():
         for filepath in filepaths:
             if match_sample(filepath, {'_up/', '_down/'}) is not None: continue
+            if '24' not in sim_era and 'VBFHH' in filepath: continue
             make_dataset(filepath, sim_era)
 
 def make_data(data_eras: dict):
