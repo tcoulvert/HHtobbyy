@@ -60,6 +60,9 @@ class CategorizationConfig:
         # Diphoton mass fit parameters (start, stop, step)
         self.fit_bins = self.SB_masscut + [5.]
 
+        # Minimum amount of nonRes sideband yield for category to be valid
+        self.min_nonres_sideband = 10.
+
         # Processes the input config file
         self.process_config(config)
     

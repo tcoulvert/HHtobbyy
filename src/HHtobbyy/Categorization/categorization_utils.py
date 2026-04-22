@@ -83,7 +83,7 @@ def brute_force(
     # Cut options
     cutdir: np.ndarray, fit_bins: list[float], SR_masscut: list[float],
     # Optimization options
-    fom, 
+    fom, min_nonres_sideband: float,
     # Output arrays
     cuts: np.ndarray, foms: np.ndarray,
 ):
@@ -115,7 +115,7 @@ def brute_force(
 
         nonres_sb_bool = apply_cuts(nonres_lt_scores, nonres_gt_scores, i)
 
-        if np.sum(nonres_sb_weights[nonres_sb_bool]) > 5.3:
+        if np.sum(nonres_sb_weights[nonres_sb_bool]) > min_nonres_sideband:
             signal_sr_bool = apply_cuts(signal_lt_scores, signal_gt_scores, i)
             res_sr_bool = apply_cuts(res_lt_scores, res_gt_scores, i)
 
@@ -179,7 +179,7 @@ def grid_search(MCsignal: pd.DataFrame, MCres: pd.DataFrame, MCnonRes: pd.DataFr
             # Cut options
             np.array(catconfig.cutdir), catconfig.fit_bins, catconfig.SR_masscut,
             # Optimization options
-            catconfig.get_fom(),
+            catconfig.get_fom(), catconfig.min_nonres_sideband,
             # Output arrays
             cuts, foms
         )
