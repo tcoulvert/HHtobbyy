@@ -76,8 +76,11 @@ class DFDataset:
         # RNG seed
         self.seed = 21
 
-        # Fill value for bad data
+        # Fill value for bad data from preprocessing
         self.fill_value = FILL_VALUE
+
+        # Fill value for bad data to go into DFDataset
+        self.refill_value = FILL_VALUE
 
         # Mask variable for preselection, 'none' for no extra pre-selection
         self.mask_var = 'none'
@@ -260,6 +263,7 @@ class DFDataset:
     def compute_standardization(self, train_dfs: dict[str, pd.DataFrame], fold: int):
         merged_train_df = pd.concat([df.loc[:, self.model_vars] for df in train_dfs.values()], ignore_index=True)
         if self.standardization_method.lower() == 'zscore': self.compute_zscore_standardization(merged_train_df, fold)
+        elif self.standardization_method.lower() == 'snt': self.compute_zscore_standardization(merged_train_df, fold)
         else: raise NotImplementedError(f"Standardization method not yet implemented, use \'zscore\'.")
     def compute_zscore_standardization(self, merged_train_df: pd.DataFrame, fold: int):
         merged_train_df = merged_train_df.sample(frac=1, random_state=self.seed).reset_index(drop=True)
@@ -275,10 +279,22 @@ class DFDataset:
         zscore_std = {'col': self.model_vars, 'mean': x_mean.tolist(), 'std': x_std.tolist()}
         zscore_std_filepath = os.path.join(self.output_dirpath, f'zscore_{self.standardization_subfilename}{fold}.json')
         eos.save_file_eos(zscore_std, zscore_std_filepath)
+    def compute_snt_standardization(self, merged_train_df: pd.DataFrame, fold: int):
+        merged_train_df = merged_train_df.sample(frac=1, random_state=self.seed).reset_index(drop=True)
+        merged_train_np = merged_train_df.values()
+        merged_train_np[merged_train_np == self.fill_value] = np.nan
+
+        x_mean = np.nanmean(merged_train_np, axis=0)
+        x_std = np.nanstd(merged_train_np, axis=0)
+
+        snt_std = {'col': self.model_vars, 'mean': x_mean.tolist(), 'std': x_std.tolist()}
+        snt_std_filepath = os.path.join(self.output_dirpath, f'snt_{self.standardization_subfilename}{fold}.json')
+        eos.save_file_eos(snt_std, snt_std_filepath)
 
     def apply_standardization(self, df: pd.DataFrame, fold: int):
         slimmed_df = df.loc[:, self.model_vars]
         if self.standardization_method.lower() == 'zscore': self.apply_zscore_standardization(slimmed_df, fold)
+        elif self.standardization_method.lower() == 'snt': self.apply_snt_standardization(slimmed_df, fold)
         else: raise NotImplementedError(f"Standardization method not yet implemented, use \'zscore\'.")
         return slimmed_df.join(df.loc[:, [col for col in df.columns if col not in self.model_vars]])
     def apply_zscore_standardization(self, df: pd.DataFrame, fold: int):
@@ -287,7 +303,16 @@ class DFDataset:
         
         df = apply_logs(df)
         df = (np.ma.array(df, mask=(df == self.fill_value)) - zscore_std['mean']) / zscore_std['std']
-        df = pd.DataFrame(df.filled(self.fill_value), columns=zscore_std['col'])
+        df = pd.DataFrame(df.filled(self.refill_value), columns=zscore_std['col'])
+    def apply_snt_standardization(self, df: pd.DataFrame, fold: int):
+        snt_std_filepath = os.path.join(self.output_dirpath, f'snt_{self.standardization_subfilename}{fold}.json')
+        snt_std = eos.load_file_eos(dict, snt_std_filepath)
+
+        dfvalues = df.values()
+        dfvalues[dfvalues == self.fill_value] = np.nan
+        dfvalues = (dfvalues - snt_std['mean']) / snt_std['std']
+        dfvalues = np.nan_to_num(dfvalues, nan=self.refill_value)
+        df = pd.DataFrame(dfvalues, columns=snt_std['col'])
 
 
     #############################################################
@@ -362,7 +387,7 @@ class DFDataset:
 
         return df
     
-    def get_all_test(self, syst_name: str='nominal', regex: str|list[str]='test_of_train', **kwargs):
+    def get_all_test(self, syst_name: str='nominal', regex: str|list[str]='test_of_train'):
         dfs = []
         for fold in range(self.n_folds): dfs.append(self.get_test(fold, syst_name=syst_name, regex=regex))
         return pd.concat(dfs, ignore_index=True)
