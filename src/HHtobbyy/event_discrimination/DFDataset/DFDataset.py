@@ -263,8 +263,8 @@ class DFDataset:
     def compute_standardization(self, train_dfs: dict[str, pd.DataFrame], fold: int):
         merged_train_df = pd.concat([df.loc[:, self.model_vars] for df in train_dfs.values()], ignore_index=True)
         if self.standardization_method.lower() == 'zscore': self.compute_zscore_standardization(merged_train_df, fold)
-        elif self.standardization_method.lower() == 'snt': self.compute_zscore_standardization(merged_train_df, fold)
-        else: raise NotImplementedError(f"Standardization method not yet implemented, use \'zscore\'.")
+        elif self.standardization_method.lower() == 'snt': self.compute_snt_standardization(merged_train_df, fold)
+        else: raise NotImplementedError(f"Standardization method not yet implemented, use \'zscore\' or \'snt\'.")
     def compute_zscore_standardization(self, merged_train_df: pd.DataFrame, fold: int):
         merged_train_df = merged_train_df.sample(frac=1, random_state=self.seed).reset_index(drop=True)
         merged_train_df = apply_logs(merged_train_df)
@@ -295,7 +295,7 @@ class DFDataset:
         slimmed_df = df.loc[:, self.model_vars]
         if self.standardization_method.lower() == 'zscore': self.apply_zscore_standardization(slimmed_df, fold)
         elif self.standardization_method.lower() == 'snt': self.apply_snt_standardization(slimmed_df, fold)
-        else: raise NotImplementedError(f"Standardization method not yet implemented, use \'zscore\'.")
+        else: raise NotImplementedError(f"Standardization method not yet implemented, use \'zscore\' or \'snt\'.")
         return slimmed_df.join(df.loc[:, [col for col in df.columns if col not in self.model_vars]])
     def apply_zscore_standardization(self, df: pd.DataFrame, fold: int):
         zscore_std_filepath = os.path.join(self.output_dirpath, f'zscore_{self.standardization_subfilename}{fold}.json')
