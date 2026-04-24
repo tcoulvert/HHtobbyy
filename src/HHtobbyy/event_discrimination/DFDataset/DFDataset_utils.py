@@ -27,9 +27,19 @@ def log_standardize(column: str):
 def apply_logs(df: pd.DataFrame):
     for col in df.columns:
         if log_standardize(col):
-            mask = (df[col].to_numpy() > 0)
+            mask = df[col].gt(0)
             df.loc[mask, col] = np.log(df.loc[mask, col])
-    return df
+
+
+def compute_zscore(masked_x: np.ma.MaskedArray):
+    x_mean = masked_x.mean(axis=0)
+    x_std = masked_x.std(axis=0)
+    return x_mean.tolist(), x_std.tolist()
+
+def apply_zscore(masked_x: np.ma.MaskedArray, stddict: dict):
+    for i, col in enumerate(stddict['col']):
+        masked_x[:, i] = (masked_x[:, i] - stddict['mean'][i]) / stddict['std'][i]
+
 
 
 #############################################################

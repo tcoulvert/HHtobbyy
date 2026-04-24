@@ -16,7 +16,8 @@ import eos_utils as eos
 
 # Workspace packages
 from HHtobbyy.event_discrimination.DFDataset.DFDataset_utils import (
-    no_standardize, apply_logs, map_filepath_to_class, make_output_filepath
+    no_standardize, apply_logs, map_filepath_to_class, make_output_filepath,
+    compute_zscore, apply_zscore
 )
 from HHtobbyy.workspace_utils.retrieval_utils import (
     FILL_VALUE, match_sample, match_regex, multifold
@@ -95,7 +96,7 @@ class DFDataset:
         self.train_val_split_method = 'scikit'
 
         # Method used for the standardization
-        self.standardization_method = 'zscore'
+        self.standardization_method = 'logzscore'
 
         # Standard prefix for auxiliary variables, i.e. variables useful 
         #   for event-identification but *not* used in the training
@@ -262,57 +263,31 @@ class DFDataset:
     # Standardization
     def compute_standardization(self, train_dfs: dict[str, pd.DataFrame], fold: int):
         merged_train_df = pd.concat([df.loc[:, self.model_vars] for df in train_dfs.values()], ignore_index=True)
-        if self.standardization_method.lower() == 'zscore': self.compute_zscore_standardization(merged_train_df, fold)
-        elif self.standardization_method.lower() == 'snt': self.compute_snt_standardization(merged_train_df, fold)
+        merged_train_df = merged_train_df.sample(frac=1, random_state=self.seed).reset_index(drop=True)
+        
+        if self.standardization_method.lower() == 'logzscore': apply_logs(merged_train_df)
+        elif self.standardization_method.lower() == 'snt': pass
         else: raise NotImplementedError(f"Standardization method not yet implemented, use \'zscore\' or \'snt\'.")
-    def compute_zscore_standardization(self, merged_train_df: pd.DataFrame, fold: int):
-        merged_train_df = merged_train_df.sample(frac=1, random_state=self.seed).reset_index(drop=True)
-        merged_train_df = apply_logs(merged_train_df)
-        masked_x_sample = np.ma.array(merged_train_df, mask=(merged_train_df == self.fill_value))
 
-        x_mean = masked_x_sample.mean(axis=0)
-        x_std = masked_x_sample.std(axis=0)
-        for i, col in enumerate(self.model_vars):
-            if no_standardize(col):
-                x_mean[i] = 0; x_std[i] = 1
+        x_mean, x_std = compute_zscore(np.ma.array(merged_train_df, mask=(merged_train_df == self.fill_value)))
+        if self.standardization_method.lower() == 'logzscore': 
+            x_mean, x_std = zip(*[(mean, std) if not no_standardize(col) else (0, 1) for mean, std, col in zip(x_mean, x_std, self.model_vars)])
 
-        zscore_std = {'col': self.model_vars, 'mean': x_mean.tolist(), 'std': x_std.tolist()}
-        zscore_std_filepath = os.path.join(self.output_dirpath, f'zscore_{self.standardization_subfilename}{fold}.json')
-        eos.save_file_eos(zscore_std, zscore_std_filepath)
-    def compute_snt_standardization(self, merged_train_df: pd.DataFrame, fold: int):
-        merged_train_df = merged_train_df.sample(frac=1, random_state=self.seed).reset_index(drop=True)
-        merged_train_np = merged_train_df.values()
-        merged_train_np[merged_train_np == self.fill_value] = np.nan
-
-        x_mean = np.nanmean(merged_train_np, axis=0)
-        x_std = np.nanstd(merged_train_np, axis=0)
-
-        snt_std = {'col': self.model_vars, 'mean': x_mean.tolist(), 'std': x_std.tolist()}
-        snt_std_filepath = os.path.join(self.output_dirpath, f'snt_{self.standardization_subfilename}{fold}.json')
-        eos.save_file_eos(snt_std, snt_std_filepath)
+        stddict = {'col': self.model_vars, 'mean': list(x_mean), 'std': list(x_std)}
+        stddict_filepath = os.path.join(self.output_dirpath, f'{self.standardization_method.lower()}_{self.standardization_subfilename}{fold}.json')
+        eos.save_file_eos(stddict, stddict_filepath)
 
     def apply_standardization(self, df: pd.DataFrame, fold: int):
-        slimmed_df = df.loc[:, self.model_vars]
-        if self.standardization_method.lower() == 'zscore': self.apply_zscore_standardization(slimmed_df, fold)
-        elif self.standardization_method.lower() == 'snt': self.apply_snt_standardization(slimmed_df, fold)
+        if self.standardization_method.lower() == 'logzscore': apply_logs(df.loc[:, self.model_vars])
+        elif self.standardization_method.lower() == 'snt': pass
         else: raise NotImplementedError(f"Standardization method not yet implemented, use \'zscore\' or \'snt\'.")
-        return slimmed_df.join(df.loc[:, [col for col in df.columns if col not in self.model_vars]])
-    def apply_zscore_standardization(self, df: pd.DataFrame, fold: int):
-        zscore_std_filepath = os.path.join(self.output_dirpath, f'zscore_{self.standardization_subfilename}{fold}.json')
-        zscore_std = eos.load_file_eos(dict, zscore_std_filepath)
         
-        df = apply_logs(df)
-        df = (np.ma.array(df, mask=(df == self.fill_value)) - zscore_std['mean']) / zscore_std['std']
-        df = pd.DataFrame(df.filled(self.refill_value), columns=zscore_std['col'])
-    def apply_snt_standardization(self, df: pd.DataFrame, fold: int):
-        snt_std_filepath = os.path.join(self.output_dirpath, f'snt_{self.standardization_subfilename}{fold}.json')
-        snt_std = eos.load_file_eos(dict, snt_std_filepath)
+        stddict_filepath = os.path.join(self.output_dirpath, f'{self.standardization_method.lower()}_{self.standardization_subfilename}{fold}.json')
+        stddict = eos.load_file_eos(dict, stddict_filepath)
 
-        dfvalues = df.values()
-        dfvalues[dfvalues == self.fill_value] = np.nan
-        dfvalues = (dfvalues - snt_std['mean']) / snt_std['std']
-        dfvalues = np.nan_to_num(dfvalues, nan=self.refill_value)
-        df = pd.DataFrame(dfvalues, columns=snt_std['col'])
+        std_values = np.ma.array(df.loc[:, self.model_vars], mask=(df.loc[:, self.model_vars].eq(self.fill_value)))
+        apply_zscore(std_values, stddict)
+        df.loc[:, self.model_vars] = std_values.filled(self.refill_value)
 
 
     #############################################################
@@ -357,9 +332,9 @@ class DFDataset:
             df = df.loc[mask].reset_index(drop=True)
             self.add_vars(df, map_filepath_to_class(self.class_sample_map, filepath[filepath.find(self.base_filepath):]))
             
-            standardized_df = self.apply_standardization(df, fold)
-            self.good_df(standardized_df)
-            eos.save_file_eos(standardized_df, make_output_filepath(filepath[filepath.find(self.base_filepath):], self.output_dirpath, f"test{fold}"), force=force)
+            self.apply_standardization(df, fold)
+            self.good_df(df)
+            eos.save_file_eos(df, make_output_filepath(filepath[filepath.find(self.base_filepath):], self.output_dirpath, f"test{fold}"), force=force)
 
     
     #############################################################
