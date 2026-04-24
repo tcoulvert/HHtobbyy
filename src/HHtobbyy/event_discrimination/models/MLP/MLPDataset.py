@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 
 # ML packages
-from torch.utils.data import DataLoader
+from lightning.pytorch.utilities.data import DataLoader
 
 # Workspace packages
 from HHtobbyy.event_discrimination.DFDataset import DFDataset

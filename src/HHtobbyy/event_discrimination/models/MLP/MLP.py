@@ -2,9 +2,10 @@
 import numpy as np
 
 # ML packages
-from torch.utils.data import DataLoader
-from pytorch_lightning import Trainer
-from pytorch_lightning.callbacks.early_stopping import EarlyStopping
+from torch import load as torchload
+from lightning.pytorch.utilities.data import DataLoader
+from lightning import Trainer
+from lightning.pytorch.callbacks.early_stopping import EarlyStopping
 
 # Workspace packages
 from HHtobbyy.event_discrimination.DFDataset import DFDataset
@@ -24,7 +25,11 @@ class MLP(Model):
 
     def load_model_and_trainer(self, ckpt_path: str='', log_path: str='', eval: bool=False):
         # DNN model
-        if ckpt_path != '': model = MLPTorch.load_from_checkpoint(ckpt_path, weights_only=False, **self.modelconfig.__dict__)
+        if ckpt_path != '' and ckpt_path.endswith('.ckpt'): 
+            model = MLPTorch.load_from_checkpoint(ckpt_path, weights_only=False, **self.modelconfig.__dict__)
+        elif ckpt_path != '' and ckpt_path.endswith('.pth'):
+            # model = MLPTorch.load_from_checkpoint(ckpt_path, weights_only=False, **self.modelconfig.__dict__)
+            model = MLPTorch(**self.modelconfig.__dict__).load_state_dict(torchload(ckpt_path, weights_only=False)['best_weights'])
         else: model = MLPTorch(**self.modelconfig.__dict__)
 
         # Callbacks
@@ -65,9 +70,10 @@ class MLP(Model):
         # Test data predictions
         trainer.test(model, eval_data)
         
-    def predict_data(self, data: DataLoader, fold: int):
+    def predict_data(self, data: DataLoader, fold: int, ckpt_path: str=''):
         # DNN model and trainer
-        model, trainer = self.load_model_and_trainer(ckpt_path=self.modelconfig.get_ckpt_path(fold), eval=True)
+        if ckpt_path == '': ckpt_path = self.modelconfig.get_ckpt_path(fold)
+        model, trainer = self.load_model_and_trainer(ckpt_path=ckpt_path, eval=True)
 
         predictions = trainer.predict(model, data)
         predictions = np.concatenate([prediction.numpy(force=True) for prediction in predictions])
