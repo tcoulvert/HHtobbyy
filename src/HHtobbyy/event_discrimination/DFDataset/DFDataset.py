@@ -317,9 +317,9 @@ class DFDataset:
         self.class_reweighting(dfs, self.train_class_reweighting, f'{self.aux_var_prefix}{self.event_weight_var}Train')
 
         for filepath in filepaths:
-            standardized_df = self.apply_standardization(dfs[filepath], fold)
-            self.good_df(standardized_df)
-            eos.save_file_eos(standardized_df, make_output_filepath(filepath[filepath.find(self.base_filepath):], self.output_dirpath, f"train{fold}"))
+            self.apply_standardization(dfs[filepath], fold)
+            self.good_df(dfs[filepath])
+            eos.save_file_eos(dfs[filepath], make_output_filepath(filepath[filepath.find(self.base_filepath):], self.output_dirpath, f"train{fold}"))
 
     def make_all_test(self, filepaths: list, force: bool=False, **kwargs):
         multifold(self.make_test, (filepaths, force), self.n_folds,  **kwargs)
