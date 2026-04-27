@@ -25,11 +25,7 @@ class MLP(Model):
 
     def load_model_and_trainer(self, ckpt_path: str='', log_path: str='', eval: bool=False):
         # DNN model
-        if ckpt_path != '' and ckpt_path.endswith('.ckpt'): 
-            model = MLPTorch.load_from_checkpoint(ckpt_path, weights_only=False, **self.modelconfig.__dict__)
-        elif ckpt_path != '' and ckpt_path.endswith('.pth'):
-            # model = MLPTorch.load_from_checkpoint(ckpt_path, weights_only=False, **self.modelconfig.__dict__)
-            model = MLPTorch(**self.modelconfig.__dict__).load_state_dict(torchload(ckpt_path, weights_only=False)['best_weights'])
+        if ckpt_path != '': model = MLPTorch.load_from_checkpoint(ckpt_path, weights_only=False, **self.modelconfig.__dict__)
         else: model = MLPTorch(**self.modelconfig.__dict__)
 
         # Callbacks
