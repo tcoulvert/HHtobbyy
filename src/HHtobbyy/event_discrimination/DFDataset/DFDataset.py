@@ -294,7 +294,7 @@ class DFDataset:
     # Train/Val splitting
     def train_val_split(self):
         if self.train_val_split_method == 'scikit': return train_test_split
-        elif self.train_val_split_method == 'scikit': return equalProc_train_test_split
+        elif self.train_val_split_method == 'equalProc': return equalProc_train_test_split
         else: raise NotImplementedError(f"Train/Val split method not yet implemented, use \'scikit\'.")
 
 
