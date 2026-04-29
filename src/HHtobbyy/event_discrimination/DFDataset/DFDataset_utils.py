@@ -5,6 +5,9 @@ import os
 import numpy as np
 import pandas as pd
 
+# ML packages
+from sklearn.model_selection import train_test_split
+
 # Workspace packages
 from HHtobbyy.workspace_utils.retrieval_utils import match_sample
 
@@ -40,6 +43,20 @@ def apply_zscore(masked_x: np.ma.MaskedArray, stddict: dict):
     for i, col in enumerate(stddict['col']):
         masked_x[:, i] = (masked_x[:, i] - stddict['mean'][i]) / stddict['std'][i]
 
+
+#############################################################
+# Process train/test split
+def equalProc_train_test_split(df: pd.DataFrame, aux_prefix: str, train_size: float|None=None, test_size: float|None=None, random_state: int|None=None, shuffle: bool=True, stratify: object|None=None):
+    unique_procs = pd.unique(df[f'{aux_prefix}sample_name'])
+
+    train_df, val_df = pd.DataFrame(columns=df.columns).astype(df.dtypes), pd.DataFrame(columns=df.columns).astype(df.dtypes)
+    for proc in unique_procs:
+        train_proc_df, val_proc_df = train_test_split(
+            df.loc[df[f'{aux_prefix}sample_name'].eq(proc)], 
+            train_size=train_size, test_size=test_size, random_state=random_state, shuffle=shuffle, stratify=stratify
+        )
+        train_df = pd.concat(train_df, train_proc_df, ignore_index=True); val_df = pd.concat(val_df, val_proc_df, ignore_index=True)
+    return train_df, val_df
 
 
 #############################################################

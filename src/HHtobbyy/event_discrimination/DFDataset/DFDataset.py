@@ -17,7 +17,7 @@ import eos_utils as eos
 # Workspace packages
 from HHtobbyy.event_discrimination.DFDataset.DFDataset_utils import (
     no_standardize, apply_logs, map_filepath_to_class, make_output_filepath,
-    compute_zscore, apply_zscore
+    compute_zscore, apply_zscore, equalProc_train_test_split
 )
 from HHtobbyy.workspace_utils.retrieval_utils import (
     FILL_VALUE, match_sample, match_regex, multifold
@@ -294,6 +294,7 @@ class DFDataset:
     # Train/Val splitting
     def train_val_split(self):
         if self.train_val_split_method == 'scikit': return train_test_split
+        elif self.train_val_split_method == 'scikit': return equalProc_train_test_split
         else: raise NotImplementedError(f"Train/Val split method not yet implemented, use \'scikit\'.")
 
 
@@ -317,12 +318,7 @@ class DFDataset:
         self.class_reweighting(dfs, self.train_class_reweighting, f'{self.aux_var_prefix}{self.event_weight_var}Train')
 
         for filepath in filepaths:
-            print('-'*60, filepath)
-            print('pre-standardization')
-            print(dfs[filepath].head())
             self.apply_standardization(dfs[filepath], fold)
-            print('post-standardization')
-            print(dfs[filepath].head())
             self.good_df(dfs[filepath])
             eos.save_file_eos(dfs[filepath], make_output_filepath(filepath[filepath.find(self.base_filepath):], self.output_dirpath, f"train{fold}"))
 
