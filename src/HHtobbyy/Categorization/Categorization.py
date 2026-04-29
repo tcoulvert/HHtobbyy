@@ -40,7 +40,7 @@ class Categorization:
         return df.loc[sr_cut_mask, f"{self.dfdataset.aux_var_prefix}eventWeight"].sum()
     
     def get_opt_df(self, df: pd.DataFrame):
-        disc_columns = class_discriminator_columns(self.dfdataset.class_sample_map.keys())
+        disc_columns = [self.dfdataset.aux_var_prefix+col for col in class_discriminator_columns(self.dfdataset.class_sample_map.keys())]
         nD_predictions = df[disc_columns].to_numpy(copy=True)
         trns_predictions = self.catconfig.transform_func(nD_predictions)
         for i, trans_name in enumerate(self.catconfig.transform_names):

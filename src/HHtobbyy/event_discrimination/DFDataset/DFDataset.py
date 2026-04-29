@@ -317,7 +317,12 @@ class DFDataset:
         self.class_reweighting(dfs, self.train_class_reweighting, f'{self.aux_var_prefix}{self.event_weight_var}Train')
 
         for filepath in filepaths:
+            print('-'*60, filepath)
+            print('pre-standardization')
+            print(dfs[filepath].head())
             self.apply_standardization(dfs[filepath], fold)
+            print('post-standardization')
+            print(dfs[filepath].head())
             self.good_df(dfs[filepath])
             eos.save_file_eos(dfs[filepath], make_output_filepath(filepath[filepath.find(self.base_filepath):], self.output_dirpath, f"train{fold}"))
 
