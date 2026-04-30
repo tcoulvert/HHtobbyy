@@ -56,7 +56,7 @@ def equalProc_train_test_split(df: pd.DataFrame, train_size: float|None=None, te
             df.loc[df[sample_name_col].eq(proc)], 
             train_size=train_size, test_size=test_size, random_state=random_state, shuffle=shuffle, stratify=stratify
         )
-        train_df = pd.concat(train_df, train_proc_df, ignore_index=True); val_df = pd.concat(val_df, val_proc_df, ignore_index=True)
+        train_df = pd.concat([train_df, train_proc_df], ignore_index=True); val_df = pd.concat([val_df, val_proc_df], ignore_index=True)
     return train_df, val_df
 
 
