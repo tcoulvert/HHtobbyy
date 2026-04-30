@@ -9,7 +9,7 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 
 # Workspace packages
-from HHtobbyy.workspace_utils.retrieval_utils import match_sample, match_regex
+from HHtobbyy.workspace_utils.retrieval_utils import match_sample, match_regex, sub_filepath
 
 #############################################################
 # Standardization

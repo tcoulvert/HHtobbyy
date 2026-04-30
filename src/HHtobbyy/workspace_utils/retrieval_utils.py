@@ -24,6 +24,12 @@ def multifold(func, args, n_folds, parallel: bool=False, condor: dict={}):
     for thread in threads: thread.join()
         
 
+#############################################################
+def sub_filepath(filepath: str, subregex: str):
+    m = re.search(subregex, filepath)
+    if m is None: return filepath
+    else: return filepath[m.start():]
+
 
 #############################################################
 def get_era_filepaths(input_eras: str, split_data_mc_eras: bool=False):
@@ -63,6 +69,7 @@ def get_input_filepaths(eras: str|list[str], class_sample_map: dict, regex: str|
     input_filepaths = []
     
     for era in eras:
+        print('-'*60, era)
         sample_filepaths = glob.glob(os.path.join(era, "**", regex), recursive=True)
         for sample_filepath in sample_filepaths:
             sub_sample_filepath = sample_filepath[len(era):]

@@ -20,7 +20,7 @@ from HHtobbyy.event_discrimination.DFDataset.DFDataset_utils import (
     compute_zscore, apply_zscore, equalProc_train_test_split
 )
 from HHtobbyy.workspace_utils.retrieval_utils import (
-    FILL_VALUE, match_sample, match_regex, multifold
+    FILL_VALUE, match_sample, match_regex, multifold, sub_filepath
 )
 
 
@@ -311,7 +311,7 @@ class DFDataset:
             mask = self.train_mask(dfs[filepath], fold)
             dfs[filepath] = dfs[filepath].loc[mask].reset_index(drop=True)
 
-            self.add_vars(dfs[filepath], map_filepath_to_class(self.class_sample_map, filepath[filepath.find(self.base_filepath):]))
+            self.add_vars(dfs[filepath], map_filepath_to_class(self.class_sample_map, sub_filepath(filepath, self.base_filepath)))
 
         self.compute_standardization(dfs, fold)
 
@@ -320,7 +320,7 @@ class DFDataset:
         for filepath in filepaths:
             self.apply_standardization(dfs[filepath], fold)
             self.good_df(dfs[filepath])
-            eos.save_file_eos(dfs[filepath], make_output_filepath(filepath[filepath.find(self.base_filepath):], self.output_dirpath, f"train{fold}"))
+            eos.save_file_eos(dfs[filepath], make_output_filepath(sub_filepath(filepath, self.base_filepath), self.output_dirpath, f"train{fold}"))
 
     def make_all_test(self, filepaths: list, force: bool=False, **kwargs):
         multifold(self.make_test, (filepaths, force), self.n_folds,  **kwargs)
@@ -331,11 +331,11 @@ class DFDataset:
             df = self.make_df(filepath)
             mask = self.test_mask(df, fold)
             df = df.loc[mask].reset_index(drop=True)
-            self.add_vars(df, map_filepath_to_class(self.class_sample_map, filepath[filepath.find(self.base_filepath):]))
+            self.add_vars(df, map_filepath_to_class(self.class_sample_map, sub_filepath(filepath, self.base_filepath)))
             
             self.apply_standardization(df, fold)
             self.good_df(df)
-            eos.save_file_eos(df, make_output_filepath(filepath[filepath.find(self.base_filepath):], self.output_dirpath, f"test{fold}"), force=force)
+            eos.save_file_eos(df, make_output_filepath(sub_filepath(filepath, self.base_filepath), self.output_dirpath, f"test{fold}"), force=force)
 
     
     #############################################################
