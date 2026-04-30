@@ -372,7 +372,6 @@ class DFDataset:
             filepaths = self.get_traintest_filepaths(fold, dataset="test", syst_name=syst_name)
         else:
             filepaths = self.get_test_filepaths(fold, syst_name=syst_name, regex=regex)
-        print(filepaths)
 
         df = pd.concat(
             [self.get_df(filepath) for model_class in filepaths.keys() for filepath in filepaths[model_class]], 
