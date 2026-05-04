@@ -41,14 +41,19 @@ class DFDataset:
         ----------
         NOTE: At least one argument is required.
         """
-
-        if type(config) is str: 
-            assert config.endswith('.json'), f"ERROR: Config file does not appear to be a json, only JSON is supported currently."
-            config = eos.load_file_eos(dict, config)
-
         # Filenames for common retrieval
         self.config_filename = 'dataset_config.json'
         self.standardization_subfilename = 'standardization_fold'
+
+        if type(config) is str: 
+            if config.endswith('.json'): 
+                config = eos.load_file_eos(dict, config)
+            elif config.split('/')[-1].find('.') < 0:
+                print(f"WARNING: Config directory supplied rather than file, attempting to load with default filename... ")
+                config = eos.load_file_eos(dict, os.path.join(config, self.config_filename))
+            else:
+                raise IOError(f"ERROR: Config file does not appear to be a json, only JSON is supported currently. ")
+            
 
         #########################
         # REQUIRED CONFIG KEYS
@@ -119,7 +124,7 @@ class DFDataset:
 
         # Basic fileprefix to separate local machine directories from HiggsDNA 
         #   (or equivalent preprocessor) directories
-        self.base_filepath = 'Run3_20'
+        self.base_filepath = 'Run[1-3]_20'
 
         # Optional dictionaries to perform reweighting for training and testing
         self.test_sample_reweighting = 'none'
@@ -181,9 +186,11 @@ class DFDataset:
         elif self.mask_var in df.columns: return np.asarray(df[self.mask_var] > 0, dtype=bool)
 
     def train_mask(self, df: pd.DataFrame, fold: int):
-        return np.asarray(df['AUX_event'].mod(self.n_folds).ne(fold), dtype=bool)
+        if self.n_folds > 1: return np.asarray(df['AUX_event'].mod(self.n_folds).ne(fold), dtype=bool)
+        else: return np.ones(len(df), dtype=bool)
     def test_mask(self, df: pd.DataFrame, fold: int):
-        return ~self.train_mask(df, fold)
+        if self.n_folds > 1: return ~self.train_mask(df, fold)
+        else: return self.train_mask(df, fold)
     
 
     #############################################################

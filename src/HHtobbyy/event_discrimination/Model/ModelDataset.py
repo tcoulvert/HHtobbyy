@@ -15,7 +15,7 @@ class ModelDataset(ABC):
 
     def process_config(self, config: dict):
         for key, value in config.items():
-            if hasattr(self, key): setattr(self, key, value)
+            if hasattr(self, key) and key != "dfdataset": setattr(self, key, value)
 
     @abstractmethod
     def get_data(self, df: pd.DataFrame, event_weight: str):

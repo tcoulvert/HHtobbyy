@@ -56,7 +56,7 @@ class MLPDataset(ModelDataset):
 
         if for_eval: event_weight = self.dfdataset.event_weight_var
         else: event_weight = f'{self.dfdataset.event_weight_var}Train'
-        return self.get_data(val_df, event_weight=event_weight, batch_size=self.val_batch_size, shuffle=True)
+        return self.get_data(val_df, event_weight=event_weight, batch_size=self.val_batch_size, shuffle=False)
 
     def get_test(self, fold: int, syst_name: str='nominal', regex: str|list[str]=''):
         test_df = self.dfdataset.get_test(fold, syst_name=syst_name, regex=regex)

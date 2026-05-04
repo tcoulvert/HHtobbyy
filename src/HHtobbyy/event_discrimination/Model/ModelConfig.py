@@ -21,9 +21,9 @@ class ModelConfig(ABC):
         assert "output_dirpath" in config.keys(), f"ERROR: Required to provide the output_dirpath for the model"
         
         for key, value in config.items():
-            if hasattr(self, key): setattr(self, key, value)
+            if hasattr(self, key) and key != "dfdataset": setattr(self, key, value)
         
-        if self.config_filename not in os.listdir(self.output_dirpath): 
+        if not os.path.exists(self.output_dirpath) or self.config_filename not in os.listdir(self.output_dirpath): 
             self.model_time = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')  # 'YYYY-MM-DD_HH-MM-SS'
             self.output_dirpath = os.path.join(self.output_dirpath, self.model_time)
             os.makedirs(self.output_dirpath, exist_ok=True)

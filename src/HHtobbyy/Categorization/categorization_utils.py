@@ -140,7 +140,7 @@ def brute_force(
 
 def grid_search(MCsignal: pd.DataFrame, MCres: pd.DataFrame, MCnonRes: pd.DataFrame, catconfig, prev_cuts: list[float]=None):
 
-    best_fom, best_cut = 0., [0. for _ in catconfig.transform_names]
+    best_fom, best_cut = np.float64(0.), [np.float64(0.) for _ in catconfig.transform_names]
 
     all_foms, all_cuts = [], []
 

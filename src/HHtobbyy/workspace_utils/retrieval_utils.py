@@ -69,7 +69,6 @@ def get_input_filepaths(eras: str|list[str], class_sample_map: dict, regex: str|
     input_filepaths = []
     
     for era in eras:
-        print('-'*60, era)
         sample_filepaths = glob.glob(os.path.join(era, "**", regex), recursive=True)
         for sample_filepath in sample_filepaths:
             sub_sample_filepath = sample_filepath[len(era):]
