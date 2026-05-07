@@ -30,6 +30,13 @@ TRANSFORM_PREDS = [
         'cutdir': lambda class_names: ['<', '<', '<']
     },
     {
+        'name': 'SnT2D', 
+        'output': lambda class_names: ['DnonRes', 'DsingleH'], 
+        'ROC_bkgeffs': lambda class_names: [1e-3, 1e-2],
+        'func': lambda multibdt_output: SnT2D(multibdt_output),
+        'cutdir': lambda class_names: ['>', '>']
+    },
+    {
         'name': '4D', 
         'output': lambda class_names: ['A', 'B', 'C', 'D'], 
         'ROC_bkgeffs': lambda class_names: [1e-2, 1e-2, 1e-2, 1e-3],
@@ -75,7 +82,8 @@ def DttHDQCD(multibdt_output):
     DttH_preds = multibdt_output[:, 0] / (multibdt_output[:, 0] + multibdt_output[:, 1])
     DQCD_preds = multibdt_output[:, 0] / (multibdt_output[:, 0] + multibdt_output[:, 2] + multibdt_output[:, 3])
 
-    DttH_preds[np.isnan(DttH_preds)], DQCD_preds[np.isnan(DQCD_preds)] = 0, 0
+    DttH_preds = np.nan_to_num(DttH_preds, copy=False)
+    DQCD_preds = np.nan_to_num(DQCD_preds, copy=False)
 
     return np.column_stack([DttH_preds, DQCD_preds])
 
@@ -89,6 +97,15 @@ def abc(multibdt_output):
     c_preds = np.nan_to_num(c_preds, copy=False)
     
     return np.column_stack([a_preds, b_preds, c_preds])
+
+def SnT2D(multibdt_output):
+    DnonRes = multibdt_output[:, 2] / (multibdt_output[:, 2] + multibdt_output[:, 0])
+    DsingleH = multibdt_output[:, 2] / (multibdt_output[:, 2] + multibdt_output[:, 1])
+
+    DnonRes = np.nan_to_num(DnonRes, copy=False)
+    DsingleH = np.nan_to_num(DsingleH, copy=False)
+    
+    return np.column_stack([DnonRes, DsingleH])
 
 def ABCD(multibdt_output):
     A_preds = multibdt_output[:, 1]

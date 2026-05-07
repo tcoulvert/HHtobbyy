@@ -28,6 +28,8 @@ class MLPConfig(ModelConfig):
         self.hidden_dim        = 1024        # dimensionality of hidden layers
         self.dropout_prob      = 0.25        # probability of dropping connections
         self.activation_func   = 'GELU'      # activation function for nonlinearity
+        self.accumulate_grad_batches = 1     # number of batches to wait before stepping loss function
+        self.learning_rate     = 1e-5        # learning rate for optimization
 
         # Dataset parameters
         self.class_weights     = None        # Extra class-weighting for training (can be done via DFDataset, which is preferred)

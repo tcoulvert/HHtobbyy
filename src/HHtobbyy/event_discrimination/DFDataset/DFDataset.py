@@ -17,7 +17,7 @@ import eos_utils as eos
 # Workspace packages
 from HHtobbyy.event_discrimination.DFDataset.DFDataset_utils import (
     no_standardize, apply_logs, map_filepath_to_class, make_output_filepath,
-    compute_zscore, apply_zscore, equalProc_train_test_split
+    compute_zscore, apply_zscore, equalProc_train_test_split, random_oversample, random_undersample
 )
 from HHtobbyy.workspace_utils.retrieval_utils import (
     FILL_VALUE, match_sample, match_regex, multifold, sub_filepath
@@ -125,6 +125,10 @@ class DFDataset:
         # Basic fileprefix to separate local machine directories from HiggsDNA 
         #   (or equivalent preprocessor) directories
         self.base_filepath = 'Run[1-3]_20'
+
+        # Optional methods to undersample or oversample train dataset
+        self.undersample_train_per_proc = 'none'
+        self.oversample_train_per_proc = 'none'
 
         # Optional dictionaries to perform reweighting for training and testing
         self.test_sample_reweighting = 'none'
@@ -298,6 +302,17 @@ class DFDataset:
 
 
     #############################################################
+    # Oversample/Undersample for training
+    def over_under_sample(self, train_dfs: dict[str, pd.DataFrame]):
+        merged_train_df = pd.concat([df for df in train_dfs.values()], ignore_index=True)
+        if self.oversample_train_per_proc == 'none' and self.undersample_train_per_proc == 'none': return
+        elif self.oversample_train_per_proc != 'none' and self.undersample_train_per_proc != 'none':
+            raise KeyError(f"ERROR: Cannot supply both oversample and undersample method, choose one or neither.")
+        elif self.oversample_train_per_proc == 'random': random_oversample(merged_train_df, self.seed)
+        elif self.undersample_train_per_proc == 'random': random_undersample(merged_train_df, self.seed)
+        else: raise NotImplementedError(f"Over/Under sample method not yet implemented, use \'random\'.")
+
+    #############################################################
     # Train/Val splitting
     def train_val_split(self):
         if self.train_val_split_method == 'scikit': return train_test_split
@@ -321,6 +336,8 @@ class DFDataset:
             self.add_vars(dfs[filepath], map_filepath_to_class(self.class_sample_map, sub_filepath(filepath, self.base_filepath)))
 
         self.compute_standardization(dfs, fold)
+
+        self.over_under_sample(dfs)
 
         self.class_reweighting(dfs, self.train_class_reweighting, f'{self.aux_var_prefix}{self.event_weight_var}Train')
 

@@ -46,6 +46,33 @@ def apply_zscore(masked_x: np.ma.MaskedArray, stddict: dict):
 
 #############################################################
 # Process train/test split
+def random_oversample(df: pd.DataFrame, rng_seed: int=21):
+    sample_name_col = match_regex('sample_name', df.columns)
+    unique_procs = pd.unique(df[sample_name_col])
+    largest_proc = np.max([np.sum(df[sample_name_col].eq(proc)) for proc in unique_procs])
+    
+    for proc in unique_procs:
+        proc_idxs = df[df[sample_name_col].eq(proc)].index
+        if len(proc_idxs) == largest_proc: continue
+
+        rand_idxs = np.random.default_rng(seed=rng_seed).choice(proc_idxs, size=largest_proc-len(proc_idxs))
+        df.merge(df.iloc[rand_idxs])
+
+def random_undersample(df: pd.DataFrame, rng_seed: int=21):
+    sample_name_col = match_regex('sample_name', df.columns)
+    unique_procs = pd.unique(df[sample_name_col])
+    smallest_proc = np.min([np.sum(df[sample_name_col].eq(proc)) for proc in unique_procs])
+    
+    for proc in unique_procs:
+        proc_idxs = df[df[sample_name_col].eq(proc)].index
+        if len(proc_idxs) == smallest_proc: continue
+
+        rand_idxs = np.random.default_rng(seed=rng_seed).choice(proc_idxs, size=len(proc_idxs)-smallest_proc)
+        df.drop(rand_idxs)
+
+
+#############################################################
+# Process train/test split
 def equalProc_train_test_split(df: pd.DataFrame, train_size: float|None=None, test_size: float|None=None, random_state: int|None=None, shuffle: bool=True, stratify: object|None=None):
     sample_name_col = match_regex('sample_name', df.columns)
     unique_procs = pd.unique(df[sample_name_col])

@@ -4,8 +4,9 @@ import lightning as L
 
 
 class MLPTorch(L.LightningModule):
-    def __init__(self, input_size, num_layers, hidden_dim, output_size, dropout_prob, activation_func, class_weights: Tensor=None, **kwargs):
+    def __init__(self, input_size, num_layers, hidden_dim, output_size, dropout_prob, activation_func, learning_rate, class_weights: Tensor=None, **kwargs):
         super(MLPTorch, self).__init__()
+        self.learning_rate = learning_rate
         layers = []
 
         # Input layer
@@ -34,7 +35,7 @@ class MLPTorch(L.LightningModule):
         return self.model(x)
 
     def configure_optimizers(self):
-        optimizer = optim.Adam(self.parameters(), lr=2e-5, weight_decay=5e-5)
+        optimizer = optim.Adam(self.parameters(), lr=self.learning_rate)
         return optimizer
 
     def backward(self, loss):

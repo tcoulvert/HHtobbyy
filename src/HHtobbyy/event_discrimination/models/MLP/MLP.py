@@ -34,6 +34,7 @@ class MLP(Model):
         trainer = Trainer(
             callbacks=callbacks,
             default_root_dir=self.modelconfig.output_dirpath,
+            accumulate_grad_batches=self.modelconfig.accumulate_grad_batches,
             max_epochs=self.modelconfig.max_epochs, 
             accelerator=self.modelconfig.accelerator,
             strategy=self.modelconfig.strategy,
