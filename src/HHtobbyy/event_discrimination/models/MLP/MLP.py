@@ -5,6 +5,7 @@ import numpy as np
 from torch import load as torchload
 from lightning.pytorch.utilities.data import DataLoader
 from lightning import Trainer
+from lightning.pytorch.tuner import Tuner
 from lightning.pytorch.callbacks.early_stopping import EarlyStopping
 
 # Workspace packages
@@ -47,13 +48,15 @@ class MLP(Model):
 
         return model, trainer
 
-    def train(self, fold: int, resume_from_ckpt: bool=False):
+    def train(self, fold: int, tune_lr: bool=False, resume_from_ckpt: bool=False):
         # Data
         train_data = self.modeldataset.get_train(fold)
         val_data = self.modeldataset.get_val(fold)
 
         # DNN model and trainer
         model, trainer = self.load_model_and_trainer()
+
+        if tune_lr: tuner = Tuner(trainer); tuner.lr_find(model)
 
         # Train DNN
         trainer.fit(model, train_data, val_data, ckpt_path=self.modelconfig.get_ckpt_path(fold) if resume_from_ckpt else None)
