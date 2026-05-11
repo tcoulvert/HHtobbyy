@@ -53,6 +53,46 @@ class Categorization:
         MCnonRes = self.get_opt_df(self.dfdataset.get_all_test(regex=[sampl for sampl in self.catconfig.nonres_samples]))
         Data = self.get_opt_df(self.dfdataset.get_all_test(regex='Data'))
 
+
+        if 'Run3_2025/data' in pd.unique(Data[f"{self.dfdataset.aux_var_prefix}sample_era"]):
+            print('upscaling 2024 MC for 2025 Data')
+            MCsignal.loc[MCsignal[f'{self.dfdataset.aux_var_prefix}sample_era'].eq('Run3_2024/sim'), f'{self.dfdataset.aux_var_prefix}eventWeight'] = 2 * MCsignal.loc[MCsignal[f'{self.dfdataset.aux_var_prefix}sample_era'].eq('Run3_2024/sim'), f'{self.dfdataset.aux_var_prefix}eventWeight']
+            MCres.loc[MCres[f'{self.dfdataset.aux_var_prefix}sample_era'].eq('Run3_2024/sim'), f'{self.dfdataset.aux_var_prefix}eventWeight'] = 2 * MCres.loc[MCres[f'{self.dfdataset.aux_var_prefix}sample_era'].eq('Run3_2024/sim'), f'{self.dfdataset.aux_var_prefix}eventWeight']
+            MCnonRes.loc[MCnonRes[f'{self.dfdataset.aux_var_prefix}sample_era'].eq('Run3_2024/sim'), f'{self.dfdataset.aux_var_prefix}eventWeight'] = 2 * MCnonRes.loc[MCnonRes[f'{self.dfdataset.aux_var_prefix}sample_era'].eq('Run3_2024/sim'), f'{self.dfdataset.aux_var_prefix}eventWeight']
+        if '' in pd.unique(Data[f"{self.dfdataset.aux_var_prefix}sample_era"]):
+            print('upscaling 2022preEE MC for Run2 Data')
+            run2_lumi_ratio = 1.5 if 'Run3_2025/data' in pd.unique(Data[f"{self.dfdataset.aux_var_prefix}sample_era"]) else 1.8
+            run2_lumi_reweight = {
+                # Signal #
+                'GluGluToHH': 0.75, 'VBFHH': 1,
+
+                # Resonant (Mgg) background #
+                # Fake b-jets
+                'GluGluHToGG': 0.93, 'VBFHToGG': 0.924, 'WmHToGG': 1, 'WpHToGG': 1,
+                # Real b-jets
+                'ttHToGG': 0.85, 'bbHToGG': 1,
+                # Resonant b-jets
+                'VHToGG': 0.93, 'ZHToGG': 1,
+
+                # Non-resonant (Mgg) background #
+                # Fake photons, fake b-jets
+                'GJet': 1,
+                # Fake photons
+                'TTG': 1,
+                # Fake b-jets
+                'GGJets': 0.98,
+                # Real b-jets
+                'TTGG': 1,
+
+                # Data-driven background #
+                'DDQCDGJets': 1
+            }
+            for MCdf in [MCsignal, MCres, MCnonRes]:
+                era_mask = MCdf[f'{self.dfdataset.aux_var_prefix}sample_era'].eq('Run3_2022/sim/preEE')
+                for sample_name in pd.unique(MCdf[f'{self.dfdataset.aux_var_prefix}sample_name']):
+                    sample_mask = np.logical_and(era_mask, MCdf[f'{self.dfdataset.aux_var_prefix}sample_name'].eq(sample_name))
+                    MCdf.loc[sample_mask, f'{self.dfdataset.aux_var_prefix}eventWeight'] = run2_lumi_ratio * run2_lumi_reweight[sample_name] * MCdf.loc[sample_mask, f'{self.dfdataset.aux_var_prefix}eventWeight']
+
         MC_names = sorted(pd.unique(MCsignal.loc[:,f"{self.dfdataset.aux_var_prefix}sample_name"]).tolist()) + sorted(pd.unique(MCres.loc[:,f"{self.dfdataset.aux_var_prefix}sample_name"]).tolist())
         field_names = ['Category', 'FoM (s/b)'] + MC_names + ['nonRes MC -- SB fit', 'Data -- SB fit']
         table = pt.PrettyTable(field_names=field_names)
