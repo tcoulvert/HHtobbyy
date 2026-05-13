@@ -70,63 +70,81 @@ NEW_END_FILEPATH = "preprocessed.parquet"
 
 # MC Era: total era luminosity [fb^-1] #
 luminosities = {
+    '2016*preVFP': 19.5,
+    '2016*postVFP': 16.8, 
+    '2017': 42.07, 
+    '2018': 59.56,
     '2022*preEE': 7.9804,
     '2022*postEE': 26.6717,
     '2023*preBPix': 17.794,
     '2023*postBPix': 9.451,
     '2024': 109.08,
+    '2025': 110.73 
 }
 # Name: cross section [fb] @ sqrrt{s}=13.6 TeV & m_H=125.09 GeV #
-run2_cross_sections = {
-    # Signal #
-    'GluGluToHH': 8.1e-02, 
-    'VBFHH': 1.684*0.0026,
+cross_sections = {
+    ## Signal ##
+    'Run2*GluGluToHH': 8.1e-02, 
+    'Run3*GluGluToHH': 34.43*0.0026, 
 
-    # Resonant (Mgg) background #
-    # Fake b-jets
-    'GluGluHToGG': 0.1103e3, 'VBFHToGG': 0.00855e3, 
-    # Real b-jets
-    'ttHToGG': 0.0011e3,
-    # Resonant b-jets
-    'VHToGG': 0.00508e3,
+    'Run2*VBFHH': 1.684*0.0026,
+    'Run3*VBFHH': 1.870*0.0026,
 
-    # Non-resonant (Mgg) background #
-    # Fake b-jets
-    'Diphoton': 86.96e3,
-    # Real b-jets
-    'TTGG': 0.01696e3,
+    ## Resonant (Mgg) background ##
+    # Fake b-jets #
+    'Run2*GluGluHToGG': 0.1103e3,
+    'Run3*GluGluHToGG': 52170.*0.00228, 
+
+    'Run2*VBFHToGG': 0.00855e3,
+    'Run3*VBFHToGG': 4075.*0.00228,
+
+    'Run3*Wm*HToGG': 566.4*0.00228, 
+
+    'Run3*Wp*HToGG': 887.*0.00228,
+
+    # 'Run3*Wm*HTo2G': 566.4*0.00228*0.6741, 'Run3*Wp*HTo2G': 887.*0.00228*0.6741,  # Irene's samples
+
+    # Real b-jets #
+    'Run2*ttHToGG': 0.0011e3,
+    'Run3*ttHToGG': 568.8*0.00228, 
+
+    'Run3*bbHToGG': 525.1*0.00228,
+
+    # Resonant b-jets #
+    'Run3*VHToGG': (566.4 + 887. + 942.2)*0.00228, 
+    'Run2*VHToGG': 0.00508e3,
+
+    'Run3*ZHToGG': 942.2*0.00228,
+
+    # 'Run3*ZH*To2G': 942.2*0.00228*0.69911,  # Irene's samples
+
+    ## Non-resonant (Mgg) background ##
+    # Fake photons, fake b-jets #
+    # 'Run3*GJet*20to40*': 242500., 
+
+    # 'Run3*GJet*40*': 919100., 
+
+    # Fake photons #
+    # 'Run3*TTG*10to100': 4216., 
+
+    # 'Run3*TTG*100to200': 411.4, 
+
+    # 'Run3*TTG*200': 128.4,
+
+    # Fake b-jets #
+    # 'Run3*GGJets*40to80': 318100., 
+
+    'Run3*GGJets*80': 88750.,
+    'Run2*DiPhoton': 86.96e3,
+
+    # Real b-jets #
+    'Run2*TTGG': 0.01696e3,
+    'Run3*TTGG': 16.96,
+    
+    'Run3*SherpaNLO': 1093.,
 
     # Data-driven background #
-    'DDQCDGJets': 1.,
-}
-run3_cross_sections = {
-    # Signal #
-    'GluGluToHH': 34.43*0.0026, 
-    'VBFHH': 1.870*0.0026,
-
-    # Resonant (Mgg) background #
-    # Fake b-jets
-    'GluGluHToGG': 52170.*0.00228, 'VBFHToGG': 4075.*0.00228, 
-    'Wm*HToGG': 566.4*0.00228, 'Wp*HToGG': 887.*0.00228,
-    'Wm*HTo2G': 566.4*0.00228*0.6741, 'Wp*HTo2G': 887.*0.00228*0.6741,  # Irene's samples
-    # Real b-jets
-    'ttHToGG': 568.8*0.00228, 'bbHToGG': 525.1*0.00228,
-    # Resonant b-jets
-    'VHToGG': (566.4 + 887. + 942.2)*0.00228, 'ZHToGG': 942.2*0.00228,
-    'ZH*To2G': 942.2*0.00228*0.69911,  # Irene's samples
-
-    # Non-resonant (Mgg) background #
-    # Fake photons, fake b-jets
-    'GJet*20to40*': 242500., 'GJet*40*': 919100., 
-    # Fake photons
-    'TTG*10to100': 4216., 'TTG*100to200': 411.4, 'TTG*200': 128.4,
-    # Fake b-jets
-    'GGJets*40to80': 318100., 'GGJets*80': 88750.,
-    # Real b-jets
-    'TTGG': 16.96, 'SherpaNLO': 1093.,
-
-    # Data-driven background #
-    'DDQCDGJets': 1.,
+    'DDQCDGJet': 1.,
 }
 # Sample reweighting
 sample_era_reweighting = {
@@ -232,7 +250,7 @@ def get_files(eras, type='MC'):
         if type.upper() == 'MC' and not RUN_ALL_MC:
             all_dirs_set = set(
                 item for item in all_dirs_set 
-                if match_sample(item, cross_sections.keys()) is not None
+                if match_sample(item, [key for key in run2_cross_sections.keys()]+[key for key in run3_cross_sections.keys()]) is not None
             )
 
         eras[era] = sorted(all_dirs_set)
@@ -340,5 +358,5 @@ if __name__ == '__main__':
     data_eras = {
         os.path.join(era, ''): list() for era in DATA_ERAS
     } if len(DATA_ERAS) > 0 else None
-    # make_data(data_eras)
+    make_data(data_eras)
 

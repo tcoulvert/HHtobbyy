@@ -46,7 +46,7 @@ def add_bTagWP_resolved(sample, era, prefactor='nonRes'):
             sample[f"{prefactor}_{bjet_type}_bjet_bTagWP{WPname}"] = ak.where(sample[f"{prefactor}_{bjet_type}_bjet_{bTagVar}"] > WP, 1, 0)
             if WPname not in ['L', 'M', 'T', 'XT', 'XXT']: continue
             elif i == 0: sample[f"{prefactor}_{bjet_type}_bjet_bTagWP"] = ak.zeros_like(sample["pt"])
-            sample[f"{prefactor}_{bjet_type}_bjet_bTagWP"] = ak.where(sample[f"{prefactor}_{bjet_type}_bjet_{bTagVar}"] > WP, i, sample[f"{prefactor}_{bjet_type}_bjet_bTagWP"])
+            sample[f"{prefactor}_{bjet_type}_bjet_bTagWP"] = ak.where(sample[f"{prefactor}_{bjet_type}_bjet_{bTagVar}"] > WP, i+1, sample[f"{prefactor}_{bjet_type}_bjet_bTagWP"])
 
 def jet_mask(sample, i, prefactor='nonRes'):
     return (
@@ -94,9 +94,10 @@ def max_nonbjet_btag(sample, era, prefactor='nonRes'):
     return max_btag_score
 
 def add_vars_resolved(sample, filepath):
-    if all(match_sample(field, ['nonResReg_vbfpair']) is None for field in sample.fields):
+    if all(match_sample(field, ['nonResReg_vbfpair']) is None for field in sample.fields) or 'Run2' in filepath:
         for field in sample.fields:
             if match_sample(field, ['nonResReg']) is None and not field.startswith('VBF'): continue
+            if match_sample(field, ['nonResReg_vbfpair']) is not None: continue
             sample['nonResReg_vbfpair_'+field.replace('nonResReg_', '')] = sample[field]
     prefactors = [prefactor for prefactor in PREFACTORS if any(match_sample(field, PREFACTORS) == prefactor for field in sample.fields)]
 
@@ -198,27 +199,19 @@ def add_vars_resolved(sample, filepath):
         sample[f"{prefactor}_sublead_bjet_over_M_regressed"] = sample[f"{prefactor}_sublead_bjet_pt"] / sample[f"{prefactor}_dijet_mass_DNNreg"]
         ### END Manos variables ###
 
-        sample['pass_mva-0.7'] = ak.where(
-            (sample['lead_mvaID'] > -0.7)
-            & (sample['sublead_mvaID'] > -0.7),
-            1, 0
+        sample['pass_mva-0.7'] = ((sample['lead_mvaID'] > -0.7) & (sample['sublead_mvaID'] > -0.7))
+        sample['pass_geometry'] = sample['fiducialGeometricFlag'] if 'fiducialGeometricFlag' in sample.fields else sample['pass_fiducial_geometric']
+        sample['pass_trigger'] = (
+            sample['Diphoton30_22_R9Id_OR_IsoCaloId_AND_HE_R9Id_Mass90']
+            | sample['Diphoton30_22_R9Id_OR_IsoCaloId_AND_HE_R9Id_Mass95']
+        ) if 'Diphoton30_22_R9Id_OR_IsoCaloId_AND_HE_R9Id_Mass90' in sample.fields else (sample['mass'] > 0)
+        sample['pass_leadbjet_loose_bTag'] = (sample[f"{prefactor}_lead_bjet_bTagWP"] >= 1)
+
+        sample[f'{prefactor}_resolved_BDT_mask'] = (
+            sample[f'{prefactor}_has_two_btagged_jets'] & sample['pass_mva-0.7'] & sample['pass_geometry'] & sample['pass_trigger']
         )
-        sample[f'{prefactor}_resolved_BDT_mask'] = ak.where(
-            sample[f'{prefactor}_has_two_btagged_jets'] & (sample['pass_mva-0.7'] > 0)
-            & (
-                sample['fiducialGeometricFlag'] if 'fiducialGeometricFlag' in sample.fields else sample['pass_fiducial_geometric']
-            ) & (
-                (
-                    (sample[f'{prefactor}_lead_bjet_bTagWPT'] > 0)
-                    & (sample[f'{prefactor}_sublead_bjet_bTagWPT'] > 0)
-                ) if match_sample(filepath, {'W*HTo2G', 'ZH*To2G'}) is not None else (sample['mass'] > 0)
-            ) & (
-                (
-                    sample['Diphoton30_22_R9Id_OR_IsoCaloId_AND_HE_R9Id_Mass90']
-                    | sample['Diphoton30_22_R9Id_OR_IsoCaloId_AND_HE_R9Id_Mass95']
-                ) if 'Diphoton30_22_R9Id_OR_IsoCaloId_AND_HE_R9Id_Mass90' in sample.fields else (sample['mass'] > 0)
-            ),
-            1, 0
+        sample[f'{prefactor}_resolved_BDT_mask_bTagL'] = (
+            sample[f'{prefactor}_resolved_BDT_mask'] & sample['pass_leadbjet_loose_bTag']
         )
 
         del bjet_4moms, dijet_4mom
