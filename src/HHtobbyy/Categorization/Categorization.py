@@ -60,11 +60,11 @@ class Categorization:
             MCres.loc[MCres[f'{self.dfdataset.aux_var_prefix}sample_era'].eq('Run3_2024/sim'), f'{self.dfdataset.aux_var_prefix}eventWeight'] = 2 * MCres.loc[MCres[f'{self.dfdataset.aux_var_prefix}sample_era'].eq('Run3_2024/sim'), f'{self.dfdataset.aux_var_prefix}eventWeight']
             MCnonRes.loc[MCnonRes[f'{self.dfdataset.aux_var_prefix}sample_era'].eq('Run3_2024/sim'), f'{self.dfdataset.aux_var_prefix}eventWeight'] = 2 * MCnonRes.loc[MCnonRes[f'{self.dfdataset.aux_var_prefix}sample_era'].eq('Run3_2024/sim'), f'{self.dfdataset.aux_var_prefix}eventWeight']
         if '' in pd.unique(Data[f"{self.dfdataset.aux_var_prefix}sample_era"]):
-            print('upscaling 2022preEE MC for Run2 Data')
-            run2_lumi_ratio = 1.5 if 'Run3_2025/data' in pd.unique(Data[f"{self.dfdataset.aux_var_prefix}sample_era"]) else 1.8
+            print('upscaling 2022-23 MC for Run2 Data')
+            run2_lumi_ratio = 2.23
             run2_lumi_reweight = {
                 # Signal #
-                'GluGluToHH': 0.75, 'VBFHH': 1,
+                'GluGluToHH': 0.75, 'VBFHH': 2.27,
 
                 # Resonant (Mgg) background #
                 # Fake b-jets
@@ -88,10 +88,10 @@ class Categorization:
                 'DDQCDGJets': 1
             }
             for MCdf in [MCsignal, MCres, MCnonRes]:
-                era_mask = MCdf[f'{self.dfdataset.aux_var_prefix}sample_era'].eq('Run3_2022/sim/preEE')
+                era_mask = MCdf[f'{self.dfdataset.aux_var_prefix}sample_era'].isin(['Run3_2022/sim/preEE', 'Run3_2022/sim/postEE', 'Run3_2023/sim/preBPix', 'Run3_2023/sim/postBPix'])
                 for sample_name in pd.unique(MCdf[f'{self.dfdataset.aux_var_prefix}sample_name']):
                     sample_mask = np.logical_and(era_mask, MCdf[f'{self.dfdataset.aux_var_prefix}sample_name'].eq(sample_name))
-                    MCdf.loc[sample_mask, f'{self.dfdataset.aux_var_prefix}eventWeight'] = run2_lumi_ratio * run2_lumi_reweight[sample_name] * MCdf.loc[sample_mask, f'{self.dfdataset.aux_var_prefix}eventWeight']
+                    MCdf.loc[sample_mask, f'{self.dfdataset.aux_var_prefix}eventWeight'] = (run2_lumi_ratio * run2_lumi_reweight[sample_name] + 1) * MCdf.loc[sample_mask, f'{self.dfdataset.aux_var_prefix}eventWeight']
 
         MC_names = sorted(pd.unique(MCsignal.loc[:,f"{self.dfdataset.aux_var_prefix}sample_name"]).tolist()) + sorted(pd.unique(MCres.loc[:,f"{self.dfdataset.aux_var_prefix}sample_name"]).tolist())
         field_names = ['Category', 'FoM (s/b)'] + MC_names + ['nonRes MC -- SB fit', 'Data -- SB fit']

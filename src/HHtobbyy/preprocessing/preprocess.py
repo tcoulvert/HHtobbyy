@@ -64,7 +64,7 @@ BASE_FILEPATH = args.base_filepath
 FORCE = args.force
 RUN_ALL_MC = args.run_all_mc
 
-BAD_DIRS = {'outdated'}
+BAD_DIRS = {'outdated', 'allData'}
 END_FILEPATHS = ["merged.parquet", "Rescaled.parquet"]
 NEW_END_FILEPATH = "preprocessed.parquet"
 
@@ -77,7 +77,29 @@ luminosities = {
     '2024': 109.08,
 }
 # Name: cross section [fb] @ sqrrt{s}=13.6 TeV & m_H=125.09 GeV #
-cross_sections = {
+run2_cross_sections = {
+    # Signal #
+    'GluGluToHH': 8.1e-02, 
+    'VBFHH': 1.684*0.0026,
+
+    # Resonant (Mgg) background #
+    # Fake b-jets
+    'GluGluHToGG': 0.1103e3, 'VBFHToGG': 0.00855e3, 
+    # Real b-jets
+    'ttHToGG': 0.0011e3,
+    # Resonant b-jets
+    'VHToGG': 0.00508e3,
+
+    # Non-resonant (Mgg) background #
+    # Fake b-jets
+    'Diphoton': 86.96e3,
+    # Real b-jets
+    'TTGG': 0.01696e3,
+
+    # Data-driven background #
+    'DDQCDGJets': 1.,
+}
+run3_cross_sections = {
     # Signal #
     'GluGluToHH': 34.43*0.0026, 
     'VBFHH': 1.870*0.0026,
@@ -247,6 +269,7 @@ def make_dataset(filepath, era, type='MC'):
         ak_batch['sample_name'] = match_sample(filepath, sample_name_map) if match_sample(filepath, sample_name_map) is not None else filepath.split('/')[-3]
         ak_batch['sample_era'] = re.search('Run[1-3]_20', era).group()
         if type.upper() == 'MC':
+            cross_sections = run2_cross_sections if match_sample(filepath, ['Run2']) else run3_cross_sections
             print(f"lumi match = {match_sample(filepath, luminosities.keys())}")
             print(f"xs match = {match_sample(filepath, cross_sections.keys())}")
             if match_sample(filepath, cross_sections.keys()) != 'DDQCDGJets':
