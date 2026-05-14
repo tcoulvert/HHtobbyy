@@ -19,11 +19,16 @@ vec.register_awkward()
 
 resolved_bTagWPs = {
     # MC
+    '2016*preVFP': ("btagUParTAK4B", {'L': 0.0387, 'M': 0.1847, 'T': 0.5467, 'XT': 0.6777, 'XXT': 0.9218}),
+    '2016*postVFP': ("btagUParTAK4B", {'L': 0.0400, 'M': 0.1898, 'T': 0.5538, 'XT': 0.6872, 'XXT': 0.9353}),
+    '2017': ("btagUParTAK4B", {'L': 0.0331, 'M': 0.1776, 'T': 0.5755, 'XT': 0.7274, 'XXT': 0.9666}),
+    '2018': ("btagUParTAK4B", {'L': 0.0308, 'M': 0.1610, 'T': 0.5405, 'XT': 0.6992, 'XXT': 0.9655}),
     '2022*(preEE)|((Data|Era)[CD])': ("btagPNetB", {'L': 0.047, 'M': 0.245, 'T': 0.6734, 'XT': 0.7862, 'XXT': 0.961, '3XT': 0.9986, '4XT': 0.999}),
     '2022*(postEE)|((Data|Era)[EFG])': ("btagPNetB", {'L': 0.0499, 'M': 0.2605, 'T': 0.6915, 'XT': 0.8033, 'XXT': 0.9664, '3XT': 0.9986, '4XT': 0.999}),
     '2023*(preBPix)|((Data|Era)[C])': ("btagPNetB", {'L': 0.0358, 'M': 0.1917, 'T': 0.6172, 'XT': 0.7515, 'XXT': 0.9659, '3XT': 0.9986, '4XT': 0.999}),
     '2023*(postBPix)|((Data|Era)[D])': ("btagPNetB", {'L': 0.0359, 'M': 0.1919, 'T': 0.6133, 'XT': 0.7544, 'XXT': 0.9688, '3XT': 0.9986, '4XT': 0.999}),
-    '(201[x678])|(202[45])': ("btagUParTAK4B", {'L': 0.0246, 'M': 0.1272, 'T': 0.4648, 'XT': 0.6298, 'XXT': 0.9739, '3XT': 0.9983, '4XT': 0.9987}),  # 3XT was calculated to have ggF HH kl-1p00 lead *OR* sublead bjets pass with 25% efficiency, 4XT calculated for 10% efficiency
+    '2024': ("btagUParTAK4B", {'L': 0.0246, 'M': 0.1272, 'T': 0.4648, 'XT': 0.6298, 'XXT': 0.9739, '3XT': 0.9983, '4XT': 0.9987}),  # 3XT was calculated to have ggF HH kl-1p00 lead *OR* sublead bjets pass with 25% efficiency, 4XT calculated for 10% efficiency
+    '2025': ("btagUParTAK4B", {'L': 0.0246, 'M': 0.1272, 'T': 0.4648, 'XT': 0.6298, 'XXT': 0.9739, '3XT': 0.9983, '4XT': 0.9987}), 
 }
 
 NUM_JETS = 10
@@ -94,10 +99,9 @@ def max_nonbjet_btag(sample, era, prefactor='nonRes'):
     return max_btag_score
 
 def add_vars_resolved(sample, filepath):
-    if all(match_sample(field, ['nonResReg_vbfpair']) is None for field in sample.fields) or 'Run2' in filepath:
+    if all(match_sample(field, ['nonResReg_vbfpair']) is None for field in sample.fields):
         for field in sample.fields:
             if match_sample(field, ['nonResReg']) is None and not field.startswith('VBF'): continue
-            if match_sample(field, ['nonResReg_vbfpair']) is not None: continue
             sample['nonResReg_vbfpair_'+field.replace('nonResReg_', '')] = sample[field]
     prefactors = [prefactor for prefactor in PREFACTORS if any(match_sample(field, PREFACTORS) == prefactor for field in sample.fields)]
 

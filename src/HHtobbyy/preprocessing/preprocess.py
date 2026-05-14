@@ -85,11 +85,20 @@ luminosities = {
 # Name: cross section [fb] @ sqrrt{s}=13.6 TeV & m_H=125.09 GeV #
 cross_sections = {
     ## Signal ##
-    'Run2*GluGluToHH': 8.1e-02, 
-    'Run3*GluGluToHH': 34.43*0.0026, 
+    'Run2*GluGluToHH*kl.1p00*kt.1p00*c2.0p00': 8.1e-02, 
+    'Run3*GluGluToHH*kl.1p00*kt.1p00*c2.0p00': 34.43*0.0026, 
 
-    'Run2*VBFHH': 1.684*0.0026,
-    'Run3*VBFHH': 1.870*0.0026,
+    'Run2*GluGluToHH*kl.5p00*kt.1p00*c2.0p00': 0.09965e3 * 0.00227 * 0.582 * 2, 
+    'Run3*GluGluToHH*kl.5p00*kt.1p00*c2.0p00': 0.09965e3 * 0.00227 * 0.582 * 2, 
+
+    'Run2*GluGluToHH*kl.0p00*kt.1p00*c2.0p00': 0.07575e3 * 0.00227 * 0.582 * 2, 
+    'Run3*GluGluToHH*kl.0p00*kt.1p00*c2.0p00': 0.07575e3 * 0.00227 * 0.582 * 2, 
+
+    'Run2*GluGluToHH*kl.2p45*kt.1p00*c2.0p00': 0.01477e3 * 0.00227 * 0.582 * 2, 
+    'Run3*GluGluToHH*kl.2p45*kt.1p00*c2.0p00': 0.01477e3 * 0.00227 * 0.582 * 2, 
+
+    'Run2*VBFHH*kl.1*cv.1*c2v.1': 1.684*0.0026,
+    'Run3*VBFHH*CV.1*C2V.1*C3.1': 1.870*0.0026,
 
     ## Resonant (Mgg) background ##
     # Fake b-jets #
@@ -165,9 +174,13 @@ sample_era_reweighting = {
 }
 sample_name_map = {
     ## Signal ##
-    'GluGluToHH': 'GluGluToHH', 
+    'GluGluToHH*kl.1p00.kt.1p00.c2.0p00': 'GluGluToHH_kl1p00_kt1p00_c20p00', 
+    'GluGluToHH*kl.5p00.kt.1p00.c2.0p00': 'GluGluToHH_kl5p00_kt1p00_c20p00', 
+    'GluGluToHH*kl.0p00.kt.1p00.c2.0p00': 'GluGluToHH_kl0p00_kt1p00_c20p00', 
+    'GluGluToHH*kl.2p45.kt.1p00.c2.0p00': 'GluGluToHH_kl2p45_kt1p00_c20p00', 
 
-    'VBFHH': 'VBFHH',
+    'VBFHH*kl.1*cv.1*c2v.1': 'VBFToHH_kl1p00_cv1p00_c2v1p00',
+    'VBFHH*CV.1*C2V.1*C3.1': 'VBFToHH_cv1p00_c2v1p00_c31p00',
 
     ## Resonant (Mgg) background ##
     # Fake b-jets #
@@ -308,7 +321,6 @@ def make_mc(sim_eras: dict):
     for sim_era, filepaths in sim_eras.items():
         for filepath in filepaths:
             if match_sample(filepath, {'_up/', '_down/'}) is not None: continue
-            if 'Run2' not in filepath: continue
             make_dataset(filepath, sim_era)
 
 def make_data(data_eras: dict):
@@ -321,7 +333,6 @@ def make_data(data_eras: dict):
     # Perform the variable calculation and merging
     for data_era, filepaths in data_eras.items():
         for filepath in filepaths:
-            if 'Run2' not in filepath: continue
             make_dataset(filepath, data_era, type='Data')
 
 if __name__ == '__main__':
