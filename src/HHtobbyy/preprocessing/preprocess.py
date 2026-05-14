@@ -18,6 +18,7 @@ import vector as vec
 # Workspace packages
 from HHtobbyy.preprocessing.resolved_preprocessing import add_vars_resolved
 from HHtobbyy.preprocessing.boosted_preprocessing import add_vars_boosted
+from HHtobbyy.preprocessing.preprocessing_utils import match_sample_name, get_output_filepath, has_magic_bytes
 from HHtobbyy.workspace_utils.retrieval_utils import match_sample, get_era_filepaths
 
 ################################
@@ -102,8 +103,6 @@ cross_sections = {
 
     'Run3*Wp*HToGG': 887.*0.00228,
 
-    # 'Run3*Wm*HTo2G': 566.4*0.00228*0.6741, 'Run3*Wp*HTo2G': 887.*0.00228*0.6741,  # Irene's samples
-
     # Real b-jets #
     'Run2*ttHToGG': 0.0011e3,
     'Run3*ttHToGG': 568.8*0.00228, 
@@ -111,31 +110,15 @@ cross_sections = {
     'Run3*bbHToGG': 525.1*0.00228,
 
     # Resonant b-jets #
-    'Run3*VHToGG': (566.4 + 887. + 942.2)*0.00228, 
     'Run2*VHToGG': 0.00508e3,
+    'Run3*VHToGG': (566.4 + 887. + 942.2)*0.00228, 
 
     'Run3*ZHToGG': 942.2*0.00228,
 
-    # 'Run3*ZH*To2G': 942.2*0.00228*0.69911,  # Irene's samples
-
     ## Non-resonant (Mgg) background ##
-    # Fake photons, fake b-jets #
-    # 'Run3*GJet*20to40*': 242500., 
-
-    # 'Run3*GJet*40*': 919100., 
-
-    # Fake photons #
-    # 'Run3*TTG*10to100': 4216., 
-
-    # 'Run3*TTG*100to200': 411.4, 
-
-    # 'Run3*TTG*200': 128.4,
-
     # Fake b-jets #
-    # 'Run3*GGJets*40to80': 318100., 
-
-    'Run3*GGJets*80': 88750.,
-    'Run2*DiPhoton': 86.96e3,
+    'Run2*DDQCD*GGJets': 86.96e3,
+    'Run3*DDQCD*GGJets': 88750.,
 
     # Real b-jets #
     'Run2*TTGG': 0.01696e3,
@@ -144,36 +127,36 @@ cross_sections = {
     'Run3*SherpaNLO': 1093.,
 
     # Data-driven background #
-    'DDQCDGJet': 1.,
+    'DDQCD*DDQCDGJet': 1.,
 }
 # Sample reweighting
 sample_era_reweighting = {
-    "2016*preVFP*DDQCDGJets": 1.1233,
-    "2016*preVFP*GGJets": 1.1303,
+    "2016*preVFP*DDQCD*DDQCDGJet": 1.1233,
+    "2016*preVFP*DDQCD*GGJets": 1.1303,
     
-    "2016*postVFP*DDQCDGJets": 1.2077,
-    "2016*postVFP*GGJets": 1.3069,
+    "2016*postVFP*DDQCD*DDQCDGJet": 1.2077,
+    "2016*postVFP*DDQCD*GGJets": 1.3069,
     
-    "2017*DDQCDGJets": 1.1817, 
-    "2017*GGJets": 1.2002,
+    "2017*DDQCD*DDQCDGJet": 1.1817, 
+    "2017*DDQCD*GGJets": 1.2002,
     
-    "2018*DDQCDGJets": 1.1495, 
-    "2018*GGJets": 1.2153,
+    "2018*DDQCD*DDQCDGJet": 1.1495, 
+    "2018*DDQCD*GGJets": 1.2153,
     
-    "2022*preEE*DDQCDGJets": 1.0498,
-    "2022*preEE*GGJets": 1.3980,
+    "2022*preEE*DDQCD*DDQCDGJet": 1.0498,
+    "2022*preEE*DDQCD*GGJets": 1.3980,
     
-    "2022*postEE*DDQCDGJets": 1.0896,
-    "2022*postEE*GGJets": 1.3762,
+    "2022*postEE*DDQCD*DDQCDGJet": 1.0896,
+    "2022*postEE*DDQCD*GGJets": 1.3762,
     
-    "2023*preBPix*DDQCDGJets": 1.0369,
-    "2023*preBPix*GGJets": 1.4987,
+    "2023*preBPix*DDQCD*DDQCDGJet": 1.0369,
+    "2023*preBPix*DDQCD*GGJets": 1.4987,
     
-    "2023*postBPix*DDQCDGJets": 1.1814,
-    "2023*postBPix*GGJets": 1.5032,
+    "2023*postBPix*DDQCD*DDQCDGJet": 1.1814,
+    "2023*postBPix*DDQCD*GGJets": 1.5032,
     
-    "2024*DDQCDGJets": 1.2140,
-    "2024*GGJets": 1.5925,
+    "2024*DDQCD*DDQCDGJet": 1.2140,
+    "2024*DDQCD*GGJet": 1.5925,
 
     "!DDQCDGJet*GJet": 2.6,
 
@@ -181,40 +164,48 @@ sample_era_reweighting = {
     "": 1
 }
 sample_name_map = {
-    # Signal #
-    'GluGluToHH', 'VBFHH',
+    ## Signal ##
+    'GluGluToHH': 'GluGluToHH', 
 
-    # Resonant (Mgg) background #
-    # Fake b-jets
-    'GluGluHToGG', 'VBFHToGG', 'WmHToGG', 'WpHToGG',
-    # Real b-jets
-    'ttHToGG', 'bbHToGG',
-    # Resonant b-jets
-    'VHToGG', 'ZHToGG',
+    'VBFHH': 'VBFHH',
 
-    # Non-resonant (Mgg) background #
-    # Fake photons, fake b-jets
-    'GJet',
-    # Fake photons
-    'TTG',
-    # Fake b-jets
-    'GGJets',
-    # Real b-jets
-    'TTGG', 'SherpaNLO',
+    ## Resonant (Mgg) background ##
+    # Fake b-jets #
+    'GluGluHToGG': 'GluGluHToGG',
+
+    'VBFHToGG': 'VBFHToGG',
+    'Wm*HToGG': 'VHToGG', 
+    'Wp*HToGG': 'VHToGG',
+
+    # Real b-jets #
+    'ttHToGG': 'ttHToGG',
+
+    'bbHToGG': 'bbHToGG',
+
+    # Resonant b-jets #
+    'VHToGG': 'VHToGG',
+
+    'ZHToGG': 'VHToGG',
+
+    ## Non-resonant (Mgg) background ##
+    # Fake b-jets #
+    'GGJets': 'GGJets',
+    'DDQCD*GGJets': 'GGJets',
+
+    # Real b-jets #
+    'TTGG': 'TTGG',
+    
+    'SherpaNLO': 'GGBBJets',
 
     # Data-driven background #
-    'DDQCDGJets',
+    'DDQCD*DDQCDGJet': 'DDQCDGJets',
 
     # Data #
-    'Data'
+    'Data': 'Data'
 }
 
 ################################
 
-
-def has_magic_bytes(parquet_filepath: str):
-    try: pq.read_schema(parquet_filepath); return True
-    except: return False
 
 def get_files(eras, type='MC'):
     for era in eras.keys():
@@ -243,31 +234,17 @@ def get_files(eras, type='MC'):
         if not FORCE:
             all_dirs_set = set(
                 input_filepath for input_filepath in all_dirs_set 
-                if get_output_filepath(input_filepath) not in ran_dirs_set
+                if get_output_filepath(input_filepath, OUTPUT_DIRPATH, END_FILEPATHS, NEW_END_FILEPATH, BASE_FILEPATH) not in ran_dirs_set
             )
 
         # Remove non-necessary MC samples
         if type.upper() == 'MC' and not RUN_ALL_MC:
             all_dirs_set = set(
                 item for item in all_dirs_set 
-                if match_sample(item, [key for key in run2_cross_sections.keys()]+[key for key in run3_cross_sections.keys()]) is not None
+                if match_sample(item, cross_sections.keys()) is not None
             )
 
         eras[era] = sorted(all_dirs_set)
-
-def get_output_filepath(input_filepath: str):
-    if OUTPUT_DIRPATH is None:
-        output_filepath = input_filepath.replace(match_sample(input_filepath, END_FILEPATHS), NEW_END_FILEPATH)
-    else:
-        output_filepath = os.path.join(
-            OUTPUT_DIRPATH, 
-            input_filepath[
-                re.search(BASE_FILEPATH, input_filepath).start():
-            ].replace(match_sample(input_filepath, END_FILEPATHS), NEW_END_FILEPATH)
-        )
-    if not os.path.exists('/'.join(output_filepath.split('/')[:-1])):
-        os.makedirs('/'.join(output_filepath.split('/')[:-1]))
-    return output_filepath
 
 def make_dataset(filepath, era, type='MC'):
     print('========================>\n'+'Starting \n', filepath)
@@ -275,19 +252,18 @@ def make_dataset(filepath, era, type='MC'):
     schema = pq.read_schema(filepath)
     columns = [field for field in schema.names]
 
-    output_filepath = get_output_filepath(filepath)
+    output_filepath = get_output_filepath(filepath, OUTPUT_DIRPATH, END_FILEPATHS, NEW_END_FILEPATH, BASE_FILEPATH)
     if output_filepath.split('/')[1] == 'eos':
         eos_output_filepath = '/'.join(['']+output_filepath.split('/')[3:])
         output_filepath = f"tmp{hash(output_filepath)}.parquet"
     pq_writer = None
-    for pq_batch in pq_file.iter_batches(batch_size=262_144, columns=columns):
+    for pq_batch in pq_file.iter_batches(batch_size=1_048_576, columns=columns):
         ak_batch = ak.from_arrow(pq_batch)
 
         # Add useful parquet meta-info
-        ak_batch['sample_name'] = match_sample(filepath, sample_name_map) if match_sample(filepath, sample_name_map) is not None else filepath.split('/')[-3]
-        ak_batch['sample_era'] = re.search('Run[1-3]_20', era).group()
+        ak_batch['sample_name'] = match_sample_name(filepath, sample_name_map)
+        ak_batch['sample_era'] = era[re.search('Run[1-3]_20', era).start():-1]
         if type.upper() == 'MC':
-            cross_sections = run2_cross_sections if match_sample(filepath, ['Run2']) else run3_cross_sections
             print(f"lumi match = {match_sample(filepath, luminosities.keys())}")
             print(f"xs match = {match_sample(filepath, cross_sections.keys())}")
             if match_sample(filepath, cross_sections.keys()) != 'DDQCDGJets':
@@ -332,7 +308,7 @@ def make_mc(sim_eras: dict):
     for sim_era, filepaths in sim_eras.items():
         for filepath in filepaths:
             if match_sample(filepath, {'_up/', '_down/'}) is not None: continue
-            if '24' not in sim_era and 'VBFHH' in filepath: continue
+            if 'Run2' not in filepath: continue
             make_dataset(filepath, sim_era)
 
 def make_data(data_eras: dict):
@@ -345,6 +321,7 @@ def make_data(data_eras: dict):
     # Perform the variable calculation and merging
     for data_era, filepaths in data_eras.items():
         for filepath in filepaths:
+            if 'Run2' not in filepath: continue
             make_dataset(filepath, data_era, type='Data')
 
 if __name__ == '__main__':
