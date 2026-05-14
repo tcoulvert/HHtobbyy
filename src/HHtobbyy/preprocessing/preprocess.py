@@ -88,14 +88,14 @@ cross_sections = {
     'Run2*GluGluToHH*kl.1p00*kt.1p00*c2.0p00': 8.1e-02, 
     'Run3*GluGluToHH*kl.1p00*kt.1p00*c2.0p00': 34.43*0.0026, 
 
-    'Run2*GluGluToHH*kl.5p00*kt.1p00*c2.0p00': 0.09965e3 * 0.00227 * 0.582 * 2, 
-    'Run3*GluGluToHH*kl.5p00*kt.1p00*c2.0p00': 0.09965e3 * 0.00227 * 0.582 * 2, 
+    'Run2*GluGluToHH*kl.5p00*kt.1p00*c2.0p00': 0.09965e3*0.00227*0.582*2, 
+    'Run3*GluGluToHH*kl.5p00*kt.1p00*c2.0p00': 0.09965e3*0.00227*0.582*2, 
 
-    'Run2*GluGluToHH*kl.0p00*kt.1p00*c2.0p00': 0.07575e3 * 0.00227 * 0.582 * 2, 
-    'Run3*GluGluToHH*kl.0p00*kt.1p00*c2.0p00': 0.07575e3 * 0.00227 * 0.582 * 2, 
+    'Run2*GluGluToHH*kl.0p00*kt.1p00*c2.0p00': 0.07575e3*0.00227*0.582*2, 
+    'Run3*GluGluToHH*kl.0p00*kt.1p00*c2.0p00': 0.07575e3*0.00227*0.582*2, 
 
-    'Run2*GluGluToHH*kl.2p45*kt.1p00*c2.0p00': 0.01477e3 * 0.00227 * 0.582 * 2, 
-    'Run3*GluGluToHH*kl.2p45*kt.1p00*c2.0p00': 0.01477e3 * 0.00227 * 0.582 * 2, 
+    'Run2*GluGluToHH*kl.2p45*kt.1p00*c2.0p00': 0.01477e3*0.00227*0.582*2, 
+    'Run3*GluGluToHH*kl.2p45*kt.1p00*c2.0p00': 0.01477e3*0.00227*0.582*2, 
 
     'Run2*VBFHH*kl.1*cv.1*c2v.1': 1.684*0.0026,
     'Run3*VBFHH*CV.1*C2V.1*C3.1': 1.870*0.0026,
