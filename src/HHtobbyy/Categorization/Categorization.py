@@ -51,7 +51,7 @@ class Categorization:
         MCsignal = self.get_opt_df(self.dfdataset.get_all_test(regex=[sampl for sampl in self.catconfig.signal_samples]))
         MCres = self.get_opt_df(self.dfdataset.get_all_test(regex=[sampl for sampl in self.catconfig.res_samples]))
         MCnonRes = self.get_opt_df(self.dfdataset.get_all_test(regex=[sampl for sampl in self.catconfig.nonres_samples]))
-        Data = self.get_opt_df(self.dfdataset.get_all_test(regex='Data'))
+        Data = self.get_opt_df(self.dfdataset.get_all_test(regex='!Run2_201x*Data'))
 
 
         if 'Run3_2025/data' in pd.unique(Data[f"{self.dfdataset.aux_var_prefix}sample_era"]):

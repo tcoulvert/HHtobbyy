@@ -9,7 +9,7 @@ import eos_utils as eos
 import pyarrow.parquet as pq
 
 # Workspace packages
-from HHtobbyy.workspace_utils.retrieval_utils import FILL_VALUE, match_sample, get_era_filepaths
+from HHtobbyy.workspace_utils.retrieval_utils import FILL_VALUE, match_sample
 
 ################################
 
@@ -53,13 +53,25 @@ def get_output_filepath(input_filepath: str, output_dirpath: str|None, end_filep
                 re.search(base_filepath, input_filepath).start():
             ].replace(match_sample(input_filepath, end_filepaths), new_end_filepath)
         )
-    if not os.path.exists('/'.join(output_filepath.split('/')[:-1])):
-        os.makedirs('/'.join(output_filepath.split('/')[:-1]))
     return output_filepath
 
 
-def match_sample_name(filepath: str, sample_name_map: dict):
-    for filepath_piece in reversed(filepath.split('/')):
-        piece_match = match_sample(filepath_piece, sample_name_map.keys())
-        if piece_match is not None: return sample_name_map[piece_match]
-    return filepath
+def match_sample_name(filepath: str, xs_sample_map: dict):
+    match = match_sample(filepath, xs_sample_map.keys())
+    if match is not None: return xs_sample_map[match][0]
+    else: return filepath
+
+def match_sample_xs(filepath: str, xs_sample_map: dict):
+    match = match_sample(filepath, xs_sample_map.keys())
+    if match is not None: return xs_sample_map[match][1]
+    else: return None
+
+def match_sample_lumi(filepath: str, luminosities: dict):
+    match = match_sample(filepath, luminosities.keys())
+    if match is not None: return luminosities[match]
+    else: return None
+
+def match_sample_era(era: str, era_basestr: str='Run[1-3]_20'):
+    match = re.search(era_basestr, era)
+    if match is not None: return era[match.start():-1]
+    else: return era

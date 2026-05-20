@@ -352,6 +352,7 @@ class DFDataset:
         assert fold >= 0 and fold < self.n_folds, f"ERROR: Expected a fold index between 0 and {self.n_folds}, received {fold}"
 
         for filepath in filepaths:
+            print(filepath)
             df = self.make_df(filepath)
             mask = self.test_mask(df, fold)
             df = df.loc[mask].reset_index(drop=True)

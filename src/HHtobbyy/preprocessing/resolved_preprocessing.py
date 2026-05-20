@@ -19,10 +19,15 @@ vec.register_awkward()
 
 resolved_bTagWPs = {
     # MC
-    '2016*preVFP': ("btagUParTAK4B", {'L': 0.0387, 'M': 0.1847, 'T': 0.5467, 'XT': 0.6777, 'XXT': 0.9218}),
-    '2016*postVFP': ("btagUParTAK4B", {'L': 0.0400, 'M': 0.1898, 'T': 0.5538, 'XT': 0.6872, 'XXT': 0.9353}),
-    '2017': ("btagUParTAK4B", {'L': 0.0331, 'M': 0.1776, 'T': 0.5755, 'XT': 0.7274, 'XXT': 0.9666}),
-    '2018': ("btagUParTAK4B", {'L': 0.0308, 'M': 0.1610, 'T': 0.5405, 'XT': 0.6992, 'XXT': 0.9655}),
+    '2016*preVFP': ("btagUParTAK4B", {'L': 0.0246, 'M': 0.1272, 'T': 0.4648, 'XT': 0.6298, 'XXT': 0.9739, '3XT': 0.9983, '4XT': 0.9987}), 
+    '2016*postVFP': ("btagUParTAK4B", {'L': 0.0246, 'M': 0.1272, 'T': 0.4648, 'XT': 0.6298, 'XXT': 0.9739, '3XT': 0.9983, '4XT': 0.9987}), 
+    '2017': ("btagUParTAK4B", {'L': 0.0246, 'M': 0.1272, 'T': 0.4648, 'XT': 0.6298, 'XXT': 0.9739, '3XT': 0.9983, '4XT': 0.9987}), 
+    '2018': ("btagUParTAK4B", {'L': 0.0246, 'M': 0.1272, 'T': 0.4648, 'XT': 0.6298, 'XXT': 0.9739, '3XT': 0.9983, '4XT': 0.9987}), 
+    # '2016*preVFP': ("btagUParTAK4B", {'L': 0.0387, 'M': 0.1847, 'T': 0.5467, 'XT': 0.6777, 'XXT': 0.9218}),
+    # '2016*postVFP': ("btagUParTAK4B", {'L': 0.0400, 'M': 0.1898, 'T': 0.5538, 'XT': 0.6872, 'XXT': 0.9353}),
+    # '2017': ("btagUParTAK4B", {'L': 0.0331, 'M': 0.1776, 'T': 0.5755, 'XT': 0.7274, 'XXT': 0.9666}),
+    # '2018': ("btagUParTAK4B", {'L': 0.0308, 'M': 0.1610, 'T': 0.5405, 'XT': 0.6992, 'XXT': 0.9655}),
+
     '2022*(preEE)|((Data|Era)[CD])': ("btagPNetB", {'L': 0.047, 'M': 0.245, 'T': 0.6734, 'XT': 0.7862, 'XXT': 0.961, '3XT': 0.9986, '4XT': 0.999}),
     '2022*(postEE)|((Data|Era)[EFG])': ("btagPNetB", {'L': 0.0499, 'M': 0.2605, 'T': 0.6915, 'XT': 0.8033, 'XXT': 0.9664, '3XT': 0.9986, '4XT': 0.999}),
     '2023*(preBPix)|((Data|Era)[C])': ("btagPNetB", {'L': 0.0358, 'M': 0.1917, 'T': 0.6172, 'XT': 0.7515, 'XXT': 0.9659, '3XT': 0.9986, '4XT': 0.999}),
@@ -32,7 +37,7 @@ resolved_bTagWPs = {
 }
 
 NUM_JETS = 10
-PREFACTORS = ['nonRes', 'nonResReg', 'nonResReg_vbfpair']
+PREFACTORS = ['nonResReg_vbfpair']
 
 ################################
 
@@ -100,9 +105,11 @@ def max_nonbjet_btag(sample, era, prefactor='nonRes'):
 
 def add_vars_resolved(sample, filepath):
     if all(match_sample(field, ['nonResReg_vbfpair']) is None for field in sample.fields):
+        if all(match_sample(field, ['nonResReg']) is None for field in sample.fields): copy_field = 'nonRes_'
+        else: copy_field = 'nonResReg_'
         for field in sample.fields:
-            if match_sample(field, ['nonResReg']) is None and not field.startswith('VBF'): continue
-            sample['nonResReg_vbfpair_'+field.replace('nonResReg_', '')] = sample[field]
+            if not field.startswith(copy_field) and not field.startswith('VBF'): continue
+            sample['nonResReg_vbfpair_'+field.replace(copy_field, '')] = sample[field]
     prefactors = [prefactor for prefactor in PREFACTORS if any(match_sample(field, PREFACTORS) == prefactor for field in sample.fields)]
 
     # Regressed jet kinematics #
@@ -118,6 +125,8 @@ def add_vars_resolved(sample, filepath):
         )
 
     for prefactor in prefactors:
+        if f'{prefactor}_dijet_mass_DNNreg' not in sample.fields:
+            sample[f'{prefactor}_dijet_mass_DNNreg'] = sample[f'{prefactor}_dijet_mass']
 
         good_bjets = ak.zip({
             'lead': (sample[f'{prefactor}_lead_bjet_pt'] != FILL_VALUE),
@@ -210,12 +219,16 @@ def add_vars_resolved(sample, filepath):
             | sample['Diphoton30_22_R9Id_OR_IsoCaloId_AND_HE_R9Id_Mass95']
         ) if 'Diphoton30_22_R9Id_OR_IsoCaloId_AND_HE_R9Id_Mass90' in sample.fields else (sample['mass'] > 0)
         sample['pass_leadbjet_loose_bTag'] = (sample[f"{prefactor}_lead_bjet_bTagWP"] >= 1)
+        sample['pass_subleadbjet_loose_bTag'] = (sample[f"{prefactor}_sublead_bjet_bTagWP"] >= 1)
 
         sample[f'{prefactor}_resolved_BDT_mask'] = (
             sample[f'{prefactor}_has_two_btagged_jets'] & sample['pass_mva-0.7'] & sample['pass_geometry'] & sample['pass_trigger']
         )
-        sample[f'{prefactor}_resolved_BDT_mask_bTagL'] = (
+        sample[f'{prefactor}_resolved_BDT_mask_leadbTagL'] = (
             sample[f'{prefactor}_resolved_BDT_mask'] & sample['pass_leadbjet_loose_bTag']
+        )
+        sample[f'{prefactor}_resolved_BDT_mask_leadbTagL_subleadbTagL'] = (
+            sample[f'{prefactor}_resolved_BDT_mask_leadbTagL'] & sample['pass_subleadbjet_loose_bTag']
         )
 
         del bjet_4moms, dijet_4mom

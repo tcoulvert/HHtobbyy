@@ -12,13 +12,16 @@ import numpy as np
 # HEP packages
 import awkward as ak
 import eos_utils as eos
+import pyarrow
 import pyarrow.parquet as pq
 import vector as vec
 
 # Workspace packages
 from HHtobbyy.preprocessing.resolved_preprocessing import add_vars_resolved
 from HHtobbyy.preprocessing.boosted_preprocessing import add_vars_boosted
-from HHtobbyy.preprocessing.preprocessing_utils import match_sample_name, get_output_filepath, has_magic_bytes
+from HHtobbyy.preprocessing.preprocessing_utils import (
+    match_sample_name, match_sample_xs, match_sample_lumi, match_sample_era, get_output_filepath, has_magic_bytes
+)
 from HHtobbyy.workspace_utils.retrieval_utils import match_sample, get_era_filepaths
 
 ################################
@@ -39,6 +42,12 @@ parser.add_argument(
     "--base_filepath", 
     default='Run._20..',
     help="Regex string for splitting filepath if using a new output_dirpath"
+)
+parser.add_argument(
+    "--batch_size", 
+    type=int,
+    default=1_048_576,
+    help="Batch size for batch reading/writing of parquets"
 )
 parser.add_argument(
     "--force", 
@@ -62,6 +71,7 @@ OUTPUT_DIRPATH = args.output_dirpath
 if OUTPUT_DIRPATH is not None and not os.path.exists(OUTPUT_DIRPATH):
     os.makedirs(OUTPUT_DIRPATH)
 BASE_FILEPATH = args.base_filepath
+BATCH_SIZE = args.batch_size
 FORCE = args.force
 RUN_ALL_MC = args.run_all_mc
 
@@ -83,60 +93,63 @@ luminosities = {
     '2025': 110.73 
 }
 # Name: cross section [fb] @ sqrrt{s}=13.6 TeV & m_H=125.09 GeV #
-cross_sections = {
+xs_name_map = {
     ## Signal ##
-    'Run2*GluGluToHH*kl.1p00*kt.1p00*c2.0p00': 8.1e-02, 
-    'Run3*GluGluToHH*kl.1p00*kt.1p00*c2.0p00': 34.43*0.0026, 
+    'Run2*GluGluToHH*kl.1p00*kt.1p00*c2.0p00': ('GluGluToHH_kl1p00_kt1p00_c20p00', 8.1e-02), 
+    'Run3*GluGluToHH*kl.1p00*kt.1p00*c2.0p00': ('GluGluToHH_kl1p00_kt1p00_c20p00', 34.43*0.0026), 
 
-    'Run2*GluGluToHH*kl.5p00*kt.1p00*c2.0p00': 0.09965e3*0.00227*0.582*2, 
-    'Run3*GluGluToHH*kl.5p00*kt.1p00*c2.0p00': 0.09965e3*0.00227*0.582*2, 
+    'Run2*GluGluToHH*kl.5p00*kt.1p00*c2.0p00': ('GluGluToHH_kl5p00_kt1p00_c20p00', 0.09965e3*0.00227*0.582*2), 
+    'Run3*GluGluToHH*kl.5p00*kt.1p00*c2.0p00': ('GluGluToHH_kl5p00_kt1p00_c20p00', 0.09965e3*0.00227*0.582*2), 
 
-    'Run2*GluGluToHH*kl.0p00*kt.1p00*c2.0p00': 0.07575e3*0.00227*0.582*2, 
-    'Run3*GluGluToHH*kl.0p00*kt.1p00*c2.0p00': 0.07575e3*0.00227*0.582*2, 
+    'Run2*GluGluToHH*kl.0p00*kt.1p00*c2.0p00': ('GluGluToHH_kl0p00_kt1p00_c20p00', 0.07575e3*0.00227*0.582*2), 
+    'Run3*GluGluToHH*kl.0p00*kt.1p00*c2.0p00': ('GluGluToHH_kl0p00_kt1p00_c20p00', 0.07575e3*0.00227*0.582*2), 
 
-    'Run2*GluGluToHH*kl.2p45*kt.1p00*c2.0p00': 0.01477e3*0.00227*0.582*2, 
-    'Run3*GluGluToHH*kl.2p45*kt.1p00*c2.0p00': 0.01477e3*0.00227*0.582*2, 
+    'Run2*GluGluToHH*kl.2p45*kt.1p00*c2.0p00': ('GluGluToHH_kl2p45_kt1p00_c20p00', 0.01477e3*0.00227*0.582*2), 
+    'Run3*GluGluToHH*kl.2p45*kt.1p00*c2.0p00': ('GluGluToHH_kl2p45_kt1p00_c20p00', 0.01477e3*0.00227*0.582*2), 
 
-    'Run2*VBFHH*kl.1*cv.1*c2v.1': 1.684*0.0026,
-    'Run3*VBFHH*CV.1*C2V.1*C3.1': 1.870*0.0026,
+    'Run2*VBFHH*kl.1*cv.1*c2v.1': ('VBFToHH_kl1p00_cv1p00_c2v1p00', 1.684*0.0026),
+    'Run3*VBFHH*CV.1*C2V.1*C3.1': ('VBFToHH_cv1p00_c2v1p00_c31p00', 1.870*0.0026),
 
     ## Resonant (Mgg) background ##
     # Fake b-jets #
-    'Run2*GluGluHToGG': 0.1103e3,
-    'Run3*GluGluHToGG': 52170.*0.00228, 
+    'Run2*GluGluHToGG': ('GluGluHToGG', 0.1103e3),
+    'Run3*GluGluHToGG': ('GluGluHToGG', 52170.*0.00228), 
 
-    'Run2*VBFHToGG': 0.00855e3,
-    'Run3*VBFHToGG': 4075.*0.00228,
+    'Run2*VBFHToGG': ('VBFHToGG', 0.00855e3),
+    'Run3*VBFHToGG': ('VBFHToGG', 4075.*0.00228),
 
-    'Run3*Wm*HToGG': 566.4*0.00228, 
+    'Run3*Wm*HToGG': ('VHToGG', 566.4*0.00228), 
 
-    'Run3*Wp*HToGG': 887.*0.00228,
+    'Run3*Wp*HToGG': ('VHToGG', 887.*0.00228),
 
     # Real b-jets #
-    'Run2*ttHToGG': 0.0011e3,
-    'Run3*ttHToGG': 568.8*0.00228, 
+    'Run2*ttHToGG': ('ttHToGG', 0.0011e3),
+    'Run3*ttHToGG': ('ttHToGG', 568.8*0.00228), 
 
-    'Run3*bbHToGG': 525.1*0.00228,
+    'Run3*bbHToGG': ('bbHToGG', 525.1*0.00228),
 
     # Resonant b-jets #
-    'Run2*VHToGG': 0.00508e3,
-    'Run3*VHToGG': (566.4 + 887. + 942.2)*0.00228, 
+    'Run2*VHToGG': ('VHToGG', 0.00508e3),
+    'Run3*VHToGG': ('VHToGG', (566.4 + 887. + 942.2)*0.00228), 
 
-    'Run3*ZHToGG': 942.2*0.00228,
+    'Run3*ZHToGG': ('VHToGG', 942.2*0.00228),
 
     ## Non-resonant (Mgg) background ##
     # Fake b-jets #
-    'Run2*DDQCD*GGJets': 86.96e3,
-    'Run3*DDQCD*GGJets': 88750.,
+    'Run2*DDQCD*GGJets': ('GGJets', 86.96e3),
+    'Run3*DDQCD*GGJets': ('GGJets', 88750.),
 
     # Real b-jets #
-    'Run2*TTGG': 0.01696e3,
-    'Run3*TTGG': 16.96,
+    'Run2*TTGG': ('TTGG', 0.01696e3),
+    'Run3*TTGG': ('TTGG', 16.96),
     
-    'Run3*SherpaNLO': 1093.,
+    'Run3*SherpaNLO': ('GGBBJets', 1093.),
 
     # Data-driven background #
-    'DDQCD*DDQCDGJet': 1.,
+    'DDQCD*DDQCDGJet': ('DDQCDGJets', 1),
+                        
+    # Data #
+    'Data': ('Data', 1)
 }
 # Sample reweighting
 sample_era_reweighting = {
@@ -171,50 +184,6 @@ sample_era_reweighting = {
 
     # Matches to everything, so returns 1 for sample-eras that don't match to the other keys
     "": 1
-}
-sample_name_map = {
-    ## Signal ##
-    'GluGluToHH*kl.1p00.kt.1p00.c2.0p00': 'GluGluToHH_kl1p00_kt1p00_c20p00', 
-    'GluGluToHH*kl.5p00.kt.1p00.c2.0p00': 'GluGluToHH_kl5p00_kt1p00_c20p00', 
-    'GluGluToHH*kl.0p00.kt.1p00.c2.0p00': 'GluGluToHH_kl0p00_kt1p00_c20p00', 
-    'GluGluToHH*kl.2p45.kt.1p00.c2.0p00': 'GluGluToHH_kl2p45_kt1p00_c20p00', 
-
-    'VBFHH*kl.1*cv.1*c2v.1': 'VBFToHH_kl1p00_cv1p00_c2v1p00',
-    'VBFHH*CV.1*C2V.1*C3.1': 'VBFToHH_cv1p00_c2v1p00_c31p00',
-
-    ## Resonant (Mgg) background ##
-    # Fake b-jets #
-    'GluGluHToGG': 'GluGluHToGG',
-
-    'VBFHToGG': 'VBFHToGG',
-    'Wm*HToGG': 'VHToGG', 
-    'Wp*HToGG': 'VHToGG',
-
-    # Real b-jets #
-    'ttHToGG': 'ttHToGG',
-
-    'bbHToGG': 'bbHToGG',
-
-    # Resonant b-jets #
-    'VHToGG': 'VHToGG',
-
-    'ZHToGG': 'VHToGG',
-
-    ## Non-resonant (Mgg) background ##
-    # Fake b-jets #
-    'GGJets': 'GGJets',
-    'DDQCD*GGJets': 'GGJets',
-
-    # Real b-jets #
-    'TTGG': 'TTGG',
-    
-    'SherpaNLO': 'GGBBJets',
-
-    # Data-driven background #
-    'DDQCD*DDQCDGJet': 'DDQCDGJets',
-
-    # Data #
-    'Data': 'Data'
 }
 
 ################################
@@ -254,39 +223,32 @@ def get_files(eras, type='MC'):
         if type.upper() == 'MC' and not RUN_ALL_MC:
             all_dirs_set = set(
                 item for item in all_dirs_set 
-                if match_sample(item, cross_sections.keys()) is not None
+                if match_sample(item, xs_name_map.keys()) is not None
             )
 
         eras[era] = sorted(all_dirs_set)
 
 def make_dataset(filepath, era, type='MC'):
     print('========================>\n'+'Starting \n', filepath)
-    pq_file = pq.ParquetFile(filepath)
+    pq_file = eos.load_file_eos(pyarrow.Table, filepath)
     schema = pq.read_schema(filepath)
     columns = [field for field in schema.names]
 
     output_filepath = get_output_filepath(filepath, OUTPUT_DIRPATH, END_FILEPATHS, NEW_END_FILEPATH, BASE_FILEPATH)
-    if output_filepath.split('/')[1] == 'eos':
-        eos_output_filepath = '/'.join(['']+output_filepath.split('/')[3:])
-        output_filepath = f"tmp{hash(output_filepath)}.parquet"
+    tmp_output_filepath = f"tmp-{hash(output_filepath)}.parquet"
     pq_writer = None
-    for pq_batch in pq_file.iter_batches(batch_size=1_048_576, columns=columns):
+    for pq_batch in pq_file.iter_batches(batch_size=BATCH_SIZE, columns=columns):
         ak_batch = ak.from_arrow(pq_batch)
 
         # Add useful parquet meta-info
-        ak_batch['sample_name'] = match_sample_name(filepath, sample_name_map)
-        ak_batch['sample_era'] = era[re.search('Run[1-3]_20', era).start():-1]
+        ak_batch['sample_name'] = match_sample_name(filepath, xs_name_map)
+        ak_batch['sample_era'] = match_sample_era(era)
+        print(f"{match_sample_era(era)}: {match_sample_name(filepath, xs_name_map)}")
         if type.upper() == 'MC':
-            print(f"lumi match = {match_sample(filepath, luminosities.keys())}")
-            print(f"xs match = {match_sample(filepath, cross_sections.keys())}")
-            if match_sample(filepath, cross_sections.keys()) != 'DDQCDGJets':
-                ak_batch['eventWeight'] = (
-                    ak_batch['weight'] 
-                    * luminosities[match_sample(filepath, luminosities.keys())] 
-                    * cross_sections[match_sample(filepath, cross_sections.keys())]
-                )
-            else: 
-                ak_batch['eventWeight'] = ak_batch['weight']
+            print(f"lumi match = {match_sample(filepath, luminosities.keys())}: {match_sample_lumi(filepath, luminosities)}")
+            print(f"xs match = {match_sample(filepath, xs_name_map.keys())}: {match_sample_xs(filepath, xs_name_map):.4f}")
+            ak_batch['eventWeight'] = ak_batch['weight'] * match_sample_lumi(filepath, luminosities) * match_sample_xs(filepath, xs_name_map)
+            if match_sample_name(filepath, xs_name_map) == 'DDQCDGJets': ak_batch['eventWeight'] = ak_batch['weight']
             ak_batch['eventWeight'] = ak_batch['eventWeight'] * sample_era_reweighting[match_sample(filepath, sample_era_reweighting.keys())]
         else: 
             ak_batch['weight'] =  ak.ones_like(ak_batch['pt'])
@@ -302,12 +264,10 @@ def make_dataset(filepath, era, type='MC'):
 
         table_batch = ak.to_arrow_table(ak_batch)
         if pq_writer is None:
-            pq_writer = pq.ParquetWriter(output_filepath, schema=table_batch.schema)
+            pq_writer = pq.ParquetWriter(tmp_output_filepath, schema=table_batch.schema)
         pq_writer.write_table(table_batch)
     pq_writer.close()
-    if 'eos_output_filepath' in locals():
-        subprocess.run(['xrdcp', '-f', output_filepath, 'root://cmseos.fnal.gov/'+eos_output_filepath])
-        subprocess.run(['rm', output_filepath])
+    eos.copy_eos(tmp_output_filepath, output_filepath); os.remove(tmp_output_filepath)
     print('Finished\n'+'<========================')
 
 def make_mc(sim_eras: dict):

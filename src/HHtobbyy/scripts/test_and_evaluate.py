@@ -60,14 +60,14 @@ parser.add_argument(
 
 def main(dfdataset: DFDataset, model: Model, filepaths: list, **kwargs):
     # Building test DFDataset
-    dfdataset.make_all_test(filepaths, **kwargs)
+    dfdataset.make_all_test(filepaths, force=True, **kwargs)
 
     # Evaluating the model
     model.predict_all_folds(**kwargs)
 
     # Categorizing the model
-    cat = Categorization(dfdataset, {"discriminator": "3D"})
-    cat.run()
+    # cat = Categorization(dfdataset, {"discriminator": "3D"})
+    # cat.run()
 
 
 if __name__ == "__main__":
