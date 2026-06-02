@@ -1,15 +1,14 @@
 # Multiclass BDT model for $HH \rightarrow b\bar{b}\gamma\gamma$ Analysis
 
 ## Introduction
-This is a repository containing the code necessary to train and evaluate a Multiclass BDT event discrimintator for the CMS Run3 $HH \rightarrow b\bar{b}\gamma\gamma$ Analysis. The model is trained on MC and evaluated on MC and Data. The structure of the repostory has gone through multiple iterations, but currently has the following main components each split into their own sub-folder: pre-processing, training, evaluation, plotting. Lets take a look at each of them in the order they are used.
+This is a repository containing the code necessary to train and evaluate a Multiclass BDT event discrimintator for the CMS Run3 $HH \rightarrow b\bar{b}\gamma\gamma$ Analysis. The model is trained on MC and evaluated on MC and Data. The structure of the repostory has gone through multiple iterations, but currently has the following main components each split into their own sub-folder: pre-processing, event-discrimnation (the bulk of the rpository), categorization, and FinalFit. Lets take a look at each of them in the order they are used.
 
 The python environment necessary for this repository comes from HiggsDNA (explained below) as a conda enviroment. See the [HiggsDNA documentation](https://higgs-dna.readthedocs.io/en/latest/index.html) for instructions on how to install.
 
 ## TO-DO:
 The framework is mostly settled, but there are a couple of useful things that should be implemented.
-1. Fix the `plotting/plot_vars.py` script and merge it with the `plotting/sample_comparison.py` in order to facilitate making input variable plots and Data/MC comparison plots inside the repo. The code should all be there, just needs to be fixed, combined, and cleaned.
-2. Fix the `plotting/sculpting_check.py` function in order to allow for checking for sculpting in the output distributions using the re-sampling technique when necessary. The code should all be there, just needs to be fixed, combined, and cleaned.
-3. Add code to the `fitting/parquet_to_root.py` script to cross-check outputs from resolved BDT and boosted BDT and output separate `.ROOT` files for the various resolved and boosted categories for downstream fitting. This requires making use of the `AUX_hash` column, but it should be straightforward to implement.
+1. Fix the `event_discrimination/plotting` scripts to work with the current module-based HHbbyy repo
+2. Add code to the `fitting/parquet_to_root.py` script to cross-check outputs from resolved BDT and boosted BDT and output separate `.ROOT` files for the various resolved and boosted categories for downstream fitting. This requires making use of the `AUX_hash` column, but it should be straightforward to implement.
 
 ## Pre-processing
 ### HiggsDNA
@@ -52,93 +51,94 @@ MC/Data era 1
 ```
 By default the `preprocess.py` file will create a new `.parquet` file adjacent to each input file.
 
-### Variable Standardization
-After running the `preprocess.py` script, all the necessary variables have been added to the input `.parquet` files, and you are almost ready to begin training. The final step is to run the `BDT_preprocessing.py` script in order to create lightweight training (and testing) files that have the minimal necessary variables for training and evaluating, with the proper variable standardization. The reason for making these lightweight files is two-fold: to save storage space on the cluster by not duplicating unecessary columns, and to ensure the training files are static. Saving storrage space is important because disk space is fundamentally a limited resource and it is easy (especially in ML contexts) to run out quickly. An added benefit of saving disk space with lightweight files, is that this makes parallel training of multiple models much easier because the required RAM is much smaller due to the lightweight files. Currently, this repositry doesn't make use of any parallelization (multi-processng, multi-threading, etc) but by setting things up the way we have, this would be an easy feature to implement. Keeping the training the training files static is important for an even more fundamental reason: backwards compatibility. If we always keep a copy of the data used to train a model -- and we separate the variable-dependent dataset creation from the model training code -- we can cross-check a model's training data, evaluate on new data, or even re-train a model at any time. This lets us quickly and easily create many different versions of our BDT model and we can compare the performance across versions *without changing any code*.
 
-To run the variable standardization and training dataset creatin, use the `BDT_preprocessing.py` script as follows:
+## Event-Discrimination
+After running the `preprocess.py` script, all the necessary variables have been added to the input `.parquet` files, and you are almost ready to begin training the event-discriminator. The event-discriminator module is broken up into a few different sub-modules to allow for readability and for the code to be model-agnostic – that is, any model architecutre can be implemented so long as it follows the required structure. The sub-modules of the event-discriminator are: DFDataset, Model, models, training, evaluation, and plotting. Let's take a look at each of these sub-modules in the order they are run in a typical analysis flow.
 
-`python BDT_preprocessing.py <filepath_to_input_eras> <filepath_to_BDT_config_py_file> <filepath_to_dump_output_files>`
+### DFDataset
+The first step to build the event-discriminator is to create the `DFDataset`, which represents the lightweight training (and testing) files that have the minimal necessary variables for training and evaluation, with the proper variable standardization. The reason for making these lightweight files is two-fold: to save storage space on the cluster by not duplicating unecessary columns, and to ensure the training files are static. Saving storrage space is important because disk space is fundamentally a limited resource and it is easy (especially in ML contexts) to run out quickly. An added benefit of saving disk space with lightweight files, is that this makes parallel training of multiple models much easier because the required RAM is much smaller due to the lightweight files. Currently, this repositry doesn't make use of any parallelization (multi-processng, multi-threading, etc) but by setting things up the way we have, this would be an easy feature to implement. Keeping the training the training files static is important for an even more fundamental reason: backwards compatibility. If we always keep a copy of the data used to train a model -- and we separate the variable-dependent dataset creation from the model training code -- we can cross-check a model's training data, evaluate on new data, or even re-train a model at any time. This lets us quickly and easily create many different versions of our BDT model and we can compare the performance across versions *without changing any code*.
 
-The `input_eras` file is the same as the one used for the `preprocess.py` file.
+The `DFDataset.py` file defines the DFDataset object, which is configured using a dictionary (explained below).
 
-#### Structure of *BDT_config.py file
-the `DATASET_TAG` variable is a short string that will be included in the name of the lightweight dataset and should be treated as a concise way of converying the most important properties of that dataset. I typically include the eras of the dataset and a short description of the variables that *differ from normal* -- what counts as differing from normal is up to you. It's important that you change this variable whenever you change the config file as this variable is your main way of tracking what is in a dataset.
+Once the DFDataset object is defined, training datasets can be created using the code below:
+```python
+# Makes the train dataset for 1 fold
+dfdataset.make_train(fold_index, filepaths **kwargs)
+# Makes the train dataset for all folds
+dfdataset.make_all_train(filepaths, **kwargs)
+```
+The `filepaths` arg is a list of filepaths to use, which will be converted into a dictionary where the filepaths are gouped by class (see DFDataset config). The kwargs are optional arguments to be passed to the multifold wrapper – located at `workspace_utils/retrieval_utils/multifold`, allowing code to run across multiple folds in parallel. 
 
-The `CLASS_SAMPLE_MAP` variable exclusively defines the samples in the training datasets, as well as how to split the samples into distinct classes.
-The structure of this map has the keys as the name of the classes, and the values as a list of wildcard sample-names (i.e. regex-like formatting) of that class.
+Similarly, testing datasets can be created using the code below:
+```python
+# Makes the test dataset for 1 fold
+dfdataset.make_test(fold_index, filepaths, force=(True)False, **kwargs)
+# Makes the test dataset for all folds
+dfdataset.make_all_test(filepaths, force=(True)False, **kwargs)
+```
+The `force` flag allows you to re-run the test dataset creation and override the current files, by default it `force=False`, so only new test datasets will be created. The testing dataset for each fold must be created *after* the train dataset for that fold, because the train dataset defines the standardization values that need to be applied. However, each fold can be run independently, just like for the training dataset.
+
+#### Structure of DFDataset config
+The config is required to have certain keys which are fundamental to the creation and running of a new model, however you can optionally pass more keys that will override the default values for the DFDataset member variables. The full list of member variables is given in the DFDataset class, along with comments explaining their purpose, but I will go over the required variables below:
+
 ```python
 {
-  'class 1': ['glob*name*1*', '*globname*2', etc]
+    # Path (can include XRD redirectors for EOS) for output directory for DFDataset files
+    "output_dirpath": "path/to/output/directory/for/DFDataset",
+
+    # Short description of the dataset
+    #   -> no required structure for the tag, it's simply for your own house-keeping
+    "dataset_tag": "tagline_of_dataset",
+
+    # List of training variables
+    "model_vars": ["var1", "var2", ...],
+
+    # List of auxiliary variables
+    #   -> Unstandardized variables to be used downstream in the analysis, including (unstandardized) duplicates from the training list which will be renamed using the 'aux_var_prefix' member variable of DFDataset
+
+    # Map from processes (file_regexs) to class groupings
+    #   -> BE CAREFUL!! If your regexs are poorly chosen your model *will* have different class groupings than you expect there is some code to check for this using `workspace_utils/retrieval_utils/check_train_filepaths`, but that only happens if you get your filepaths
+    #   -> implicitly defines number of classes
+    "class_sample_map": {
+        "class1": ["file_regex1", "file_regex2"],
+        "class2": ["file_regex3", "file_regex4"],
+        ...
+    }
 }
 ```
-The regex-like expressions are used to find the appropriate files for each of the classes and dataset types. The files are found by splitting the wildcard sample-names at the '*' characters, and selecting any samples that have *ALL* (with 1 exception) of the sub-strings. For example, the wildcard sample-name '*ttH*' matches to any filepath that contains the substring 'ttH'. 
 
-The matching for finding samples to put into the datasets is done using the `re` module, so all the normal regex rules are available. The order of the different substrings matters, and the matching will look for them in the order they appear (although the distance between two matches does not matter). 
-The exception to the *ALL* matching comes from the '!' symbol, which allows users to anti-match a substring. Anti-matching in this case means you can specify a substring that -- if matched to a filepath -- indicates you want to exclude that filepath. For example, the wildcard sample-name '*ttH*!Htobb*' indicates that you want to match all samples that contain 'ttH' but do *not* contain 'Htobb' afterwards.
-After being used to find the samples, the found samples are then processed through this file into the lightweight training and testing files for the BDT. The wildcard sample-names are then used again any time users want to load the training or train-testing files for downstream tasks (I define train-testing to mean the test files of the train samples). These downstream loading tasks are done with the same function, which allows full use of regex tools. Leading and trailing '*' are therefore redundant.
-The other necessary sets are the TRAIN_ONLY_SAMPLES and TEST_ONLY_SAMPLES. These sets define samples that should only be used for training or testing (as compared to the default behavior of the training files which is to be split into training and testing). The training-only samples should be contained in the CLASS_SAMPLE_MAP and should therefore be a subset of the training samples. There is a check that requires samples that match to TRAIN_ONLY_SAMPLES to also match to the CLASS_SAMPLE_MAP. The TEST_ONLY_SAMPLES, on the other hand, should be disjoint from the training, there is a check to ensure the samples *don't* match to CLASS_SAMPLE_MAP.
-
-#### Structure of `--output_dirpath` directory:
+#### Structure of DFDataset in the `output_dirpath` directory:
 ```bash
 <output_dirpath>
-├── timestamp of training 1 dataset
+├── <dataset_tag of training dataset 1>_<timestamp of training dataset 1>
     ├── MC/Data Era 1
     ├── MC/Data Era 2
     └── etc
-└── timestamp of training 2 dataset
+└── <dataset_tag of training dataset 2>_<timestamp of training dataset 2>
     ├── MC/Data Era 1
     ├── MC/Data Era 2
     └── etc
 └── etc
 ```
-If you choose to use the extra `--remake_test` flag (see below), the `--output_dirpath` flag should change from the general directory, to the specific timestamp directory associated with the test dataset you want to change. The names of the training dataset directories are timestamps of when the `BDT_preprocessing.py` file was run -- this means you do not know what is in the datasets by looking at them. **You must keep track of what eras, samples, and variables were used in the creation of a given dataset** I have done this using comments in the `run_training.py` file under the `training` directory, but you are free to keep track as you wish, just remember this information is not saved.
+The DFDataset structure follows from the general output structure of HiggsDNA (see pre-processing).
 
-There are 4 extra flags: 
-1. `--debug` prints out debug statements
-2. `--dryrun` runs the code without actually saving out the training files (this can be helpful for debugging)
-3. `--plots` makes plots of the BDT input variables before and after variable standardization (useful to understand what is going into the training)
-4. `--remake_test` is a special flag for changing the test data stored in the output. This flag should *not* be used when you are creating an initial dataset for training. Rather, the `--remake_test` flag is to be used when you have already made a dataset for training and you want to change the samples in the test datasets (e.g. you have a new process you want to evlaute on, or there's a new EFT process to be evaluated, etc). This flag allows you to change the test files *without changing the training files* and using the proper variable standardization for that training. If you use this flag, the `--output_dirpath` needs to change from the directory that stores all the various training files to the directory of the specific training files for the training you want to use. See below for a visual example
+### Model
+Now that the dataset is defined, we are ready to define the model used for training. In order to be agnostic to model architecture, the model definition is split into two modules: `Model` (this section) and `models` (next section). `Model` defines the basic structure any model must have in order to operate in this framework via abstract classes. Therefore, the code in `Model` is largely a template of how the `HHtobbyy` module expects ML models to be constructed, with the execption of some (small) class methods that exist across specific ML implementations. In contrast, the `models` module defines the specific implementation for each architecture implemented.
 
+In practice, the rest of the `HHtobbyy` code can simply interact with the `Model` module and agnostically call any ML architecture. The configuration, training, and evaluation are all encompassed in the `Model`, so that downstream tasks can call a uniform API for any model.
 
-## Training
-Once you have run the `preprocess.py` and `BDT_preprocessing.py` scripts you are ready to train a model! Lucikly, because we setup the preprocessing and variable standardization in a backwards-compatible way (and split up each training dataset into its own directory), the training itself is extremely simple. You only need to run the `run_training.py` file (located under the `training` directory) with the `LPC_FILEPREFIX` variable changed to the location of your `--output_dirpath` from the `BDT_preprocessing.py` script, and the `PARQUET_TIME` variable set to the specific training dataset you would like to use. The `VERSION` and `VARS` variables are there only to help dilineate and organize the many versions of models you will train while optimizing your BDT, with the `VERSION` vairbale being taken from the lightweight dataset's `DATASET_TAG` variable.
+As a user, the `Model` vs `models` difference is mostly just an abstraction and can be ignored. However, if you want to implement your own model, you must do-so following the template of the `Model` module and do-so inside the `models` module.
 
-To run the training, use the `run_training.py` script as follows:
+### models
+As stated above, the `models` module contains the implementations for each of the architectures desired for the event-discriminator. The reason why this is nice, is it allows you to try multiple different architectures (e.g. BDT and DNN) and easily compare the performance between them without needing to re-write any code. This is an extremely common scenario in ML, and this split `Model` vs. `models` setup allows for you to write, rewrite, or completely change the architecture while having both a structure to follow and the freedom to use any model.
 
-`python run_training.py <path_to_dataset_dirpath>`
+Currently, there are 2 models implemented: `MLP` and `XGBoostBDT`. `MLP` is a (simple) PyTorch-based Multiclass-DNN, while `XGBoostBDT` is a XGBoost-based Multiclass-BDT. I won't discuss here the details of each model, rather I invite you to read the code of each if you're interested.
 
-Extra arguments:
-1. `--output_dirpath` changes the dump location fo the trained model files, by default the training files will be dumped under `HHtobbyy/MultiClassBDT_model_outputs/{VERSION}/{VARS}/{timestamp_of_training}`
-2. `--eos_dirpath` changes the path for the eos space for intermediate files to be placed in, by default the path is `root://cmseos.fnal.gov//store/user/<username>/condor_train`, but this will obviously not work for people using LXPLUS or other Tier 1-3 clusters
-3. `--optimize_space` will toggle on the hyperparameter optimization (this is very computationally expensive and should only be done *after* you've finalized your input variables and dataset eras and processes) -- if you would like to understand how the hyperparameters are optimized, you can read the `optimize_hyperparams.py` file and the corresponding blog-post its implemented from
-4. `--fold` restricts the training to only perform one fold -- this is only important for batch jobs. If you are training a model with only 1 fold, you can specify that with N_FOLDS in the `BDT_preprocessing.py` script
-5. `--batch` allows for selection of normal submission (`iterative`) or batch submission (currently only `condor`), see the `<batch_type>_training.py` files for details on how this is impemented
-6. `--memory` changes the memory requested in the batch job
-7. `--queue` changes the queue requested in the batch job
+### training
+The bulk of the training code is implemented on a per-model basis in the `models` module. However, there are a few utility functions (as well as Condor submission) that are contained in the `training` module.
 
+### evaluation
+Similarly as above, the bulk of the evaluation code is implemented on a per-model basis in the `models` module. However, there are a few utility functions that are contained in the `evaluation` module.
 
-## Evaluation
-Once you've trained a model, the last step is evaluating your test dataset with this model. Again, like with the training, things are easy because we put so much work into our dataset creation and management. All we need is the `evaluate_model.py` file (located under the `evaluation` directory),
-
-To run the evaluation, use the `evaluate_model.py` file as follows:
-
-`python evaluate_model.py <dirpath_to_trained_model> --dataset_dirpath <dirpath_to_training_dataset>`
-
-The `training_dirpath` argument is the output directory of the training, while the `--dataset_dirpath` flag is optional -- it defaults to the same `--output_dirpath` from the `BDT_preprocessing.py` script used for the training specified in the `training_dirpath` flag.
-
-Extra arguments:
-1. `--dataset` runs the evluation of the train, test, train-test, or all datasets (defaults to test)
-2. `--syst_name` runs the evaluation of the the nominal or all systematics for the specified datasets
-
-
-## Plotting
-The final action you may want to take is to make various plots concerning the performance of a model. These plots are important for comparing the performance across models, as well as because these plots are the visual tools you will need to explain to others (and yourself) how well your model works. There are many different types of plots (and not all of the scripts located under the `plotting` directory are working), but the structure of how to use them is fairly uniform and can be understood for each plotting script separately.
-
-### ROCs
-One of the most important plots (and the only one I will explain how to make here) are the Receiver Operator Characteristic (ROC) curves. The ROC curves describe how well a discriminator rejects background and accepts signal. For our analysis we break our Multiclass BDT output into 2 discriminators, one called DttH (designed to discriminate the $HH$ signal from the $ttH$ background) and the other called DQCD (designed to discriminate the $HH$ signal from the $H$ and QCD backgrounds). The `plot_roc.py` script creates the ROC curves for DttH and DQCD and prints out the signal efficiency at 1 (2) background-efficiency value(s) for DttH (DQCD).
-
-To make the ROC curves, run the `plot_roc.py` script as follows:
-
-`python plot_roc.py <dirpath_to_trained_model> --dataset_dirpath <dirpath_to_training_dataset>`
-
-The two input arguments for the `plot_roc.py` file are the same as the inputs for the `evaluate_model.py` file. Currently, the plotting scripts are not all working, but this will change in the near future.
+### plotting
+The final action you may want to take is to make various plots concerning the performance of a model. These plots are important for comparing the performance across models, as well as because these plots are the visual tools you will need to explain to others (and yourself) how well your model works. There are many different types of plots, but currently the plotting scripts aren't implemented for the module-based `HHtobbyy`. They will be added soon.

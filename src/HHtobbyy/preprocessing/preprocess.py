@@ -107,7 +107,7 @@ xs_name_map = {
     'Run2*GluGluToHH*kl.2p45*kt.1p00*c2.0p00': ('GluGluToHH_kl2p45_kt1p00_c20p00', 0.01477e3*0.00227*0.582*2), 
     'Run3*GluGluToHH*kl.2p45*kt.1p00*c2.0p00': ('GluGluToHH_kl2p45_kt1p00_c20p00', 0.01477e3*0.00227*0.582*2), 
 
-    'Run2*VBFHH*kl.1*cv.1*c2v.1': ('VBFToHH_kl1p00_cv1p00_c2v1p00', 1.684*0.0026),
+    'Run2*VBFHH*CV.1*C2V.1*C3.1': ('VBFToHH_cv1p00_c2v1p00_c31p00', 1.684*0.0026),
     'Run3*VBFHH*CV.1*C2V.1*C3.1': ('VBFToHH_cv1p00_c2v1p00_c31p00', 1.870*0.0026),
 
     ## Resonant (Mgg) background ##
@@ -266,8 +266,9 @@ def make_dataset(filepath, era, type='MC'):
         if pq_writer is None:
             pq_writer = pq.ParquetWriter(tmp_output_filepath, schema=table_batch.schema)
         pq_writer.write_table(table_batch)
-    pq_writer.close()
-    eos.copy_eos(tmp_output_filepath, output_filepath); os.remove(tmp_output_filepath)
+    if pq_writer is not None: 
+        pq_writer.close()
+        eos.copy_eos(tmp_output_filepath, output_filepath); os.remove(tmp_output_filepath)
     print('Finished\n'+'<========================')
 
 def make_mc(sim_eras: dict):
