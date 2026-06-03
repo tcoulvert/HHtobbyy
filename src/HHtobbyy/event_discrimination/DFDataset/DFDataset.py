@@ -296,9 +296,11 @@ class DFDataset:
         stddict_filepath = os.path.join(self.output_dirpath, f'{self.standardization_method.lower()}_{self.standardization_subfilename}{fold}.json')
         stddict = eos.load_file_eos(dict, stddict_filepath)
 
-        std_values = np.ma.array(df.loc[:, self.model_vars], mask=(df.loc[:, self.model_vars].eq(self.fill_value)))
-        apply_zscore(std_values, stddict)
-        df.loc[:, self.model_vars].loc[std_values.mask] = self.refill_value
+        for model_var in self.model_vars:
+            std_values = np.ma.array(df.loc[:, model_var], mask=(df.loc[:, model_var].eq(self.fill_value)))
+            mean, stddev = stddict['mean'][stddict['col'].index(model_var)], stddict['std'][stddict['col'].index(model_var)]
+            apply_zscore(std_values, mean, stddev)
+            df.loc[:, model_var] = std_values.filled(self.refill_value)
 
 
     #############################################################
@@ -352,7 +354,6 @@ class DFDataset:
         assert fold >= 0 and fold < self.n_folds, f"ERROR: Expected a fold index between 0 and {self.n_folds}, received {fold}"
 
         for filepath in filepaths:
-            print(filepath)
             df = self.make_df(filepath)
             mask = self.test_mask(df, fold)
             df = df.loc[mask].reset_index(drop=True)

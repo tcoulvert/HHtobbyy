@@ -39,9 +39,8 @@ def compute_zscore(masked_x: np.ma.MaskedArray):
     x_std = masked_x.std(axis=0)
     return x_mean.tolist(), x_std.tolist()
 
-def apply_zscore(masked_x: np.ma.MaskedArray, stddict: dict):
-    for i, col in enumerate(stddict['col']):
-        masked_x[:, i] = (masked_x[:, i] - stddict['mean'][i]) / stddict['std'][i]
+def apply_zscore(masked_x: np.ma.MaskedArray, mean: float, stddev: float):
+    masked_x = (masked_x - mean) / stddev
 
 
 #############################################################
