@@ -60,7 +60,7 @@ parser.add_argument(
 
 def main(dfdataset: DFDataset, model: Model, filepaths: list, **kwargs):
     # Building test DFDataset
-    dfdataset.make_all_test(filepaths, force=True, **kwargs)
+    # dfdataset.make_all_test(filepaths, **kwargs)
 
     # Evaluating the model
     model.predict_all_folds(**kwargs)

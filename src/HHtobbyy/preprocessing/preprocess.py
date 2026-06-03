@@ -68,8 +68,6 @@ vec.register_awkward()
 args = parser.parse_args()
 INPUT_ERAS = args.input_eras
 OUTPUT_DIRPATH = args.output_dirpath
-if OUTPUT_DIRPATH is not None and not os.path.exists(OUTPUT_DIRPATH):
-    os.makedirs(OUTPUT_DIRPATH)
 BASE_FILEPATH = args.base_filepath
 BATCH_SIZE = args.batch_size
 FORCE = args.force
