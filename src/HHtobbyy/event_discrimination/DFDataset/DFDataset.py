@@ -298,7 +298,7 @@ class DFDataset:
 
         std_values = np.ma.array(df.loc[:, self.model_vars], mask=(df.loc[:, self.model_vars].eq(self.fill_value)))
         apply_zscore(std_values, stddict)
-        df.loc[:, self.model_vars] = std_values.filled(self.refill_value)
+        df.loc[:, self.model_vars].loc[std_values.mask] = self.refill_value
 
 
     #############################################################
@@ -422,7 +422,7 @@ class DFDataset:
         assert len(old_df) == len(df), f"ERROR: Original DF and new DF have different number of rows ({len(old_df)} vs. {len(df)}), this function is intended to modify/add/remove columns. If you would like to change the selections and modify the number of rows, please make a new DFDataset"
         new_df = df.copy()
         if f"{self.aux_var_prefix}{self.sort_var}" not in new_df.columns: 
-            print(f"WARNING: Variable \'{f"{self.aux_var_prefix}{self.sort_var}"}\' not found in input DF, assuming identical ordering of the original and new DFs")
+            print(f"WARNING: Variable \'{f'{self.aux_var_prefix}{self.sort_var}'}\' not found in input DF, assuming identical ordering of the original and new DFs")
             new_df[f"{self.aux_var_prefix}{self.sort_var}"] = old_df[f"{self.aux_var_prefix}{self.sort_var}"].to_numpy()
         new_df = new_df.reindex(self.sort_dfs(old_df, new_df))
         assert np.all(new_df[f"{self.aux_var_prefix}{self.sort_var}"].to_numpy() == old_df[f"{self.aux_var_prefix}{self.sort_var}"].to_numpy()), f"ERROR: Re-sort failed, cannot combine DFs"

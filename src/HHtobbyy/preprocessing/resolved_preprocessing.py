@@ -218,8 +218,8 @@ def add_vars_resolved(sample, filepath):
             sample['Diphoton30_22_R9Id_OR_IsoCaloId_AND_HE_R9Id_Mass90']
             | sample['Diphoton30_22_R9Id_OR_IsoCaloId_AND_HE_R9Id_Mass95']
         ) if 'Diphoton30_22_R9Id_OR_IsoCaloId_AND_HE_R9Id_Mass90' in sample.fields else (sample['mass'] > 0)
-        sample['pass_leadbjet_loose_bTag'] = (sample[f"{prefactor}_lead_bjet_bTagWP"] >= 1)
-        sample['pass_subleadbjet_loose_bTag'] = (sample[f"{prefactor}_sublead_bjet_bTagWP"] >= 1)
+        sample[f"{prefactor}_pass_leadbjet_loose_bTag"] = (sample[f"{prefactor}_lead_bjet_bTagWP"] >= 1)
+        sample[f"{prefactor}_pass_subleadbjet_loose_bTag"] = (sample[f"{prefactor}_sublead_bjet_bTagWP"] >= 1)
 
         sample[f'{prefactor}_resolved_BDT_mask'] = (
             sample[f'{prefactor}_has_two_btagged_jets'] & sample['pass_mva-0.7'] & sample['pass_geometry'] & sample['pass_trigger']
