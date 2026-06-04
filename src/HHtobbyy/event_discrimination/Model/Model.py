@@ -5,6 +5,9 @@ from abc import ABC, abstractmethod
 import numpy as np
 import pandas as pd
 
+# HEP packages
+import eos_utils as eos
+
 # Workspace packages
 from HHtobbyy.event_discrimination.DFDataset import DFDataset
 from HHtobbyy.event_discrimination.Model import ModelConfig, ModelDataset
@@ -47,4 +50,5 @@ class Model(ABC):
             data = self.modeldataset.get_data(df, self.dfdataset.event_weight_var)
             predictions = self.predict_data(data, fold, ckpt_path=ckpt_path); del data
             new_df = pd.DataFrame(predictions, columns=[self.dfdataset.aux_var_prefix+col for col in class_discriminator_columns(self.dfdataset.class_sample_map.keys())])
-            self.dfdataset.save_df(filepath, new_df)
+            try: self.dfdataset.save_df(filepath, new_df)
+            except: eos.save_file_eos(new_df, filepath.replace('.parquet', '_eval.parquet'), force=True)
