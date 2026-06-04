@@ -45,6 +45,6 @@ class Model(ABC):
         for filepath in test_filepaths:
             df = self.dfdataset.get_df(filepath)
             data = self.modeldataset.get_data(df, self.dfdataset.event_weight_var)
-            predictions = self.predict_data(data, fold, ckpt_path=ckpt_path)
+            predictions = self.predict_data(data, fold, ckpt_path=ckpt_path); del data
             new_df = pd.DataFrame(predictions, columns=[self.dfdataset.aux_var_prefix+col for col in class_discriminator_columns(self.dfdataset.class_sample_map.keys())])
             self.dfdataset.save_df(filepath, new_df)
