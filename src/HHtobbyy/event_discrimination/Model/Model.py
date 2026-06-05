@@ -46,9 +46,16 @@ class Model(ABC):
     def predict(self, fold: int, syst_name: str='nominal', regex: str|list[str]='', ckpt_path: str=''):
         test_filepaths = self.dfdataset.get_test_filepaths(fold, syst_name=syst_name, regex=regex)['test']
         for filepath in test_filepaths:
-            df = self.dfdataset.get_df(filepath)
-            data = self.modeldataset.get_data(df, self.dfdataset.event_weight_var)
-            predictions = self.predict_data(data, fold, ckpt_path=ckpt_path); del data
-            new_df = pd.DataFrame(predictions, columns=[self.dfdataset.aux_var_prefix+col for col in class_discriminator_columns(self.dfdataset.class_sample_map.keys())])
-            try: self.dfdataset.save_df(filepath, new_df)
-            except: eos.save_file_eos(new_df, filepath.replace('.parquet', '_eval.parquet'), force=True)
+            predictions = pd.DataFrame(
+                self.predict_data(
+                    self.modeldataset.get_data(
+                        self.dfdataset.get_df(filepath), 
+                        self.dfdataset.event_weight_var
+                    ), 
+                    fold, ckpt_path=ckpt_path
+                ),
+                columns=[self.dfdataset.aux_var_prefix+col for col in class_discriminator_columns(self.dfdataset.class_sample_map.keys())]
+            )
+            try: self.dfdataset.save_df(filepath, predictions)
+            except: eos.save_file_eos(predictions, filepath.replace('.parquet', '_eval.parquet'), force=True)
+            del predictions

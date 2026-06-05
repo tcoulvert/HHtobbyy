@@ -440,7 +440,7 @@ class DFDataset:
             class_name: sorted(
                 set(
                     sample_filepath
-                    for sample_filepath in eos.glob_eos(os.path.join(self.output_dirpath, "**", f"*{dataset}{fold}*.parquet"), recursive=True)
+                    for sample_filepath in eos.glob_eos(os.path.join(self.output_dirpath, "**", f"*{dataset}{fold}.parquet"), recursive=True)
                     if (
                         (syst_name == "nominal" and match_sample(sample_filepath[len(self.output_dirpath):], ["_up", "_down"]) is None) 
                         or match_sample(sample_filepath[len(self.output_dirpath):], [syst_name]) is not None
@@ -453,7 +453,7 @@ class DFDataset:
             'test': sorted(
                 set(
                     sample_filepath
-                    for sample_filepath in eos.glob_eos(os.path.join(self.output_dirpath, "**", f"*test{fold}*.parquet"), recursive=True)
+                    for sample_filepath in eos.glob_eos(os.path.join(self.output_dirpath, "**", f"*test{fold}.parquet"), recursive=True)
                     if ( 
                         (syst_name == "nominal" and match_sample(sample_filepath[len(self.output_dirpath):], ["_up", "_down"]) is None) 
                         or match_sample(sample_filepath[len(self.output_dirpath):], [syst_name]) is not None
