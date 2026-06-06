@@ -18,7 +18,7 @@ class MLPDataset(ModelDataset):
         # Batch sizes for training
         self.train_batch_size = 2048
         self.val_batch_size = 2048
-        self.test_batch_size = 2048  # 4096
+        self.test_batch_size = 2048
 
         # Number of workers for DataLoader
         self.num_workers = 5
