@@ -1,6 +1,7 @@
 # Stdlib packages
 import argparse
 import logging
+import tracemalloc
 
 # HEP packages
 import eos_utils as eos
@@ -57,7 +58,6 @@ parser.add_argument(
 
 
 
-
 def main(dfdataset: DFDataset, model: Model, filepaths: list, **kwargs):
     # Building test DFDataset
     # dfdataset.make_all_test(filepaths, **kwargs)
@@ -74,10 +74,21 @@ if __name__ == "__main__":
     args = parser.parse_args()
     assert args.eras != '' or args.filepaths != '', f"ERROR: Must provide either era filepath(s) or direct filepath(s)"
 
+    tracemalloc.start()
+
+    current, peak = tracemalloc.get_traced_memory()
+    print(f"Pre-loading memory usage, peak memory usage: {current / 10**6:.2f}, {peak / 10**6:.2f} MB", '\n', '-'*60)
+
     dfdataset = DFDataset(args.dfdataset_config)
+
+    current, peak = tracemalloc.get_traced_memory()
+    print(f"After DFDataset loading memory usage, peak memory usage: {current / 10**6:.2f}, {peak / 10**6:.2f} MB", '\n', '-'*60)
 
     model_config = eos.load_file_eos(dict, args.model_config)
     model = map_model_to_Model(args.model)(dfdataset, model_config)
+
+    current, peak = tracemalloc.get_traced_memory()
+    print(f"After model loading memory usage, peak memory usage: {current / 10**6:.2f}, {peak / 10**6:.2f} MB", '\n', '-'*60)
 
     if args.filepaths != '' and len(args.filepaths.split(', ')) == 1:
         filepaths = eos.load_file_eos(args.filepaths)
@@ -87,3 +98,5 @@ if __name__ == "__main__":
         filepaths = get_input_filepaths(args.eras.split(', ') if len(args.eras.split(', ')) > 1 else args.eras, dfdataset.class_sample_map, regex=f"*{dfdataset.filepostfix}")
 
     main(dfdataset, model, filepaths, parallel=args.submission == 'parallel')
+
+    tracemalloc.stop()

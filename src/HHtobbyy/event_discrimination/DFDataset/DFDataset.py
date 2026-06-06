@@ -366,7 +366,8 @@ class DFDataset:
     
     #############################################################
     # Retrieving
-    def get_df(self, filepath: str):
+    def get_df(self, filepath: str, **kwargs):
+        filepath_ = pd.read_parquet(eos.load_file_eos(filepath), *kwargs)
         return eos.load_file_eos(pd.DataFrame, filepath)
     
     def get_all_train(self, syst_name: str='nominal', shuffle: bool=True, **kwargs):
