@@ -46,7 +46,7 @@ class XGBoostBDT(Model):
         )
 
         booster.save_model(os.path.join(self.modelconfig.output_dirpath, f'{self.model_filename}{fold}.model'))
-        eos.save_file_eos(eval_result, os.path.join(self.modelconfig.output_dirpath, f'{self.eval_filename}{fold}.json'))
+        with open(eos.save_file_eos(os.path.join(self.modelconfig.output_dirpath, f'{self.eval_filename}{fold}.json')), 'w') as f: json.dump(eval_result, f)
 
     def test(self, fold: int, syst_name: str='nominal', regex: str|list[str]='test_of_train'):
         eval_data = self.modeldataset.get_test(fold, syst_name=syst_name, regex=regex)

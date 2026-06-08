@@ -34,7 +34,7 @@ class ModelConfig(ABC):
 
     def save_config(self, filename: str=config_filename):
         assert filename.endswith('.json'), f"ERROR: Currently only supporting \'json\' type config serializations"
-        eos.save_file_eos(self.toJSON(), os.path.join(self.output_dirpath, filename))
+        with open(eos.save_file_eos(os.path.join(self.output_dirpath, filename)), 'w') as f: json.dump(self.toJSON(), f)
 
     @abstractmethod
     def optimize_params(self, model_dataset: ModelDataset, static_params: dict={}, verbose: bool=False):

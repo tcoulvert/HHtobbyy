@@ -37,6 +37,6 @@ def main(dfdataset: DFDataset):
 if __name__ == "__main__":
     args = parser.parse_args()
     
-    dfdataset = DFDataset(args.dfdataset_config)
+    dfdataset = DFDataset(eos.load_file_eos(args.dfdataset_config))
 
     main(dfdataset)

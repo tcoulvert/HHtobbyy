@@ -59,5 +59,5 @@ class Model(ABC):
             )
 
             try: self.dfdataset.save_df(filepath, predictions)
-            except: eos.save_file_eos(predictions, filepath.replace('.parquet', '_eval.parquet'), force=True)
+            except: predictions.to_parquet(eos.save_file_eos(filepath.replace('.parquet', '_eval.parquet'), force=True))
             del predictions; gc.collect()
