@@ -10,7 +10,7 @@ import pandas as pd
 import eos_utils as eos
 
 # Workspace packages
-from HHtobbyy.event_discrimination.DFDataset import DFDataset
+from HHtobbyy.event_discrimination.DFDataset import DFDataset, batched_writer
 from HHtobbyy.event_discrimination.Model import ModelConfig, ModelDataset
 from HHtobbyy.event_discrimination.evaluation.evaluation_utils import class_discriminator_columns
 from HHtobbyy.workspace_utils import multifold
@@ -44,20 +44,15 @@ class Model(ABC):
     def predict_data(self, data: object, fold: int, ckpt_path: str='') -> np.ndarray:
         pass
 
-    def predict(self, fold: int, syst_name: str='nominal', regex: str|list[str]='', ckpt_path: str=''):
-        test_filepaths = self.dfdataset.get_test_filepaths(fold, syst_name=syst_name, regex=regex)['test']
+    @batched_writer
+    def predict(self, fold: int, ckpt_path: str='', **kwargs):
+        test_filepaths = self.dfdataset.get_test_filepaths(fold, **kwargs)['test']
         for filepath in test_filepaths:
-            predictions = pd.DataFrame(
-                self.predict_data(
-                    self.modeldataset.get_data(
-                        self.dfdataset.get_df(filepath), 
-                        self.dfdataset.event_weight_var
-                    ), 
-                    fold, ckpt_path=ckpt_path
+            self.dfdataset.edit_df(
+                filepath, 
+                lambda df: pd.DataFrame(
+                    self.predict_data(self.modeldataset.get_data(df, self.dfdataset.event_weight_var), fold, ckpt_path=ckpt_path), 
+                    columns=[self.dfdataset.aux_var_prefix+col for col in class_discriminator_columns(self.dfdataset.class_sample_map.keys())]
                 ),
-                columns=[self.dfdataset.aux_var_prefix+col for col in class_discriminator_columns(self.dfdataset.class_sample_map.keys())]
+                **kwargs
             )
-
-            try: self.dfdataset.save_df(filepath, predictions)
-            except: predictions.to_parquet(eos.save_file_eos(filepath.replace('.parquet', '_eval.parquet'), force=True))
-            del predictions; gc.collect()

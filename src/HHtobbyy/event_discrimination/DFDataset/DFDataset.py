@@ -368,12 +368,10 @@ class DFDataset:
     
     #############################################################
     # Retrieving
-    def get_df(self, filepath: str, **kwargs):
-        return pd.read_parquet(eos.load_file_eos(filepath, **kwargs), **kwargs)
-    def get_df_batch(self, filepath: str, batch_size: int=32_768, **kwargs):
+    def get_df(self, filepath: str, batch_size: bool|int=False, **kwargs):
         pq_file = pq.read_parquet(eos.load_file_eos(filepath, **kwargs), **kwargs)
-        for pq_batch in pq_file.iter_batches(batch_size=batch_size, columns=columns):
-            return pq_batch.to_pandas()
+        if not batch_size: batch_size = pq_file.metadata.num_rows
+        return pq_file.iter_batches(batch_size=batch_size, columns=columns)
     
     def get_all_train(self, syst_name: str='nominal', shuffle: bool=True, **kwargs):
         dfs = []
@@ -383,7 +381,7 @@ class DFDataset:
         filepaths = self.get_traintest_filepaths(fold, dataset="train", syst_name=syst_name)
 
         df = pd.concat(
-            [self.get_df(filepath, **kwargs) for model_class in filepaths.keys() for filepath in filepaths[model_class]], 
+            [pq_batch.to_pandas() for model_class in filepaths.keys() for filepath in filepaths[model_class] for pq_batch in self.get_df(filepath, **kwargs)], 
             ignore_index=True, join="inner"
         )
         
@@ -406,7 +404,7 @@ class DFDataset:
             filepaths = self.get_test_filepaths(fold, syst_name=syst_name, regex=regex)
 
         df = pd.concat(
-            [self.get_df(filepath, **kwargs) for model_class in filepaths.keys() for filepath in filepaths[model_class]], 
+            [pq_batch.to_pandas() for model_class in filepaths.keys() for filepath in filepaths[model_class] for pq_batch in self.get_df(filepath, **kwargs)], 
             ignore_index=True
         )
 
@@ -421,27 +419,38 @@ class DFDataset:
         sortee_reorder = np.argsort(sorter_order)
 
         return sortee_order[sortee_reorder]
-    
-    def save_df(self, filepath: str, df: pd.DataFrame):
-        try: old_df = pd.read_parquet(eos.load_file_eos(filepath))
-        except: raise KeyError(f"ERROR: Filepath could not be loaded successfully, check that file exists before trying to modify it")
 
-        assert len(old_df) == len(df), f"ERROR: Original DF and new DF have different number of rows ({len(old_df)} vs. {len(df)}), this function is intended to modify/add/remove columns. If you would like to change the selections and modify the number of rows, please make a new DFDataset"
-        new_df = df.copy()
+
+
+
+
+    
+
+            
+
+
+
+
+
+        
+    @batched_writer
+    def edit_df(self, old_df: pd.DataFrame, func, *args, **kwargs):
+        new_df = func(old_df, *args, **kwargs)
+        # if len(old_df) != len(new_df), f"ERROR: Original DF and new DF have different number of rows ({len(old_df)} vs. {len(df)}), this function is intended to modify/add/remove columns. If you would like to change the selections and modify the number of rows, please make a new DFDataset"
+        
         if f"{self.aux_var_prefix}{self.sort_var}" not in new_df.columns: 
             print(f"WARNING: Variable \'{f'{self.aux_var_prefix}{self.sort_var}'}\' not found in input DF, assuming identical ordering of the original and new DFs")
             new_df[f"{self.aux_var_prefix}{self.sort_var}"] = old_df[f"{self.aux_var_prefix}{self.sort_var}"].to_numpy()
         new_df = new_df.reindex(self.sort_dfs(old_df, new_df))
         assert np.all(new_df[f"{self.aux_var_prefix}{self.sort_var}"].to_numpy() == old_df[f"{self.aux_var_prefix}{self.sort_var}"].to_numpy()), f"ERROR: Re-sort failed, cannot combine DFs"
 
-        for col in new_df.columns:
-            old_df[col] = new_df[col].to_numpy()
-
-        old_df.to_parquet(eos.save_file_eos(filepath, force=True))
+        return old_df.join(new_df)
+        
+    
     
     #############################################################
     # Retrieve train/test files
-    def get_traintest_filepaths(self, fold: int, dataset: str="train", syst_name: str='nominal'):
+    def get_traintest_filepaths(self, fold: int, dataset: str="train", syst_name: str='nominal', **kwargs):
         return {
             class_name: sorted(
                 set(
@@ -454,7 +463,7 @@ class DFDataset:
                 )
             ) for class_name, sample_names in self.class_sample_map.items()
         }
-    def get_test_filepaths(self, fold: int, syst_name: str='nominal', regex: str|list[str]=''):
+    def get_test_filepaths(self, fold: int, syst_name: str='nominal', regex: str|list[str]='', **kwargs):
         return {
             'test': sorted(
                 set(
