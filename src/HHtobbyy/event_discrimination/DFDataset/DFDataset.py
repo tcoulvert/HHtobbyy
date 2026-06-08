@@ -369,7 +369,11 @@ class DFDataset:
     #############################################################
     # Retrieving
     def get_df(self, filepath: str, **kwargs):
-        return pd.read_parquet(eos.load_file_eos(filepath), **kwargs)
+        return pd.read_parquet(eos.load_file_eos(filepath, **kwargs), **kwargs)
+    def get_df_batch(self, filepath: str, batch_size: int=32_768, **kwargs):
+        pq_file = pq.read_parquet(eos.load_file_eos(filepath, **kwargs), **kwargs)
+        for pq_batch in pq_file.iter_batches(batch_size=batch_size, columns=columns):
+            return pq_batch.to_pandas()
     
     def get_all_train(self, syst_name: str='nominal', shuffle: bool=True, **kwargs):
         dfs = []
