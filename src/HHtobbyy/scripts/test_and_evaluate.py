@@ -1,5 +1,6 @@
 # Stdlib packages
 import argparse
+import json
 import logging
 
 # HEP packages
@@ -73,10 +74,9 @@ if __name__ == "__main__":
     args = parser.parse_args()
     assert args.eras != '' or args.filepaths != '', f"ERROR: Must provide either era filepath(s) or direct filepath(s)"
 
-    dfdataset = DFDataset(eos.load_file_eos(args.dfdataset_config))
+    dfdataset = DFDataset(args.dfdataset_config)
 
-    with open(eos.load_file_eos(args.model_config), 'r') as f: model_config = json.load(f)
-    model = map_model_to_Model(args.model)(dfdataset, model_config)
+    model = map_model_to_Model(args.model)(dfdataset, args.model_config)
 
     if args.filepaths != '' and len(args.filepaths.split(', ')) == 1:
         with open(eos.load_file_eos(args.filepaths), 'r') as f: filepaths = f.read()

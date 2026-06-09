@@ -1,5 +1,6 @@
 # Stdlib packages
 import datetime
+import json
 import os
 from abc import ABC, abstractmethod
 
@@ -17,7 +18,16 @@ class ModelConfig(ABC):
     dfdataset: DFDataset
     config_filename = "model_config.json"
 
-    def process_config(self, config: dict):
+    def process_config(self, config: str|dict):
+        if type(config) is str: 
+            if config.endswith('.json'): 
+                with open(eos.load_file_eos(config), 'r') as f: config = json.load(f)
+            elif config.split('/')[-1].find('.') < 0:
+                print(f"WARNING: Config directory supplied rather than file, attempting to load with default filename... ")
+                with open(eos.load_file_eos(os.path.join(config, self.config_filename)), 'r') as f: config = json.load(f)
+            else:
+                raise IOError(f"ERROR: Config file does not appear to be a json, only JSON is supported currently. ")
+            
         assert "output_dirpath" in config.keys(), f"ERROR: Required to provide the output_dirpath for the model"
         
         for key, value in config.items():

@@ -10,6 +10,9 @@ import pyarrow.parquet as pq
 # ML packages
 from sklearn.model_selection import train_test_split
 
+# HEP packages
+import eos_utils as eos
+
 # Workspace packages
 from HHtobbyy.workspace_utils.retrieval_utils import match_sample, match_regex, sub_filepath
 
@@ -123,6 +126,8 @@ def make_output_filepath(filepath: str, base_output_dirpath: str, extra_text: st
     return os.path.join(output_dirpath, filename)
 
 
+#############################################################
+# Decorators for batch handling
 def batched_writer(func):
     def wrapper(dfdataset, filepath: str, *args, **kwargs):
         pq_writer = None
