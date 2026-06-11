@@ -41,11 +41,7 @@ class MLPConfig(ModelConfig):
         self.mode              = "min"       # stop when no-longer decreasing
 
         # Hardware parameters
-        try:
-            gpustat.print_gpustat()
-            self.accelerator   = 'gpu'       # device to use for training
-        except:
-            self.accelerator   = 'cpu'
+        self.accelerator       = 'auto'      # device to use for training
         self.strategy          = 'auto'      # high-level how to do training
         self.devices           = 'auto'      # Device to use for model
         self.num_nodes         = 1           # number of gpu nodes to use

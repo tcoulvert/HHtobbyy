@@ -4,9 +4,14 @@ import os
 # Common Py packages
 import numpy as np
 import pandas as pd
+import pyarrow as pa
+import pyarrow.parquet as pq
 
 # ML packages
 from sklearn.model_selection import train_test_split
+
+# HEP packages
+import eos_utils as eos
 
 # Workspace packages
 from HHtobbyy.workspace_utils.retrieval_utils import match_sample, match_regex, sub_filepath
@@ -121,3 +126,28 @@ def make_output_filepath(filepath: str, base_output_dirpath: str, extra_text: st
     return os.path.join(output_dirpath, filename)
 
 
+#############################################################
+# Decorators for batch handling
+def batched_writer(func):
+    def wrapper(dfdataset, filepath: str, *args, **kwargs):
+        pq_writer = None
+        for pq_batch in dfdataset.get_df(filepath, **kwargs):
+            table_batch = pa.Table.from_pandas(func(pq_batch.to_pandas(), *args, **kwargs))
+            if pq_writer is None: pq_writer = pq.ParquetWriter(eos.save_file_eos(filepath, **kwargs), schema=table_batch.schema)
+            pq_writer.write_table(table_batch)
+        if pq_writer is not None: pq_writer.close()
+    return wrapper
+
+def batched_loader(func):
+    def wrapper(dfdataset, filepath: str, *args, **kwargs):
+        df_batches = []
+        for pq_batch in dfdataset.get_df(filepath, **kwargs):
+            df_batches.append(func(pq_batch.to_pandas(), *args, **kwargs))
+        return pd.concat(df_batches, ignore_index=True)
+    return wrapper
+
+def batched_executor(func):
+    def wrapper(dfdataset, filepath: str, *args, **kwargs):
+        for pq_batch in dfdataset.get_df(filepath, **kwargs):
+            func(pq_batch.to_pandas(), *args, **kwargs)
+    return wrapper

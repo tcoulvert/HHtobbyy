@@ -10,17 +10,17 @@ from threading import Thread
 FILL_VALUE = -999
 
 #############################################################
-def multifold(func, args, n_folds, parallel: bool=False, condor: bool=False, **kwargs):
+def multifold(func, common_args, n_folds, parallel: bool=False, condor: bool=False, **kwargs):
     threads = []
     for fold in range(n_folds):
-        arg = (fold, )+args
+        args = (fold, )+common_args
         if parallel: 
-            thread = Thread(target=func, name=f"Fold {fold}", args=arg, kwargs=kwargs)
+            thread = Thread(target=func, name=f"Fold {fold}", args=args, kwargs=kwargs)
             thread.start(); threads.append(thread)
         elif condor:
             raise NotImplementedError(f"Multifold via Condor not yet implemented, use \'iterative\' or set \'parallel\' to True for multithreading.")
         else:
-            func(*arg)
+            func(*args, **kwargs)
     for thread in threads: thread.join()
         
 

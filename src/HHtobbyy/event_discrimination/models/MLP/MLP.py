@@ -19,8 +19,8 @@ from HHtobbyy.event_discrimination.models.MLP.MLPConfig import MLPConfig
 
 
 class MLP(Model):
-    def __init__(self, dfdataset: DFDataset, config: dict):
-        self.dfdataset = dfdataset
+    def __init__(self, dfdataset: str|DFDataset, config: str|dict):
+        self.dfdataset = DFDataset(dfdataset) if type(dfdataset) is str else dfdataset
         self.modeldataset = MLPDataset(self.dfdataset, config)
         self.modelconfig = MLPConfig(self.dfdataset, config)
 

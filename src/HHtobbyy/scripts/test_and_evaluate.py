@@ -1,5 +1,6 @@
 # Stdlib packages
 import argparse
+import json
 import logging
 
 # HEP packages
@@ -57,13 +58,12 @@ parser.add_argument(
 
 
 
-
 def main(dfdataset: DFDataset, model: Model, filepaths: list, **kwargs):
     # Building test DFDataset
     # dfdataset.make_all_test(filepaths, **kwargs)
 
     # Evaluating the model
-    model.predict_all_folds(**kwargs)
+    model.predict_all_folds(batch_size=16_384, **kwargs)
 
     # Categorizing the model
     # cat = Categorization(dfdataset, {"discriminator": "3D"})
@@ -76,11 +76,10 @@ if __name__ == "__main__":
 
     dfdataset = DFDataset(args.dfdataset_config)
 
-    model_config = eos.load_file_eos(dict, args.model_config)
-    model = map_model_to_Model(args.model)(dfdataset, model_config)
+    model = map_model_to_Model(args.model)(dfdataset, args.model_config)
 
     if args.filepaths != '' and len(args.filepaths.split(', ')) == 1:
-        filepaths = eos.load_file_eos(args.filepaths)
+        with open(eos.load_file_eos(args.filepaths), 'r') as f: filepaths = f.read()
     elif len(args.filepaths.split(', ')) > 1:
         filepaths = args.filepaths.split(', ')
     else:

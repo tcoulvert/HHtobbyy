@@ -1,5 +1,6 @@
 # Stdlib packages
 import datetime
+import json
 import os
 from queue import Queue
 
@@ -47,10 +48,10 @@ class DFDataset:
 
         if type(config) is str: 
             if config.endswith('.json'): 
-                config = eos.load_file_eos(dict, config)
+                with open(eos.load_file_eos(config), 'r') as f: config = json.load(f)
             elif config.split('/')[-1].find('.') < 0:
                 print(f"WARNING: Config directory supplied rather than file, attempting to load with default filename... ")
-                config = eos.load_file_eos(dict, os.path.join(config, self.config_filename))
+                with open(eos.load_file_eos(os.path.join(config, self.config_filename)), 'r') as f: config = json.load(f)
             else:
                 raise IOError(f"ERROR: Config file does not appear to be a json, only JSON is supported currently. ")
             
@@ -173,12 +174,13 @@ class DFDataset:
             self.output_dirpath = os.path.join(self.output_dirpath, f"{self.dataset_tag}_{self.dataset_time}")
 
             config_filepath = os.path.join(self.output_dirpath, self.config_filename)
-            eos.save_file_eos(self.__dict__, config_filepath)
+            with open(eos.save_file_eos(config_filepath), 'w') as f: json.dump(self.__dict__, f)
 
     def check_output_dirpath(self):
         config_filepath = os.path.join(self.output_dirpath, self.config_filename)
         
-        try: eos.load_file_eos(dict, config_filepath); exists = True
+        try: 
+            with open(eos.load_file_eos(config_filepath), 'r') as f: json.load(f); exists = True
         except: exists = False
         return exists
 
@@ -286,7 +288,7 @@ class DFDataset:
 
         stddict = {'col': self.model_vars, 'mean': list(x_mean), 'std': list(x_std)}
         stddict_filepath = os.path.join(self.output_dirpath, f'{self.standardization_method.lower()}_{self.standardization_subfilename}{fold}.json')
-        eos.save_file_eos(stddict, stddict_filepath)
+        with open(eos.save_file_eos(stddict_filepath), 'w') as f: json.dump(stddict, f)
 
     def apply_standardization(self, df: pd.DataFrame, fold: int):
         if self.standardization_method.lower() == 'logzscore': apply_logs(df.loc[:, self.model_vars])
@@ -294,7 +296,7 @@ class DFDataset:
         else: raise NotImplementedError(f"Standardization method not yet implemented, use \'zscore\' or \'snt\'.")
         
         stddict_filepath = os.path.join(self.output_dirpath, f'{self.standardization_method.lower()}_{self.standardization_subfilename}{fold}.json')
-        stddict = eos.load_file_eos(dict, stddict_filepath)
+        with open(eos.load_file_eos(stddict_filepath), 'r') as f: stddict = json.load(f)
 
         for model_var in self.model_vars:
             std_values = np.ma.array(df.loc[:, model_var], mask=(df.loc[:, model_var].eq(self.fill_value)))
@@ -346,7 +348,7 @@ class DFDataset:
         for filepath in filepaths:
             self.apply_standardization(dfs[filepath], fold)
             self.good_df(dfs[filepath])
-            eos.save_file_eos(dfs[filepath], make_output_filepath(sub_filepath(filepath, self.base_filepath), self.output_dirpath, f"train{fold}"))
+            dfs[filepath].to_parquet(eos.save_file_eos(make_output_filepath(sub_filepath(filepath, self.base_filepath), self.output_dirpath, f"train{fold}")))
 
     def make_all_test(self, filepaths: list, force: bool=False, **kwargs):
         multifold(self.make_test, (filepaths, force), self.n_folds,  **kwargs)
@@ -361,23 +363,27 @@ class DFDataset:
             
             self.apply_standardization(df, fold)
             self.good_df(df)
-            eos.save_file_eos(df, make_output_filepath(sub_filepath(filepath, self.base_filepath), self.output_dirpath, f"test{fold}"), force=force)
+            df.to_parquet(eos.save_file_eos(make_output_filepath(sub_filepath(filepath, self.base_filepath), self.output_dirpath, f"test{fold}"), force=force))
 
     
     #############################################################
     # Retrieving
-    def get_df(self, filepath: str):
-        return eos.load_file_eos(pd.DataFrame, filepath)
+    def get_df(self, filepath: str, batch_size: bool|int=False, **kwargs):
+        pq_file = pq.ParquetFile(eos.load_file_eos(filepath, **kwargs))
+        print(batch_size)
+        print(kwargs)
+        if not batch_size: batch_size = pq_file.metadata.num_rows
+        return pq_file.iter_batches(batch_size=batch_size)
     
     def get_all_train(self, syst_name: str='nominal', shuffle: bool=True, **kwargs):
         dfs = []
-        for fold in range(self.n_folds): dfs.append(self.get_train(fold, syst_name=syst_name, shuffle=shuffle))
+        for fold in range(self.n_folds): dfs.append(self.get_train(fold, syst_name=syst_name, shuffle=shuffle, **kwargs))
         return pd.concat(dfs, ignore_index=True)
-    def get_train(self, fold: int, syst_name: str='nominal', shuffle: bool=True):
+    def get_train(self, fold: int, syst_name: str='nominal', shuffle: bool=True, **kwargs):
         filepaths = self.get_traintest_filepaths(fold, dataset="train", syst_name=syst_name)
 
         df = pd.concat(
-            [self.get_df(filepath) for model_class in filepaths.keys() for filepath in filepaths[model_class]], 
+            [pq_batch.to_pandas() for model_class in filepaths.keys() for filepath in filepaths[model_class] for pq_batch in self.get_df(filepath, **kwargs)], 
             ignore_index=True, join="inner"
         )
         
@@ -389,18 +395,18 @@ class DFDataset:
 
         return df
     
-    def get_all_test(self, syst_name: str='nominal', regex: str|list[str]='test_of_train'):
+    def get_all_test(self, syst_name: str='nominal', regex: str|list[str]='test_of_train', **kwargs):
         dfs = []
-        for fold in range(self.n_folds): dfs.append(self.get_test(fold, syst_name=syst_name, regex=regex))
+        for fold in range(self.n_folds): dfs.append(self.get_test(fold, syst_name=syst_name, regex=regex, **kwargs))
         return pd.concat(dfs, ignore_index=True)
-    def get_test(self, fold: int, syst_name: str='nominal', regex: str|list[str]='test_of_train'):
+    def get_test(self, fold: int, syst_name: str='nominal', regex: str|list[str]='test_of_train', **kwargs):
         if regex == 'test_of_train':
             filepaths = self.get_traintest_filepaths(fold, dataset="test", syst_name=syst_name)
         else:
             filepaths = self.get_test_filepaths(fold, syst_name=syst_name, regex=regex)
 
         df = pd.concat(
-            [self.get_df(filepath) for model_class in filepaths.keys() for filepath in filepaths[model_class]], 
+            [pq_batch.to_pandas() for model_class in filepaths.keys() for filepath in filepaths[model_class] for pq_batch in self.get_df(filepath, **kwargs)], 
             ignore_index=True
         )
 
@@ -415,32 +421,16 @@ class DFDataset:
         sortee_reorder = np.argsort(sorter_order)
 
         return sortee_order[sortee_reorder]
-    
-    def save_df(self, filepath: str, df: pd.DataFrame):
-        try: old_df = eos.load_file_eos(pd.DataFrame, filepath)
-        except: raise KeyError(f"ERROR: Filepath could not be loaded successfully, check that file exists before trying to modify it")
-
-        assert len(old_df) == len(df), f"ERROR: Original DF and new DF have different number of rows ({len(old_df)} vs. {len(df)}), this function is intended to modify/add/remove columns. If you would like to change the selections and modify the number of rows, please make a new DFDataset"
-        new_df = df.copy()
-        if f"{self.aux_var_prefix}{self.sort_var}" not in new_df.columns: 
-            print(f"WARNING: Variable \'{f'{self.aux_var_prefix}{self.sort_var}'}\' not found in input DF, assuming identical ordering of the original and new DFs")
-            new_df[f"{self.aux_var_prefix}{self.sort_var}"] = old_df[f"{self.aux_var_prefix}{self.sort_var}"].to_numpy()
-        new_df = new_df.reindex(self.sort_dfs(old_df, new_df))
-        assert np.all(new_df[f"{self.aux_var_prefix}{self.sort_var}"].to_numpy() == old_df[f"{self.aux_var_prefix}{self.sort_var}"].to_numpy()), f"ERROR: Re-sort failed, cannot combine DFs"
-
-        for col in new_df.columns:
-            old_df[col] = new_df[col].to_numpy()
-
-        eos.save_file_eos(old_df, filepath, force=True)
+            
     
     #############################################################
     # Retrieve train/test files
-    def get_traintest_filepaths(self, fold: int, dataset: str="train", syst_name: str='nominal'):
+    def get_traintest_filepaths(self, fold: int, dataset: str="train", syst_name: str='nominal', **kwargs):
         return {
             class_name: sorted(
                 set(
                     sample_filepath
-                    for sample_filepath in eos.glob_eos(os.path.join(self.output_dirpath, "**", f"*{dataset}{fold}*.parquet"), recursive=True)
+                    for sample_filepath in eos.glob_eos(os.path.join(self.output_dirpath, "**", f"*{dataset}{fold}.parquet"), recursive=True)
                     if (
                         (syst_name == "nominal" and match_sample(sample_filepath[len(self.output_dirpath):], ["_up", "_down"]) is None) 
                         or match_sample(sample_filepath[len(self.output_dirpath):], [syst_name]) is not None
@@ -448,12 +438,12 @@ class DFDataset:
                 )
             ) for class_name, sample_names in self.class_sample_map.items()
         }
-    def get_test_filepaths(self, fold: int, syst_name: str='nominal', regex: str|list[str]=''):
+    def get_test_filepaths(self, fold: int, syst_name: str='nominal', regex: str|list[str]='', **kwargs):
         return {
             'test': sorted(
                 set(
                     sample_filepath
-                    for sample_filepath in eos.glob_eos(os.path.join(self.output_dirpath, "**", f"*test{fold}*.parquet"), recursive=True)
+                    for sample_filepath in eos.glob_eos(os.path.join(self.output_dirpath, "**", f"*test{fold}.parquet"), recursive=True)
                     if ( 
                         (syst_name == "nominal" and match_sample(sample_filepath[len(self.output_dirpath):], ["_up", "_down"]) is None) 
                         or match_sample(sample_filepath[len(self.output_dirpath):], [syst_name]) is not None
