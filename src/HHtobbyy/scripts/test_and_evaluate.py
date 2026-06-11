@@ -63,7 +63,7 @@ def main(dfdataset: DFDataset, model: Model, filepaths: list, **kwargs):
     # dfdataset.make_all_test(filepaths, **kwargs)
 
     # Evaluating the model
-    model.predict_all_folds(**kwargs)
+    model.predict_all_folds(batch_size=16_384, **kwargs)
 
     # Categorizing the model
     # cat = Categorization(dfdataset, {"discriminator": "3D"})

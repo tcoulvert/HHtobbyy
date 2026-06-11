@@ -369,9 +369,11 @@ class DFDataset:
     #############################################################
     # Retrieving
     def get_df(self, filepath: str, batch_size: bool|int=False, **kwargs):
-        pq_file = pq.read_parquet(eos.load_file_eos(filepath, **kwargs), **kwargs)
+        pq_file = pq.ParquetFile(eos.load_file_eos(filepath, **kwargs))
+        print(batch_size)
+        print(kwargs)
         if not batch_size: batch_size = pq_file.metadata.num_rows
-        return pq_file.iter_batches(batch_size=batch_size, columns=columns)
+        return pq_file.iter_batches(batch_size=batch_size)
     
     def get_all_train(self, syst_name: str='nominal', shuffle: bool=True, **kwargs):
         dfs = []

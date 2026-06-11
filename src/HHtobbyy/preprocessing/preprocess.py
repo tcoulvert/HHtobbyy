@@ -228,7 +228,7 @@ def get_files(eras, type='MC'):
 
 def make_dataset(filepath, era, type='MC'):
     print('========================>\n'+'Starting \n', filepath)
-    pq_file = pq.read_parquet(eos.load_file_eos(filepath))
+    pq_file = pq.ParquetFile(eos.load_file_eos(filepath))
     schema = pq.read_schema(filepath)
     columns = [field for field in schema.names]
 
