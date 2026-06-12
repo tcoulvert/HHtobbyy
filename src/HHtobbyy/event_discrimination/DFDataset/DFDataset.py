@@ -48,10 +48,14 @@ class DFDataset:
 
         if type(config) is str: 
             if config.endswith('.json'): 
-                with open(eos.load_file_eos(config), 'r') as f: config = json.load(f)
+                eos_filepath = eos.load_file_eos(config)
+                with open(eos_filepath, 'r') as f: config = json.load(f)
+                eos.delete_lockfile(eos_filepath)
             elif config.split('/')[-1].find('.') < 0:
                 print(f"WARNING: Config directory supplied rather than file, attempting to load with default filename... ")
-                with open(eos.load_file_eos(os.path.join(config, self.config_filename)), 'r') as f: config = json.load(f)
+                eos_filepath = eos.load_file_eos(os.path.join(config, self.config_filename))
+                with open(eos_filepath, 'r') as f: config = json.load(f)
+                eos.delete_lockfile(eos_filepath)
             else:
                 raise IOError(f"ERROR: Config file does not appear to be a json, only JSON is supported currently. ")
             
@@ -174,15 +178,13 @@ class DFDataset:
             self.output_dirpath = os.path.join(self.output_dirpath, f"{self.dataset_tag}_{self.dataset_time}")
 
             config_filepath = os.path.join(self.output_dirpath, self.config_filename)
-            with open(eos.save_file_eos(config_filepath), 'w') as f: json.dump(self.__dict__, f)
+            eos_filepath = eos.save_file_eos(config_filepath)
+            with open(eos_filepath, 'w') as f: json.dump(self.__dict__, f)
+            eos.delete_lockfile(eos_filepath)
 
     def check_output_dirpath(self):
         config_filepath = os.path.join(self.output_dirpath, self.config_filename)
-        
-        try: 
-            with open(eos.load_file_eos(config_filepath), 'r') as f: json.load(f); exists = True
-        except: exists = False
-        return exists
+        return eos.file_exists_eos(config_filepath)
 
 
     #############################################################
@@ -288,7 +290,9 @@ class DFDataset:
 
         stddict = {'col': self.model_vars, 'mean': list(x_mean), 'std': list(x_std)}
         stddict_filepath = os.path.join(self.output_dirpath, f'{self.standardization_method.lower()}_{self.standardization_subfilename}{fold}.json')
-        with open(eos.save_file_eos(stddict_filepath), 'w') as f: json.dump(stddict, f)
+        eos_filepath = eos.save_file_eos(stddict_filepath)
+        with open(eos_filepath, 'w') as f: json.dump(stddict, f)
+        eos.delete_lockfile(eos_filepath)
 
     def apply_standardization(self, df: pd.DataFrame, fold: int):
         if self.standardization_method.lower() == 'logzscore': apply_logs(df.loc[:, self.model_vars])
@@ -296,7 +300,9 @@ class DFDataset:
         else: raise NotImplementedError(f"Standardization method not yet implemented, use \'zscore\' or \'snt\'.")
         
         stddict_filepath = os.path.join(self.output_dirpath, f'{self.standardization_method.lower()}_{self.standardization_subfilename}{fold}.json')
-        with open(eos.load_file_eos(stddict_filepath), 'r') as f: stddict = json.load(f)
+        eos_filepath = eos.load_file_eos(stddict_filepath)
+        with open(eos_filepath, 'r') as f: stddict = json.load(f)
+        eos.delete_lockfile(eos_filepath)
 
         for model_var in self.model_vars:
             std_values = np.ma.array(df.loc[:, model_var], mask=(df.loc[:, model_var].eq(self.fill_value)))
@@ -348,7 +354,15 @@ class DFDataset:
         for filepath in filepaths:
             self.apply_standardization(dfs[filepath], fold)
             self.good_df(dfs[filepath])
-            dfs[filepath].to_parquet(eos.save_file_eos(make_output_filepath(sub_filepath(filepath, self.base_filepath), self.output_dirpath, f"train{fold}")))
+            eos_filepath = eos.save_file_eos(
+                make_output_filepath(
+                    sub_filepath(filepath, self.base_filepath), 
+                    self.output_dirpath, 
+                    f"train{fold}"
+                )
+            )
+            dfs[filepath].to_parquet(eos_filepath)
+            eos.delete_lockfile(eos_filepath)
 
     def make_all_test(self, filepaths: list, force: bool=False, **kwargs):
         multifold(self.make_test, (filepaths, force), self.n_folds,  **kwargs)
@@ -363,15 +377,25 @@ class DFDataset:
             
             self.apply_standardization(df, fold)
             self.good_df(df)
-            df.to_parquet(eos.save_file_eos(make_output_filepath(sub_filepath(filepath, self.base_filepath), self.output_dirpath, f"test{fold}"), force=force))
+            eos_filepath = eos.save_file_eos(
+                make_output_filepath(
+                    sub_filepath(filepath, self.base_filepath), 
+                    self.output_dirpath, 
+                    f"test{fold}"
+                ), 
+                force=force
+            )
+
+            df.to_parquet(eos_filepath)
+            eos.delete_lockfile(eos_filepath)
 
     
     #############################################################
     # Retrieving
     def get_df(self, filepath: str, batch_size: bool|int=False, **kwargs):
-        pq_file = pq.ParquetFile(eos.load_file_eos(filepath, **kwargs))
-        print(batch_size)
-        print(kwargs)
+        eos_filepath = eos.load_file_eos(filepath, **kwargs)
+        pq_file = pq.ParquetFile(eos_filepath)
+        eos.delete_lockfile(eos_filepath)
         if not batch_size: batch_size = pq_file.metadata.num_rows
         return pq_file.iter_batches(batch_size=batch_size)
     

@@ -23,6 +23,9 @@ class MLPDataset(ModelDataset):
         # Number of workers for DataLoader
         self.num_workers = 4
 
+        # Sampler for multi-core functionality
+        # sampler = DistributedSampler(dataset)
+
         # Processes the config
         self.process_config(config)
         
