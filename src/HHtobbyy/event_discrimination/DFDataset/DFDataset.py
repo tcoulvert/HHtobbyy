@@ -47,7 +47,7 @@ class DFDataset:
         self.standardization_subfilename = 'standardization_fold'
 
         if type(config) is str: 
-            if config.endswith('.json'): 
+            if config.endswith('.json'):
                 eos_filepath = eos.load_file_eos(config)
                 with open(eos_filepath, 'r') as f: config = json.load(f)
                 eos.delete_lockfile(eos_filepath)
@@ -392,10 +392,12 @@ class DFDataset:
     
     #############################################################
     # Retrieving
+    # def get_df_batch(self, filepath: str, batch_size: bool|int=False, **kwargs):
+    #     pq_file = pq.ParquetFile(filepath)
+    #     if not batch_size: batch_size = pq_file.metadata.num_rows
+    #     return pq_file.iter_batches(batch_size=batch_size)
     def get_df(self, filepath: str, batch_size: bool|int=False, **kwargs):
-        eos_filepath = eos.load_file_eos(filepath, **kwargs)
-        pq_file = pq.ParquetFile(eos_filepath)
-        eos.delete_lockfile(eos_filepath)
+        pq_file = pq.ParquetFile(filepath)
         if not batch_size: batch_size = pq_file.metadata.num_rows
         return pq_file.iter_batches(batch_size=batch_size)
     

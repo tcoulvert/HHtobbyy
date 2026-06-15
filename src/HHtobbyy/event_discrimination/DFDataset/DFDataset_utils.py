@@ -129,25 +129,32 @@ def make_output_filepath(filepath: str, base_output_dirpath: str, extra_text: st
 #############################################################
 # Decorators for batch handling
 def batched_writer(func):
-    def wrapper(dfdataset, filepath: str, *args, **kwargs):
+    def wrapper(dfdataset, infilepath: str, outfilepath: str, *args, **kwargs):
+        eos_infilepath = eos.load_file_eos(infilepath, **kwargs)
+        eos_outfilepath = eos.save_file_eos(outfilepath, **kwargs)
         pq_writer = None
-        for pq_batch in dfdataset.get_df(filepath, **kwargs):
+        for pq_batch in dfdataset.get_df(eos_infilepath, **kwargs):
             table_batch = pa.Table.from_pandas(func(pq_batch.to_pandas(), *args, **kwargs))
-            if pq_writer is None: pq_writer = pq.ParquetWriter(eos.save_file_eos(filepath, **kwargs), schema=table_batch.schema)
+            if pq_writer is None: pq_writer = pq.ParquetWriter(eos_outfilepath, schema=table_batch.schema)
             pq_writer.write_table(table_batch)
+        eos.delete_lockfile(eos_infilepath); eos.delete_lockfile(eos_outfilepath)
         if pq_writer is not None: pq_writer.close()
     return wrapper
 
 def batched_loader(func):
     def wrapper(dfdataset, filepath: str, *args, **kwargs):
+        eos_filepath = eos.load_file_eos(filepath, **kwargs)
         df_batches = []
-        for pq_batch in dfdataset.get_df(filepath, **kwargs):
+        for pq_batch in dfdataset.get_df(eos_filepath, **kwargs):
             df_batches.append(func(pq_batch.to_pandas(), *args, **kwargs))
+        eos.delete_lockfile(eos_filepath)
         return pd.concat(df_batches, ignore_index=True)
     return wrapper
 
 def batched_executor(func):
     def wrapper(dfdataset, filepath: str, *args, **kwargs):
-        for pq_batch in dfdataset.get_df(filepath, **kwargs):
+        eos_filepath = eos.load_file_eos(filepath, **kwargs)
+        for pq_batch in dfdataset.get_df(eos_filepath, **kwargs):
             func(pq_batch.to_pandas(), *args, **kwargs)
+        eos.delete_lockfile(eos_filepath)
     return wrapper
