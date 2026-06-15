@@ -61,6 +61,5 @@ class Model(ABC):
                 )
             )
         test_filepaths = self.dfdataset.get_test_filepaths(fold, **kwargs)['test']
-        # test_filepaths = [test_filepaths[0]]
-        # for filepath in test_filepaths:
-        #     prediction(self.dfdataset, filepath, filepath, **kwargs)
+        for filepath in test_filepaths:
+            prediction(self.dfdataset, filepath, filepath, **kwargs)
