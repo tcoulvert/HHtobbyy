@@ -392,14 +392,12 @@ class DFDataset:
     
     #############################################################
     # Retrieving
-    # def get_df_batch(self, filepath: str, batch_size: bool|int=False, **kwargs):
-    #     pq_file = pq.ParquetFile(filepath)
-    #     if not batch_size: batch_size = pq_file.metadata.num_rows
-    #     return pq_file.iter_batches(batch_size=batch_size)
-    def get_df(self, filepath: str, batch_size: bool|int=False, **kwargs):
+    def get_df_iter(self, filepath: str, batch_size: bool|int=False, **kwargs):
         pq_file = pq.ParquetFile(filepath)
         if not batch_size: batch_size = pq_file.metadata.num_rows
         return pq_file.iter_batches(batch_size=batch_size)
+    def get_df(self, filepath: str, **kwargs):
+        return pq.read_table(filepath).to_pandas()
     
     def get_all_train(self, syst_name: str='nominal', shuffle: bool=True, **kwargs):
         dfs = []
@@ -409,7 +407,7 @@ class DFDataset:
         filepaths = self.get_traintest_filepaths(fold, dataset="train", syst_name=syst_name)
 
         df = pd.concat(
-            [pq_batch.to_pandas() for model_class in filepaths.keys() for filepath in filepaths[model_class] for pq_batch in self.get_df(filepath, **kwargs)], 
+            [self.get_df(filepath, **kwargs) for model_class in filepaths.keys() for filepath in filepaths[model_class]], 
             ignore_index=True, join="inner"
         )
         
@@ -432,7 +430,7 @@ class DFDataset:
             filepaths = self.get_test_filepaths(fold, syst_name=syst_name, regex=regex)
 
         df = pd.concat(
-            [pq_batch.to_pandas() for model_class in filepaths.keys() for filepath in filepaths[model_class] for pq_batch in self.get_df(filepath, **kwargs)], 
+            [self.get_df(filepath, **kwargs) for model_class in filepaths.keys() for filepath in filepaths[model_class]], 
             ignore_index=True
         )
 

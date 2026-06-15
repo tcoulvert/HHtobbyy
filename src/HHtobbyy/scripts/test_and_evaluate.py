@@ -76,15 +76,15 @@ if __name__ == "__main__":
 
     dfdataset = DFDataset(args.dfdataset_config)
 
-    # model = map_model_to_Model(args.model)(dfdataset, args.model_config)
+    model = map_model_to_Model(args.model)(dfdataset, args.model_config)
 
-    # if args.filepaths != '' and len(args.filepaths.split(', ')) == 1:
-    #     eos_filepath = eos.load_file_eos(args.filepaths)
-    #     with open(eos_filepath, 'r') as f: filepaths = f.read()
-    #     eos.delete_lockfile(eos_filepath)
-    # elif len(args.filepaths.split(', ')) > 1:
-    #     filepaths = args.filepaths.split(', ')
-    # else:
-    #     filepaths = get_input_filepaths(args.eras.split(', ') if len(args.eras.split(', ')) > 1 else args.eras, dfdataset.class_sample_map, regex=f"*{dfdataset.filepostfix}")
+    if args.filepaths != '' and len(args.filepaths.split(', ')) == 1:
+        eos_filepath = eos.load_file_eos(args.filepaths)
+        with open(eos_filepath, 'r') as f: filepaths = f.read()
+        eos.delete_lockfile(eos_filepath)
+    elif len(args.filepaths.split(', ')) > 1:
+        filepaths = args.filepaths.split(', ')
+    else:
+        filepaths = get_input_filepaths(args.eras.split(', ') if len(args.eras.split(', ')) > 1 else args.eras, dfdataset.class_sample_map, regex=f"*{dfdataset.filepostfix}")
 
-    # main(dfdataset, model, filepaths, parallel=args.submission == 'parallel')
+    main(dfdataset, model, filepaths, parallel=args.submission == 'parallel')

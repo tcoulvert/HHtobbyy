@@ -2,7 +2,7 @@
 import numpy as np
 
 # ML packages
-from torch import load as torchload
+from lightning.pytorch.utilities import disable_possible_user_warnings
 from lightning.pytorch.utilities.data import DataLoader
 from lightning import Trainer
 from lightning.pytorch.tuner import Tuner
@@ -17,9 +17,18 @@ from HHtobbyy.event_discrimination.models.MLP.MLPConfig import MLPConfig
 
 ################################
 
+import logging
+import warnings
+# 1. Disable PyTorch Lightning and Lightning Fabric console logging
+logging.getLogger("lightning.pytorch").setLevel(logging.ERROR)
+logging.getLogger("lightning_fabric").setLevel(logging.ERROR)
+# 2. Suppress all user warnings (like hardware suggestions or missing loggers)
+warnings.filterwarnings("ignore", category=UserWarning)
+
 
 class MLP(Model):
     def __init__(self, dfdataset: str|DFDataset, config: str|dict):
+        disable_possible_user_warnings()
         self.dfdataset = DFDataset(dfdataset) if type(dfdataset) is str else dfdataset
         self.modeldataset = MLPDataset(self.dfdataset, config)
         self.modelconfig = MLPConfig(self.dfdataset, config)
@@ -42,7 +51,8 @@ class MLP(Model):
             num_nodes=self.modelconfig.num_nodes,
             precision=self.modelconfig.precision, 
             gradient_clip_val=self.modelconfig.gradient_clip_val,
-            logger=False if eval and log_path == '' else (log_path if log_path != '' else self.modelconfig.logger),
+            # logger=False if eval and log_path == '' else (log_path if log_path != '' else self.modelconfig.logger),
+            logger=False,
             devices=1 if eval else self.modelconfig.devices,
         )
 
