@@ -4,6 +4,13 @@ import os
 import re
 from threading import Thread 
 
+# Common Py packages
+import pyarrow as pa
+import pyarrow.parquet as pq
+
+# HEP packages
+import eos_utils as eos
+
 ################################
 
 
@@ -120,3 +127,53 @@ def match_regex(regex, sample_strs):
 #############################################################
 def format_class_names(class_names):
     return [class_name.replace(' ', '').replace('+', '') for class_name in class_names]
+
+
+#############################################################
+# Decorators for batch handling
+def batched_writer(func):
+    def wrapper(pq_iter_func, infilepath: str, outfilepath: str, *args, **kwargs):
+        eos_infilepath = eos.load_file_eos(infilepath, **kwargs)
+        eos_outfilepath = eos.save_file_eos(outfilepath, **kwargs)
+        pq_writer = None
+        for pq_batch in pq_iter_func(eos_infilepath, **kwargs):
+            table_batch = pa.Table.from_pandas(func(pq_batch.to_pandas(), *args, **kwargs))
+            if pq_writer is None: pq_writer = pq.ParquetWriter(eos_outfilepath, schema=table_batch.schema)
+            pq_writer.write_table(table_batch)
+        if pq_writer is not None: pq_writer.close()
+        eos.delete_lockfile(eos_infilepath); eos.delete_lockfile(eos_outfilepath)
+    return wrapper
+
+def batched_executor(func):
+    def wrapper(pq_iter_func, filepath: str, *args, **kwargs):
+        eos_filepath = eos.load_file_eos(filepath, **kwargs)
+        batched_return = []
+        for pq_batch in pq_iter_func(eos_filepath, **kwargs):
+            batched_return.append(func(pq_batch.to_pandas(), *args, **kwargs))
+        eos.delete_lockfile(eos_filepath)
+        return batched_return
+    return wrapper
+
+
+#############################################################
+# Decorators for multifile handling
+def multifile_executor(func):
+    def wrapper(filepaths: list[str], *args, **kwargs):
+        multifile_return = []
+        for filepath in filepaths:
+            eos_filepath = eos.load_file_eos(filepath, **kwargs)
+            multifile_return.append(func(eos_filepath, *args, **kwargs))
+            eos.delete_lockfile(eos_filepath)
+        return multifile_return
+    return wrapper
+
+
+#############################################################
+# Decorators for multifold handling
+def multifold_executor(func):
+    def wrapper(n_folds: int, *args, **kwargs):
+        multifold_return = []
+        for fold in range(n_folds):
+            multifold_return.append(func(fold, *args, **kwargs))
+        return multifold_return
+    return wrapper
