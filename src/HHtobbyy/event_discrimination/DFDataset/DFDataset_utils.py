@@ -27,20 +27,13 @@ def log_standardize(column: str):
     }
     return any(log_std_term in column for log_std_term in log_std_terms)
 
-def apply_logs(df: pd.DataFrame):
-    for col in df.columns:
-        if log_standardize(col):
-            mask = df[col].gt(0)
-            df.loc[mask, col] = np.log(df.loc[mask, col])
+def logzscore(column: str, masked_x: np.ma.MaskedArray):
+    if no_standardize(column): return np.ma.array(np.random.normal(size=1000))
+    elif log_standardize(column): return np.ma.power(masked_x, 0.5)
+    else: return masked_x
 
-
-def compute_zscore(masked_x: np.ma.MaskedArray):
-    x_mean = masked_x.mean(axis=0)
-    x_std = masked_x.std(axis=0)
-    return x_mean.tolist(), x_std.tolist()
-
-def apply_zscore(masked_x: np.ma.MaskedArray, mean: float, stddev: float):
-    masked_x = (masked_x - mean) / stddev
+def snt(column: str, masked_x: np.ma.MaskedArray):
+    return masked_x
 
 
 #############################################################

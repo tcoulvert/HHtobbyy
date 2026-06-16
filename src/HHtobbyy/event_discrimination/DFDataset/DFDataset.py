@@ -2,11 +2,13 @@
 import datetime
 import json
 import os
+from collections.abc import Callable
 
 # Common Py packages
 import numpy as np  
 import pandas as pd
-import pyarrow.parquet as pq
+import pyarrow.dataset as ds
+import pyarrow.compute as pc
 
 # ML packages
 from sklearn.model_selection import train_test_split
@@ -20,7 +22,9 @@ from HHtobbyy.event_discrimination.DFDataset.DFDataset_utils import (
     compute_zscore, apply_zscore, equalProc_train_test_split, random_oversample, random_undersample
 )
 from HHtobbyy.workspace_utils.retrieval_utils import (
-    FILL_VALUE, match_sample, match_regex, multifold, sub_filepath
+    FILL_VALUE, match_sample, match_regex, 
+    multifold, sub_filepath, 
+    batched_writer, batched_executor
 )
 
 
@@ -92,8 +96,8 @@ class DFDataset:
         # Fill value for bad data to go into DFDataset
         self.refill_value = FILL_VALUE
 
-        # Mask variable for preselection, 'none' for no extra pre-selection
-        self.mask_var = 'none'
+        # Mask variable for preselection, None for no extra pre-selection
+        self.presel_filter = None
 
         # Number of folds, one model per fold
         self.n_folds = 5
@@ -140,6 +144,10 @@ class DFDataset:
         self.train_class_reweighting = 'none'
         self.normalize_signal_to_bkg = True
 
+        # lambda func to map filepath to class idx for readability
+        self.class_idx = lambda filepath: map_filepath_to_class(self.class_sample_map, sub_filepath(filepath, self.base_filepath))
+        self.out_filepath = lambda in_filepath, fold: make_output_filepath(sub_filepath(in_filepath, self.base_filepath), self.output_dirpath, f"test{fold}")
+
         # Processes the config
         self.process_config(config)
 
@@ -156,16 +164,11 @@ class DFDataset:
                 setattr(self, key, sorted(value) if type(value) is list and self.sort_inputs else value)
 
         # All variables
-        self.all_vars = self.model_vars + self.aux_vars
-
-        # Aux variables map
-        self.aux_vars_map = {var: self.aux_var_prefix + var for var in self.aux_vars}
-        
-        # All variables after renaming with prefix
-        self.new_all_vars = list(self.model_vars) + list(self.aux_vars_map.values())
-
-        # Reuired aux variables for downstream tasks
-        self.necessary_aux_vars = sorted([self.sort_var, self.gen_weight_var, self.event_weight_var, self.sample_var, self.era_var])
+        self.all_vars_map = {
+            model_var: pc.field(model_var) for model_var in self.model_vars
+         } + {
+            self.aux_var_prefix + aux_var: pc.field(aux_var) for aux_var in self.aux_vars
+         }
 
         # Number of classes
         self.n_classes = len(self.class_sample_map)
@@ -188,12 +191,8 @@ class DFDataset:
 
     #############################################################
     # Event masking
-    def presel_mask(self, df: pd.DataFrame):
-        if self.mask_var == 'none': return np.ones(len(df), dtype=bool)
-        elif self.mask_var in df.columns: return np.asarray(df[self.mask_var] > 0, dtype=bool)
-
     def train_mask(self, df: pd.DataFrame, fold: int):
-        if self.n_folds > 1: return np.asarray(df['AUX_event'].mod(self.n_folds).ne(fold), dtype=bool)
+        if self.n_folds > 1: return np.asarray(df[f'{self.aux_var_prefix}event'].mod(self.n_folds).ne(fold), dtype=bool)
         else: return np.ones(len(df), dtype=bool)
     def test_mask(self, df: pd.DataFrame, fold: int):
         if self.n_folds > 1: return ~self.train_mask(df, fold)
@@ -202,29 +201,43 @@ class DFDataset:
 
     #############################################################
     # Basic DF build
-    def make_df(self, filepath: str):
-        pq_file, pq_schema = pq.ParquetFile(filepath), pq.read_schema(filepath)
-        assert all(necessary_aux_var in pq_schema.names for necessary_aux_var in self.necessary_aux_vars), f"ERROR: Required to have all the necessary aux vars {self.necessary_aux_vars} present for downstream processing and tracking. Currently missing {set(self.necessary_aux_vars) - set(pq_schema.names)}"
-        assert all(var in pq_schema.names for var in self.all_vars), f"ERROR: Requested vars do not exists in input data. Currently missing {set(self.all_vars) - set(pq_schema.names)}"
-
-        col_dtype_map = {}
-        for var_map in [dict(zip(self.model_vars, self.model_vars)), self.aux_vars_map]:
-            for name, dtype in zip(pq_schema.names, pq_schema.types):
-                if name not in var_map: continue
-                try: col_dtype_map[var_map[name]] = dtype.to_pandas_dtype()
-                except: col_dtype_map[var_map[name]] = 'float64'
-        
-        df = pd.DataFrame(columns=self.new_all_vars).astype(col_dtype_map)
-        for pq_batch in pq_file.iter_batches(batch_size=self.pq_batch_size, columns=list(set(self.all_vars))):
-            df_batch = pq_batch.to_pandas()
-            mask = self.presel_mask(df_batch)
-
-            df_batch = df_batch.loc[:, self.model_vars].join(df_batch.loc[:, self.aux_vars].rename(columns=self.aux_vars_map))
-            df = pd.concat([df, df_batch.loc[mask]], ignore_index=True)
+    @batched_writer
+    def make_df(self, df: pd.DataFrame, fold: int, class_idx: int, mask_func: Callable[[pd.DataFrame, int], np.ndarray], **kwargs):
+        mask = mask_func(df, fold)
+        df = df.loc[mask].reset_index(drop=True)
+        self.add_vars(df, class_idx)
+        self.apply_standardization(df, fold)
+        self.good_df(df)
         return df
+    
+    @batched_executor
+    def accumulate_dataset(self, df: pd.DataFrame, fold: int, accumulation: dict, col_func: Callable[[str, np.ma.MaskedArray], np.ma.MaskedArray], **kwargs):
+        mask = self.train_mask(df, fold)
+        df = df.loc[mask].reset_index(drop=True)
+
+        # accumulate E[X], E[X^2], and N for z-score-like standardization
+        for model_var in self.model_vars:
+            if self.standardization_method+model_var not in accumulation.keys(): 
+                accumulation[self.standardization_method+model_var] = {'exp_x': 0., 'exp_xsq': 0., 'N': 0}
+            masked_col = globals(self.standardization_method)(model_var, np.ma.array(df[model_var], mask=(df[model_var] == self.fill_value)))
+            df_accumulation_col = {'exp_x': masked_col.sum(), 'exp_xsq': np.ma.power(masked_col).sum(), 'N': masked_col.count()}
+            accumulation[self.standardization_method+model_var] = {
+                key: sum(pair) for key, pair in zip(
+                    accumulation[self.standardization_method+model_var].keys(), 
+                    zip(accumulation[self.standardization_method+model_var].values(), df_accumulation_col.values())
+                )
+            }
+
+        # accumulate sum of classes for class-standardization
+        for model_class in self.class_sample_map.keys():
+            if self.event_weight_var+model_class not in accumulation.keys(): 
+                accumulation[self.event_weight_var+model_class] = 0.
+            masked_weight = np.ma.array(df[self.event_weight_var], mask=(df[self.event_weight_var] == self.fill_value))
+            accumulation[self.event_weight_var+model_class] += masked_weight.sum()
+        
     def good_df(self, df: pd.DataFrame):
         assert not df.isnull().values.any(), f"ERROR: DFDataset contains NaN values, something likely went wrong with the DF mergings"
-        assert set(self.model_vars + list(self.aux_vars_map.values())).issubset(set(df.columns)), f"ERROR: DFDataset missing necessary columns: {set(self.model_vars + list(self.aux_vars_map.values())) - set(df.columns)}"
+        assert set(self.all_vars_map.keys()) == set(df.columns), f"ERROR: DFDataset missing necessary columns: {set(self.all_vars_map.keys()) - set(df.columns)}"
 
     #############################################################
     # Additional variables
@@ -244,6 +257,7 @@ class DFDataset:
                     reweight_mask = np.logical_and(reweight_mask, df[f'{self.aux_var_prefix}{self.era_var}'].eq(df_era_tag))
                 df.loc[reweight_mask, reweight_var] *= reweight
         else: raise NotImplementedError(f"Reweight method not yet implemented, use \'none\' or pass a dict.")
+
     def class_reweighting(self, dfs: dict[str, pd.DataFrame], class_reweight: str|dict, reweight_var: str):
         if type(class_reweight) is str and class_reweight == 'none': return
         elif type(class_reweight) is dict:
@@ -275,40 +289,30 @@ class DFDataset:
 
     #############################################################
     # Standardization
-    def compute_standardization(self, train_dfs: dict[str, pd.DataFrame], fold: int):
-        merged_train_df = pd.concat([df.loc[:, self.model_vars] for df in train_dfs.values()], ignore_index=True)
-        merged_train_df = merged_train_df.sample(frac=1, random_state=self.seed).reset_index(drop=True)
-        
-        if self.standardization_method.lower() == 'logzscore': apply_logs(merged_train_df)
-        elif self.standardization_method.lower() == 'snt': pass
-        else: raise NotImplementedError(f"Standardization method not yet implemented, use \'zscore\' or \'snt\'.")
+    def compute_standardization(self, fold: int, accumulation: dict):
+        stddict = {'col': [], 'mean': [], 'std': []}
 
-        x_mean, x_std = compute_zscore(np.ma.array(merged_train_df, mask=(merged_train_df == self.fill_value)))
-        if self.standardization_method.lower() == 'logzscore': 
-            x_mean, x_std = zip(*[(mean, std) if not no_standardize(col) else (0, 1) for mean, std, col in zip(x_mean, x_std, self.model_vars)])
+        for key, accums in accumulation.items():
+            if not key.startswith(self.standardization_method): continue
+            stddict['col'].append(key.replace(self.standardization_method, ''))
+            stddict['mean'].append(accums['exp_x'] / accums['N'])
+            stddict['std'].append(((accums['exp_xsq'] / accums['N']) - (accums['exp_x'] / accums['N'])**2)**0.5)
 
-        stddict = {'col': self.model_vars, 'mean': list(x_mean), 'std': list(x_std)}
         stddict_filepath = os.path.join(self.output_dirpath, f'{self.standardization_method.lower()}_{self.standardization_subfilename}{fold}.json')
         eos_filepath = eos.save_file_eos(stddict_filepath)
         with open(eos_filepath, 'w') as f: json.dump(stddict, f)
         eos.delete_lockfile(eos_filepath)
 
     def apply_standardization(self, df: pd.DataFrame, fold: int):
-        if self.standardization_method.lower() == 'logzscore': apply_logs(df.loc[:, self.model_vars])
-        elif self.standardization_method.lower() == 'snt': pass
-        else: raise NotImplementedError(f"Standardization method not yet implemented, use \'zscore\' or \'snt\'.")
-        
         stddict_filepath = os.path.join(self.output_dirpath, f'{self.standardization_method.lower()}_{self.standardization_subfilename}{fold}.json')
         eos_filepath = eos.load_file_eos(stddict_filepath)
         with open(eos_filepath, 'r') as f: stddict = json.load(f)
         eos.delete_lockfile(eos_filepath)
 
-        for model_var in self.model_vars:
-            std_values = np.ma.array(df.loc[:, model_var], mask=(df.loc[:, model_var].eq(self.fill_value)))
-            mean, stddev = stddict['mean'][stddict['col'].index(model_var)], stddict['std'][stddict['col'].index(model_var)]
-            apply_zscore(std_values, mean, stddev)
-            df.loc[:, model_var] = std_values.filled(self.refill_value)
-
+        for model_var, mean, std in zip(stddict['col'], stddict['mean'], stddict['std']):
+            masked_col = globals(self.standardization_method)(model_var, np.ma.array(df[model_var], mask=(df[model_var] == self.fill_value)))
+            masked_col = (masked_col - mean) / std
+            df.loc[:, model_var] = masked_col.filled(self.refill_value)
 
     #############################################################
     # Oversample/Undersample for training
@@ -333,70 +337,41 @@ class DFDataset:
     # Building
     def make_all_train(self, filepaths: list, **kwargs):
         multifold(self.make_train, (filepaths, ), self.n_folds, **kwargs)
-    def make_train(self, fold: int, filepaths: list):
+    def make_train(self, fold: int, filepaths: list, **kwargs):
         assert fold >= 0 and fold < self.n_folds, f"ERROR: Expected a fold index between 0 and {self.n_folds}, received {fold}"
 
-        dfs = {}
+        accumulation = {}
         for filepath in filepaths:
-            dfs[filepath] = self.make_df(filepath)
-            mask = self.train_mask(dfs[filepath], fold)
-            dfs[filepath] = dfs[filepath].loc[mask].reset_index(drop=True)
-
-            self.add_vars(dfs[filepath], map_filepath_to_class(self.class_sample_map, sub_filepath(filepath, self.base_filepath)))
-
-        self.compute_standardization(dfs, fold)
-
-        self.over_under_sample(dfs)
-
-        self.class_reweighting(dfs, self.train_class_reweighting, f'{self.aux_var_prefix}{self.event_weight_var}Train')
-
-        for filepath in filepaths:
-            self.apply_standardization(dfs[filepath], fold)
-            self.good_df(dfs[filepath])
-            eos_filepath = eos.save_file_eos(
-                make_output_filepath(
-                    sub_filepath(filepath, self.base_filepath), 
-                    self.output_dirpath, 
-                    f"train{fold}"
-                )
+            self.accumulate_dataset(
+                self.get_df_iter, filepath, fold, accumulation, columns=self.all_vars_map, filter=self.presel_filter, **kwargs
             )
-            dfs[filepath].to_parquet(eos_filepath)
-            eos.delete_lockfile(eos_filepath)
+        self.compute_standardization(fold, accumulation)
+
+        for filepath in filepaths:
+            self.make_df(
+                self.get_df_iter, filepath, self.out_filepath(filepath, fold), 
+                fold, self.class_idx(filepath), self.train_mask, 
+                columns=self.all_vars_map, filter=self.presel_filter, **kwargs
+            )
 
     def make_all_test(self, filepaths: list, force: bool=False, **kwargs):
         multifold(self.make_test, (filepaths, force), self.n_folds,  **kwargs)
-    def make_test(self, fold: int, filepaths: list, force: bool=False):
+    def make_test(self, fold: int, filepaths: list, **kwargs):
         assert fold >= 0 and fold < self.n_folds, f"ERROR: Expected a fold index between 0 and {self.n_folds}, received {fold}"
-
+        
         for filepath in filepaths:
-            df = self.make_df(filepath)
-            mask = self.test_mask(df, fold)
-            df = df.loc[mask].reset_index(drop=True)
-            self.add_vars(df, map_filepath_to_class(self.class_sample_map, sub_filepath(filepath, self.base_filepath)))
-            
-            self.apply_standardization(df, fold)
-            self.good_df(df)
-            eos_filepath = eos.save_file_eos(
-                make_output_filepath(
-                    sub_filepath(filepath, self.base_filepath), 
-                    self.output_dirpath, 
-                    f"test{fold}"
-                ), 
-                force=force
+            self.make_df(
+                self.get_df_iter, filepath, self.out_filepath(filepath, fold), 
+                fold, self.class_idx(filepath), self.test_mask, 
+                columns=self.all_vars_map, filter=self.presel_filter, **kwargs
             )
-
-            df.to_parquet(eos_filepath)
-            eos.delete_lockfile(eos_filepath)
 
     
     #############################################################
     # Retrieving
-    def get_df_iter(self, filepath: str, batch_size: bool|int=False, **kwargs):
-        pq_file = pq.ParquetFile(filepath)
-        if not batch_size: batch_size = pq_file.metadata.num_rows
-        return pq_file.iter_batches(batch_size=batch_size)
-    def get_df(self, filepath: str, **kwargs):
-        return pq.read_table(filepath).to_pandas()
+    def get_df_iter(self, filepath: str, batch_size: int=131_072, columns: None|list[str]=None, filter: None|ds.Expression=None, **kwargs):
+        dataset = ds.dataset(filepath, format="parquet")
+        return dataset.to_batches(batch_size=batch_size, columns=columns, filter=filter)
     
     def get_all_train(self, syst_name: str='nominal', shuffle: bool=True, **kwargs):
         dfs = []
