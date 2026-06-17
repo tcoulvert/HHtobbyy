@@ -252,7 +252,6 @@ class DFDataset:
         self.good_df(df)
         return df
     
-    @batched_executor
     def accumulate_dataset(self, df: pd.DataFrame, fold: int, accumulation: dict, **kwargs):
         mask = self.train_mask(df, fold)
         df = df.loc[mask].reset_index(drop=True)
@@ -383,8 +382,10 @@ class DFDataset:
 
         accumulation = {}
         for filepath in filepaths:
-            self.accumulate_dataset(
-                self.get_df_iter, filepath, fold, accumulation, columns=self.all_vars_map, filter=self.presel_filter, **kwargs
+            batched_executor(self.get_df_iter, filepath)(
+                self.accumulate_dataset(
+                    fold, accumulation, columns=self.all_vars_map, filter=self.presel_filter, **kwargs
+                )
             )
         self.compute_standardization(fold, accumulation)
 
