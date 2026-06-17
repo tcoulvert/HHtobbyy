@@ -234,7 +234,7 @@ class DFDataset:
     def make_df(self, df: pd.DataFrame, fold: int, class_idx: int, mask_func: Callable[[pd.DataFrame, int], np.ndarray], accumulation: dict={}, **kwargs):
         mask = mask_func(df, fold, accumulation)
         df = df.loc[mask].reset_index(drop=True)
-        self.add_vars(df, class_idx)
+        self.add_vars(df, class_idx, accumulation)
         self.apply_standardization(df, fold)
         self.good_df(df)
         return df
@@ -257,18 +257,31 @@ class DFDataset:
                 )
             }
 
+        # accumulate sum of processes for re-sampling
+        df_proc = df[f'{self.aux_var_prefix}{self.sample_var}'][0]
+        if self.event_weight_var+df_proc not in accumulation.keys(): 
+            accumulation[self.event_weight_var+df_proc] = {'sum': 0., 'N': 0}
+        masked_weight = np.ma.array(df[self.event_weight_var], mask=(df[self.event_weight_var] == self.fill_value))
+        df_accumulation_class = {'sum': masked_weight.sum(), 'N': masked_weight.count()}
+        accumulation[self.event_weight_var+df_proc] = {
+            key: sum(pair) for key, pair in zip(
+                accumulation[self.event_weight_var+df_proc].keys(), 
+                zip(accumulation[self.event_weight_var+df_proc].values(), df_accumulation_class.values())
+            )
+        }
+
         # accumulate sum of classes for class-standardization
-        for model_class in self.class_sample_map.keys():
-            if self.event_weight_var+model_class not in accumulation.keys(): 
-                accumulation[self.event_weight_var+model_class] = {'sum': 0., 'N': 0}
-            masked_weight = np.ma.array(df[self.event_weight_var], mask=(df[self.event_weight_var] == self.fill_value))
-            df_accumulation_class = {'sum': masked_weight.sum(), 'N': masked_weight.count()}
-            accumulation[self.event_weight_var+model_class] = {
-                key: sum(pair) for key, pair in zip(
-                    accumulation[self.event_weight_var+model_class].keys(), 
-                    zip(accumulation[self.event_weight_var+model_class].values(), df_accumulation_class.values())
-                )
-            }
+        df_classTag = list(self.class_sample_map.keys())[df[f'{self.aux_var_prefix}label1D'][0]]
+        if self.event_weight_var+df_classTag not in accumulation.keys(): 
+            accumulation[self.event_weight_var+df_classTag] = {'sum': 0., 'N': 0}
+        masked_weight = np.ma.array(df[self.event_weight_var], mask=(df[self.event_weight_var] == self.fill_value))
+        df_accumulation_class = {'sum': masked_weight.sum(), 'N': masked_weight.count()}
+        accumulation[self.event_weight_var+df_classTag] = {
+            key: sum(pair) for key, pair in zip(
+                accumulation[self.event_weight_var+df_classTag].keys(), 
+                zip(accumulation[self.event_weight_var+df_classTag].values(), df_accumulation_class.values())
+            )
+        }
         
     def good_df(self, df: pd.DataFrame):
         assert not df.isnull().values.any(), f"ERROR: DFDataset contains NaN values, something likely went wrong with the DF mergings"
@@ -278,39 +291,24 @@ class DFDataset:
     # Additional variables
     def sample_reweighting(self, df: pd.DataFrame, sample_reweight: str|dict, reweight_var: str):
         if type(sample_reweight) is str and sample_reweight == 'none': return
-        elif type(sample_reweight) is dict:
-            df_unique_era_tags = df[f'{self.aux_var_prefix}{self.era_var}'].unique()
-            df_unique_sample_tags = df[f'{self.aux_var_prefix}{self.sample_var}'].unique()
-            for sample_era_tag, reweight in sample_reweight.items():
-                era_tag, sample_tag = tuple(sample_era_tag.split('<>'))
-                assert era_tag != '' and sample_tag != '', f"ERROR: Specified era or sample are empty, this will match to a single random sample. If you'd like to match to everything use the keywor \'all\'"
-                df_era_tag = match_regex(era_tag, df_unique_era_tags)
-                df_sample_tag = match_regex(sample_tag, df_unique_sample_tags)
+        else:
+            df_era, df_proc = df[f'{self.aux_var_prefix}{self.era_var}'][0], df[f'{self.aux_var_prefix}{self.sample_var}'][0]
+            for era_proc, reweight in sample_reweight.items():
+                era, proc = tuple(era_proc.split('<>'))
+                if not ((df_era == era or era == 'all') and df_proc == proc): continue
+                df[reweight_var] = df[reweight_var] * reweight
 
-                reweight_mask = df[f'{self.aux_var_prefix}{self.sample_var}'].eq(df_sample_tag)
-                if era_tag.lower() != 'all':
-                    reweight_mask = np.logical_and(reweight_mask, df[f'{self.aux_var_prefix}{self.era_var}'].eq(df_era_tag))
-                df.loc[reweight_mask, reweight_var] *= reweight
-        else: raise NotImplementedError(f"Reweight method not yet implemented, use \'none\' or pass a dict.")
-
-    def class_reweighting(self, df: pd.DataFrame, class_reweight: str|dict, reweight_var: str):
+    def class_reweighting(self, df: pd.DataFrame, class_reweight: str|dict, reweight_var: str, accumulation: dict):
         if type(class_reweight) is str and class_reweight == 'none': return
-        elif type(class_reweight) is dict:
-            assert set(class_reweight.keys()).issubset(set(self.class_sample_map.keys())), f"ERROR: Input class_reweight dictionary has target classes not in the class_sample_map: {set(class_reweight.keys()) - set(self.class_sample_map.keys())}"
-            assert set([class_name for value in class_reweight.values() for class_name in value[1]]).issubset(set(self.class_sample_map.keys())), f"ERROR: Input class_reweight dictionary has reference classes not in the class_sample_map: {set(class_reweight.keys()) - set(self.class_sample_map.keys())}"
+        else:
+            df_classIdx = df[f'{self.aux_var_prefix}label1D'][0]
+            for classTag, (reweight, ref_classTags) in class_reweight.items():
+                classTagIdx = list(self.class_sample_map.keys()).index(classTag)
+                if df_classIdx != classTagIdx: continue
+                classSum, ref_classSum = accumulation[self.event_weight_var+classTag]['sum'], sum([accumulation[self.event_weight_var+ref_classTag]['sum'] for ref_classTag in ref_classTags])
+                df[reweight_var] = df[reweight_var] * reweight * ref_classSum / classSum
 
-            for class_tag, (reweight, ref_class_tags) in class_reweight.items():
-                sample_tags = pd.unique(df.loc[df[f'{self.aux_var_prefix}label1D'].eq(list(self.class_sample_map).index(class_tag)), f'{self.aux_var_prefix}{self.sample_var}'])
-                sample_reweight = {
-                    'all<>'+sample_tag: reweight * (
-                        df.loc[df[f'{self.aux_var_prefix}label1D'].isin([i for i, ref_class_tag in enumerate(self.class_sample_map.keys()) if ref_class_tag in ref_class_tags]), reweight_var].sum()
-                        / df.loc[df[f'{self.aux_var_prefix}label1D'].eq(list(self.class_sample_map).index(class_tag)), reweight_var].sum()
-                    )
-                }
-                for _df_ in dfs.values(): self.sample_reweighting(_df_, sample_reweight, reweight_var)
-        else: raise NotImplementedError(f"Reweight method not yet implemented, use \'none\' or pass a dict.")
-
-    def add_vars(self, df: pd.DataFrame, class_idx: int):
+    def add_vars(self, df: pd.DataFrame, class_idx: int, accumulation: dict):
         df[f'{self.aux_var_prefix}label1D'] = class_idx
 
         # Reweighting eventWeight if improperly preprocessed
@@ -318,6 +316,7 @@ class DFDataset:
 
         # Creating and reweighting eventWeightTrain for training
         df[f'{self.aux_var_prefix}{self.event_weight_var}Train'] = df[f'{self.aux_var_prefix}{self.event_weight_var}']
+        self.class_reweighting(df, self.train_class_reweighting, f'{self.aux_var_prefix}{self.event_weight_var}Train', accumulation)
         self.sample_reweighting(df, self.train_sample_reweighting, f'{self.aux_var_prefix}{self.event_weight_var}Train')
 
 
@@ -350,9 +349,9 @@ class DFDataset:
 
     #############################################################
     # Oversample/Undersample for training
-    def over_under_sample(self, df: pd.DataFrame):
+    def over_under_sample(self, df: pd.DataFrame, accumulation: dict):
         if self.overundersample_train_per_proc == 'none' and self.undersample_train_per_proc == 'none': return
-        else: globals(self.overundersample_train_per_proc)(df, self.seed)
+        else: globals(self.overundersample_train_per_proc)(df, accumulation, self.seed)
 
     #############################################################
     # Train/Val splitting

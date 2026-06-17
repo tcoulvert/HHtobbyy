@@ -29,30 +29,30 @@ def logzscore(column: str, masked_x: np.ma.MaskedArray):
 
 
 #############################################################
-# Process train/test split
-def random_oversample(df: pd.DataFrame, rng_seed: int=21):
-    sample_name_col = match_regex('sample_name', df.columns)
-    unique_procs = pd.unique(df[sample_name_col])
-    largest_proc = np.max([np.sum(df[sample_name_col].eq(proc)) for proc in unique_procs])
+# Process re-sampling
+# def random_oversample(df: pd.DataFrame, accumulation: dict, rng_seed: int=21):
+#     sample_name_col = match_regex('sample_name', df.columns)
+#     unique_procs = pd.unique(df[sample_name_col])
+#     largest_proc = np.max([np.sum(df[sample_name_col].eq(proc)) for proc in unique_procs])
     
-    for proc in unique_procs:
-        proc_idxs = df[df[sample_name_col].eq(proc)].index
-        if len(proc_idxs) == largest_proc: continue
+#     for proc in unique_procs:
+#         proc_idxs = df[df[sample_name_col].eq(proc)].index
+#         if len(proc_idxs) == largest_proc: continue
 
-        rand_idxs = np.random.default_rng(seed=rng_seed).choice(proc_idxs, size=largest_proc-len(proc_idxs))
-        df.merge(df.iloc[rand_idxs])
+#         rand_idxs = np.random.default_rng(seed=rng_seed).choice(proc_idxs, size=largest_proc-len(proc_idxs))
+#         df.merge(df.iloc[rand_idxs])
 
-def random_undersample(df: pd.DataFrame, rng_seed: int=21):
-    sample_name_col = match_regex('sample_name', df.columns)
-    unique_procs = pd.unique(df[sample_name_col])
-    smallest_proc = np.min([np.sum(df[sample_name_col].eq(proc)) for proc in unique_procs])
+# def random_undersample(df: pd.DataFrame, rng_seed: int=21):
+#     sample_name_col = match_regex('sample_name', df.columns)
+#     unique_procs = pd.unique(df[sample_name_col])
+#     smallest_proc = np.min([np.sum(df[sample_name_col].eq(proc)) for proc in unique_procs])
     
-    for proc in unique_procs:
-        proc_idxs = df[df[sample_name_col].eq(proc)].index
-        if len(proc_idxs) == smallest_proc: continue
+#     for proc in unique_procs:
+#         proc_idxs = df[df[sample_name_col].eq(proc)].index
+#         if len(proc_idxs) == smallest_proc: continue
 
-        rand_idxs = np.random.default_rng(seed=rng_seed).choice(proc_idxs, size=len(proc_idxs)-smallest_proc)
-        df.drop(rand_idxs)
+#         rand_idxs = np.random.default_rng(seed=rng_seed).choice(proc_idxs, size=len(proc_idxs)-smallest_proc)
+#         df.drop(rand_idxs)
 
 
 #############################################################
