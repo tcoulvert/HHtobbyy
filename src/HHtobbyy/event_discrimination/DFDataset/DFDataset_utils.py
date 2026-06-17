@@ -14,26 +14,18 @@ from HHtobbyy.workspace_utils.retrieval_utils import match_sample, match_regex
 #############################################################
 # Standardization
 def no_standardize(column: str):
-    no_std_terms = {
-        'phi', 'eta',  # angular
-        'id',  # IDs
-        'btag'  # bTags
-    }
+    no_std_terms = {'phi', 'eta', 'id', 'btag'}
     return any(no_std_term in column.lower() for no_std_term in no_std_terms)
-
 def log_standardize(column: str):
-    log_std_terms = {
-        'pt', 'chi',
-    }
+    log_std_terms = {'pt', 'chi'}
     return any(log_std_term in column for log_std_term in log_std_terms)
 
+def identity(column: str, masked_x: np.ma.MaskedArray):
+    return masked_x
 def logzscore(column: str, masked_x: np.ma.MaskedArray):
     if no_standardize(column): return np.ma.array(np.random.normal(size=1000))
     elif log_standardize(column): return np.ma.power(masked_x, 0.5)
-    else: return masked_x
-
-def snt(column: str, masked_x: np.ma.MaskedArray):
-    return masked_x
+    else: identity(column, masked_x)
 
 
 #############################################################

@@ -19,8 +19,9 @@ import eos_utils as eos
 
 # Workspace packages
 from HHtobbyy.event_discrimination.DFDataset.DFDataset_utils import (
-    no_standardize, apply_logs, map_filepath_to_class, make_output_filepath,
-    compute_zscore, apply_zscore, equalProc_train_test_split, random_oversample, random_undersample
+    map_filepath_to_class, make_output_filepath,
+    identity, logzscore, 
+    equalProc_train_test_split, random_oversample, random_undersample
 )
 from HHtobbyy.workspace_utils.retrieval_utils import (
     FILL_VALUE, match_sample, match_regex, 
@@ -136,8 +137,7 @@ class DFDataset:
         self.base_filepath = 'Run[1-3]_20'
 
         # Optional methods to undersample or oversample train dataset
-        self.undersample_train_per_proc = 'none'
-        self.oversample_train_per_proc = 'none'
+        self.overundersample_train_per_proc = 'none'
 
         # Optional dictionaries to perform reweighting for training and testing
         self.test_sample_reweighting = 'none'
@@ -221,11 +221,10 @@ class DFDataset:
     #############################################################
     # Event masking
     def train_mask(self, df: pd.DataFrame, fold: int):
-        if self.n_folds > 1: return np.asarray(df[f'{self.aux_var_prefix}event'].mod(self.n_folds).ne(fold), dtype=bool)
+        if self.n_folds > 1: return self.over_under_sample(np.asarray(df[f'{self.aux_var_prefix}event'].mod(self.n_folds).ne(fold), dtype=bool))
         else: return np.ones(len(df), dtype=bool)
     def test_mask(self, df: pd.DataFrame, fold: int):
-        if self.n_folds > 1: return ~self.train_mask(df, fold)
-        else: return self.train_mask(df, fold)
+        return np.asarray(df[f'{self.aux_var_prefix}event'].mod(self.n_folds).eq(fold), dtype=bool)
     
 
     #############################################################
@@ -345,14 +344,9 @@ class DFDataset:
 
     #############################################################
     # Oversample/Undersample for training
-    def over_under_sample(self, train_dfs: dict[str, pd.DataFrame]):
-        merged_train_df = pd.concat([df for df in train_dfs.values()], ignore_index=True)
-        if self.oversample_train_per_proc == 'none' and self.undersample_train_per_proc == 'none': return
-        elif self.oversample_train_per_proc != 'none' and self.undersample_train_per_proc != 'none':
-            raise KeyError(f"ERROR: Cannot supply both oversample and undersample method, choose one or neither.")
-        elif self.oversample_train_per_proc == 'random': random_oversample(merged_train_df, self.seed)
-        elif self.undersample_train_per_proc == 'random': random_undersample(merged_train_df, self.seed)
-        else: raise NotImplementedError(f"Over/Under sample method not yet implemented, use \'random\'.")
+    def over_under_sample(self, df: pd.DataFrame):
+        if self.overundersample_train_per_proc == 'none' and self.undersample_train_per_proc == 'none': return
+        else: globals(self.overundersample_train_per_proc)(df, self.seed)
 
     #############################################################
     # Train/Val splitting
