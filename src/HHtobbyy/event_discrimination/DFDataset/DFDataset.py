@@ -1,6 +1,7 @@
 # Stdlib packages
 import datetime
 import json
+import operator
 import os
 from collections.abc import Callable
 
@@ -163,12 +164,14 @@ class DFDataset:
             if hasattr(self, key): 
                 setattr(self, key, sorted(value) if type(value) is list and self.sort_inputs else value)
 
+        self.process_presel_filter()
+
         # All variables
         self.all_vars_map = {
             model_var: pc.field(model_var) for model_var in self.model_vars
-         } + {
+        } + {
             self.aux_var_prefix + aux_var: pc.field(aux_var) for aux_var in self.aux_vars
-         }
+        }
 
         # Number of classes
         self.n_classes = len(self.class_sample_map)
@@ -187,7 +190,33 @@ class DFDataset:
     def check_output_dirpath(self):
         config_filepath = os.path.join(self.output_dirpath, self.config_filename)
         return eos.file_exists_eos(config_filepath)
-
+    
+    def process_presel_filter(self):
+        """
+        Processes input presel_filter in config (needs to be JSON serializable) to pyarrow.dataset.Expression format.
+        Assumed that input is in the list[list[tuple]] format, with the following formatting:
+         - tuple[str, str, float]: (column_name, logical op, cut_value)
+         - list[tuple]: logical-and of the tuple cuts
+         - list[list]: logical-or of complex and-ed cuts
+        """
+        ops = {
+            '<': operator.lt, '<=': operator.le, '==': operator.eq, '>=': operator.ge, '>': operator.gt
+        }
+        if self.presel_filter is None: return
+        else:
+            assert type(self.presel_filter) is list, f"Input presel_filter needs to be of type list[list[tuple]]"
+            ored_filter = None
+            for or_list in self.presel_filter:
+                assert type(or_list) is list, f"Input presel_filter needs to be of type list[list[tuple]]"
+                anded_filter = None
+                for and_tuple in or_list:
+                    assert type(and_tuple) is tuple, f"Input presel_filter needs to be of type list[list[tuple]]"
+                    exp = ops[and_tuple[1]](pc.field(and_tuple[0]), and_tuple[2])
+                    if anded_filter is None: anded_filter = exp
+                    else: anded_filter = (anded_filter & exp)
+                if ored_filter is None: ored_filter = anded_filter
+                else: ored_filter = (ored_filter | anded_filter)
+            self.presel_filter = ored_filter
 
     #############################################################
     # Event masking
@@ -211,7 +240,7 @@ class DFDataset:
         return df
     
     @batched_executor
-    def accumulate_dataset(self, df: pd.DataFrame, fold: int, accumulation: dict, col_func: Callable[[str, np.ma.MaskedArray], np.ma.MaskedArray], **kwargs):
+    def accumulate_dataset(self, df: pd.DataFrame, fold: int, accumulation: dict, **kwargs):
         mask = self.train_mask(df, fold)
         df = df.loc[mask].reset_index(drop=True)
 
