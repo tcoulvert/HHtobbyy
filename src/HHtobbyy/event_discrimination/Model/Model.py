@@ -50,8 +50,6 @@ class Model(ABC):
             for col in class_discriminator_columns(self.dfdataset.class_sample_map.keys())
         ]
 
-        # @multifile_executor
-        @batched_writer
         def prediction(df: pd.DataFrame, **kwargs):
             return df.drop(columns=score_columns, errors='ignore').join(
                 pd.DataFrame(
@@ -63,4 +61,6 @@ class Model(ABC):
             )
         test_filepaths = self.dfdataset.get_test_filepaths(fold, **kwargs)['test']
         for filepath in test_filepaths:
-            prediction(self.dfdataset.get_df_iter, filepath, filepath, force=True, **kwargs)
+            batched_writer(self.dfdataset.get_df_iter, filepath, filepath)(
+                prediction(force=True, **kwargs)
+            )

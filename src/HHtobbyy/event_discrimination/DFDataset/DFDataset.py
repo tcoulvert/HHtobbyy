@@ -21,7 +21,7 @@ import eos_utils as eos
 from HHtobbyy.event_discrimination.DFDataset.DFDataset_utils import (
     map_filepath_to_class, make_output_filepath,
     identity, logzscore, 
-    equalProc_train_test_split, random_oversample, random_undersample
+    equalProc_train_test_split, # random_oversample, random_undersample
 )
 from HHtobbyy.workspace_utils.retrieval_utils import (
     FILL_VALUE, match_sample, match_regex, 
@@ -86,9 +86,6 @@ class DFDataset:
         # Boolean to sort the input variables alphabetically
         self.sort_inputs = True
 
-        # Batch size for loading parquets
-        self.pq_batch_size = 524_288
-
         # RNG seed
         self.seed = 21
 
@@ -145,10 +142,6 @@ class DFDataset:
         self.train_class_reweighting = 'none'
         self.normalize_signal_to_bkg = True
 
-        # lambda func to map filepath to class idx for readability
-        self.class_idx = lambda filepath: map_filepath_to_class(self.class_sample_map, sub_filepath(filepath, self.base_filepath))
-        self.out_filepath = lambda in_filepath, fold: make_output_filepath(sub_filepath(in_filepath, self.base_filepath), self.output_dirpath, f"test{fold}")
-
         # Processes the config
         self.process_config(config)
 
@@ -164,13 +157,11 @@ class DFDataset:
             if hasattr(self, key): 
                 setattr(self, key, sorted(value) if type(value) is list and self.sort_inputs else value)
 
-        self.process_presel_filter()
-
         # All variables
         self.all_vars_map = {
-            model_var: pc.field(model_var) for model_var in self.model_vars
-        } + {
-            self.aux_var_prefix + aux_var: pc.field(aux_var) for aux_var in self.aux_vars
+            model_var: model_var for model_var in self.model_vars
+        } | {
+            self.aux_var_prefix + aux_var: aux_var for aux_var in self.aux_vars
         }
 
         # Number of classes
@@ -187,6 +178,14 @@ class DFDataset:
             with open(eos_filepath, 'w') as f: json.dump(self.__dict__, f)
             eos.delete_lockfile(eos_filepath)
 
+        # process pc variables for fast pyarrow dataset loading
+        self.process_presel_filter()
+        self.process_var_map()
+
+        # lambda func to map filepath to class idx for readability
+        self.class_idx = lambda filepath: map_filepath_to_class(self.class_sample_map, sub_filepath(filepath, self.base_filepath))
+        self.out_filepath = lambda in_filepath, fold: make_output_filepath(sub_filepath(in_filepath, self.base_filepath), self.output_dirpath, f"test{fold}")
+
     def check_output_dirpath(self):
         config_filepath = os.path.join(self.output_dirpath, self.config_filename)
         return eos.file_exists_eos(config_filepath)
@@ -194,7 +193,7 @@ class DFDataset:
     def process_presel_filter(self):
         """
         Processes input presel_filter in config (needs to be JSON serializable) to pyarrow.dataset.Expression format.
-        Assumed that input is in the list[list[tuple]] format, with the following formatting:
+        Expected format is list[list[tuple]], detailed below:
          - tuple[str, str, float]: (column_name, logical op, cut_value)
          - list[tuple]: logical-and of the tuple cuts
          - list[list]: logical-or of complex and-ed cuts
@@ -218,6 +217,18 @@ class DFDataset:
                 else: ored_filter = (ored_filter | anded_filter)
             self.presel_filter = ored_filter
 
+    def process_var_map(self):
+        """
+        Processes all_vars_map for passing to dataset as columns.
+        Expected format is dict[str: str], detailed below:
+         - key[str]: final column name
+         - value[str]: initial column name
+        """
+        pc_all_vars = {}
+        for final_col, init_col in self.all_vars_map.items():
+            pc_all_vars[final_col] = pc.field(init_col)
+        self.all_vars_map = pc_all_vars
+
     #############################################################
     # Event masking
     def train_mask(self, df: pd.DataFrame, fold: int, accumulation: dict={}, **kwargs):
@@ -230,12 +241,14 @@ class DFDataset:
 
     #############################################################
     # Basic DF build
-    @batched_writer
     def make_df(self, df: pd.DataFrame, fold: int, class_idx: int, mask_func: Callable[[pd.DataFrame, int], np.ndarray], accumulation: dict={}, **kwargs):
         mask = mask_func(df, fold, accumulation)
         df = df.loc[mask].reset_index(drop=True)
+        print(df.head())
         self.add_vars(df, class_idx, accumulation)
         self.apply_standardization(df, fold)
+        print(df.head())
+        print('='*60)
         self.good_df(df)
         return df
     
@@ -376,22 +389,25 @@ class DFDataset:
         self.compute_standardization(fold, accumulation)
 
         for filepath in filepaths:
-            self.make_df(
-                self.get_df_iter, filepath, self.out_filepath(filepath, fold), 
-                fold, self.class_idx(filepath), self.train_mask, accumulation=accumulation,
-                columns=self.all_vars_map, filter=self.presel_filter, **kwargs
+            batched_writer(self.get_df_iter, filepath, self.out_filepath(filepath, fold))(
+                self.make_df(
+                    fold, self.class_idx(filepath), self.train_mask, accumulation=accumulation,
+                    columns=self.all_vars_map, filter=self.presel_filter, **kwargs
+                )
             )
+            
 
-    def make_all_test(self, filepaths: list, force: bool=False, **kwargs):
-        multifold(self.make_test, (filepaths, force), self.n_folds,  **kwargs)
+    def make_all_test(self, filepaths: list, **kwargs):
+        multifold(self.make_test, (filepaths, ), self.n_folds,  **kwargs)
     def make_test(self, fold: int, filepaths: list, **kwargs):
         assert fold >= 0 and fold < self.n_folds, f"ERROR: Expected a fold index between 0 and {self.n_folds}, received {fold}"
         
         for filepath in filepaths:
-            self.make_df(
-                self.get_df_iter, filepath, self.out_filepath(filepath, fold), 
-                fold, self.class_idx(filepath), self.test_mask,
-                columns=self.all_vars_map, filter=self.presel_filter, **kwargs
+            batched_writer(self.get_df_iter, filepath, self.out_filepath(filepath, fold))(
+                self.make_df(
+                    fold, self.class_idx(filepath), self.test_mask, 
+                    columns=self.all_vars_map, filter=self.presel_filter, **kwargs
+                )
             )
 
     

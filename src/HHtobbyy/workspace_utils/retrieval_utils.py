@@ -76,7 +76,7 @@ def get_input_filepaths(eras: str|list[str], class_sample_map: dict, regex: str|
     input_filepaths = []
     
     for era in eras:
-        sample_filepaths = glob.glob(os.path.join(era, "**", regex), recursive=True)
+        sample_filepaths = eos.glob_eos(os.path.join(era, "**", regex), recursive=True)
         for sample_filepath in sample_filepaths:
             sub_sample_filepath = sample_filepath[len(era):]
             if match_sample(
@@ -131,49 +131,57 @@ def format_class_names(class_names):
 
 #############################################################
 # Decorators for batch handling
-def batched_writer(func):
-    def wrapper(pq_iter_func, infilepath: str, outfilepath: str, *args, **kwargs):
-        eos_infilepath = eos.load_file_eos(infilepath, **kwargs)
-        eos_outfilepath = eos.save_file_eos(outfilepath, **kwargs)
-        pq_writer = None
-        for pq_batch in pq_iter_func(eos_infilepath, **kwargs):
-            table_batch = pa.Table.from_pandas(func(pq_batch.to_pandas(), *args, **kwargs))
-            if pq_writer is None: pq_writer = pq.ParquetWriter(eos_outfilepath, schema=table_batch.schema)
-            pq_writer.write_table(table_batch)
-        if pq_writer is not None: pq_writer.close()
-        eos.delete_lockfile(eos_infilepath); eos.delete_lockfile(eos_outfilepath)
-    return wrapper
+def batched_writer(pq_iter_func, infilepath: str, outfilepath: str):
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            eos_infilepath = eos.load_file_eos(infilepath, **kwargs)
+            eos_outfilepath = eos.save_file_eos(outfilepath, **kwargs)
+            pq_writer = None
+            for pq_batch in pq_iter_func(eos_infilepath, **kwargs):
+                table_batch = pa.Table.from_pandas(func(pq_batch.to_pandas(), *args, **kwargs))
+                if pq_writer is None: pq_writer = pq.ParquetWriter(eos_outfilepath, schema=table_batch.schema)
+                pq_writer.write_table(table_batch)
+            if pq_writer is not None: pq_writer.close()
+            eos.delete_lockfile(eos_infilepath); eos.delete_lockfile(eos_outfilepath)
+        return wrapper
+    return decorator
 
-def batched_executor(func):
-    def wrapper(pq_iter_func, filepath: str, *args, **kwargs):
-        eos_filepath = eos.load_file_eos(filepath, **kwargs)
-        batched_return = []
-        for pq_batch in pq_iter_func(eos_filepath, **kwargs):
-            batched_return.append(func(pq_batch.to_pandas(), *args, **kwargs))
-        eos.delete_lockfile(eos_filepath)
-        return batched_return
-    return wrapper
+def batched_executor(pq_iter_func, filepath: str):
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            eos_filepath = eos.load_file_eos(filepath, **kwargs)
+            batched_return = []
+            for pq_batch in pq_iter_func(eos_filepath, **kwargs):
+                batched_return.append(func(pq_batch.to_pandas(), *args, **kwargs))
+            eos.delete_lockfile(eos_filepath)
+            return batched_return
+        return wrapper
+    return decorator
 
 
 #############################################################
 # Decorators for multifile handling
-def multifile_executor(func):
-    def wrapper(filepaths: list[str], *args, **kwargs):
-        multifile_return = []
-        for filepath in filepaths:
-            eos_filepath = eos.load_file_eos(filepath, **kwargs)
-            multifile_return.append(func(eos_filepath, *args, **kwargs))
-            eos.delete_lockfile(eos_filepath)
-        return multifile_return
-    return wrapper
+def multifile_executor(filepaths: list[str]):
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            multifile_return = []
+            for filepath in filepaths:
+                eos_filepath = eos.load_file_eos(filepath, **kwargs)
+                multifile_return.append(func(eos_filepath, *args, **kwargs))
+                eos.delete_lockfile(eos_filepath)
+            return multifile_return
+        return wrapper
+    return decorator
 
 
 #############################################################
 # Decorators for multifold handling
-def multifold_executor(func):
-    def wrapper(n_folds: int, *args, **kwargs):
-        multifold_return = []
-        for fold in range(n_folds):
-            multifold_return.append(func(fold, *args, **kwargs))
-        return multifold_return
-    return wrapper
+def multifold_executor(n_folds: int):
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            multifold_return = []
+            for fold in range(n_folds):
+                multifold_return.append(func(fold, *args, **kwargs))
+            return multifold_return
+        return wrapper
+    return decorator
