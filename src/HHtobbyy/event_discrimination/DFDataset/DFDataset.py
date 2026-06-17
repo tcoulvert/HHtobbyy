@@ -220,18 +220,19 @@ class DFDataset:
 
     #############################################################
     # Event masking
-    def train_mask(self, df: pd.DataFrame, fold: int):
-        if self.n_folds > 1: return self.over_under_sample(np.asarray(df[f'{self.aux_var_prefix}event'].mod(self.n_folds).ne(fold), dtype=bool))
-        else: return np.ones(len(df), dtype=bool)
-    def test_mask(self, df: pd.DataFrame, fold: int):
+    def train_mask(self, df: pd.DataFrame, fold: int, accumulation: dict={}, **kwargs):
+        if self.n_folds > 1: mask = np.asarray(df[f'{self.aux_var_prefix}event'].mod(self.n_folds).ne(fold), dtype=bool)
+        else: mask = np.ones(len(df), dtype=bool)
+        return np.logical_and(mask, self.over_under_sample(df, accumulation))
+    def test_mask(self, df: pd.DataFrame, fold: int, **kwargs):
         return np.asarray(df[f'{self.aux_var_prefix}event'].mod(self.n_folds).eq(fold), dtype=bool)
     
 
     #############################################################
     # Basic DF build
     @batched_writer
-    def make_df(self, df: pd.DataFrame, fold: int, class_idx: int, mask_func: Callable[[pd.DataFrame, int], np.ndarray], **kwargs):
-        mask = mask_func(df, fold)
+    def make_df(self, df: pd.DataFrame, fold: int, class_idx: int, mask_func: Callable[[pd.DataFrame, int], np.ndarray], accumulation: dict={}, **kwargs):
+        mask = mask_func(df, fold, accumulation)
         df = df.loc[mask].reset_index(drop=True)
         self.add_vars(df, class_idx)
         self.apply_standardization(df, fold)
@@ -259,9 +260,15 @@ class DFDataset:
         # accumulate sum of classes for class-standardization
         for model_class in self.class_sample_map.keys():
             if self.event_weight_var+model_class not in accumulation.keys(): 
-                accumulation[self.event_weight_var+model_class] = 0.
+                accumulation[self.event_weight_var+model_class] = {'sum': 0., 'N': 0}
             masked_weight = np.ma.array(df[self.event_weight_var], mask=(df[self.event_weight_var] == self.fill_value))
-            accumulation[self.event_weight_var+model_class] += masked_weight.sum()
+            df_accumulation_class = {'sum': masked_weight.sum(), 'N': masked_weight.count()}
+            accumulation[self.event_weight_var+model_class] = {
+                key: sum(pair) for key, pair in zip(
+                    accumulation[self.event_weight_var+model_class].keys(), 
+                    zip(accumulation[self.event_weight_var+model_class].values(), df_accumulation_class.values())
+                )
+            }
         
     def good_df(self, df: pd.DataFrame):
         assert not df.isnull().values.any(), f"ERROR: DFDataset contains NaN values, something likely went wrong with the DF mergings"
@@ -286,20 +293,19 @@ class DFDataset:
                 df.loc[reweight_mask, reweight_var] *= reweight
         else: raise NotImplementedError(f"Reweight method not yet implemented, use \'none\' or pass a dict.")
 
-    def class_reweighting(self, dfs: dict[str, pd.DataFrame], class_reweight: str|dict, reweight_var: str):
+    def class_reweighting(self, df: pd.DataFrame, class_reweight: str|dict, reweight_var: str):
         if type(class_reweight) is str and class_reweight == 'none': return
         elif type(class_reweight) is dict:
             assert set(class_reweight.keys()).issubset(set(self.class_sample_map.keys())), f"ERROR: Input class_reweight dictionary has target classes not in the class_sample_map: {set(class_reweight.keys()) - set(self.class_sample_map.keys())}"
             assert set([class_name for value in class_reweight.values() for class_name in value[1]]).issubset(set(self.class_sample_map.keys())), f"ERROR: Input class_reweight dictionary has reference classes not in the class_sample_map: {set(class_reweight.keys()) - set(self.class_sample_map.keys())}"
+
             for class_tag, (reweight, ref_class_tags) in class_reweight.items():
-                df = pd.concat(dfs.values(), ignore_index=True)  # Re-concat to account for changing scales of classes
                 sample_tags = pd.unique(df.loc[df[f'{self.aux_var_prefix}label1D'].eq(list(self.class_sample_map).index(class_tag)), f'{self.aux_var_prefix}{self.sample_var}'])
                 sample_reweight = {
                     'all<>'+sample_tag: reweight * (
                         df.loc[df[f'{self.aux_var_prefix}label1D'].isin([i for i, ref_class_tag in enumerate(self.class_sample_map.keys()) if ref_class_tag in ref_class_tags]), reweight_var].sum()
                         / df.loc[df[f'{self.aux_var_prefix}label1D'].eq(list(self.class_sample_map).index(class_tag)), reweight_var].sum()
                     )
-                    for sample_tag in sample_tags
                 }
                 for _df_ in dfs.values(): self.sample_reweighting(_df_, sample_reweight, reweight_var)
         else: raise NotImplementedError(f"Reweight method not yet implemented, use \'none\' or pass a dict.")
@@ -373,7 +379,7 @@ class DFDataset:
         for filepath in filepaths:
             self.make_df(
                 self.get_df_iter, filepath, self.out_filepath(filepath, fold), 
-                fold, self.class_idx(filepath), self.train_mask, 
+                fold, self.class_idx(filepath), self.train_mask, accumulation=accumulation,
                 columns=self.all_vars_map, filter=self.presel_filter, **kwargs
             )
 
@@ -385,7 +391,7 @@ class DFDataset:
         for filepath in filepaths:
             self.make_df(
                 self.get_df_iter, filepath, self.out_filepath(filepath, fold), 
-                fold, self.class_idx(filepath), self.test_mask, 
+                fold, self.class_idx(filepath), self.test_mask,
                 columns=self.all_vars_map, filter=self.presel_filter, **kwargs
             )
 
