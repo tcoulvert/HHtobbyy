@@ -244,11 +244,8 @@ class DFDataset:
     def make_df(self, df: pd.DataFrame, fold: int, class_idx: int, mask_func, accumulation: dict={}, **kwargs):
         mask = mask_func(df, fold, accumulation=accumulation, **kwargs)
         df = df.loc[mask].reset_index(drop=True)
-        print(df.head())
         self.add_vars(df, class_idx, accumulation)
         self.apply_standardization(df, fold)
-        print(df.head())
-        print('='*60)
         self.good_df(df)
         return df
     
