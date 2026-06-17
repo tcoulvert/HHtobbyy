@@ -241,8 +241,8 @@ class DFDataset:
 
     #############################################################
     # Basic DF build
-    def make_df(self, df: pd.DataFrame, fold: int, class_idx: int, mask_func: Callable[[pd.DataFrame, int], np.ndarray], accumulation: dict={}, **kwargs):
-        mask = mask_func(df, fold, accumulation)
+    def make_df(self, df: pd.DataFrame, fold: int, class_idx: int, mask_func, accumulation: dict={}, **kwargs):
+        mask = mask_func(df, fold, accumulation=accumulation, **kwargs)
         df = df.loc[mask].reset_index(drop=True)
         print(df.head())
         self.add_vars(df, class_idx, accumulation)
@@ -297,7 +297,7 @@ class DFDataset:
         
     def good_df(self, df: pd.DataFrame):
         assert not df.isnull().values.any(), f"ERROR: DFDataset contains NaN values, something likely went wrong with the DF mergings"
-        assert set(self.all_vars_map.keys()) == set(df.columns), f"ERROR: DFDataset missing necessary columns: {set(self.all_vars_map.keys()) - set(df.columns)}"
+        assert set(self.all_vars_map.keys()).issubset(set(df.columns)), f"ERROR: DFDataset missing necessary columns: {set(self.all_vars_map.keys()) - set(df.columns)}"
 
     #############################################################
     # Additional variables
@@ -355,9 +355,9 @@ class DFDataset:
         eos.delete_lockfile(eos_filepath)
 
         for model_var, mean, std in zip(stddict['col'], stddict['mean'], stddict['std']):
-            masked_col = globals(self.standardization_method)(model_var, np.ma.array(df[model_var], mask=(df[model_var] == self.fill_value)))
+            masked_col = globals()[self.standardization_method](model_var, np.ma.array(df[model_var], mask=(df[model_var] == self.fill_value)))
             masked_col = (masked_col - mean) / std
-            df.loc[:, model_var] = masked_col.filled(self.refill_value)
+            df[model_var] = masked_col.filled(self.refill_value)
 
     #############################################################
     # Oversample/Undersample for training
@@ -382,19 +382,15 @@ class DFDataset:
 
         accumulation = {}
         for filepath in filepaths:
-            batched_executor(self.get_df_iter, filepath)(
-                self.accumulate_dataset(
-                    fold, accumulation, columns=self.all_vars_map, filter=self.presel_filter, **kwargs
-                )
+            batched_executor(self.get_df_iter, filepath)(self.accumulate_dataset)(
+                fold, accumulation, columns=self.all_vars_map, filter=self.presel_filter, **kwargs
             )
         self.compute_standardization(fold, accumulation)
 
         for filepath in filepaths:
-            batched_writer(self.get_df_iter, filepath, self.out_filepath(filepath, fold))(
-                self.make_df(
-                    fold, self.class_idx(filepath), self.train_mask, accumulation=accumulation,
-                    columns=self.all_vars_map, filter=self.presel_filter, **kwargs
-                )
+            batched_writer(self.get_df_iter, filepath, self.out_filepath(filepath, fold))(self.make_df)(
+                fold, self.class_idx(filepath), self.train_mask, accumulation=accumulation,
+                columns=self.all_vars_map, filter=self.presel_filter, **kwargs
             )
             
 
@@ -404,11 +400,9 @@ class DFDataset:
         assert fold >= 0 and fold < self.n_folds, f"ERROR: Expected a fold index between 0 and {self.n_folds}, received {fold}"
         
         for filepath in filepaths:
-            batched_writer(self.get_df_iter, filepath, self.out_filepath(filepath, fold))(
-                self.make_df(
-                    fold, self.class_idx(filepath), self.test_mask, 
-                    columns=self.all_vars_map, filter=self.presel_filter, **kwargs
-                )
+            batched_writer(self.get_df_iter, filepath, self.out_filepath(filepath, fold))(self.make_df)(
+                fold, self.class_idx(filepath), self.test_mask, 
+                columns=self.all_vars_map, filter=self.presel_filter, **kwargs
             )
 
     
