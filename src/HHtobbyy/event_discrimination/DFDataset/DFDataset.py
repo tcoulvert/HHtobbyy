@@ -184,7 +184,7 @@ class DFDataset:
 
         # lambda func to map filepath to class idx for readability
         self.class_idx = lambda filepath: map_filepath_to_class(self.class_sample_map, sub_filepath(filepath, self.base_filepath))
-        self.out_filepath = lambda in_filepath, fold: make_output_filepath(sub_filepath(in_filepath, self.base_filepath), self.output_dirpath, f"test{fold}")
+        self.out_filepath = lambda in_filepath, fold, dataset: make_output_filepath(sub_filepath(in_filepath, self.base_filepath), self.output_dirpath, f"{dataset}{fold}")
 
     def check_output_dirpath(self):
         config_filepath = os.path.join(self.output_dirpath, self.config_filename)
@@ -374,8 +374,9 @@ class DFDataset:
     # Building
     def make_all_train(self, filepaths: list, **kwargs):
         multifold(self.make_train, (filepaths, ), self.n_folds, **kwargs)
-    def make_train(self, fold: int, filepaths: list, **kwargs):
+    def make_train(self, fold: int, filepaths: list, force: bool=False, **kwargs):
         assert fold >= 0 and fold < self.n_folds, f"ERROR: Expected a fold index between 0 and {self.n_folds}, received {fold}"
+        if not force: filepaths = self.get_new_filepaths(fold, filepaths, 'train')
 
         accumulation = {}
         for filepath in filepaths:
@@ -385,7 +386,7 @@ class DFDataset:
         self.compute_standardization(fold, accumulation)
 
         for filepath in filepaths:
-            batched_writer(self.get_df_iter, filepath, self.out_filepath(filepath, fold))(self.make_df)(
+            batched_writer(self.get_df_iter, filepath, self.out_filepath(filepath, fold, 'train'))(self.make_df)(
                 fold, self.class_idx(filepath), self.train_mask, accumulation=accumulation,
                 columns=self.all_vars_map, filter=self.presel_filter, **kwargs
             )
@@ -393,11 +394,13 @@ class DFDataset:
 
     def make_all_test(self, filepaths: list, **kwargs):
         multifold(self.make_test, (filepaths, ), self.n_folds,  **kwargs)
-    def make_test(self, fold: int, filepaths: list, **kwargs):
+    def make_test(self, fold: int, filepaths: list, force: bool=False, **kwargs):
         assert fold >= 0 and fold < self.n_folds, f"ERROR: Expected a fold index between 0 and {self.n_folds}, received {fold}"
+        if not force: filepaths = self.get_new_filepaths(fold, filepaths, 'test')
         
         for filepath in filepaths:
-            batched_writer(self.get_df_iter, filepath, self.out_filepath(filepath, fold))(self.make_df)(
+            print(f'Making - {filepath}')
+            batched_writer(self.get_df_iter, filepath, self.out_filepath(filepath, fold, 'test'))(self.make_df)(
                 fold, self.class_idx(filepath), self.test_mask, 
                 columns=self.all_vars_map, filter=self.presel_filter, **kwargs
             )
@@ -459,6 +462,13 @@ class DFDataset:
     
     #############################################################
     # Retrieve train/test files
+    def get_new_filepaths(self, fold: int, input_filepaths: list[str], dataset: str, **kwargs):
+        all_filepaths = set([filepath for filepath_list in self.get_traintest_filepaths(fold, dataset=dataset, syst_name='').values() for filepath in filepath_list])
+        if dataset == 'test':
+            all_filepaths = all_filepaths | set([filepath for filepath_list in self.get_test_filepaths(fold, syst_name='').values() for filepath in filepath_list])
+        output_filepaths = {self.out_filepath(filepath, fold, dataset): filepath for filepath in input_filepaths}
+        new_filepaths = sorted([output_filepaths[key] for key in list(set(output_filepaths.keys()) - all_filepaths)])
+        return new_filepaths
     def get_traintest_filepaths(self, fold: int, dataset: str="train", syst_name: str='nominal', **kwargs):
         return {
             class_name: sorted(

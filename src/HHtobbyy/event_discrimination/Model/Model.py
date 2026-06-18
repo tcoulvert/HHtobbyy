@@ -61,4 +61,5 @@ class Model(ABC):
             )
         test_filepaths = self.dfdataset.get_test_filepaths(fold, **kwargs)['test']
         for filepath in test_filepaths:
+            print(f'Evaluating - {filepath}')
             batched_writer(self.dfdataset.get_df_iter, filepath, filepath)(prediction)(force=True, **kwargs)
