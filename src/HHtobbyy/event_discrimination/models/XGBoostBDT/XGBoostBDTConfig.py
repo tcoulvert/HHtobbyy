@@ -22,6 +22,9 @@ class XGBoostBDTConfig(ModelConfig):
     def __init__(self, dfdataset: DFDataset, config: dict):
         self.dfdataset = dfdataset
 
+        # Required parameters
+        self.output_dirpath    = ''
+
         # Architecture parameters
         self.eta                  = 0.1        # learning rate -- 0.05
         self.max_depth            = 4          # max number of splittings per tree -- 10

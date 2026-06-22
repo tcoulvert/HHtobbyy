@@ -63,7 +63,7 @@ def main(dfdataset: DFDataset, model: Model, filepaths: list, **kwargs):
     dfdataset.make_all_test(filepaths, **kwargs)
 
     # Evaluating the model
-    model.predict_all_folds(batch_size=16_384, **kwargs)
+    # model.predict_all_folds(batch_size=16_384, **kwargs)
 
     # Categorizing the model
     # cat = Categorization(dfdataset, {"discriminator": "3D"})
@@ -87,4 +87,6 @@ if __name__ == "__main__":
     else:
         filepaths = get_input_filepaths(args.eras.split(', ') if len(args.eras.split(', ')) > 1 else args.eras, dfdataset.class_sample_map, regex=f"*{dfdataset.filepostfix}")
 
-    main(dfdataset, model, filepaths, parallel=args.submission == 'parallel')
+    # filepaths = [filepaths[0]]
+    # print(filepaths)
+    # main(dfdataset, model, filepaths, parallel=args.submission == 'parallel')

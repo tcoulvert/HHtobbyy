@@ -255,7 +255,7 @@ def sculpting_check():
 
         fold_hists = {hist_name: None for hist_name in SCULPTING_CUTS.keys()}
         num_iterations = 0
-        while True:
+        # while True:
             num_iterations += 1
 
             for nonRes_sample in NONRES_SAMPLES:

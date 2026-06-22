@@ -195,23 +195,23 @@ class DFDataset:
     def process_presel_filter(self):
         """
         Processes input presel_filter in config (needs to be JSON serializable) to pyarrow.dataset.Expression format.
-        Expected format is list[list[tuple]], detailed below:
-         - tuple[str, str, float]: (column_name, logical op, cut_value)
-         - list[tuple]: logical-and of the tuple cuts
-         - list[list]: logical-or of complex and-ed cuts
+        Expected format is list[list[list]], detailed below:
+         - list[str, str, float]: (column_name, logical op, cut_value)
+         - list[list]: logical-and of the list cuts
+         - list[list[list]]: logical-or of complex and-ed cuts
         """
         ops = {
             '<': operator.lt, '<=': operator.le, '==': operator.eq, '>=': operator.ge, '>': operator.gt
         }
         if self.presel_filter is None: return
         else:
-            assert type(self.presel_filter) is list, f"Input presel_filter needs to be of type list[list[tuple]]"
+            assert type(self.presel_filter) is list, f"Input presel_filter needs to be of type list[list[list]]"
             ored_filter = None
             for or_list in self.presel_filter:
-                assert type(or_list) is list, f"Input presel_filter needs to be of type list[list[tuple]]"
+                assert type(or_list) is list, f"Input presel_filter needs to be of type list[list[list]]"
                 anded_filter = None
                 for and_tuple in or_list:
-                    assert type(and_tuple) is tuple, f"Input presel_filter needs to be of type list[list[tuple]]"
+                    assert type(and_tuple) is list, f"Input presel_filter needs to be of type list[list[list]]"
                     exp = ops[and_tuple[1]](pc.field(and_tuple[0]), and_tuple[2])
                     if anded_filter is None: anded_filter = exp
                     else: anded_filter = (anded_filter & exp)
