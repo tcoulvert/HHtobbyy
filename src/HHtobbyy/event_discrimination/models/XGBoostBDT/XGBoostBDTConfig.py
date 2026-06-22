@@ -28,6 +28,10 @@ class XGBoostBDTConfig(ModelConfig):
         self.colsample_bytree     = 0.6        # fraction of features to train tree on
         self.num_class            = self.dfdataset.n_classes  # num classes for multi-class training
         self.min_child_weight     = 1.         # smallest sum weight for leaf -- 0.25
+
+        # Penalty parameters
+        self.reg_lambda           = 1          # L2 regularization
+        self.reg_alpha                = 0          # L1 ergularization 
         
         # Hardware parameters
         try:
@@ -53,6 +57,8 @@ class XGBoostBDTConfig(ModelConfig):
 
         # Safety parameters
         self.num_trees            = 500         # max number of trees to make
+
+        self.process_config(config)
 
     def optimize_params(self, model_dataset: XGBoostBDTDataset, static_params: dict={}, verbose: bool=False):
         # order and grouping of optimization taken from: 

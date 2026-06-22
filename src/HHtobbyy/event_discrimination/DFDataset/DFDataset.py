@@ -109,6 +109,8 @@ class DFDataset:
 
         # Method used for the standardization
         self.standardization_method = 'logzscore'
+        self.logstd_regexes = ['pt', 'chi']
+        self.nostd_regexes = ['phi', 'eta', 'id', 'btag']
 
         # Standard prefix for auxiliary variables, i.e. variables useful 
         #   for event-identification but *not* used in the training
@@ -257,7 +259,10 @@ class DFDataset:
         for model_var in self.model_vars:
             if self.standardization_method+model_var not in accumulation.keys(): 
                 accumulation[self.standardization_method+model_var] = {'exp_x': 0., 'exp_xsq': 0., 'N': 0}
-            masked_col = globals(self.standardization_method)(model_var, np.ma.array(df[model_var], mask=(df[model_var] == self.fill_value)))
+            masked_col = globals(self.standardization_method)(
+                np.ma.array(df[model_var], mask=(df[model_var] == self.fill_value)), model_var,
+                self.nostd_regexes, self.logstd_regexes
+            )
             df_accumulation_col = {'exp_x': masked_col.sum(), 'exp_xsq': np.ma.power(masked_col).sum(), 'N': masked_col.count()}
             accumulation[self.standardization_method+model_var] = {
                 key: sum(pair) for key, pair in zip(

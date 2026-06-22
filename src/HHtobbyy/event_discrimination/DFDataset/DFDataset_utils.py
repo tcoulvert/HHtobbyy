@@ -13,19 +13,27 @@ from HHtobbyy.workspace_utils.retrieval_utils import match_sample, match_regex
 
 #############################################################
 # Standardization
-def no_standardize(column: str):
-    no_std_terms = {'phi', 'eta', 'id', 'btag'}
-    return any(no_std_term in column.lower() for no_std_term in no_std_terms)
-def log_standardize(column: str):
-    log_std_terms = {'pt', 'chi'}
-    return any(log_std_term in column for log_std_term in log_std_terms)
+def no_standardize(column: str, no_std_regexs: list):
+    return any(nostd in column.lower() for nostd in no_std_regexs)
+def log_standardize(column: str, log_std_regexs: list):
+    return any(logstd in column for logstd in log_std_regexs)
 
-def identity(column: str, masked_x: np.ma.MaskedArray):
+def identity(masked_x: np.ma.MaskedArray, *args):
     return masked_x
-def logzscore(column: str, masked_x: np.ma.MaskedArray):
-    if no_standardize(column): return np.ma.array(np.random.normal(size=1000))
-    elif log_standardize(column): return np.ma.power(masked_x, 0.5)
-    else: identity(column, masked_x)
+def nostd(masked_x: np.ma.MaskedArray, *args):
+    count = masked_x.count()
+    if count % 2 == 0: 
+        value = 1; exp0_expsq_1 = []
+    else:
+        value = np.sqrt(count / (count - 1)); exp0_expsq_1 = [0]
+    exp0_expsq_1 = exp0_expsq_1 + [value]*(count // 2) + [-value]*(count // 2)
+    return np.ma.array(exp0_expsq_1)
+def logstd(masked_x: np.ma.MaskedArray, *args):
+    return np.ma.log(masked_x)
+def logzscore(masked_x: np.ma.MaskedArray, column: str, no_std_regexs: list, log_std_regexs: list):
+    if no_standardize(column, no_std_regexs): return nostd(column, masked_x)
+    elif log_standardize(column, log_std_regexs): return logstd(masked_x)
+    else: return identity(column, masked_x)
 
 
 #############################################################
