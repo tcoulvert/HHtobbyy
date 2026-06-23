@@ -89,7 +89,7 @@ parser.add_argument(
 parser.add_argument(
     "--resample",
     type=int,
-    default=10,
+    default=10,  # 1 to starts
     help="Number of times to resample each event to try and get a \"good\" event"
 )
 parser.add_argument(
@@ -178,6 +178,7 @@ def resample_from_var(
         return value_choices
 
 def resample_grow_pd(var, n_duplicates_per_event):
+    if n_duplicates_per_event == 1: return var
     new_rows = pd.DataFrame(
         np.tile(var.to_numpy(), (n_duplicates_per_event, 1)), columns=var.columns
     )
