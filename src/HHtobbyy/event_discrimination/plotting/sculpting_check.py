@@ -281,8 +281,8 @@ def sculpting_check():
                         for replace_wp in replace_wps:
                             nonRes_df.loc[nonRes_mask, variable.replace(init_wp, replace_wp)] = np.where(nonRes_df.loc[nonRes_mask, variable] > 0, nonRes_df.loc[nonRes_mask, variable.replace(init_wp, replace_wp)], nonRes_df.loc[nonRes_mask, variable])
 
-            nonRes_dm = get_DMatrix(nonRes_df, nonRes_aux, dataset='test', label=False)
-            nonRes_preds = evaluate(booster, nonRes_dm)
+            nonRes_dm = get_DMatrix(nonRes_df, nonRes_aux, dataset='test', label=False)  # model.get_data(df, etc)
+            nonRes_preds = evaluate(booster, nonRes_dm)  # model.predict_data(data, etc)
             transformed_preds = transform_preds(nonRes_preds)
 
             for hist_name, cut_dict in SCULPTING_CUTS.items():
