@@ -26,8 +26,8 @@ class XGBoostBDT(Model):
         self.modelconfig = XGBoostBDTConfig(self.dfdataset, config)
         
         # General filenames
-        self.model_filename = f'{self.modelconfig.model_time}_BDT_fold'
-        self.eval_filename = f'{self.modelconfig.model_time}_eval_fold'
+        self.model_filename = 'BDT_fold'
+        self.eval_filename = 'eval_fold'
 
         # Save config
         self.modelconfig.save_config()
