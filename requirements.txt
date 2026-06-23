@@ -30,3 +30,5 @@ torchvision
 torchaudio
 
 lightning
+
+eos-utils
