@@ -8,6 +8,7 @@ from collections.abc import Callable
 # Common Py packages
 import numpy as np  
 import pandas as pd
+import pyarrow as pa
 import pyarrow.dataset as ds
 import pyarrow.compute as pc
 
@@ -15,6 +16,7 @@ import pyarrow.compute as pc
 from sklearn.model_selection import train_test_split
 
 # HEP packages
+import awkward as ak
 import eos_utils as eos
 
 # Workspace packages
@@ -212,7 +214,10 @@ class DFDataset:
                 anded_filter = None
                 for and_tuple in or_list:
                     assert type(and_tuple) is list, f"Input presel_filter needs to be of type list[list[list]]"
-                    exp = ops[and_tuple[1]](pc.field(and_tuple[0]), and_tuple[2])
+                    if type(and_tuple[2]) is int: exp = ops[and_tuple[1]](ds.field(and_tuple[0]).cast(pa.int16()), and_tuple[2])
+                    elif type(and_tuple[2]) is float: exp = ops[and_tuple[1]](ds.field(and_tuple[0]).cast(pa.float32()), and_tuple[2])
+                    elif type(and_tuple[2]) is str: exp = ops[and_tuple[1]](ds.field(and_tuple[0]).cast(pa.string()), and_tuple[2])
+                    else: raise Exception(f"Input comparison ({and_tuple[1]}) or cut ({and_tuple[2]}) not implemented, allowed options are: \'<, <=, ==, >=, >\' for the comparison and \'int, float, str\' for the cut")
                     if anded_filter is None: anded_filter = exp
                     else: anded_filter = (anded_filter & exp)
                 if ored_filter is None: ored_filter = anded_filter
