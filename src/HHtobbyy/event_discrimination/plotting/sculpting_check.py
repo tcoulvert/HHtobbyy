@@ -223,7 +223,7 @@ def sculpting_check(nonres_bkg_files: list, signal_files: list):
     hists = {hist_name: None for hist_name in SCULPTING_CUTS.keys()}
 
     dfdataset = <instantiate_dfdataset>
-    
+
     signal_dfs = pd.concat([pd.read_parquet(signal_file, columns=[f'{}mass', f'{dfdataset.aux_var_prefix}mass']) for signal_file in signal_files])
 
     # wrap this in batching decorator
@@ -252,97 +252,97 @@ def sculpting_check(nonres_bkg_files: list, signal_files: list):
 
     # plot bkg hist_mass
 
-    for fold_idx in range(get_n_folds(DATASET_DIRPATH)):
-        booster = get_booster(fold_idx)
+    # for fold_idx in range(get_n_folds(DATASET_DIRPATH)):
+    #     booster = get_booster(fold_idx)
 
-        minimal_mask = lambda df: np.all(np.array([
-            np.logical_and(df.loc[:, match_regex(plot_var['name'], df.columns)] > plot_var['range'][0], df.loc[:, match_regex(plot_var['name'], df.columns)] < plot_var['range'][1])
-            for plot_var in PLOT_VARS
-        ]).T, axis=1)
+    #     minimal_mask = lambda df: np.all(np.array([
+    #         np.logical_and(df.loc[:, match_regex(plot_var['name'], df.columns)] > plot_var['range'][0], df.loc[:, match_regex(plot_var['name'], df.columns)] < plot_var['range'][1])
+    #         for plot_var in PLOT_VARS
+    #     ]).T, axis=1)
 
-        get_resample_filepaths = lambda nonres_samples_key: [
-            filepath 
-            for class_filepaths in get_filepaths(DATASET_DIRPATH, DATASET, SYST_NAME)(fold_idx).values() 
-            for filepath in class_filepaths 
-            if match_sample(filepath, [sample[nonres_samples_key] for sample in NONRES_SAMPLES]) is not None
-        ]
-        nonRes_filepaths = get_resample_filepaths('name')
-        nonRes_df, nonRes_aux = pd.concat([get_Dataframe(filepath) for filepath in nonRes_filepaths]), pd.concat([get_Dataframe(filepath, aux=True) for filepath in nonRes_filepaths])
-        nonRes_aux['AUX_resampled'] = np.zeros(nonRes_aux.shape[0], dtype=bool)
-        nonRes_df, nonRes_aux = resample_grow_pd(nonRes_df, RESAMPLE), resample_grow_pd(nonRes_aux, RESAMPLE)
-        minimal_nonRes_mask = minimal_mask(nonRes_aux)
-        nonRes_df, nonRes_aux = nonRes_df.loc[minimal_nonRes_mask].reset_index(drop=True), nonRes_aux.loc[minimal_nonRes_mask].reset_index(drop=True)
+    #     get_resample_filepaths = lambda nonres_samples_key: [
+    #         filepath 
+    #         for class_filepaths in get_filepaths(DATASET_DIRPATH, DATASET, SYST_NAME)(fold_idx).values() 
+    #         for filepath in class_filepaths 
+    #         if match_sample(filepath, [sample[nonres_samples_key] for sample in NONRES_SAMPLES]) is not None
+    #     ]
+    #     nonRes_filepaths = get_resample_filepaths('name')
+    #     nonRes_df, nonRes_aux = pd.concat([get_Dataframe(filepath) for filepath in nonRes_filepaths]), pd.concat([get_Dataframe(filepath, aux=True) for filepath in nonRes_filepaths])
+    #     nonRes_aux['AUX_resampled'] = np.zeros(nonRes_aux.shape[0], dtype=bool)
+    #     nonRes_df, nonRes_aux = resample_grow_pd(nonRes_df, RESAMPLE), resample_grow_pd(nonRes_aux, RESAMPLE)
+    #     minimal_nonRes_mask = minimal_mask(nonRes_aux)
+    #     nonRes_df, nonRes_aux = nonRes_df.loc[minimal_nonRes_mask].reset_index(drop=True), nonRes_aux.loc[minimal_nonRes_mask].reset_index(drop=True)
 
-        Res_filepaths = get_resample_filepaths('resample_from')
-        Res_df, Res_aux = pd.concat([get_Dataframe(filepath) for filepath in Res_filepaths]), pd.concat([get_Dataframe(filepath, aux=True) for filepath in Res_filepaths])
-        minimal_Res_mask = minimal_mask(Res_aux)
-        Res_df, Res_aux = Res_df.loc[minimal_Res_mask].reset_index(drop=True), Res_aux.loc[minimal_Res_mask].reset_index(drop=True)
+    #     Res_filepaths = get_resample_filepaths('resample_from')
+    #     Res_df, Res_aux = pd.concat([get_Dataframe(filepath) for filepath in Res_filepaths]), pd.concat([get_Dataframe(filepath, aux=True) for filepath in Res_filepaths])
+    #     minimal_Res_mask = minimal_mask(Res_aux)
+    #     Res_df, Res_aux = Res_df.loc[minimal_Res_mask].reset_index(drop=True), Res_aux.loc[minimal_Res_mask].reset_index(drop=True)
 
-        fold_hists = {hist_name: None for hist_name in SCULPTING_CUTS.keys()}
+    #     fold_hists = {hist_name: None for hist_name in SCULPTING_CUTS.keys()}
 
-        for nonRes_sample in NONRES_SAMPLES:
-            nonRes_mask = np.logical_and(
-                nonRes_aux.loc[:, "AUX_sample_name"] == nonRes_sample["name"],
-                nonRes_aux.loc[:, "AUX_resampled"]
-            )
-            Res_mask = (Res_aux.loc[:, "AUX_sample_name"] == nonRes_sample["resample_from"])
+    #     for nonRes_sample in NONRES_SAMPLES:
+    #         nonRes_mask = np.logical_and(
+    #             nonRes_aux.loc[:, "AUX_sample_name"] == nonRes_sample["name"],
+    #             nonRes_aux.loc[:, "AUX_resampled"]
+    #         )
+    #         Res_mask = (Res_aux.loc[:, "AUX_sample_name"] == nonRes_sample["resample_from"])
 
-            for resample_var in nonRes_sample["resample_vars"]:
-                variable = match_regex(resample_var, nonRes_df.columns)
-                assert variable is not None, f"Variable with regex string {resample_var} does not exist in Dataframe, check if the regex string is correct"
-                nonRes_df.loc[nonRes_mask, variable] = resample_from_var(
-                    Res_df.loc[Res_mask, variable], weight=Res_aux.loc[Res_mask, "AUX_eventWeight"] if WEIGHTS else np.ones(np.sum(Res_mask)),
-                    n_events=np.sum(nonRes_mask), #min_value=nonRes_df.loc[nonRes_mask, "AUX_max_nonbjet_btag"] if "btag" in variable and "WP" not in variable else None
-                    categorical=match_sample(variable, ['WP']) is not None,
-                )
-                if match_sample(variable, ['bTagWP']) is not None:  # checking if using WPs, need to set other WPs appropriately
-                    init_wp, replace_wps = 'XXT', ['XXT', 'XT', 'T', 'M', 'L']
-                    for i, replace_wp in enumerate(replace_wps):
-                        if match_sample(variable, [replace_wp]) is not None: 
-                            init_wp, replace_wps = replace_wp, replace_wps[i+1:]; break
-                    for replace_wp in replace_wps:
-                        nonRes_df.loc[nonRes_mask, variable.replace(init_wp, replace_wp)] = np.where(nonRes_df.loc[nonRes_mask, variable] > 0, nonRes_df.loc[nonRes_mask, variable.replace(init_wp, replace_wp)], nonRes_df.loc[nonRes_mask, variable])
+    #         for resample_var in nonRes_sample["resample_vars"]:
+    #             variable = match_regex(resample_var, nonRes_df.columns)
+    #             assert variable is not None, f"Variable with regex string {resample_var} does not exist in Dataframe, check if the regex string is correct"
+    #             nonRes_df.loc[nonRes_mask, variable] = resample_from_var(
+    #                 Res_df.loc[Res_mask, variable], weight=Res_aux.loc[Res_mask, "AUX_eventWeight"] if WEIGHTS else np.ones(np.sum(Res_mask)),
+    #                 n_events=np.sum(nonRes_mask), #min_value=nonRes_df.loc[nonRes_mask, "AUX_max_nonbjet_btag"] if "btag" in variable and "WP" not in variable else None
+    #                 categorical=match_sample(variable, ['WP']) is not None,
+    #             )
+    #             if match_sample(variable, ['bTagWP']) is not None:  # checking if using WPs, need to set other WPs appropriately
+    #                 init_wp, replace_wps = 'XXT', ['XXT', 'XT', 'T', 'M', 'L']
+    #                 for i, replace_wp in enumerate(replace_wps):
+    #                     if match_sample(variable, [replace_wp]) is not None: 
+    #                         init_wp, replace_wps = replace_wp, replace_wps[i+1:]; break
+    #                 for replace_wp in replace_wps:
+    #                     nonRes_df.loc[nonRes_mask, variable.replace(init_wp, replace_wp)] = np.where(nonRes_df.loc[nonRes_mask, variable] > 0, nonRes_df.loc[nonRes_mask, variable.replace(init_wp, replace_wp)], nonRes_df.loc[nonRes_mask, variable])
 
-            nonRes_dm = get_DMatrix(nonRes_df, nonRes_aux, dataset='test', label=False)  # model.get_data(df, etc)
-            nonRes_preds = evaluate(booster, nonRes_dm)  # model.predict_data(data, etc)
-            transformed_preds = transform_preds(nonRes_preds)
+    #         nonRes_dm = get_DMatrix(nonRes_df, nonRes_aux, dataset='test', label=False)  # model.get_data(df, etc)
+    #         nonRes_preds = evaluate(booster, nonRes_dm)  # model.predict_data(data, etc)
+    #         transformed_preds = transform_preds(nonRes_preds)
 
-            for hist_name, cut_dict in SCULPTING_CUTS.items():
+    #         for hist_name, cut_dict in SCULPTING_CUTS.items():
 
-                cut_mask = np.ones(np.shape(transformed_preds)[0], dtype=bool)
-                for cut_axis, cut_range in cut_dict.items():
-                    cut_mask = np.logical_and(
-                        cut_mask, 
-                        np.logical_and(
-                            transformed_preds[:, int(cut_axis)] > cut_range[0],
-                            transformed_preds[:, int(cut_axis)] < cut_range[1],
-                        )
-                    )
-                if np.sum(cut_mask) == 0: break
+    #             cut_mask = np.ones(np.shape(transformed_preds)[0], dtype=bool)
+    #             for cut_axis, cut_range in cut_dict.items():
+    #                 cut_mask = np.logical_and(
+    #                     cut_mask, 
+    #                     np.logical_and(
+    #                         transformed_preds[:, int(cut_axis)] > cut_range[0],
+    #                         transformed_preds[:, int(cut_axis)] < cut_range[1],
+    #                     )
+    #                 )
+    #             if np.sum(cut_mask) == 0: break
 
-                pass_cut_df = nonRes_aux.loc[cut_mask, [match_regex(plot_var['name'], nonRes_aux.columns) for plot_var in PLOT_VARS]+['AUX_hash', 'AUX_eventWeight']]
+    #             pass_cut_df = nonRes_aux.loc[cut_mask, [match_regex(plot_var['name'], nonRes_aux.columns) for plot_var in PLOT_VARS]+['AUX_hash', 'AUX_eventWeight']]
             
-                if fold_hists[hist_name] is None:
-                    fold_hists[hist_name] = copy.deepcopy(pass_cut_df)
-                elif len(fold_hists[hist_name]) > 1000: 
-                    continue
-                else:
-                    new_unique_hash = np.setdiff1d(
-                        nonRes_aux.loc[cut_mask, 'AUX_hash'],
-                        fold_hists[hist_name]['AUX_hash']
-                    )
-                    if len(new_unique_hash) == 0: continue
+    #             if fold_hists[hist_name] is None:
+    #                 fold_hists[hist_name] = copy.deepcopy(pass_cut_df)
+    #             elif len(fold_hists[hist_name]) > 1000: 
+    #                 continue
+    #             else:
+    #                 new_unique_hash = np.setdiff1d(
+    #                     nonRes_aux.loc[cut_mask, 'AUX_hash'],
+    #                     fold_hists[hist_name]['AUX_hash']
+    #                 )
+    #                 if len(new_unique_hash) == 0: continue
 
-                    intersect, comm1, comm2 = np.intersect1d(
-                        nonRes_aux.loc[cut_mask, 'AUX_hash'], new_unique_hash, return_indices=True
-                    )
-                    intersect_bool = np.zeros(np.sum(cut_mask), dtype=bool)
-                    for index in comm1: intersect_bool[index] = True
+    #                 intersect, comm1, comm2 = np.intersect1d(
+    #                     nonRes_aux.loc[cut_mask, 'AUX_hash'], new_unique_hash, return_indices=True
+    #                 )
+    #                 intersect_bool = np.zeros(np.sum(cut_mask), dtype=bool)
+    #                 for index in comm1: intersect_bool[index] = True
                     
-                    fold_hists[hist_name] = pd.concat([fold_hists[hist_name], pass_cut_df.loc[intersect_bool]])
+    #                 fold_hists[hist_name] = pd.concat([fold_hists[hist_name], pass_cut_df.loc[intersect_bool]])
             
-            if all(len(fold_hist) > 1000 for fold_hist in fold_hists.values()): break
-            else: print('num iterations = ', num_iterations, '\n', '\n'.join([str(len(fold_hist)) for fold_hist in fold_hists.values()]))
+    #         if all(len(fold_hist) > 1000 for fold_hist in fold_hists.values()): break
+    #         else: print('num iterations = ', num_iterations, '\n', '\n'.join([str(len(fold_hist)) for fold_hist in fold_hists.values()]))
         
         for plot_var in PLOT_VARS:
             tightest_hist = fold_hists[list(fold_hists.keys())[-1]]
