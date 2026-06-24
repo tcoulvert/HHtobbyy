@@ -221,10 +221,10 @@ def add_vars_resolved(sample, filepath):
             sample[f'{prefactor}_has_two_btagged_jets'] & sample['pass_mva-0.7'] & sample['pass_geometry'] & sample['pass_trigger']
         )
         sample[f'{prefactor}_resolved_BDT_mask_leadbTagL'] = (
-            sample[f'{prefactor}_resolved_BDT_mask'] & sample['pass_leadbjet_loose_bTag']
+            sample[f'{prefactor}_resolved_BDT_mask'] & sample[f"{prefactor}_pass_leadbjet_loose_bTag"]
         )
         sample[f'{prefactor}_resolved_BDT_mask_leadbTagL_subleadbTagL'] = (
-            sample[f'{prefactor}_resolved_BDT_mask_leadbTagL'] & sample['pass_subleadbjet_loose_bTag']
+            sample[f'{prefactor}_resolved_BDT_mask_leadbTagL'] & sample[f"{prefactor}_pass_subleadbjet_loose_bTag"]
         )
 
         del bjet_4moms, dijet_4mom
