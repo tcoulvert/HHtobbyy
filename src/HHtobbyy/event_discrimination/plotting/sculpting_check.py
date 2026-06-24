@@ -47,6 +47,8 @@ from evaluation_utils import (
     get_filepaths
 )
 
+from HHtobbyy.event_discrimination.evaluation.evaluation_utils import class_discriminator_columns
+
 ################################
 
 
@@ -151,40 +153,32 @@ def resample_from_var(
     resample_rng = np.random.default_rng(seed=SEED)
 
     if not categorical:
-        np_hist, bin_edges = np.histogram(arr, bins=bins, weights=weight, density=True)
-        np_hist /= np.sum(np_hist)
+        # np_hist, bin_edges = np.histogram(arr, bins=bins, weights=weight, density=True)
+        # np_hist /= np.sum(np_hist)
 
         bin_choices = resample_rng.choice(np.arange(len(np_hist)), size=n_events, p=np_hist)
 
         value_choices = (bin_edges[bin_choices+1] - bin_edges[bin_choices]) * resample_rng.random(size=n_events) + bin_edges[bin_choices]
-    else:
-        # value_choices = resample_rng.choice(np.unique(arr), size=n_events, replace=True, p=[np.sum(weight[arr == unique_val]) / np.sum(weight) for unique_val in np.unique(arr)])
-        value_choices = np.ones(n_events)
+    # else:
+    #     # value_choices = resample_rng.choice(np.unique(arr), size=n_events, replace=True, p=[np.sum(weight[arr == unique_val]) / np.sum(weight) for unique_val in np.unique(arr)])
+    #     value_choices = np.ones(n_events)
 
-    if min_value is None or np.all(value_choices > min_value):
-        return value_choices
-    else:  # this is not really correct, just an approximation to make the code faster
-        bad_choices_bool = value_choices <= min_value
+    # if min_value is None or np.all(value_choices > min_value):
+    #     return value_choices
+    # else:  # this is not really correct, just an approximation to make the code faster
+    #     bad_choices_bool = value_choices <= min_value
 
-        largest_min_value = np.max(min_value[bad_choices_bool])
+    #     largest_min_value = np.max(min_value[bad_choices_bool])
 
-        np_hist, bin_edges = np.histogram(arr[arr > largest_min_value], bins=bins, weights=arr[arr > largest_min_value], density=True)
-        np_hist /= np.sum(np_hist)
+    #     np_hist, bin_edges = np.histogram(arr[arr > largest_min_value], bins=bins, weights=arr[arr > largest_min_value], density=True)
+    #     np_hist /= np.sum(np_hist)
 
-        bin_choices = resample_rng.choice(np.arange(len(np_hist)), size=np.sum(bad_choices_bool), p=np_hist)
+    #     bin_choices = resample_rng.choice(np.arange(len(np_hist)), size=np.sum(bad_choices_bool), p=np_hist)
         
-        value_choices[bad_choices_bool] = (bin_edges[bin_choices+1] - bin_edges[bin_choices]) * resample_rng.random(size=np.sum(bad_choices_bool)) + bin_edges[bin_choices]
+    #     value_choices[bad_choices_bool] = (bin_edges[bin_choices+1] - bin_edges[bin_choices]) * resample_rng.random(size=np.sum(bad_choices_bool)) + bin_edges[bin_choices]
         
-        return value_choices
+    #     return value_choices
 
-def resample_grow_pd(var, n_duplicates_per_event):
-    if n_duplicates_per_event == 1: return var
-    new_rows = pd.DataFrame(
-        np.tile(var.to_numpy(), (n_duplicates_per_event, 1)), columns=var.columns
-    )
-    if 'AUX_resampled' in var.columns:
-        new_rows['AUX_resampled'] = np.ones(new_rows.shape[0], dtype=bool)
-    return pd.concat([var, new_rows], ignore_index=True)
 
 
 def exp_plus_gauss(x, A, tau, B, sigma, C):
@@ -221,12 +215,42 @@ def fit_tightest(np_arr, plot_var, subplots, plot_type: str, training_dirpath: s
     plt.close()
 
 
-def sculpting_check():
+def sculpting_check(nonres_bkg_files: list, signal_files: list):
     get_booster = get_model_func(TRAINING_DIRPATH)
 
     transform_labels, transform_preds = transform_preds_func(CLASS_NAMES, DISCRIMINATOR)
 
     hists = {hist_name: None for hist_name in SCULPTING_CUTS.keys()}
+
+    dfdataset = <instantiate_dfdataset>
+    
+    signal_dfs = pd.concat([pd.read_parquet(signal_file, columns=[f'{}mass', f'{dfdataset.aux_var_prefix}mass']) for signal_file in signal_files])
+
+    # wrap this in batching decorator
+    def make_signal_distributions(df: pd.DataFrame, storage, var_cols, etc):
+        for var_col1 in var_cols:
+            var = df[var1_col]
+            storage = np.concatenate([storage, var])  # storage is numpy array of values
+            # OR
+            storage = np.concatenate([storage, np.hist(var, bins=n_bins, range=(start, stop))])  # storage is numpy histogram of bins
+
+
+    var_arr = make_signal_distributions
+    hist_var_arr = np.hist(var_arr)
+
+    # repeat for every variable
+    def resample_bkg(df: pd.DataFrame, signal_hists: list[np.hists], var_cols, mass_values, cuts, etc):
+        for signal_hist, var_col1 in zip(signal_hists, var_cols):
+            df[var1_col] = resample_variable(df[var1_col], signal_hist)
+        data = model.modeldataset.get_data(df)
+        predictions = model.get_predictions(data)
+
+        mass_values = np.concatenate([mass_values, prediction[predictions > cuts]])
+
+    bkg_mass_values = resample_bkg
+    hist_mass = np.hist(bkg_mass_values)
+
+    # plot bkg hist_mass
 
     for fold_idx in range(get_n_folds(DATASET_DIRPATH)):
         booster = get_booster(fold_idx)
@@ -255,32 +279,29 @@ def sculpting_check():
         Res_df, Res_aux = Res_df.loc[minimal_Res_mask].reset_index(drop=True), Res_aux.loc[minimal_Res_mask].reset_index(drop=True)
 
         fold_hists = {hist_name: None for hist_name in SCULPTING_CUTS.keys()}
-        num_iterations = 0
-        # while True:
-            num_iterations += 1
 
-            for nonRes_sample in NONRES_SAMPLES:
-                nonRes_mask = np.logical_and(
-                    nonRes_aux.loc[:, "AUX_sample_name"] == nonRes_sample["name"],
-                    nonRes_aux.loc[:, "AUX_resampled"]
+        for nonRes_sample in NONRES_SAMPLES:
+            nonRes_mask = np.logical_and(
+                nonRes_aux.loc[:, "AUX_sample_name"] == nonRes_sample["name"],
+                nonRes_aux.loc[:, "AUX_resampled"]
+            )
+            Res_mask = (Res_aux.loc[:, "AUX_sample_name"] == nonRes_sample["resample_from"])
+
+            for resample_var in nonRes_sample["resample_vars"]:
+                variable = match_regex(resample_var, nonRes_df.columns)
+                assert variable is not None, f"Variable with regex string {resample_var} does not exist in Dataframe, check if the regex string is correct"
+                nonRes_df.loc[nonRes_mask, variable] = resample_from_var(
+                    Res_df.loc[Res_mask, variable], weight=Res_aux.loc[Res_mask, "AUX_eventWeight"] if WEIGHTS else np.ones(np.sum(Res_mask)),
+                    n_events=np.sum(nonRes_mask), #min_value=nonRes_df.loc[nonRes_mask, "AUX_max_nonbjet_btag"] if "btag" in variable and "WP" not in variable else None
+                    categorical=match_sample(variable, ['WP']) is not None,
                 )
-                Res_mask = (Res_aux.loc[:, "AUX_sample_name"] == nonRes_sample["resample_from"])
-
-                for resample_var in nonRes_sample["resample_vars"]:
-                    variable = match_regex(resample_var, nonRes_df.columns)
-                    assert variable is not None, f"Variable with regex string {resample_var} does not exist in Dataframe, check if the regex string is correct"
-                    nonRes_df.loc[nonRes_mask, variable] = resample_from_var(
-                        Res_df.loc[Res_mask, variable], weight=Res_aux.loc[Res_mask, "AUX_eventWeight"] if WEIGHTS else np.ones(np.sum(Res_mask)),
-                        n_events=np.sum(nonRes_mask), #min_value=nonRes_df.loc[nonRes_mask, "AUX_max_nonbjet_btag"] if "btag" in variable and "WP" not in variable else None
-                        categorical=match_sample(variable, ['WP']) is not None,
-                    )
-                    if match_sample(variable, ['bTagWP']) is not None:  # checking if using WPs, need to set other WPs appropriately
-                        init_wp, replace_wps = 'XXT', ['XXT', 'XT', 'T', 'M', 'L']
-                        for i, replace_wp in enumerate(replace_wps):
-                            if match_sample(variable, [replace_wp]) is not None: 
-                                init_wp, replace_wps = replace_wp, replace_wps[i+1:]; break
-                        for replace_wp in replace_wps:
-                            nonRes_df.loc[nonRes_mask, variable.replace(init_wp, replace_wp)] = np.where(nonRes_df.loc[nonRes_mask, variable] > 0, nonRes_df.loc[nonRes_mask, variable.replace(init_wp, replace_wp)], nonRes_df.loc[nonRes_mask, variable])
+                if match_sample(variable, ['bTagWP']) is not None:  # checking if using WPs, need to set other WPs appropriately
+                    init_wp, replace_wps = 'XXT', ['XXT', 'XT', 'T', 'M', 'L']
+                    for i, replace_wp in enumerate(replace_wps):
+                        if match_sample(variable, [replace_wp]) is not None: 
+                            init_wp, replace_wps = replace_wp, replace_wps[i+1:]; break
+                    for replace_wp in replace_wps:
+                        nonRes_df.loc[nonRes_mask, variable.replace(init_wp, replace_wp)] = np.where(nonRes_df.loc[nonRes_mask, variable] > 0, nonRes_df.loc[nonRes_mask, variable.replace(init_wp, replace_wp)], nonRes_df.loc[nonRes_mask, variable])
 
             nonRes_dm = get_DMatrix(nonRes_df, nonRes_aux, dataset='test', label=False)  # model.get_data(df, etc)
             nonRes_preds = evaluate(booster, nonRes_dm)  # model.predict_data(data, etc)
