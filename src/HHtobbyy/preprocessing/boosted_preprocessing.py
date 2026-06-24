@@ -77,6 +77,10 @@ def select_fatjets(sample, era, selection_var):
         var, direction, value = cut.split(' ')
         if var == 'genMatched_Hbb':
             if var not in sample.fields or ak.sum(fatjets[var] > 0) == 0: continue
+        elif var == 'particleNet_XbbVsQCD':
+            if any(['globalParT3_XbbVsQCD' in field for field in sample.fields]): continue
+        elif var == 'globalParT3_XbbVsQCD':
+            if not any(['globalParT3_XbbVsQCD' in field for field in sample.fields]): continue
         if direction == '<':
             selection_mask = np.logical_and(selection_mask, fatjets[var] < float(value))
         elif direction == '<=':
