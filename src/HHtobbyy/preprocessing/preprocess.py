@@ -228,11 +228,12 @@ def get_files(eras, type='MC'):
 
 def make_dataset(filepath, era, type='MC'):
     print('========================>\n'+'Starting \n', filepath)
-    pq_file = pq.ParquetFile(eos.load_file_eos(filepath))
+    eos_infilepath = eos.load_file_eos(filepath)
+    pq_file = pq.ParquetFile(eos_infilepath)
     schema = pq.read_schema(filepath)
     columns = [field for field in schema.names]
 
-    output_filepath = eos.save_file_eos(get_output_filepath(filepath, OUTPUT_DIRPATH, END_FILEPATHS, NEW_END_FILEPATH, BASE_FILEPATH))
+    eos_outfilepath = eos.save_file_eos(get_output_filepath(filepath, OUTPUT_DIRPATH, END_FILEPATHS, NEW_END_FILEPATH, BASE_FILEPATH))
     pq_writer = None
     for pq_batch in pq_file.iter_batches(batch_size=BATCH_SIZE, columns=columns):
         ak_batch = ak.from_arrow(pq_batch)
@@ -260,9 +261,10 @@ def make_dataset(filepath, era, type='MC'):
             ak_batch['hash'] = np.arange(ak.num(ak_batch['pt'], axis=0))
 
         table_batch = ak.to_arrow_table(ak_batch)
-        if pq_writer is None: pq_writer = pq.ParquetWriter(output_filepath, schema=table_batch.schema)
+        if pq_writer is None: pq_writer = pq.ParquetWriter(eos_outfilepath, schema=table_batch.schema)
         pq_writer.write_table(table_batch)
     if pq_writer is not None: pq_writer.close()
+    eos.delete_lockfile(eos_infilepath); eos.delete_lockfile(eos_outfilepath)
     print('Finished\n'+'<========================')
 
 def make_mc(sim_eras: dict):
