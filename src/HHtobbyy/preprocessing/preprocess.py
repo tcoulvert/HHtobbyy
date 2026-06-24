@@ -46,7 +46,7 @@ parser.add_argument(
 parser.add_argument(
     "--batch_size", 
     type=int,
-    default=1_048_576,
+    default=16_384,
     help="Batch size for batch reading/writing of parquets"
 )
 parser.add_argument(
@@ -230,7 +230,7 @@ def make_dataset(filepath, era, type='MC'):
     print('========================>\n'+'Starting \n', filepath)
     eos_infilepath = eos.load_file_eos(filepath)
     pq_file = pq.ParquetFile(eos_infilepath)
-    schema = pq.read_schema(filepath)
+    schema = pq.read_schema(eos_infilepath)
     columns = [field for field in schema.names]
 
     eos_outfilepath = eos.save_file_eos(get_output_filepath(filepath, OUTPUT_DIRPATH, END_FILEPATHS, NEW_END_FILEPATH, BASE_FILEPATH))
