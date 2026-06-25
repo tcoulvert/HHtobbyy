@@ -107,7 +107,7 @@ class LPCVanillaSubmitter:
                 executable_file.write("cd /srv/Python-3.12.6\n")
                 executable_file.write("./configure --prefix=/srv/python3.12\n")
                 executable_file.write("make\n")
-                executable_file.write("sudo make install\n")
+                executable_file.write("make install\n")
                 executable_file.write("export PATH=\"/srv/python3.12/bin:$PATH\"\n")
                 
                 executable_file.write("echo \"Pulling git repo to node\"\n")
