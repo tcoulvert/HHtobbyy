@@ -254,7 +254,7 @@ def make_dataset(infilepath, outfilepath, era, datatype='MC'):
     schema = pq.read_schema(eos_infilepath)
     columns = [field for field in schema.names]
 
-    eos_outfilepath = eos.save_file_eos(outfilepath, timeout=2400)
+    eos_outfilepath = eos.save_file_eos(outfilepath, force=True, timeout=2400)
     pq_writer = None
     for pq_batch in pq_file.iter_batches(batch_size=BATCH_SIZE, columns=columns):
         ak_batch = ak.from_arrow(pq_batch)
@@ -304,7 +304,7 @@ def make_mc(sim_eras: dict):
     # Perform the variable calculation and merging
     if CONDOR:
         mc_sub = LPCVanillaSubmitter(sim_eras, 'MC', queue=QUEUE, memory=MEMORY, force=FORCE)
-        mc_sub.update_git()
+        mc_sub.submit()
     else:
         for sim_era, filepaths in sim_eras.items():
             for infilepath, outfilepath in filepaths:
