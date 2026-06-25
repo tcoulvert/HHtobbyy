@@ -173,9 +173,11 @@ class LPCVanillaSubmitter:
             return result.returncode, result.stdout, result.stderr
             
         comm_code, comm_out, comm_err = run_git_cmd(["git", "commit", "-a", "-m", f"commit before condor preprocess at {self.datetime_extension}"])
-        if comm_code != 0 and not 'branch is up to date' in comm_err: raise Exception('Git commit failed')
-        push_code, push_out, push_err = run_git_cmd(["git", "push"])
-        if push_code != 0: raise Exception('Git push failed')
+        if comm_code == 0:
+            push_code, push_out, push_err = run_git_cmd(["git", "push"])
+            if push_code != 0: raise Exception(f'Git push failed:\nOut: {push_out}\nError: {push_err}')
+        elif comm_code != 0 and 'branch is up to date' in comm_err: return
+        else: raise Exception(f'Git commit failed:\nOut: {comm_out}\nError: {comm_err}')
 
     def submit(self):
         """
