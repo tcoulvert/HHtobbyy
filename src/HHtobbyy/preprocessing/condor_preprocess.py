@@ -128,7 +128,7 @@ class LPCVanillaSubmitter:
                 
                 for i, (infilepath, outfilepath) in enumerate(filepaths):
                     executable_file.write(f"if [ $1 -eq {i} ]; then\n")
-                    executable_file.write(f"    python3.12 -c \'from HHtobbyy.preprocessing import make_dataset; make_dataset({infilepath}, {outfilepath}, {era}, datatype={datatype})\'\n")
+                    executable_file.write(f"    python3.12 -c \'from HHtobbyy.preprocessing import make_dataset; make_dataset(\"{infilepath}\", \"{outfilepath}\", \"{era}\", datatype=\"{datatype}\")\'\n")
                     executable_file.write("fi\n")
             os.system(f"chmod 775 {job_file_executable}")
             
