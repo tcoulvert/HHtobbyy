@@ -289,15 +289,11 @@ def make_dataset(infilepath, outfilepath, era, datatype='MC'):
 def make_mc(sim_eras: dict):
     if sim_eras is None:
         logger.log(1, "Not processing any MC files"); return
+    else:
+        logger.log(1, "Beginning MC processing")
     
     # Pull MC sample dir_list
     get_files(sim_eras)
-
-    slim_eras = {}
-    for i, (era, filepaths) in enumerate(sim_eras.items()):
-        slim_eras[era] = [filepaths[0]]; break
-    sim_eras = slim_eras
-    print(sim_eras)
     
     # Perform the variable calculation and merging
     if CONDOR:
@@ -312,6 +308,8 @@ def make_mc(sim_eras: dict):
 def make_data(data_eras: dict):
     if data_eras is None:
         logger.log(1, "Not processing any Data files"); return
+    else:
+        logger.log(1, "Beginning Data processing")
     
     # Pull Data sample dir_list
     get_files(data_eras, datatype='Data')
@@ -344,8 +342,8 @@ if __name__ == '__main__':
     } if len(SIM_ERAS) > 0 else None
     make_mc(sim_eras)
 
-    # data_eras = {
-    #     os.path.join(era, ''): list() for era in DATA_ERAS
-    # } if len(DATA_ERAS) > 0 else None
-    # make_data(data_eras)
+    data_eras = {
+        os.path.join(era, ''): list() for era in DATA_ERAS
+    } if len(DATA_ERAS) > 0 else None
+    make_data(data_eras)
 
