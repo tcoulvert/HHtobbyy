@@ -81,7 +81,7 @@ class LPCVanillaSubmitter:
         proxy = out
 
         for era, filepaths in era_filepaths.items():
-            base_name = f"preproc_{'_'.join(era.split('/'))}"
+            base_name = f"preproc_{'_'.join(era.split('/')[-5:])}"
             job_file_executable = os.path.join(self.jobs_dir, f"{base_name}.sh")
             job_file_submit = os.path.join(self.jobs_dir, f"{base_name}.sub")
             job_file_out = os.path.join(self.jobs_dir, f"{base_name}.$(ClusterId).$(ProcId).out")
@@ -102,13 +102,16 @@ class LPCVanillaSubmitter:
                 executable_file.write("wget https://www.python.org/ftp/python/3.12.6/Python-3.12.6.tar.xz\n")
                 
                 executable_file.write("echo \"Building python \"\n")
+                executable_file.write("cd /srv\n")
                 executable_file.write("tar -xvf Python-3.12.6.tar.xz\n")
+                executable_file.write("cd /srv/Python-3.12.6\n")
                 executable_file.write("./configure --prefix=/srv/python3.12\n")
                 executable_file.write("make\n")
                 executable_file.write("sudo make install\n")
                 executable_file.write("export PATH=\"/srv/python3.12/bin:$PATH\"\n")
                 
                 executable_file.write("echo \"Pulling git repo to node\"\n")
+                executable_file.write("cd /srv\n")
                 executable_file.write("git clone https://github.com/tcoulvert/HHtobbyy.git\n")
                 executable_file.write("cd /srv/HHtobbyy\n")
 
