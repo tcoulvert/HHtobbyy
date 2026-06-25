@@ -15,7 +15,7 @@ import xgboost as xgb
 from sklearn.metrics import log_loss
 
 # Workspace packages
-from HHtobbyy.event_discrimination.dataset.DFDataset_utils import get_labelND
+from HHtobbyy.event_discrimination.DFDataset.DFDataset_utils import get_labelND
 
 ################################
 
