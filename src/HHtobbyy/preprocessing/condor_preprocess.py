@@ -161,7 +161,7 @@ class LPCVanillaSubmitter:
             run_git_cmd(["git", "push"])
         except Exception as e:
             logger.exception(e)
-            raise e
+            if not 'branch is up to date' in str(e): raise e
 
     def submit(self):
         """

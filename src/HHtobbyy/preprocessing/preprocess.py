@@ -304,7 +304,7 @@ def make_mc(sim_eras: dict):
     # Perform the variable calculation and merging
     if CONDOR:
         mc_sub = LPCVanillaSubmitter(sim_eras, 'MC', queue=QUEUE, memory=MEMORY, force=FORCE)
-        mc_sub.submit()
+        mc_sub.update_git()
     else:
         for sim_era, filepaths in sim_eras.items():
             for infilepath, outfilepath in filepaths:
