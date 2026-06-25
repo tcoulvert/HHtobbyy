@@ -216,7 +216,7 @@ def add_vars_boosted(sample, filepath):
             ( sample[f'{selection_var}_deltaEta_subj1_subj2']**2 + sample[f'{selection_var}_deltaPhi_subj1_subj2']**2 )**0.5,
             FILL_VALUE
         )
-        sample[f'{selection_var}_deltaEta_g1_g2'] = ak.where(
+        sample['deltaEta_g1_g2'] = ak.where(
             good_fatjets, deltaEta(sample['lead_eta'], sample['sublead_eta']), FILL_VALUE
         )
         
