@@ -81,16 +81,14 @@ parser.add_argument(
 
 vec.register_awkward()
 
-args = parser.parse_args()
-INPUT_ERAS = args.input_eras
-OUTPUT_DIRPATH = args.output_dirpath
-BASE_FILEPATH = args.base_filepath
-BATCH_SIZE = args.batch_size
-FORCE = args.force
-RUN_ALL_MC = args.run_all_mc
-CONDOR = args.condor
-QUEUE = args.queue
-MEMORY = args.memory
+OUTPUT_DIRPATH = None
+BASE_FILEPATH = 'Run._20..'
+BATCH_SIZE = 32_768
+FORCE = False
+RUN_ALL_MC = False
+CONDOR = False
+QUEUE = "longlunch"
+MEMORY = "2GB"
 
 BAD_DIRS = {'outdated', 'allData'}
 END_FILEPATHS = ["merged.parquet", "Rescaled.parquet"]
@@ -328,6 +326,17 @@ def make_data(data_eras: dict):
                 make_dataset(infilepath, outfilepath, data_era, datatype='Data')
 
 if __name__ == '__main__':
+    args = parser.parse_args()
+    INPUT_ERAS = args.input_eras
+    OUTPUT_DIRPATH = args.output_dirpath
+    BASE_FILEPATH = args.base_filepath
+    BATCH_SIZE = args.batch_size
+    FORCE = args.force
+    RUN_ALL_MC = args.run_all_mc
+    CONDOR = args.condor
+    QUEUE = args.queue
+    MEMORY = args.memory
+
     SIM_ERAS, DATA_ERAS = get_era_filepaths(INPUT_ERAS, split_data_mc_eras=True)
 
     sim_eras = {
