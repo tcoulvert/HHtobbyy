@@ -27,64 +27,74 @@ GIT_REPO = (
     .rstrip()
     .decode("utf-8")
 )
-print(
-(os.path.join(GIT_REPO, "preprocessing/")),
-(os.path.join(GIT_REPO, "training/")),
-(os.path.join(GIT_REPO, "evaluation/")),
-)
 
-"""
-sys.path.append(os.path.join(GIT_REPO, "preprocessing/"))
-sys.path.append(os.path.join(GIT_REPO, "training/"))
-sys.path.append(os.path.join(GIT_REPO, "evaluation/"))
+## (below) since its already a package we dont need these added to the sys path plus its using an older directory structure 
+
+# sys.path.append(os.path.join(GIT_REPO, "preprocessing/"))
+# sys.path.append(os.path.join(GIT_REPO, "training/"))
+# sys.path.append(os.path.join(GIT_REPO, "evaluation/"))
     
 
-"""
-
-
-"""
 # Module packages
 from HHtobbyy.event_discrimination.plotting.plot_hists import plot_1dhist
 from HHtobbyy.event_discrimination.plotting.plotting_utils import plot_filepath, make_plot_dirpath
 
-# i guess these imports dont work because we want to batch our retrieval process so...
+# removed get_Dataframe, get_DMatrix, get_class_sample_map, get_n_folds, and get_filepaths & some more from here since they no longer exist rip
+
 from retrieval_utils import (
-    get_class_sample_map, get_n_folds, 
     match_sample, match_regex,
-    get_Dataframe, get_DMatrix
 )
 
-# same goes for this
-from HHtobbyy.event_discrimination.training.training_utils import (
-    get_dataset_dirpath, get_model_func
-)
-# and this
 from HHtobbyy.event_discrimination.evaluation.evaluation_utils import (
     evaluate, transform_preds_options, transform_preds_func,
-    get_filepaths
 )
-
 
 from HHtobbyy.event_discrimination.evaluation.evaluation_utils import class_discriminator_columns
 
+
 ################################
 
-
 logger = logging.getLogger(__name__)
+
 parser = argparse.ArgumentParser(description="Standardize BDT inputs and save out dataframe parquets.")
+
+## (below) obsolete
+# parser.add_argument(
+#     "training_dirpath",
+#     help="Full filepath for trained model files"
+# )
+
+# added this to specify DFDataset config file
 parser.add_argument(
-    "training_dirpath",
-    help="Full filepath for trained model files"
+    "dfdataset_config",
+    help="Full filepath for DFDataset config file"
+)
+
+# added this to choose model 
+parser.add_argument(
+    "model",
+    choices=["MLP", "XGBoostBDT"],
+    help="What model to use (eg. MLP or XGBoostBDT)"
+)
+
+# added this to specify model config file
+parser.add_argument(
+    "model_config",
+    help="Full filepath for model config file"
 )
 parser.add_argument(
     "sculpting_cuts",
     help="JSON file that defines the discriminator(s) to use, the cuts to apply, and other configurations for the sculpting check"
 )
-parser.add_argument(
-    "--dataset_dirpath", 
-    default=None,
-    help="Full filepath on LPC for standardized dataset (train and test parquets), default is to use dataset in the training `dataset_dirpath.txt` file"
-)
+
+## (below) obsolete
+# parser.add_argument(
+#     "--dataset_dirpath", 
+#     default=None,
+#     help="Full filepath on LPC for standardized dataset (train and test parquets), default is to use dataset in the training `dataset_dirpath.txt` file"
+# )
+
+
 parser.add_argument(
     "--dataset", 
     choices=["train", "train-test"], 
@@ -132,16 +142,22 @@ parser.add_argument(
 
 
 args = parser.parse_args()
-TRAINING_DIRPATH = os.path.join(args.training_dirpath, "")
-if args.dataset_dirpath is None:
-    DATASET_DIRPATH = get_dataset_dirpath(args.training_dirpath)
-else:
-    DATASET_DIRPATH = os.path.join(args.dataset_dirpath, '')
-DATASET = args.dataset
+
+# (below) obsolete since we're now using DFDataset config file to get dataset_dirpath
+# TRAINING_DIRPATH = os.path.join(args.training_dirpath, "")
+# if args.dataset_dirpath is None:
+#     DATASET_DIRPATH = get_dataset_dirpath(args.training_dirpath)
+# else:
+#     DATASET_DIRPATH = os.path.join(args.dataset_dirpath, '')
+
+DFDATASET_CONFIG = args.dfdataset_config
+MODEL_CONFIG = args.model_config
+MODEL_TYPE = args.model
+DATASET = args.dataset # might not need later?
 WEIGHTS = args.weights
 DENSITY = args.density
 LOGY = args.logy
-RESAMPLE = args.resample
+RESAMPLE = args.resample # also might not need later?
 SYST_NAME = args.syst_name
 SEED = args.seed
 FIT = args.fit
@@ -401,4 +417,3 @@ if __name__ == "__main__":
     sculpting_check()
 
 
-    """
