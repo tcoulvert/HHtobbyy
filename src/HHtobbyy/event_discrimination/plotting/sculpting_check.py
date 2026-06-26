@@ -41,15 +41,17 @@ from HHtobbyy.event_discrimination.plotting.plotting_utils import plot_filepath,
 
 # removed get_Dataframe, get_DMatrix, get_class_sample_map, get_n_folds, and get_filepaths & some more from here since they no longer exist rip
 
-from retrieval_utils import (
-    match_sample, match_regex,
+from HHtobbyy.workspace_utils.retrieval_utils import (
+    match_regex,
 )
+from HHtobbyy.event_discrimination.DFDataset import DFDataset
+
+from HHtobbyy.event_discrimination.models import map_model_to_Model
 
 from HHtobbyy.event_discrimination.evaluation.evaluation_utils import (
-    evaluate, transform_preds_options, transform_preds_func,
+    transform_preds_options, transform_preds_func,
 )
 
-from HHtobbyy.event_discrimination.evaluation.evaluation_utils import class_discriminator_columns
 
 
 ################################
@@ -162,8 +164,9 @@ SYST_NAME = args.syst_name
 SEED = args.seed
 FIT = args.fit
 
-CLASS_SAMPLE_MAP = get_class_sample_map(DATASET_DIRPATH)
-CLASS_NAMES = [key for key in CLASS_SAMPLE_MAP.keys()]
+dfdataset = DFDataset(args.dfdataset_config)
+model = map_model_to_Model(args.model)(dfdataset, args.model_config)
+CLASS_NAMES = list(dfdataset.class_sample_map.keys())
 PLOT_TYPE = "resample_sculpting"
 
 with open(args.sculpting_cuts, 'r') as f:
@@ -187,12 +190,13 @@ def resample_from_var(
     resample_rng = np.random.default_rng(seed=SEED)
 
     if not categorical:
-        # np_hist, bin_edges = np.histogram(arr, bins=bins, weights=weight, density=True)
-        # np_hist /= np.sum(np_hist)
+        np_hist, bin_edges = np.histogram(arr, bins=bins, weights=weight, density=True)
+        np_hist /= np.sum(np_hist)
 
         bin_choices = resample_rng.choice(np.arange(len(np_hist)), size=n_events, p=np_hist)
 
         value_choices = (bin_edges[bin_choices+1] - bin_edges[bin_choices]) * resample_rng.random(size=n_events) + bin_edges[bin_choices]
+
     # else:
     #     # value_choices = resample_rng.choice(np.unique(arr), size=n_events, replace=True, p=[np.sum(weight[arr == unique_val]) / np.sum(weight) for unique_val in np.unique(arr)])
     #     value_choices = np.ones(n_events)
@@ -211,7 +215,7 @@ def resample_from_var(
         
     #     value_choices[bad_choices_bool] = (bin_edges[bin_choices+1] - bin_edges[bin_choices]) * resample_rng.random(size=np.sum(bad_choices_bool)) + bin_edges[bin_choices]
         
-    #     return value_choices
+        return value_choices
 
 
 def exp_plus_gauss(x, A, tau, B, sigma, C):
@@ -219,7 +223,7 @@ def exp_plus_gauss(x, A, tau, B, sigma, C):
     gauss = B * np.exp(-0.5 * ((x - 125) / sigma)**2)
     return exp + gauss + C
 
-def fit_tightest(np_arr, plot_var, subplots, plot_type: str, training_dirpath: str, plot_prefix: str=None, plot_postfix: str=None, ):
+def fit_tightest(np_arr, plot_var, subplots, plot_type: str, base_dirpath: str, plot_prefix: str='', plot_postfix: str=''):
 
     np_hist, bin_edges = np.histogram(np_arr, bins=plot_var['bins'], range=plot_var['range'], density=True)
     bin_centers = [(bin_edges[i] + bin_edges[i+1])/2 for i in range(len(np_hist))]
@@ -236,7 +240,7 @@ def fit_tightest(np_arr, plot_var, subplots, plot_type: str, training_dirpath: s
     fig, ax = subplots
     ax.plot(x_trial, y_fit, color='blue', label=f"Fit - Exponential + Gaussian@125GeV (A={popt[2]:.2f}±{perr[2]:.2f})")
 
-    plot_dirpath = make_plot_dirpath(training_dirpath, plot_type)
+    plot_dirpath = make_plot_dirpath(base_dirpath, plot_type)
     plt.savefig(
         plot_filepath(plot_type, plot_dirpath, plot_prefix, plot_postfix), 
         bbox_inches='tight'
@@ -247,40 +251,139 @@ def fit_tightest(np_arr, plot_var, subplots, plot_type: str, training_dirpath: s
     )
     plt.close()
 
-def sculpting_check(nonres_bkg_files: list, signal_files: list):
-    get_booster = get_model_func(TRAINING_DIRPATH)
 
-    transform_labels, transform_preds = transform_preds_func(CLASS_NAMES, DISCRIMINATOR)
+def sculpting_check():
 
+    _, func, cutdir = transform_preds_func(CLASS_NAMES, DISCRIMINATOR)
     hists = {hist_name: None for hist_name in SCULPTING_CUTS.keys()}
 
-    dfdataset = <instantiate_dfdataset>
+    for fold in range(dfdataset.n_folds):
 
-    signal_dfs = pd.concat([pd.read_parquet(signal_file, columns=[f'{}mass', f'{dfdataset.aux_var_prefix}mass']) for signal_file in signal_files])
+        fold_hists = {hist_name: None for hist_name in SCULPTING_CUTS.keys()}
 
-    # wrap this in batching decorator
-    def make_signal_distributions(df: pd.DataFrame, storage, var_cols, etc):
-        for var_col1 in var_cols:
-            var = df[var1_col]
-            storage = np.concatenate([storage, var])  # storage is numpy array of values
-            # OR
-            storage = np.concatenate([storage, np.hist(var, bins=n_bins, range=(start, stop))])  # storage is numpy histogram of bins
+        lead_mvaID = np.array([])
+        sublead_mvaID = np.array([])
+        signal_weights = np.array([])
+
+        signal_filepaths = dfdataset.get_traintest_filepaths(fold, dataset="test", syst_name=SYST_NAME)['Res']
+
+        print(f"Collecting signal photon ID for fold {fold}...")
+
+        for filepath in signal_filepaths:
+
+            print(f"  Processing signal file: {filepath}")
+
+            for batch in dfdataset.get_df_iter(filepath, columns=dfdataset.all_vars_map, filter=dfdataset.presel_filter):
+
+                df = batch.to_pandas()
+
+                lead_mvaID = np.concatenate([lead_mvaID, df['lead_mvaID'].to_numpy()])
+                sublead_mvaID = np.concatenate([sublead_mvaID, df['sublead_mvaID'].to_numpy()])
+                signal_weights = np.concatenate([signal_weights, df[f'{dfdataset.aux_var_prefix}eventWeight'].to_numpy()])
+
+        print(f"Signal collection done. N signal events: {len(lead_mvaID)}")
+
+        bkg_filepaths = dfdataset.get_traintest_filepaths(fold, dataset="test", syst_name=SYST_NAME)['nonRes']
+
+        print(f"Processing background for fold {fold}...")
+
+        for filepath in bkg_filepaths:
+
+            print(f"  Processing bkg file: {filepath}")
+
+            for batch in dfdataset.get_df_iter(filepath, columns=dfdataset.all_vars_map, filter=dfdataset.presel_filter):
+
+                df = batch.to_pandas()
+
+                df['lead_mvaID'] = resample_from_var(lead_mvaID, signal_weights, n_events=len(df))
+                df['sublead_mvaID'] = resample_from_var(sublead_mvaID, signal_weights, n_events=len(df))
+
+                data = model.modeldataset.get_data(df, dfdataset.event_weight_var)
+                preds = model.predict_data(data, fold)
+                transformed_preds = func(preds)
+
+                for hist_name, cut_dict in SCULPTING_CUTS.items():
+
+                    cut_mask = np.ones(len(transformed_preds), dtype=bool)
+
+                    for cut_axis, cut_range in cut_dict.items():
+
+                        if cutdir[int(cut_axis)] == '>':
+                            cut_mask = np.logical_and(cut_mask, transformed_preds[:, int(cut_axis)] > cut_range[0])
+                        else:
+                            cut_mask = np.logical_and(cut_mask, transformed_preds[:, int(cut_axis)] < cut_range[1])
+
+                    pass_cut_df = pd.DataFrame({
+                        'mass': df.loc[cut_mask, f'{dfdataset.aux_var_prefix}mass'].values,
+                        'AUX_eventWeight': df.loc[cut_mask, f'{dfdataset.aux_var_prefix}eventWeight'].values
+                    })
+
+                    if fold_hists[hist_name] is None:
+                        fold_hists[hist_name] = pass_cut_df
+                    else:
+                        fold_hists[hist_name] = pd.concat([fold_hists[hist_name], pass_cut_df])
+
+        print(f"Fold {fold} done.")
+
+        for hist_name in hists.keys():
+            if hists[hist_name] is None: hists[hist_name] = fold_hists[hist_name]
+            else: hists[hist_name] = pd.concat([hists[hist_name], fold_hists[hist_name]])
+
+    print("Plotting...")
+
+    for plot_var in PLOT_VARS:
+        tightest_hist = hists[list(hists.keys())[-1]]
+        var = match_regex(plot_var['name'], tightest_hist.columns)
+
+        if var is None: continue
+
+        fig, ax = plt.subplots()
+        plot_1dhist(
+            [hist.loc[:, var].to_numpy(dtype=np.float64) for hist in hists.values()],
+            dfdataset.output_dirpath, PLOT_TYPE, var,
+            weights=[hist.loc[:, 'AUX_eventWeight'].to_numpy() for hist in hists.values()]
+            if WEIGHTS else [np.ones_like(hist.loc[:, 'AUX_eventWeight']) for hist in hists.values()],
+            yerr=True, density=DENSITY, logy=LOGY, colors=cmap_petroff10[:len(hists)], _bins=plot_var['bins'], _range=plot_var['range'],
+            subplots=(fig, ax), labels=list(hists.keys()), plot_prefix=DISCRIMINATOR, plot_postfix=f"{''.join(plot_var['name'].split('*'))}_{'weighted' if WEIGHTS else 'unweighted'}", save_and_close=not FIT
+        )
+        if FIT:
+            fit_tightest(tightest_hist.loc[:, var].to_numpy(), plot_var, (fig, ax), PLOT_TYPE, dfdataset.output_dirpath, plot_prefix=DISCRIMINATOR, plot_postfix=f"{''.join(plot_var['name'].split('*'))}_fit")
+
+# #Thomas code
+# def sculpting_check(nonres_bkg_files: list, signal_files: list):
+#     get_booster = get_model_func(TRAINING_DIRPATH)
+
+#     transform_labels, transform_preds = transform_preds_func(CLASS_NAMES, DISCRIMINATOR)
+
+#     hists = {hist_name: None for hist_name in SCULPTING_CUTS.keys()}
+
+#     dfdataset = <instantiate_dfdataset>
+
+#     signal_dfs = pd.concat([pd.read_parquet(signal_file, columns=[f'{}mass', f'{dfdataset.aux_var_prefix}mass']) for signal_file in signal_files])
+
+#     # wrap this in batching decorator
+#     def make_signal_distributions(df: pd.DataFrame, storage, var_cols, etc):
+#         for var_col1 in var_cols:
+#             var = df[var1_col]
+#             storage = np.concatenate([storage, var])  # storage is numpy array of values
+#             # OR
+#             storage = np.concatenate([storage, np.hist(var, bins=n_bins, range=(start, stop))])  # storage is numpy histogram of bins
 
 
-    var_arr = make_signal_distributions
-    hist_var_arr = np.hist(var_arr)
+#     var_arr = make_signal_distributions
+#     hist_var_arr = np.hist(var_arr)
 
-    # repeat for every variable
-    def resample_bkg(df: pd.DataFrame, signal_hists: list[np.hists], var_cols, mass_values, cuts, etc):
-        for signal_hist, var_col1 in zip(signal_hists, var_cols):
-            df[var1_col] = resample_variable(df[var1_col], signal_hist)
-        data = model.modeldataset.get_data(df)
-        predictions = model.get_predictions(data)
+#     # repeat for every variable
+#     def resample_bkg(df: pd.DataFrame, signal_hists: list[np.hists], var_cols, mass_values, cuts, etc):
+#         for signal_hist, var_col1 in zip(signal_hists, var_cols):
+#             df[var1_col] = resample_variable(df[var1_col], signal_hist)
+#         data = model.modeldataset.get_data(df)
+#         predictions = model.get_predictions(data)
 
-        mass_values = np.concatenate([mass_values, prediction[predictions > cuts]])
+#         mass_values = np.concatenate([mass_values, prediction[predictions > cuts]])
 
-    bkg_mass_values = resample_bkg
-    hist_mass = np.hist(bkg_mass_values)
+#     bkg_mass_values = resample_bkg
+#     hist_mass = np.hist(bkg_mass_values)
 
     # plot bkg hist_mass
 
@@ -376,41 +479,43 @@ def sculpting_check(nonres_bkg_files: list, signal_files: list):
     #         if all(len(fold_hist) > 1000 for fold_hist in fold_hists.values()): break
     #         else: print('num iterations = ', num_iterations, '\n', '\n'.join([str(len(fold_hist)) for fold_hist in fold_hists.values()]))
         
-        for plot_var in PLOT_VARS:
-            tightest_hist = fold_hists[list(fold_hists.keys())[-1]]
-            var = match_regex(plot_var['name'], tightest_hist.columns)
 
-            fig, ax = plt.subplots()
-            plot_1dhist(
-                [hist.loc[:, var].to_numpy(dtype=np.float64) for hist in fold_hists.values()], 
-                TRAINING_DIRPATH, PLOT_TYPE, var, 
-                weights=[hist.loc[:, 'AUX_eventWeight'].to_numpy() for hist in fold_hists.values()] 
-                if WEIGHTS else [np.ones_like(hist.loc[:, 'AUX_eventWeight']) for hist in fold_hists.values()],
-                yerr=True, density=DENSITY, logy=LOGY, colors=cmap_petroff10[:len(fold_hists)], _bins=plot_var['bins'], _range=plot_var['range'],
-                subplots=(fig, ax), labels=list(fold_hists.keys()), plot_prefix=DISCRIMINATOR, plot_postfix=f"{''.join(plot_var['name'].split('*'))}_{'weighted' if WEIGHTS else 'unweighted'}_fold{fold_idx}", save_and_close=not FIT
-            )
-            if FIT:
-                fit_tightest(tightest_hist.loc[:, var].to_numpy(), plot_var, (fig, ax), PLOT_TYPE, TRAINING_DIRPATH, plot_prefix=DISCRIMINATOR, plot_postfix=f"{''.join(plot_var['name'].split('*'))}_fit_fold{fold_idx}")
+# #Thomas code
+#         for plot_var in PLOT_VARS:
+#             tightest_hist = fold_hists[list(fold_hists.keys())[-1]]
+#             var = match_regex(plot_var['name'], tightest_hist.columns)
+
+#             fig, ax = plt.subplots()
+#             plot_1dhist(
+#                 [hist.loc[:, var].to_numpy(dtype=np.float64) for hist in fold_hists.values()], 
+#                 TRAINING_DIRPATH, PLOT_TYPE, var, 
+#                 weights=[hist.loc[:, 'AUX_eventWeight'].to_numpy() for hist in fold_hists.values()] 
+#                 if WEIGHTS else [np.ones_like(hist.loc[:, 'AUX_eventWeight']) for hist in fold_hists.values()],
+#                 yerr=True, density=DENSITY, logy=LOGY, colors=cmap_petroff10[:len(fold_hists)], _bins=plot_var['bins'], _range=plot_var['range'],
+#                 subplots=(fig, ax), labels=list(fold_hists.keys()), plot_prefix=DISCRIMINATOR, plot_postfix=f"{''.join(plot_var['name'].split('*'))}_{'weighted' if WEIGHTS else 'unweighted'}_fold{fold_idx}", save_and_close=not FIT
+#             )
+#             if FIT:
+#                 fit_tightest(tightest_hist.loc[:, var].to_numpy(), plot_var, (fig, ax), PLOT_TYPE, TRAINING_DIRPATH, plot_prefix=DISCRIMINATOR, plot_postfix=f"{''.join(plot_var['name'].split('*'))}_fit_fold{fold_idx}")
         
-        for hist_name in hists.keys():
-            if hists[hist_name] is None: hists[hist_name] = copy.deepcopy(fold_hists[hist_name])
-            else: hists[hist_name] = pd.concat([hists[hist_name], fold_hists[hist_name]])
+#         for hist_name in hists.keys():
+#             if hists[hist_name] is None: hists[hist_name] = copy.deepcopy(fold_hists[hist_name])
+#             else: hists[hist_name] = pd.concat([hists[hist_name], fold_hists[hist_name]])
     
-    for plot_var in PLOT_VARS:
-        tightest_hist = hists[list(hists.keys())[-1]]
-        var = match_regex(plot_var['name'], tightest_hist.columns)
+#     for plot_var in PLOT_VARS:
+#         tightest_hist = hists[list(hists.keys())[-1]]
+#         var = match_regex(plot_var['name'], tightest_hist.columns)
 
-        fig, ax = plt.subplots()
-        plot_1dhist(
-            [hist.loc[:, var].to_numpy(dtype=np.float64) for hist in hists.values()], 
-            TRAINING_DIRPATH, PLOT_TYPE, var, 
-            weights=[hist.loc[:, 'AUX_eventWeight'].to_numpy() for hist in hists.values()] 
-            if WEIGHTS else [np.ones_like(hist.loc[:, 'AUX_eventWeight']) for hist in hists.values()],
-            yerr=True, density=DENSITY, logy=LOGY, colors=cmap_petroff10[:len(hists)], _bins=plot_var['bins'], _range=plot_var['range'],
-            subplots=(fig, ax), labels=list(hists.keys()), plot_prefix=DISCRIMINATOR, plot_postfix=f"{''.join(plot_var['name'].split('*'))}_{'weighted' if WEIGHTS else 'unweighted'}", save_and_close=not FIT
-        )
-        if FIT:
-            fit_tightest(tightest_hist.loc[:, var].to_numpy(), plot_var, (fig, ax), PLOT_TYPE, TRAINING_DIRPATH, plot_prefix=DISCRIMINATOR, plot_postfix=f"{''.join(plot_var['name'].split('*'))}_fit")
+#         fig, ax = plt.subplots()
+#         plot_1dhist(
+#             [hist.loc[:, var].to_numpy(dtype=np.float64) for hist in hists.values()], 
+#             TRAINING_DIRPATH, PLOT_TYPE, var, 
+#             weights=[hist.loc[:, 'AUX_eventWeight'].to_numpy() for hist in hists.values()] 
+#             if WEIGHTS else [np.ones_like(hist.loc[:, 'AUX_eventWeight']) for hist in hists.values()],
+#             yerr=True, density=DENSITY, logy=LOGY, colors=cmap_petroff10[:len(hists)], _bins=plot_var['bins'], _range=plot_var['range'],
+#             subplots=(fig, ax), labels=list(hists.keys()), plot_prefix=DISCRIMINATOR, plot_postfix=f"{''.join(plot_var['name'].split('*'))}_{'weighted' if WEIGHTS else 'unweighted'}", save_and_close=not FIT
+#         )
+#         if FIT:
+#             fit_tightest(tightest_hist.loc[:, var].to_numpy(), plot_var, (fig, ax), PLOT_TYPE, TRAINING_DIRPATH, plot_prefix=DISCRIMINATOR, plot_postfix=f"{''.join(plot_var['name'].split('*'))}_fit")
 
 
 if __name__ == "__main__":
