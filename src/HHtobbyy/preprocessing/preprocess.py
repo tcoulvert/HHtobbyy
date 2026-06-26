@@ -47,7 +47,7 @@ parser.add_argument(
 parser.add_argument(
     "--batch_size", 
     type=int,
-    default=32_768,
+    default=16_384,
     help="Batch size for batch reading/writing of parquets"
 )
 parser.add_argument(
@@ -72,7 +72,7 @@ parser.add_argument(
 )
 parser.add_argument(
     "--memory", 
-    default="2GB",
+    default="4GB",
     help="Memory to request for condor submission"
 )
 
@@ -83,12 +83,12 @@ vec.register_awkward()
 
 OUTPUT_DIRPATH = None
 BASE_FILEPATH = 'Run._20..'
-BATCH_SIZE = 32_768
+BATCH_SIZE = 16_384
 FORCE = False
 RUN_ALL_MC = False
 CONDOR = False
 QUEUE = "longlunch"
-MEMORY = "2GB"
+MEMORY = "4GB"
 
 BAD_DIRS = {'outdated', 'allData'}
 END_FILEPATHS = ["merged.parquet", "Rescaled.parquet"]

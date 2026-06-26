@@ -32,7 +32,7 @@ class LPCVanillaSubmitter:
     def __init__(
         self,
         era_filepaths: dict[str, list[tuple[str, str]]], datatype: str,
-        queue="longlunch", memory="2GB", force=False,
+        queue="longlunch", memory="4GB", force=False,
     ):
         self.queue = queue
         self.memory = memory
