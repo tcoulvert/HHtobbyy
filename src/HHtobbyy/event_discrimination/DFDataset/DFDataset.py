@@ -22,7 +22,7 @@ import eos_utils as eos
 # Workspace packages
 from HHtobbyy.event_discrimination.DFDataset.DFDataset_utils import (
     map_filepath_to_class, make_output_filepath,
-    identity, logzscore, 
+    identity, nostd, logstd, logzscore, 
     equalProc_train_test_split, # random_oversample, random_undersample
 )
 from HHtobbyy.workspace_utils.retrieval_utils import (
@@ -362,7 +362,9 @@ class DFDataset:
         eos.delete_lockfile(eos_filepath)
 
         for model_var, mean, std in zip(stddict['col'], stddict['mean'], stddict['std']):
-            masked_col = globals()[self.standardization_method](model_var, np.ma.array(df[model_var], mask=(df[model_var] == self.fill_value)))
+            if self.standardization_method == 'nostd': applyfunc = 'identity'
+            else: applyfunc = self.standardization_method
+            masked_col = globals()[applyfunc](np.ma.array(df[model_var], mask=(df[model_var] == self.fill_value)), model_var)
             masked_col = (masked_col - mean) / std
             df[model_var] = masked_col.filled(self.refill_value)
 
