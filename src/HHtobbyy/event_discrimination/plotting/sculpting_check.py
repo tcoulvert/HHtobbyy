@@ -27,25 +27,43 @@ GIT_REPO = (
     .rstrip()
     .decode("utf-8")
 )
+print(
+(os.path.join(GIT_REPO, "preprocessing/")),
+(os.path.join(GIT_REPO, "training/")),
+(os.path.join(GIT_REPO, "evaluation/")),
+)
+
+"""
 sys.path.append(os.path.join(GIT_REPO, "preprocessing/"))
 sys.path.append(os.path.join(GIT_REPO, "training/"))
 sys.path.append(os.path.join(GIT_REPO, "evaluation/"))
+    
 
+"""
+
+
+"""
 # Module packages
 from HHtobbyy.event_discrimination.plotting.plot_hists import plot_1dhist
 from HHtobbyy.event_discrimination.plotting.plotting_utils import plot_filepath, make_plot_dirpath
+
+# i guess these imports dont work because we want to batch our retrieval process so...
 from retrieval_utils import (
     get_class_sample_map, get_n_folds, 
     match_sample, match_regex,
     get_Dataframe, get_DMatrix
 )
-from training_utils import (
+
+# same goes for this
+from HHtobbyy.event_discrimination.training.training_utils import (
     get_dataset_dirpath, get_model_func
 )
-from evaluation_utils import (
+# and this
+from HHtobbyy.event_discrimination.evaluation.evaluation_utils import (
     evaluate, transform_preds_options, transform_preds_func,
     get_filepaths
 )
+
 
 from HHtobbyy.event_discrimination.evaluation.evaluation_utils import class_discriminator_columns
 
@@ -180,7 +198,6 @@ def resample_from_var(
     #     return value_choices
 
 
-
 def exp_plus_gauss(x, A, tau, B, sigma, C):
     exp = A * np.exp(-x * tau)
     gauss = B * np.exp(-0.5 * ((x - 125) / sigma)**2)
@@ -213,7 +230,6 @@ def fit_tightest(np_arr, plot_var, subplots, plot_type: str, training_dirpath: s
         bbox_inches='tight'
     )
     plt.close()
-
 
 def sculpting_check(nonres_bkg_files: list, signal_files: list):
     get_booster = get_model_func(TRAINING_DIRPATH)
@@ -383,3 +399,6 @@ def sculpting_check(nonres_bkg_files: list, signal_files: list):
 
 if __name__ == "__main__":
     sculpting_check()
+
+
+    """
