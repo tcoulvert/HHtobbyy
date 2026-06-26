@@ -165,6 +165,7 @@ SEED = args.seed
 FIT = args.fit
 
 dfdataset = DFDataset(args.dfdataset_config)
+columns_to_load = list(dfdataset.all_vars_map.keys())
 model = map_model_to_Model(args.model)(dfdataset, args.model_config)
 CLASS_NAMES = list(dfdataset.class_sample_map.keys())
 PLOT_TYPE = "resample_sculpting"
@@ -254,16 +255,17 @@ def fit_tightest(np_arr, plot_var, subplots, plot_type: str, base_dirpath: str, 
 
 def sculpting_check():
 
-    _, func, cutdir = transform_preds_func(CLASS_NAMES, DISCRIMINATOR)
-    hists = {hist_name: None for hist_name in SCULPTING_CUTS.keys()}
+    output, func, cutdir = transform_preds_func(CLASS_NAMES, DISCRIMINATOR)
+    hists = {hist_name: np.zeros(PLOT_VARS[0]['bins']) for hist_name in SCULPTING_CUTS.keys()}
+
 
     for fold in range(dfdataset.n_folds):
+        
+        fold_hists = {hist_name: np.zeros(PLOT_VARS[0]['bins']) for hist_name in SCULPTING_CUTS.keys()}
 
-        fold_hists = {hist_name: None for hist_name in SCULPTING_CUTS.keys()}
-
-        lead_mvaID = np.array([])
-        sublead_mvaID = np.array([])
-        signal_weights = np.array([])
+        lead_mvaID = []
+        sublead_mvaID = []
+        signal_weights = []
 
         signal_filepaths = dfdataset.get_traintest_filepaths(fold, dataset="test", syst_name=SYST_NAME)['Res']
 
@@ -271,17 +273,25 @@ def sculpting_check():
 
         for filepath in signal_filepaths:
 
-            print(f"  Processing signal file: {filepath}")
+            print(f"    Processing signal file: {filepath}")
+            batch_ctr = 0 
 
             for batch in dfdataset.get_df_iter(filepath, filter=dfdataset.presel_filter):
 
+                print(f"        Processing signal batch: {batch_ctr}")
+                batch_ctr += 1
+
                 df = batch.to_pandas()
 
-                lead_mvaID = np.concatenate([lead_mvaID, df['lead_mvaID'].to_numpy()])
-                sublead_mvaID = np.concatenate([sublead_mvaID, df['sublead_mvaID'].to_numpy()])
-                signal_weights = np.concatenate([signal_weights, df[f'{dfdataset.aux_var_prefix}eventWeight'].to_numpy()])
+                lead_mvaID.extend(df['lead_mvaID'])
+                sublead_mvaID.extend(df['sublead_mvaID'])
+                signal_weights.extend(df[f'{dfdataset.aux_var_prefix}eventWeight'])
+            
+        lead_mvaID = np.array(lead_mvaID)
+        sublead_mvaID = np.array(sublead_mvaID)
+        signal_weights = np.array(signal_weights)
 
-        print(f"Signal collection done. N signal events: {len(lead_mvaID)}")
+        print(f"Signal collection done. # of signal events: {len(lead_mvaID)}")
 
         bkg_filepaths = dfdataset.get_traintest_filepaths(fold, dataset="test", syst_name=SYST_NAME)['nonRes']
 
@@ -289,9 +299,12 @@ def sculpting_check():
 
         for filepath in bkg_filepaths:
 
-            print(f"  Processing bkg file: {filepath}")
-
+            print(f"    Processing bkg file: {filepath}")
+            batch_ctr = 0 
             for batch in dfdataset.get_df_iter(filepath, filter=dfdataset.presel_filter):
+
+                print(f"        Processing bkg batch: {batch_ctr}")
+                batch_ctr += 1
 
                 df = batch.to_pandas()
 
@@ -303,51 +316,37 @@ def sculpting_check():
                 transformed_preds = func(preds)
 
                 for hist_name, cut_dict in SCULPTING_CUTS.items():
-
                     cut_mask = np.ones(len(transformed_preds), dtype=bool)
-
-                    for cut_axis, cut_range in cut_dict.items():
-
-                        if cutdir[int(cut_axis)] == '>':
-                            cut_mask = np.logical_and(cut_mask, transformed_preds[:, int(cut_axis)] > cut_range[0])
+                    for column, cut in cut_dict.items():
+                        class_name = column.replace('AUX_D', '')
+                        class_idx = output.index(class_name)
+                        if cutdir[class_idx] == '>':
+                            cut_mask = transformed_preds[:, class_idx] > cut
                         else:
-                            cut_mask = np.logical_and(cut_mask, transformed_preds[:, int(cut_axis)] < cut_range[1])
+                            cut_mask = transformed_preds[:, class_idx] < cut
 
-                    pass_cut_df = pd.DataFrame({
-                        'mass': df.loc[cut_mask, f'{dfdataset.aux_var_prefix}mass'].values,
-                        'AUX_eventWeight': df.loc[cut_mask, f'{dfdataset.aux_var_prefix}eventWeight'].values
-                    })
-
-                    if fold_hists[hist_name] is None:
-                        fold_hists[hist_name] = pass_cut_df
-                    else:
-                        fold_hists[hist_name] = pd.concat([fold_hists[hist_name], pass_cut_df])
+                    mass_values = df.loc[cut_mask, f'{dfdataset.aux_var_prefix}mass'].values
+                    fold_hists[hist_name] += np.histogram(mass_values, bins=PLOT_VARS[0]['bins'], range=PLOT_VARS[0]['range'])[0]
 
         print(f"Fold {fold} done.")
 
         for hist_name in hists.keys():
-            if hists[hist_name] is None: hists[hist_name] = fold_hists[hist_name]
-            else: hists[hist_name] = pd.concat([hists[hist_name], fold_hists[hist_name]])
+            hists[hist_name] += fold_hists[hist_name]
 
     print("Plotting...")
 
+
     for plot_var in PLOT_VARS:
-        tightest_hist = hists[list(hists.keys())[-1]]
-        var = match_regex(plot_var['name'], tightest_hist.columns)
-
-        if var is None: continue
-
+        bin_edges = np.linspace(plot_var['range'][0], plot_var['range'][1], plot_var['bins'] + 1)
+        
         fig, ax = plt.subplots()
-        plot_1dhist(
-            [hist.loc[:, var].to_numpy(dtype=np.float64) for hist in hists.values()],
-            dfdataset.output_dirpath, PLOT_TYPE, var,
-            weights=[hist.loc[:, 'AUX_eventWeight'].to_numpy() for hist in hists.values()]
-            if WEIGHTS else [np.ones_like(hist.loc[:, 'AUX_eventWeight']) for hist in hists.values()],
-            yerr=True, density=DENSITY, logy=LOGY, colors=cmap_petroff10[:len(hists)], _bins=plot_var['bins'], _range=plot_var['range'],
-            subplots=(fig, ax), labels=list(hists.keys()), plot_prefix=DISCRIMINATOR, plot_postfix=f"{''.join(plot_var['name'].split('*'))}_{'weighted' if WEIGHTS else 'unweighted'}", save_and_close=not FIT
-        )
-        if FIT:
-            fit_tightest(tightest_hist.loc[:, var].to_numpy(), plot_var, (fig, ax), PLOT_TYPE, dfdataset.output_dirpath, plot_prefix=DISCRIMINATOR, plot_postfix=f"{''.join(plot_var['name'].split('*'))}_fit")
+        for hist_name, color in zip(hists.keys(), cmap_petroff10[:len(hists)]):
+            ax.stairs(hists[hist_name], bin_edges, label=hist_name, color=color)
+        
+        ax.legend()
+        ax.set_xlabel(plot_var['name'])
+        plt.savefig(os.path.join(dfdataset.output_dirpath, f"sculpting_{plot_var['name']}.png"), bbox_inches='tight')
+        plt.close()
 
 # #Thomas code
 # def sculpting_check(nonres_bkg_files: list, signal_files: list):
