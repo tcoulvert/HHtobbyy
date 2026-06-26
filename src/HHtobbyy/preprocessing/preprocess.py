@@ -22,6 +22,7 @@ from HHtobbyy.preprocessing.boosted_preprocessing import add_vars_boosted
 from HHtobbyy.preprocessing.preprocessing_utils import (
     match_sample_name, match_sample_xs, match_sample_lumi, match_sample_era, get_output_filepath, has_magic_bytes
 )
+from HHtobbyy.preprocessing import LPCVanillaSubmitter
 from HHtobbyy.workspace_utils.retrieval_utils import match_sample, get_era_filepaths
 
 ################################
@@ -36,17 +37,17 @@ parser.add_argument(
 parser.add_argument(
     "--output_dirpath", 
     default=None,
-    help="Full filepath on LPC for output to be dumped, default is for each new file to be adjacent to input files, but with slightly changed filenames."
+    help="Full infilepath on LPC for output to be dumped, default is for each new file to be adjacent to input files, but with slightly changed filenames."
 )
 parser.add_argument(
     "--base_filepath", 
     default='Run._20..',
-    help="Regex string for splitting filepath if using a new output_dirpath"
+    help="Regex string for splitting infilepath if using a new output_dirpath"
 )
 parser.add_argument(
     "--batch_size", 
     type=int,
-    default=1_048_576,
+    default=32_768,
     help="Batch size for batch reading/writing of parquets"
 )
 parser.add_argument(
@@ -59,19 +60,35 @@ parser.add_argument(
     action="store_true",
     help="Boolean flag to run processing on all MC files, defaults to only running files matching keys in `cross_sections` dict"
 )
+parser.add_argument(
+    "--condor", 
+    action="store_true",
+    help="Boolean flag to run processing using condor"
+)
+parser.add_argument(
+    "--queue", 
+    default="longlunch",
+    help="Queue to request for condor submission"
+)
+parser.add_argument(
+    "--memory", 
+    default="2GB",
+    help="Memory to request for condor submission"
+)
 
 ################################
 
 
 vec.register_awkward()
 
-args = parser.parse_args()
-INPUT_ERAS = args.input_eras
-OUTPUT_DIRPATH = args.output_dirpath
-BASE_FILEPATH = args.base_filepath
-BATCH_SIZE = args.batch_size
-FORCE = args.force
-RUN_ALL_MC = args.run_all_mc
+OUTPUT_DIRPATH = None
+BASE_FILEPATH = 'Run._20..'
+BATCH_SIZE = 32_768
+FORCE = False
+RUN_ALL_MC = False
+CONDOR = False
+QUEUE = "longlunch"
+MEMORY = "2GB"
 
 BAD_DIRS = {'outdated', 'allData'}
 END_FILEPATHS = ["merged.parquet", "Rescaled.parquet"]
@@ -187,7 +204,7 @@ sample_era_reweighting = {
 ################################
 
 
-def get_files(eras, type='MC'):
+def get_files(eras, datatype='MC'):
     for era in eras.keys():
         glob_dirs_set = lambda end_filepath: set(
             eos.glob_eos(os.path.join(era, "**", f"*{end_filepath}"), recursive=True)
@@ -218,79 +235,106 @@ def get_files(eras, type='MC'):
             )
 
         # Remove non-necessary MC samples
-        if type.upper() == 'MC' and not RUN_ALL_MC:
+        if datatype.upper() == 'MC' and not RUN_ALL_MC:
             all_dirs_set = set(
                 item for item in all_dirs_set 
                 if match_sample(item, xs_name_map.keys()) is not None
             )
 
-        eras[era] = sorted(all_dirs_set)
+        infilepaths = sorted(all_dirs_set)
+        outfilepaths = [get_output_filepath(infilepath, OUTPUT_DIRPATH, END_FILEPATHS, NEW_END_FILEPATH, BASE_FILEPATH) for infilepath in infilepaths]
+        eras[era] = list(zip(infilepaths, outfilepaths))
 
-def make_dataset(filepath, era, type='MC'):
-    print('========================>\n'+'Starting \n', filepath)
-    pq_file = pq.ParquetFile(eos.load_file_eos(filepath))
-    schema = pq.read_schema(filepath)
+def make_dataset(infilepath, outfilepath, era, datatype='MC'):
+    print('========================>\n'+'Starting \n', infilepath)
+    eos_infilepath = eos.load_file_eos(infilepath, timeout=2400)
+    pq_file = pq.ParquetFile(eos_infilepath)
+    schema = pq.read_schema(eos_infilepath)
     columns = [field for field in schema.names]
 
-    output_filepath = eos.save_file_eos(get_output_filepath(filepath, OUTPUT_DIRPATH, END_FILEPATHS, NEW_END_FILEPATH, BASE_FILEPATH))
+    eos_outfilepath = eos.save_file_eos(outfilepath, force=True, timeout=2400)
     pq_writer = None
     for pq_batch in pq_file.iter_batches(batch_size=BATCH_SIZE, columns=columns):
         ak_batch = ak.from_arrow(pq_batch)
 
         # Add useful parquet meta-info
-        ak_batch['sample_name'] = match_sample_name(filepath, xs_name_map)
+        ak_batch['sample_name'] = match_sample_name(infilepath, xs_name_map)
         ak_batch['sample_era'] = match_sample_era(era)
-        print(f"{match_sample_era(era)}: {match_sample_name(filepath, xs_name_map)}")
-        if type.upper() == 'MC':
-            print(f"lumi match = {match_sample(filepath, luminosities.keys())}: {match_sample_lumi(filepath, luminosities)}")
-            print(f"xs match = {match_sample(filepath, xs_name_map.keys())}: {match_sample_xs(filepath, xs_name_map):.4f}")
-            ak_batch['eventWeight'] = ak_batch['weight'] * match_sample_lumi(filepath, luminosities) * match_sample_xs(filepath, xs_name_map)
-            if match_sample_name(filepath, xs_name_map) == 'DDQCDGJets': ak_batch['eventWeight'] = ak_batch['weight']
-            ak_batch['eventWeight'] = ak_batch['eventWeight'] * sample_era_reweighting[match_sample(filepath, sample_era_reweighting.keys())]
+        print(f"{match_sample_era(era)}: {match_sample_name(infilepath, xs_name_map)}")
+        if datatype.upper() == 'MC':
+            print(f"lumi match = {match_sample(infilepath, luminosities.keys())}: {match_sample_lumi(infilepath, luminosities)}")
+            print(f"xs match = {match_sample(infilepath, xs_name_map.keys())}: {match_sample_xs(infilepath, xs_name_map):.4f}")
+            ak_batch['eventWeight'] = ak_batch['weight'] * match_sample_lumi(infilepath, luminosities) * match_sample_xs(infilepath, xs_name_map)
+            if match_sample_name(infilepath, xs_name_map) == 'DDQCDGJets': ak_batch['eventWeight'] = ak_batch['weight']
+            ak_batch['eventWeight'] = ak_batch['eventWeight'] * sample_era_reweighting[match_sample(infilepath, sample_era_reweighting.keys())]
         else: 
             ak_batch['weight'] =  ak.ones_like(ak_batch['pt'])
             ak_batch['eventWeight'] =  ak.ones_like(ak_batch['pt'])
 
         print('Adding resolved vars')
-        add_vars_resolved(ak_batch, filepath)
+        add_vars_resolved(ak_batch, infilepath)
         print('Finished resolved vars, adding boosted vars')
-        add_vars_boosted(ak_batch, filepath)
+        add_vars_boosted(ak_batch, infilepath)
         print('Finished boosted vars')
         if 'hash' not in ak_batch.fields:
             ak_batch['hash'] = np.arange(ak.num(ak_batch['pt'], axis=0))
 
         table_batch = ak.to_arrow_table(ak_batch)
-        if pq_writer is None: pq_writer = pq.ParquetWriter(output_filepath, schema=table_batch.schema)
+        if pq_writer is None: pq_writer = pq.ParquetWriter(eos_outfilepath, schema=table_batch.schema)
         pq_writer.write_table(table_batch)
     if pq_writer is not None: pq_writer.close()
+    eos.delete_lockfile(eos_infilepath); eos.delete_lockfile(eos_outfilepath)
     print('Finished\n'+'<========================')
 
 def make_mc(sim_eras: dict):
     if sim_eras is None:
         logger.log(1, "Not processing any MC files"); return
+    else:
+        logger.log(1, "Beginning MC processing")
     
     # Pull MC sample dir_list
     get_files(sim_eras)
     
     # Perform the variable calculation and merging
-    for sim_era, filepaths in sim_eras.items():
-        for filepath in filepaths:
-            if match_sample(filepath, {'_up/', '_down/'}) is not None: continue
-            make_dataset(filepath, sim_era)
+    if CONDOR:
+        mc_sub = LPCVanillaSubmitter(sim_eras, 'MC', queue=QUEUE, memory=MEMORY, force=FORCE)
+        mc_sub.submit()
+    else:
+        for sim_era, filepaths in sim_eras.items():
+            for infilepath, outfilepath in filepaths:
+                if match_sample(infilepath, {'_up/', '_down/'}) is not None: continue
+                make_dataset(infilepath, outfilepath, sim_era)
 
 def make_data(data_eras: dict):
     if data_eras is None:
         logger.log(1, "Not processing any Data files"); return
+    else:
+        logger.log(1, "Beginning Data processing")
     
     # Pull Data sample dir_list
-    get_files(data_eras, type='Data')
+    get_files(data_eras, datatype='Data')
 
     # Perform the variable calculation and merging
-    for data_era, filepaths in data_eras.items():
-        for filepath in filepaths:
-            make_dataset(filepath, data_era, type='Data')
+    if CONDOR:
+        data_sub = LPCVanillaSubmitter(data_eras, 'Data', queue=QUEUE, memory=MEMORY, force=FORCE)
+        data_sub.submit()
+    else:
+        for data_era, filepaths in data_eras.items():
+            for infilepath, outfilepath in filepaths:
+                make_dataset(infilepath, outfilepath, data_era, datatype='Data')
 
 if __name__ == '__main__':
+    args = parser.parse_args()
+    INPUT_ERAS = args.input_eras
+    OUTPUT_DIRPATH = args.output_dirpath
+    BASE_FILEPATH = args.base_filepath
+    BATCH_SIZE = args.batch_size
+    FORCE = args.force
+    RUN_ALL_MC = args.run_all_mc
+    CONDOR = args.condor
+    QUEUE = args.queue
+    MEMORY = args.memory
+
     SIM_ERAS, DATA_ERAS = get_era_filepaths(INPUT_ERAS, split_data_mc_eras=True)
 
     sim_eras = {

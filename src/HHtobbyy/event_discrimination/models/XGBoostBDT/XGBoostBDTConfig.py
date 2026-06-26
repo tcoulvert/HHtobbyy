@@ -34,7 +34,7 @@ class XGBoostBDTConfig(ModelConfig):
 
         # Penalty parameters
         self.reg_lambda           = 1          # L2 regularization
-        self.reg_alpha                = 0          # L1 ergularization 
+        self.reg_alpha            = 0          # L1 ergularization 
         
         # Hardware parameters
         try:

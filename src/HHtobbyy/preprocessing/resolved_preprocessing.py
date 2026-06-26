@@ -19,14 +19,10 @@ vec.register_awkward()
 
 resolved_bTagWPs = {
     # MC
-    '2016*preVFP': ("btagUParTAK4B", {'L': 0.0246, 'M': 0.1272, 'T': 0.4648, 'XT': 0.6298, 'XXT': 0.9739, '3XT': 0.9983, '4XT': 0.9987}), 
-    '2016*postVFP': ("btagUParTAK4B", {'L': 0.0246, 'M': 0.1272, 'T': 0.4648, 'XT': 0.6298, 'XXT': 0.9739, '3XT': 0.9983, '4XT': 0.9987}), 
-    '2017': ("btagUParTAK4B", {'L': 0.0246, 'M': 0.1272, 'T': 0.4648, 'XT': 0.6298, 'XXT': 0.9739, '3XT': 0.9983, '4XT': 0.9987}), 
-    '2018': ("btagUParTAK4B", {'L': 0.0246, 'M': 0.1272, 'T': 0.4648, 'XT': 0.6298, 'XXT': 0.9739, '3XT': 0.9983, '4XT': 0.9987}), 
-    # '2016*preVFP': ("btagUParTAK4B", {'L': 0.0387, 'M': 0.1847, 'T': 0.5467, 'XT': 0.6777, 'XXT': 0.9218}),
-    # '2016*postVFP': ("btagUParTAK4B", {'L': 0.0400, 'M': 0.1898, 'T': 0.5538, 'XT': 0.6872, 'XXT': 0.9353}),
-    # '2017': ("btagUParTAK4B", {'L': 0.0331, 'M': 0.1776, 'T': 0.5755, 'XT': 0.7274, 'XXT': 0.9666}),
-    # '2018': ("btagUParTAK4B", {'L': 0.0308, 'M': 0.1610, 'T': 0.5405, 'XT': 0.6992, 'XXT': 0.9655}),
+    '2016*preVFP': ("btagUParTAK4B", {'L': 0.0387, 'M': 0.1847, 'T': 0.5467, 'XT': 0.6777, 'XXT': 0.9218}),
+    '2016*postVFP': ("btagUParTAK4B", {'L': 0.0400, 'M': 0.1898, 'T': 0.5538, 'XT': 0.6872, 'XXT': 0.9353}),
+    '2017': ("btagUParTAK4B", {'L': 0.0331, 'M': 0.1776, 'T': 0.5755, 'XT': 0.7274, 'XXT': 0.9666}),
+    '2018': ("btagUParTAK4B", {'L': 0.0308, 'M': 0.1610, 'T': 0.5405, 'XT': 0.6992, 'XXT': 0.9655}),
 
     '2022*(preEE)|((Data|Era)[CD])': ("btagPNetB", {'L': 0.047, 'M': 0.245, 'T': 0.6734, 'XT': 0.7862, 'XXT': 0.961, '3XT': 0.9986, '4XT': 0.999}),
     '2022*(postEE)|((Data|Era)[EFG])': ("btagPNetB", {'L': 0.0499, 'M': 0.2605, 'T': 0.6915, 'XT': 0.8033, 'XXT': 0.9664, '3XT': 0.9986, '4XT': 0.999}),
@@ -225,10 +221,10 @@ def add_vars_resolved(sample, filepath):
             sample[f'{prefactor}_has_two_btagged_jets'] & sample['pass_mva-0.7'] & sample['pass_geometry'] & sample['pass_trigger']
         )
         sample[f'{prefactor}_resolved_BDT_mask_leadbTagL'] = (
-            sample[f'{prefactor}_resolved_BDT_mask'] & sample['pass_leadbjet_loose_bTag']
+            sample[f'{prefactor}_resolved_BDT_mask'] & sample[f"{prefactor}_pass_leadbjet_loose_bTag"]
         )
         sample[f'{prefactor}_resolved_BDT_mask_leadbTagL_subleadbTagL'] = (
-            sample[f'{prefactor}_resolved_BDT_mask_leadbTagL'] & sample['pass_subleadbjet_loose_bTag']
+            sample[f'{prefactor}_resolved_BDT_mask_leadbTagL'] & sample[f"{prefactor}_pass_subleadbjet_loose_bTag"]
         )
 
         del bjet_4moms, dijet_4mom

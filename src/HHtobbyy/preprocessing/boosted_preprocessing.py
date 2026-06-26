@@ -9,7 +9,7 @@ import awkward as ak
 import vector as vec
 
 # Workspace packages
-from HHtobbyy.preprocessing.preprocessing_utils import deltaPhi, deltaEta
+from HHtobbyy.preprocessing.preprocessing_utils import deltaPhi, deltaEta, ak_abs
 from HHtobbyy.workspace_utils.retrieval_utils import FILL_VALUE, match_sample
 
 ################################
@@ -35,14 +35,14 @@ boosted_bbTagWPs = {
 }
 boosted_fjmass_corr = {
     '202[23]': "particleNet_massCorr",
-    '(201[x678])|(202[45])': "globalParT3_massCorrGeneric"
+    '(201[x678])|(202[45])': "globalParT3_massCorrX2p"
 }
 
 NUM_FATJETS = 4
 PREFACTORS = ['Res', 'Res_DNNpair']
 SELECTION_VARIATIONS = {
-    'Boost': ['pt > 250', 'bbtag > 0.4', 'genMatched_Hbb > 0'],
-    'SnT_Boost': ['pt > 300', 'tau21 < 0.75', 'msoftdrop > 30', 'bbtag > 0.4', 'genMatched_Hbb > 0']
+    'Boost': ['pt > 250', 'particleNet_XbbVsQCD > 0.4', 'globalParT3_XbbVsQCD > 0.6', 'genMatched_Hbb > 0', 'eta <= 2.4'],
+    'SnT_Boost': ['pt > 300', 'tau21 < 0.75', 'msoftdrop > 30', 'particleNet_XbbVsQCD > 0.4', 'globalParT3_XbbVsQCD > 0.6', 'genMatched_Hbb > 0', 'eta <= 2.4']
 }
 
 ################################
@@ -59,8 +59,9 @@ def add_bbTagWP_boosted(sample, era, selection_var):
     bbTagVar, WP_dict = boosted_bbTagWPs[match_sample(era, boosted_bbTagWPs.keys())]
     WP_dict = WP_dict[selection_var]
     for i, (WPname, WP) in enumerate(WP_dict.items()):
+        sample[f"{selection_var}_fatjet_selected_bbTagWP{WPname}"] = ak.where(sample[f"{selection_var}_fatjet_selected_{bbTagVar}"] > WP, 1, 0)
         if i == 0: sample[f"{selection_var}_fatjet_selected_bbTagWP"] = ak.zeros_like(sample["pt"])
-        sample[f"{selection_var}_fatjet_selected_bbTagWP"] = ak.where(sample[f"{selection_var}_fatjet_selected_{bbTagVar}"] > WP, i, sample[f"{selection_var}_fatjet_selected_bbTagWP"])
+        sample[f"{selection_var}_fatjet_selected_bbTagWP"] = ak.where(sample[f"{selection_var}_fatjet_selected_{bbTagVar}"] > WP, i+1, sample[f"{selection_var}_fatjet_selected_bbTagWP"])
 
 def select_fatjets(sample, era, selection_var):
     fatjet_fields = [field[field.find('fatjet1_')+len('fatjet1_'):] for field in sample.fields if re.match('fatjet1', field) is not None]
@@ -74,15 +75,23 @@ def select_fatjets(sample, era, selection_var):
     selection_mask = ak.ones_like(fatjets[fatjets.fields[0]])
     for cut in SELECTION_VARIATIONS[selection_var]:
         var, direction, value = cut.split(' ')
-        if var.lower() == 'bbtag': 
-            var = boosted_bbTagWPs[match_sample(era, boosted_bbTagWPs.keys())][0]
         if var == 'genMatched_Hbb':
             if var not in sample.fields or ak.sum(fatjets[var] > 0) == 0: continue
+        elif var == 'particleNet_XbbVsQCD':
+            if any(['globalParT3_XbbVsQCD' in field for field in sample.fields]): continue
+        elif var == 'globalParT3_XbbVsQCD':
+            if not any(['globalParT3_XbbVsQCD' in field for field in sample.fields]): continue
         if direction == '<':
             selection_mask = np.logical_and(selection_mask, fatjets[var] < float(value))
+        elif direction == '<=':
+            selection_mask = np.logical_and(selection_mask, fatjets[var] <= float(value))
+        elif direction == '==':
+            selection_mask = np.logical_and(selection_mask, fatjets[var] == float(value))
+        elif direction == '>=':
+            selection_mask = np.logical_and(selection_mask, fatjets[var] >= float(value))
         elif direction == '>':
             selection_mask = np.logical_and(selection_mask, fatjets[var] > float(value))
-        else: raise NotImplementedError(f"The direction you passed is unknown: {direction}. Use \'<\' or \'>\'.")
+        else: raise NotImplementedError(f"The direction you passed is unknown: {direction}. Use \'<\', \'<=\', \'==\', \'>=\', or \'>\'.")
     selection_fatjets = fatjets[selection_mask]
     selection_fatjets = selection_fatjets[ak.argsort(selection_fatjets[bbTagVar])]
 
@@ -124,6 +133,14 @@ def max_nonselectedfatjet_bbTag(sample, era, selection_var):
         )
     return max_bbTag_score
 
+def add_n_fatjets_final(sample):
+    sample["n_fatjets_final"] = ak.zeros_like(sample['fatjet1_pt'])
+    for i in range(1, NUM_FATJETS+1):
+        eta_cut = (ak_abs(sample[f'fatjet{i}_eta']) <= 2.4)
+        sample["n_fatjets_final"] = ak.where(
+            eta_cut, sample["n_fatjets_final"]+1, sample["n_fatjets_final"]
+        )
+
 def add_vars_boosted(sample, filepath):
     prefactors = [prefactor for prefactor in PREFACTORS if any(match_sample(field, PREFACTORS) == prefactor for field in sample.fields)]
 
@@ -139,6 +156,17 @@ def add_vars_boosted(sample, filepath):
         selected_fatjets, good_fatjets = select_fatjets(sample, filepath, selection_var)
         for field in selected_fatjets.fields:
             sample[f'{selection_var}_fatjet_selected_{field}'] = ak.where(good_fatjets, selected_fatjets[field], FILL_VALUE)
+
+        # / USE REG MASS IF AVAILABLE OTHERWISE SOFTDROP /
+        if f'{selection_var}_fatjet_selected_globalParT3_massCorrX2p' in sample.fields:
+            sample[f'{selection_var}_fatjet_selected_mass_regressed'] = ak.where(
+                ak.is_none(sample[f'{selection_var}_fatjet_selected_globalParT3_massCorrX2p']),
+                sample[f'{selection_var}_fatjet_selected_msoftdrop'],
+                sample[f'{selection_var}_fatjet_selected_corrmass']
+            )
+        else: 
+            sample[f'{selection_var}_fatjet_selected_mass_regressed'] = sample[f'{selection_var}_fatjet_selected_msoftdrop']
+        sample[f'{selection_var}_fatjet_selected_mass_regressed'] = ak.where(good_fatjets, sample[f'{selection_var}_fatjet_selected_mass_regressed'], FILL_VALUE)
 
         # (Di)Photon - fatjet angular variables #
         for photon_type, photon_field_prefix in [('gg', ''), ('g1', 'lead_'), ('g2', 'sublead_')]:
@@ -157,7 +185,41 @@ def add_vars_boosted(sample, filepath):
                 ( sample[f'{selection_var}_deltaEta_{photon_type}_fj']**2 + sample[f'{selection_var}_deltaPhi_{photon_type}_fj']**2 )**0.5,
                 FILL_VALUE
             )
-
+        for subj_type, subj_field in [('subj1', 'subjet1'), ('subj2', 'subjet2')]:
+            sample[f'{selection_var}_deltaEta_{subj_type}_gg'] = ak.where(
+                good_fatjets,
+                deltaEta(sample[f'{selection_var}_fatjet_selected_{subj_field}_eta'], sample[f'{photon_field_prefix}eta']),
+                FILL_VALUE
+            )
+            sample[f'{selection_var}_deltaPhi_{subj_type}_gg'] = ak.where(
+                good_fatjets,
+                deltaPhi(sample[f'{selection_var}_fatjet_selected_{subj_field}_phi'], sample[f'{photon_field_prefix}phi']),
+                FILL_VALUE
+            )
+            sample[f'{selection_var}_deltaR_{subj_type}_gg'] = ak.where(
+                good_fatjets,
+                ( sample[f'{selection_var}_deltaEta_{subj_type}_gg']**2 + sample[f'{selection_var}_deltaPhi_{subj_type}_gg']**2 )**0.5,
+                FILL_VALUE
+            )
+        sample[f'{selection_var}_deltaEta_subj1_subj2'] = ak.where(
+            good_fatjets,
+            deltaEta(sample[f'{selection_var}_fatjet_selected_subjet1_eta'], sample[f'{selection_var}_fatjet_selected_subjet2_eta']),
+            FILL_VALUE
+        )
+        sample[f'{selection_var}_deltaPhi_subj1_subj2'] = ak.where(
+            good_fatjets,
+            deltaPhi(sample[f'{selection_var}_fatjet_selected_subjet1_phi'], sample[f'{selection_var}_fatjet_selected_subjet2_phi']),
+            FILL_VALUE
+        )
+        sample[f'{selection_var}_deltaR_subj1_subj2'] = ak.where(
+            good_fatjets,
+            ( sample[f'{selection_var}_deltaEta_subj1_subj2']**2 + sample[f'{selection_var}_deltaPhi_subj1_subj2']**2 )**0.5,
+            FILL_VALUE
+        )
+        sample['deltaEta_g1_g2'] = ak.where(
+            good_fatjets, deltaEta(sample['lead_eta'], sample['sublead_eta']), FILL_VALUE
+        )
+        
         # Pt ratios #
         sample[f'{selection_var}_pT_over_fatjet_pT'] = sample['pt'] / sample[f'{selection_var}_fatjet_selected_pt']
         for prefactor in prefactors:
@@ -169,6 +231,9 @@ def add_vars_boosted(sample, filepath):
 
         # Fatjet bb WP variable #
         add_bbTagWP_boosted(sample, filepath, selection_var)
+
+        # n_fatjets_final
+        add_n_fatjets_final(sample)
 
         # Max non-bb fatjet bbTag score -> sets lower limit for resampling #
         sample[f'{selection_var}_max_nonselectedfatjet_bbtag'] = max_nonselectedfatjet_bbTag(sample, filepath, selection_var)
