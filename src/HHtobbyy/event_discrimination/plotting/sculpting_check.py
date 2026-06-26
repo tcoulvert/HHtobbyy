@@ -273,7 +273,7 @@ def sculpting_check():
 
             print(f"  Processing signal file: {filepath}")
 
-            for batch in dfdataset.get_df_iter(filepath, columns=dfdataset.all_vars_map, filter=dfdataset.presel_filter):
+            for batch in dfdataset.get_df_iter(filepath, filter=dfdataset.presel_filter):
 
                 df = batch.to_pandas()
 
@@ -291,7 +291,7 @@ def sculpting_check():
 
             print(f"  Processing bkg file: {filepath}")
 
-            for batch in dfdataset.get_df_iter(filepath, columns=dfdataset.all_vars_map, filter=dfdataset.presel_filter):
+            for batch in dfdataset.get_df_iter(filepath, filter=dfdataset.presel_filter):
 
                 df = batch.to_pandas()
 
