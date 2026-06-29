@@ -7,7 +7,8 @@
     "resample_vars": [
         {"name": "lead_mvaID", "bins": 100, "range": [-1.0, 1.0]},
         {"name": "sublead_mvaID", "bins": 100, "range": [-1.0, 1.0]},
-        {"name": "nonResReg_vbfpair_dijet_mass_DNNreg", "bins": 100, "range": [-2.0, 2.0]}
+        {"name": "nonResReg_vbfpair_dijet_mass_DNNreg", "bins": 100, "range": [-2.0, 2.0]},
+        {"name": "bTagWP", "value": 1}
     ],    
     "plot_vars": [
         {"name": "mass", "bins": 16, "range": [100, 180]},
