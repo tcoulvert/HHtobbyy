@@ -271,7 +271,7 @@ def sculpting_check():
         
         fold_hists = {hist_name: {plot_var['name']: np.zeros(plot_var['bins']) for plot_var in PLOT_VARS} for hist_name in SCULPTING_CUTS.keys()}
 
-        resample_hists = {var['name']: np.zeros(var['bins']) for var in RESAMPLE_VARS}
+        resample_hists = {var['name']: np.zeros(var['bins']) for var in RESAMPLE_VARS if 'value' not in var}
 
         signal_filepaths = dfdataset.get_traintest_filepaths(fold, dataset="test", syst_name=SYST_NAME)['Res']
 
@@ -373,7 +373,7 @@ def sculpting_check():
         'discriminator': DISCRIMINATOR,
     })
 
-    for plot_var in plot_vars:
+    for plot_var in PLOT_VARS:
         plot_bin_edges = np.linspace(plot_var['range'][0], plot_var['range'][1], plot_var['bins'] + 1)
         bin_centers = (plot_bin_edges[:-1] + plot_bin_edges[1:]) / 2
         bin_width = plot_bin_edges[1] - plot_bin_edges[0]
