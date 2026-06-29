@@ -1,0 +1,26 @@
+{
+    "discriminator": "nD",
+    "nonRes_samples": [
+        {"name": "GGJets", "resample_vars": ["lead*bjet*btag", "sublead*bjet*btag"], "resample_from": "ttHToGG"},
+        {"name": "GJet", "resample_vars": ["lead*bjet*btag", "sublead*bjet*btag", "lead*mvaID", "sublead*mvaID"], "resample_from": "ttHToGG"}
+    ],
+    "resample_vars": [
+        {"name": "lead_mvaID", "bins": 100, "range": [-1.0, 1.0]},
+        {"name": "sublead_mvaID", "bins": 100, "range": [-1.0, 1.0]},
+        {"name": "nonResReg_vbfpair_dijet_mass_DNNreg", "bins": 100, "range": [-2.0, 2.0]}
+    ],    
+    "plot_vars": [
+        {"name": "mass", "bins": 16, "range": [100, 180]},
+        {"name": "AUX_nonResReg_vbfpair_dijet_mass_DNNreg", "bins": 16, "range": [100, 180]},
+        {"name": "HH*mass", "bins": 16, "range": [100, 800]}
+    ],
+    "cat3" : {
+        "AUX_DggFHH": 0.87036774207656309,
+        "AUX_DnonRes": 0.00221775294750575, 
+        "AUX_DRes": 0.84544492824676509
+    },
+    "vbfhh_cat1": {
+        "AUX_DVBFHH": 0.774
+    }
+}
+    
