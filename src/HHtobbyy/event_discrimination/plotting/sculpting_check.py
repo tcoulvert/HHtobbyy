@@ -20,6 +20,12 @@ from cycler import cycler
 
 ################################
 
+#time stamping
+
+import datetime
+run_time = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+run_dirpath = os.path.join('/eos/uscms/store/group/lpcdihiggsboost/nparekh/sculpting_checks', run_time)
+os.makedirs(run_dirpath, exist_ok=True)
 
 GIT_REPO = (
     subprocess.Popen(["git", "rev-parse", "--show-toplevel"], stdout=subprocess.PIPE)
@@ -43,6 +49,8 @@ from HHtobbyy.event_discrimination.plotting.plotting_utils import plot_filepath,
 
 from HHtobbyy.workspace_utils.retrieval_utils import (
     match_regex,
+    match_sample,
+    format_class_names,
 )
 from HHtobbyy.event_discrimination.DFDataset import DFDataset
 
@@ -175,6 +183,7 @@ with open(args.sculpting_cuts, 'r') as f:
 DISCRIMINATOR = SCULPTING_CUTS.pop('discriminator')
 assert DISCRIMINATOR in transform_preds_options(), f"Trying to use a discriminator ({DISCRIMINATOR}) that isn't implemented in evaluation_utils. Use one of {transform_preds_options()} or implement your own"
 NONRES_SAMPLES = SCULPTING_CUTS.pop('nonRes_samples')
+RESAMPLE_VARS = SCULPTING_CUTS.pop('resample_vars')
 PLOT_VARS = SCULPTING_CUTS.pop('plot_vars')
 
 plt.style.use(hep.style.CMS)
@@ -252,29 +261,17 @@ def fit_tightest(np_arr, plot_var, subplots, plot_type: str, base_dirpath: str, 
     )
     plt.close()
 
-MVAID_BINS = 100
-MVAID_RANGE = (-1., 1.)
-MVAID_BIN_WIDTH = (MVAID_RANGE[1] - MVAID_RANGE[0]) / MVAID_BINS
-
 resample_rng = np.random.default_rng(seed=SEED)
-bin_edges = np.linspace(MVAID_RANGE[0], MVAID_RANGE[1], MVAID_BINS + 1)
-
-CLASS_NAME_MAP = {
-    'DnonRes': 'nonRes',
-    'DRes': 'Res',
-    'DggFHH': 'ggF HH',
-    'DVBFHH': 'VBF HH'
-}
 
 def sculpting_check():
 
-    hists = {hist_name: np.zeros(PLOT_VARS[0]['bins']) for hist_name in SCULPTING_CUTS.keys()}
-
+    hists = {hist_name: {plot_var['name']: np.zeros(plot_var['bins']) for plot_var in PLOT_VARS} for hist_name in SCULPTING_CUTS.keys()}
+    
     for fold in range(dfdataset.n_folds):
         
-        fold_hists = {hist_name: np.zeros(PLOT_VARS[0]['bins']) for hist_name in SCULPTING_CUTS.keys()}
-        lead_mvaID, _ = np.histogram(np.array([]), bins=MVAID_BINS, range=MVAID_RANGE)
-        sublead_mvaID, _ = np.histogram(np.array([]), bins=MVAID_BINS, range=MVAID_RANGE)
+        fold_hists = {hist_name: {plot_var['name']: np.zeros(plot_var['bins']) for plot_var in PLOT_VARS} for hist_name in SCULPTING_CUTS.keys()}
+
+        resample_hists = {var['name']: np.zeros(var['bins']) for var in RESAMPLE_VARS}
 
         signal_filepaths = dfdataset.get_traintest_filepaths(fold, dataset="test", syst_name=SYST_NAME)['Res']
 
@@ -291,14 +288,24 @@ def sculpting_check():
                 batch_ctr += 1
 
                 df = batch.to_pandas()
-                lead_mvaID += np.histogram(df['lead_mvaID'].to_numpy(), bins=MVAID_BINS, range=MVAID_RANGE)[0]
-                sublead_mvaID += np.histogram(df['sublead_mvaID'].to_numpy(), bins=MVAID_BINS, range=MVAID_RANGE)[0]
+
+                for var in RESAMPLE_VARS:
+                    if 'value' in var: continue
+                    vals = df[var['name']].to_numpy()
+                    vals = vals[vals != dfdataset.refill_value]
+                    resample_hists[var['name']] += np.histogram(vals, bins=var['bins'], range=var['range'])[0]
         
-        lead_mvaID = lead_mvaID / np.sum(lead_mvaID)
-        sublead_mvaID = sublead_mvaID / np.sum(sublead_mvaID)
+        for var in RESAMPLE_VARS:
+            if 'value' in var: continue
+            resample_hists[var['name']] /= np.sum(resample_hists[var['name']])
 
-        bkg_filepaths = dfdataset.get_traintest_filepaths(fold, dataset="test", syst_name=SYST_NAME)['nonRes']
+        bkg_filepaths = [
+            fp for fp in dfdataset.get_traintest_filepaths(fold, dataset="test", syst_name=SYST_NAME)['nonRes']
+            if match_sample(fp, [sample['name'] for sample in NONRES_SAMPLES]) is not None
+        ]
 
+        print(f"Signal collection done.")
+        
         print(f"Processing background for fold {fold}...")
 
         ckpt_path = model.modelconfig.get_ckpt_path(fold)
@@ -315,11 +322,16 @@ def sculpting_check():
 
                 df = batch.to_pandas()
 
-                bin_choices = resample_rng.choice(np.arange(MVAID_BINS), size=len(df), p=lead_mvaID)
-                df['lead_mvaID'] = MVAID_BIN_WIDTH * resample_rng.random(size=len(df)) + bin_edges[bin_choices]
-
-                bin_choices = resample_rng.choice(np.arange(MVAID_BINS), size=len(df), p=sublead_mvaID)
-                df['sublead_mvaID'] = MVAID_BIN_WIDTH * resample_rng.random(size=len(df)) + bin_edges[bin_choices]
+                for var in RESAMPLE_VARS:
+                    if 'value' in var:
+                        cols = [col for col in df.columns if match_regex(var['name'], [col]) is not None]
+                        for col in cols:
+                            df[col] = var['value']
+                    else:
+                        bin_edges = np.linspace(var['range'][0], var['range'][1], var['bins'] + 1)
+                        bin_choices = resample_rng.choice(np.arange(var['bins']), size=len(df), p=resample_hists[var['name']])
+                        bin_width = (var['range'][1] - var['range'][0]) / var['bins']
+                        df[var['name']] = bin_width * resample_rng.random(size=len(df)) + bin_edges[bin_choices]
 
                 data = model.modeldataset.get_data(df, dfdataset.event_weight_var)
 
@@ -329,36 +341,58 @@ def sculpting_check():
                 for hist_name, cut_dict in SCULPTING_CUTS.items():
                     cut_mask = np.ones(len(preds), dtype=bool)
                     for column, cut in cut_dict.items():
-                        class_name = CLASS_NAME_MAP[column.replace('AUX_', '')]
-                        class_idx = CLASS_NAMES.index(class_name)
+                        class_name = column.replace('AUX_D', '')
+                        formatted_class_names = format_class_names(CLASS_NAMES)
+                        class_idx = formatted_class_names.index(class_name)
+
                         if "HH" in class_name:
                             cut_mask = cut_mask & (preds[:, class_idx] > cut)
                         else:
                             cut_mask = cut_mask & (preds[:, class_idx] < cut)
 
-                    mass_values = df.loc[cut_mask, f'{dfdataset.aux_var_prefix}mass'].values
-                    fold_hists[hist_name] += np.histogram(mass_values, bins=PLOT_VARS[0]['bins'], range=PLOT_VARS[0]['range'])[0]
+                    for plot_var in PLOT_VARS:
+                        col = match_regex(plot_var['name'], df.columns)
+                        if col is None: continue
+                        vals = df.loc[cut_mask, col].values
+                        vals = vals[vals != dfdataset.refill_value]
+                        fold_hists[hist_name][plot_var['name']] += np.histogram(vals, bins=plot_var['bins'], range=plot_var['range'])[0]
 
         print(f"Fold {fold} done.")
 
         for hist_name in hists.keys():
-            hists[hist_name] += fold_hists[hist_name]
+            for plot_var in PLOT_VARS:
+                hists[hist_name][plot_var['name']] += fold_hists[hist_name][plot_var['name']]
 
     print("Plotting...")
 
-    np.save('/eos/uscms/store/group/lpcdihiggsboost/nparekh/sculpting_hists.npy', hists)
+    np.save(os.path.join(run_dirpath, 'sculpting_hists.npy'), {
+        'hists': hists,
+        'resample_vars': RESAMPLE_VARS,
+        'sculpting_cuts': SCULPTING_CUTS,
+        'plot_vars': PLOT_VARS,
+        'discriminator': DISCRIMINATOR,
+    })
 
-    for plot_var in PLOT_VARS:
-        if plot_var['name'] != 'mass': continue
+    for plot_var in plot_vars:
         plot_bin_edges = np.linspace(plot_var['range'][0], plot_var['range'][1], plot_var['bins'] + 1)
-        
+        bin_centers = (plot_bin_edges[:-1] + plot_bin_edges[1:]) / 2
+        bin_width = plot_bin_edges[1] - plot_bin_edges[0]
+
         fig, ax = plt.subplots()
         for hist_name, color in zip(hists.keys(), cmap_petroff10[:len(hists)]):
-            ax.stairs(hists[hist_name], plot_bin_edges, label=hist_name, color=color)
-        
-        ax.legend()
+            counts = hists[hist_name][plot_var['name']]
+            total = np.sum(counts)
+            if total == 0: continue
+
+            density = counts / (total * bin_width)
+            density_err = np.sqrt(counts) / (total * bin_width)
+
+            ax.stairs(density, plot_bin_edges, label=hist_name, color=color)
+            ax.errorbar(bin_centers, density, yerr=density_err, fmt='none', color=color)
+
+        ax.legend(bbox_to_anchor=(1, 1))
         ax.set_xlabel(plot_var['name'])
-        plt.savefig(os.path.join('/eos/uscms/store/group/lpcdihiggsboost/nparekh/', f"sculpting_{plot_var['name']}.png"), bbox_inches='tight')
+        plt.savefig(os.path.join(run_dirpath, f"sculpting_{plot_var['name']}.png"), bbox_inches='tight')
         plt.close()
 
 # #Thomas code
