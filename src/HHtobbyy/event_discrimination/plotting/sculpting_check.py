@@ -252,20 +252,29 @@ def fit_tightest(np_arr, plot_var, subplots, plot_type: str, base_dirpath: str, 
     )
     plt.close()
 
+MVAID_BINS = 100
+MVAID_RANGE = (-1., 1.)
+MVAID_BIN_WIDTH = (MVAID_RANGE[1] - MVAID_RANGE[0]) / MVAID_BINS
+
+resample_rng = np.random.default_rng(seed=SEED)
+bin_edges = np.linspace(MVAID_RANGE[0], MVAID_RANGE[1], MVAID_BINS + 1)
+
+CLASS_NAME_MAP = {
+    'DnonRes': 'nonRes',
+    'DRes': 'Res',
+    'DggFHH': 'ggF HH',
+    'DVBFHH': 'VBF HH'
+}
 
 def sculpting_check():
 
-    output, func, cutdir = transform_preds_func(CLASS_NAMES, DISCRIMINATOR)
     hists = {hist_name: np.zeros(PLOT_VARS[0]['bins']) for hist_name in SCULPTING_CUTS.keys()}
-
 
     for fold in range(dfdataset.n_folds):
         
         fold_hists = {hist_name: np.zeros(PLOT_VARS[0]['bins']) for hist_name in SCULPTING_CUTS.keys()}
-
-        lead_mvaID = []
-        sublead_mvaID = []
-        signal_weights = []
+        lead_mvaID, _ = np.histogram(np.array([]), bins=MVAID_BINS, range=MVAID_RANGE)
+        sublead_mvaID, _ = np.histogram(np.array([]), bins=MVAID_BINS, range=MVAID_RANGE)
 
         signal_filepaths = dfdataset.get_traintest_filepaths(fold, dataset="test", syst_name=SYST_NAME)['Res']
 
@@ -276,26 +285,24 @@ def sculpting_check():
             print(f"    Processing signal file: {filepath}")
             batch_ctr = 0 
 
-            for batch in dfdataset.get_df_iter(filepath, filter=dfdataset.presel_filter):
+            for batch in dfdataset.get_df_iter(filepath, batch_size=131_072, filter=dfdataset.presel_filter):
 
                 print(f"        Processing signal batch: {batch_ctr}")
                 batch_ctr += 1
 
                 df = batch.to_pandas()
-
-                lead_mvaID.extend(df['lead_mvaID'])
-                sublead_mvaID.extend(df['sublead_mvaID'])
-                signal_weights.extend(df[f'{dfdataset.aux_var_prefix}eventWeight'])
-            
-        lead_mvaID = np.array(lead_mvaID)
-        sublead_mvaID = np.array(sublead_mvaID)
-        signal_weights = np.array(signal_weights)
-
-        print(f"Signal collection done. # of signal events: {len(lead_mvaID)}")
+                lead_mvaID += np.histogram(df['lead_mvaID'].to_numpy(), bins=MVAID_BINS, range=MVAID_RANGE)[0]
+                sublead_mvaID += np.histogram(df['sublead_mvaID'].to_numpy(), bins=MVAID_BINS, range=MVAID_RANGE)[0]
+        
+        lead_mvaID = lead_mvaID / np.sum(lead_mvaID)
+        sublead_mvaID = sublead_mvaID / np.sum(sublead_mvaID)
 
         bkg_filepaths = dfdataset.get_traintest_filepaths(fold, dataset="test", syst_name=SYST_NAME)['nonRes']
 
         print(f"Processing background for fold {fold}...")
+
+        ckpt_path = model.modelconfig.get_ckpt_path(fold)
+        mlp_model, trainer = model.load_model_and_trainer(ckpt_path=ckpt_path, eval=True)
 
         for filepath in bkg_filepaths:
 
@@ -308,22 +315,26 @@ def sculpting_check():
 
                 df = batch.to_pandas()
 
-                df['lead_mvaID'] = resample_from_var(lead_mvaID, signal_weights, n_events=len(df))
-                df['sublead_mvaID'] = resample_from_var(sublead_mvaID, signal_weights, n_events=len(df))
+                bin_choices = resample_rng.choice(np.arange(MVAID_BINS), size=len(df), p=lead_mvaID)
+                df['lead_mvaID'] = MVAID_BIN_WIDTH * resample_rng.random(size=len(df)) + bin_edges[bin_choices]
+
+                bin_choices = resample_rng.choice(np.arange(MVAID_BINS), size=len(df), p=sublead_mvaID)
+                df['sublead_mvaID'] = MVAID_BIN_WIDTH * resample_rng.random(size=len(df)) + bin_edges[bin_choices]
 
                 data = model.modeldataset.get_data(df, dfdataset.event_weight_var)
-                preds = model.predict_data(data, fold)
-                transformed_preds = func(preds)
+
+                predictions = trainer.predict(mlp_model, data)
+                preds = np.concatenate([prediction.numpy(force=True) for prediction in predictions])
 
                 for hist_name, cut_dict in SCULPTING_CUTS.items():
-                    cut_mask = np.ones(len(transformed_preds), dtype=bool)
+                    cut_mask = np.ones(len(preds), dtype=bool)
                     for column, cut in cut_dict.items():
-                        class_name = column.replace('AUX_D', '')
-                        class_idx = output.index(class_name)
-                        if cutdir[class_idx] == '>':
-                            cut_mask = transformed_preds[:, class_idx] > cut
+                        class_name = CLASS_NAME_MAP[column.replace('AUX_', '')]
+                        class_idx = CLASS_NAMES.index(class_name)
+                        if "HH" in class_name:
+                            cut_mask = cut_mask & (preds[:, class_idx] > cut)
                         else:
-                            cut_mask = transformed_preds[:, class_idx] < cut
+                            cut_mask = cut_mask & (preds[:, class_idx] < cut)
 
                     mass_values = df.loc[cut_mask, f'{dfdataset.aux_var_prefix}mass'].values
                     fold_hists[hist_name] += np.histogram(mass_values, bins=PLOT_VARS[0]['bins'], range=PLOT_VARS[0]['range'])[0]
@@ -335,17 +346,19 @@ def sculpting_check():
 
     print("Plotting...")
 
+    np.save('/eos/uscms/store/group/lpcdihiggsboost/nparekh/sculpting_hists.npy', hists)
 
     for plot_var in PLOT_VARS:
-        bin_edges = np.linspace(plot_var['range'][0], plot_var['range'][1], plot_var['bins'] + 1)
+        if plot_var['name'] != 'mass': continue
+        plot_bin_edges = np.linspace(plot_var['range'][0], plot_var['range'][1], plot_var['bins'] + 1)
         
         fig, ax = plt.subplots()
         for hist_name, color in zip(hists.keys(), cmap_petroff10[:len(hists)]):
-            ax.stairs(hists[hist_name], bin_edges, label=hist_name, color=color)
+            ax.stairs(hists[hist_name], plot_bin_edges, label=hist_name, color=color)
         
         ax.legend()
         ax.set_xlabel(plot_var['name'])
-        plt.savefig(os.path.join(dfdataset.output_dirpath, f"sculpting_{plot_var['name']}.png"), bbox_inches='tight')
+        plt.savefig(os.path.join('/eos/uscms/store/group/lpcdihiggsboost/nparekh/', f"sculpting_{plot_var['name']}.png"), bbox_inches='tight')
         plt.close()
 
 # #Thomas code
