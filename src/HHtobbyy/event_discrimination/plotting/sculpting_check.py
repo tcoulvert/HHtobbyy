@@ -104,6 +104,12 @@ parser.add_argument(
 #     help="Full filepath on LPC for standardized dataset (train and test parquets), default is to use dataset in the training `dataset_dirpath.txt` file"
 # )
 
+# parser.add_argument(
+#     "--rebin",
+#     type=int,
+#     default=1,
+#     help="Number of bins to merge when plotting"
+# )
 
 parser.add_argument(
     "--dataset", 
@@ -150,7 +156,7 @@ parser.add_argument(
 
 ################################
 
-
+# jupyter notebook error
 args = parser.parse_args()
 
 # (below) obsolete since we're now using DFDataset config file to get dataset_dirpath
@@ -171,6 +177,7 @@ RESAMPLE = args.resample # also might not need later?
 SYST_NAME = args.syst_name
 SEED = args.seed
 FIT = args.fit
+# REBIN = args.rebin
 
 dfdataset = DFDataset(args.dfdataset_config)
 columns_to_load = list(dfdataset.all_vars_map.keys())
@@ -184,6 +191,7 @@ DISCRIMINATOR = SCULPTING_CUTS.pop('discriminator')
 assert DISCRIMINATOR in transform_preds_options(), f"Trying to use a discriminator ({DISCRIMINATOR}) that isn't implemented in evaluation_utils. Use one of {transform_preds_options()} or implement your own"
 NONRES_SAMPLES = SCULPTING_CUTS.pop('nonRes_samples')
 RESAMPLE_VARS = SCULPTING_CUTS.pop('resample_vars')
+RESAMPLE_COMBOS = SCULPTING_CUTS.pop('resample_combos')
 PLOT_VARS = SCULPTING_CUTS.pop('plot_vars')
 
 plt.style.use(hep.style.CMS)
@@ -263,6 +271,41 @@ def fit_tightest(np_arr, plot_var, subplots, plot_type: str, base_dirpath: str, 
 
 resample_rng = np.random.default_rng(seed=SEED)
 
+def plot_sculpting(npy_filepath, output_dirpath='.'):
+    data = np.load(npy_filepath, allow_pickle=True).item()
+    hists = data['hists']
+    plot_vars = data['plot_vars']
+
+    for plot_var in plot_vars:
+        if 'HH' in plot_var["name"]:
+            rebin = 4
+        else:
+            rebin = plot_var.get('rebin', 1)
+        n_bins = plot_var['bins'] // rebin
+        plot_bin_edges = np.linspace(plot_var['range'][0], plot_var['range'][1], n_bins + 1)
+        bin_centers = (plot_bin_edges[:-1] + plot_bin_edges[1:]) / 2
+        bin_width = plot_bin_edges[1] - plot_bin_edges[0]
+
+        fig, ax = plt.subplots()
+        for hist_name, color in zip(hists.keys(), cmap_petroff10[:len(hists)]):
+            counts = np.add.reduceat(hists[hist_name][plot_var['name']], np.arange(0, plot_var['bins'], rebin))
+            total = np.sum(counts)
+            if total == 0: continue
+
+            density = counts / (total * bin_width)
+            density_err = np.sqrt(counts) / (total * bin_width)
+
+            ax.stairs(density, plot_bin_edges, label=hist_name, color=color)
+            ax.errorbar(bin_centers, density, yerr=density_err, fmt='none', color=color)
+
+        # hep.cms.lumitext(f"Run3" + r" (13.6 TeV)", ax=ax)
+        hep.cms.text("Preliminary", ax=ax)
+        ax.legend(bbox_to_anchor=(1, 1))
+        ax.set_xlabel(f"{plot_var['name']} [GeV] / {bin_width:.1f} GeV")
+        ax.set_ylabel('Density')
+        plt.savefig(os.path.join(output_dirpath, f"sculpting_density_{plot_var['name']}.png"), bbox_inches='tight')
+        plt.close()
+
 def sculpting_check():
 
     hists = {hist_name: {plot_var['name']: np.zeros(plot_var['bins']) for plot_var in PLOT_VARS} for hist_name in SCULPTING_CUTS.keys()}
@@ -273,7 +316,7 @@ def sculpting_check():
 
         resample_hists = {var['name']: np.zeros(var['bins']) for var in RESAMPLE_VARS if 'value' not in var}
 
-        signal_filepaths = dfdataset.get_traintest_filepaths(fold, dataset="test", syst_name=SYST_NAME)['Res']
+        signal_filepaths = dfdataset.get_traintest_filepaths(fold, dataset="test", syst_name=SYST_NAME)['ggF HH']
 
         print(f"Collecting signal photon ID for fold {fold}...")
 
@@ -373,27 +416,8 @@ def sculpting_check():
         'discriminator': DISCRIMINATOR,
     })
 
-    for plot_var in PLOT_VARS:
-        plot_bin_edges = np.linspace(plot_var['range'][0], plot_var['range'][1], plot_var['bins'] + 1)
-        bin_centers = (plot_bin_edges[:-1] + plot_bin_edges[1:]) / 2
-        bin_width = plot_bin_edges[1] - plot_bin_edges[0]
+    plot_sculpting(os.path.join(run_dirpath, 'sculpting_hists.npy'), run_dirpath)
 
-        fig, ax = plt.subplots()
-        for hist_name, color in zip(hists.keys(), cmap_petroff10[:len(hists)]):
-            counts = hists[hist_name][plot_var['name']]
-            total = np.sum(counts)
-            if total == 0: continue
-
-            density = counts / (total * bin_width)
-            density_err = np.sqrt(counts) / (total * bin_width)
-
-            ax.stairs(density, plot_bin_edges, label=hist_name, color=color)
-            ax.errorbar(bin_centers, density, yerr=density_err, fmt='none', color=color)
-
-        ax.legend(bbox_to_anchor=(1, 1))
-        ax.set_xlabel(plot_var['name'])
-        plt.savefig(os.path.join(run_dirpath, f"sculpting_{plot_var['name']}.png"), bbox_inches='tight')
-        plt.close()
 
 # #Thomas code
 # def sculpting_check(nonres_bkg_files: list, signal_files: list):
