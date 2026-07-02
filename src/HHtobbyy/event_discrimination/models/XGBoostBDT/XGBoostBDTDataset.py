@@ -24,7 +24,7 @@ class XGBoostBDTDataset(ModelDataset):
             data=df[self.dfdataset.model_vars].to_numpy(), 
             label=df[f"{self.dfdataset.aux_var_prefix}label1D"].to_numpy(), 
             weight=np.abs(df[f"{self.dfdataset.aux_var_prefix}{event_weight}"].to_numpy()),
-            missing=self.dfdataset.fill_value
+            missing=self.dfdataset.fill_value, feature_names=self.dfdataset.model_vars
         )
         
     #############################################################
