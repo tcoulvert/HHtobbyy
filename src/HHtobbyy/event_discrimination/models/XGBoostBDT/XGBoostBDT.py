@@ -62,12 +62,11 @@ class XGBoostBDT(Model):
         predictions = booster.predict(eval_data, iteration_range=(0, booster.best_iteration))
         # loss = predictions - eval_data[label]
 
-    def predict_data(self, data: xgb.DMatrix, fold: int):
+    def predict_data(self, data: xgb.DMatrix, fold: int, ckpt_path: str=''):
+        # DNN model and trainer
+        if ckpt_path == '': ckpt_path = os.path.join(self.modelconfig.output_dirpath, f"{self.model_filename}{fold}.model")
         # Initialize trained BDT model
-        booster = xgb.Booster(
-            params=self.modelconfig.load_config(), 
-            model_file=os.path.join(self.modelconfig.output_dirpath, f"{self.model_filename}{fold}.model")
-        )
+        booster = xgb.Booster(params=self.modelconfig.load_config(), model_file=ckpt_path)
 
         # Test data predictions
         predictions = booster.predict(data, iteration_range=(0, booster.best_iteration))

@@ -4,9 +4,7 @@ import os
 import subprocess
 
 # HEP packages
-import awkward as ak
 import eos_utils as eos
-import pyarrow.parquet as pq
 
 ################################
 

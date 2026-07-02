@@ -53,14 +53,19 @@ parser.add_argument(
     choices=['iterative', 'parallel'],
     help="How to run script"
 )
+parser.add_argument(
+    "--force", 
+    action='store_true',
+    help="Force recreation of test files"
+)
 
 ################################
 
 
 
-def main(dfdataset: DFDataset, model: Model, filepaths: list, **kwargs):
+def main(dfdataset: DFDataset, model: Model, filepaths: list, force: bool=False, **kwargs):
     # Building test DFDataset
-    dfdataset.make_all_test(filepaths, **kwargs)
+    # dfdataset.make_all_test(filepaths, force=force, **kwargs)
 
     # Evaluating the model
     model.predict_all_folds(batch_size=16_384, **kwargs)
@@ -87,5 +92,4 @@ if __name__ == "__main__":
     else:
         filepaths = get_input_filepaths(args.eras.split(', ') if len(args.eras.split(', ')) > 1 else args.eras, dfdataset.class_sample_map, regex=f"*{dfdataset.filepostfix}")
 
-    print(filepaths)
-    main(dfdataset, model, filepaths, parallel=args.submission == 'parallel')
+    main(dfdataset, model, filepaths, force=args.force, parallel=args.submission == 'parallel')

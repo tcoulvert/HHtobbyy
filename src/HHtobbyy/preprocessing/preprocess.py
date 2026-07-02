@@ -1,10 +1,7 @@
 # Stdlib packages
 import argparse
-import glob
 import logging
 import os
-import re
-import subprocess
 
 # Common Py packages
 import numpy as np
@@ -12,7 +9,6 @@ import numpy as np
 # HEP packages
 import awkward as ak
 import eos_utils as eos
-import pyarrow
 import pyarrow.parquet as pq
 import vector as vec
 
