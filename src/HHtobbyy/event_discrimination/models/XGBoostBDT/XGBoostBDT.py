@@ -66,7 +66,7 @@ class XGBoostBDT(Model):
         # DNN model and trainer
         if ckpt_path == '': ckpt_path = os.path.join(self.modelconfig.output_dirpath, f"{self.model_filename}{fold}.model")
         # Initialize trained BDT model
-        booster = xgb.Booster(params=self.modelconfig.load_config(), model_file=ckpt_path)
+        booster = xgb.Booster(params=self.modelconfig.__dict__, model_file=ckpt_path)
 
         # Test data predictions
         predictions = booster.predict(data, iteration_range=(0, booster.best_iteration))

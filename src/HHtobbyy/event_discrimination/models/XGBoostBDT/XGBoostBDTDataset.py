@@ -21,10 +21,10 @@ class XGBoostBDTDataset(ModelDataset):
     # Common model get
     def get_DMatrix(self, df: pd.DataFrame, event_weight: str):
         return xgb.DMatrix(
-            data=df[self.dfdataset.model_vars].values, 
-            label=df[f"{self.dfdataset.aux_var_prefix}label1D"].values, 
-            weight=np.abs(df[f"{self.dfdataset.aux_var_prefix}{event_weight}"].values),
-            missing=self.dfdataset.fill_value, feature_names=self.dfdataset.model_vars
+            data=df[self.dfdataset.model_vars].to_numpy(), 
+            label=df[f"{self.dfdataset.aux_var_prefix}label1D"].to_numpy(), 
+            weight=np.abs(df[f"{self.dfdataset.aux_var_prefix}{event_weight}"].to_numpy()),
+            missing=self.dfdataset.fill_value
         )
         
     #############################################################
