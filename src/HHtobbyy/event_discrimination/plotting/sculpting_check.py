@@ -23,9 +23,7 @@ from cycler import cycler
 #time stamping
 
 import datetime
-run_time = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-run_dirpath = os.path.join('/eos/uscms/store/group/lpcdihiggsboost/nparekh/sculpting_checks', run_time)
-os.makedirs(run_dirpath, exist_ok=True)
+
 
 GIT_REPO = (
     subprocess.Popen(["git", "rev-parse", "--show-toplevel"], stdout=subprocess.PIPE)
@@ -275,44 +273,77 @@ def plot_sculpting(npy_filepath, output_dirpath='.'):
     data = np.load(npy_filepath, allow_pickle=True).item()
     hists = data['hists']
     plot_vars = data['plot_vars']
+    combo_names = list(hists.keys())
+    hist_names = list(list(hists.values())[0].keys())
+    FIG_WIDTH = 8 * len(plot_vars)
+    FIG_HEIGHT = 7
 
-    for plot_var in plot_vars:
-        if 'HH' in plot_var["name"]:
-            rebin = 4
-        else:
-            rebin = plot_var.get('rebin', 1)
+    from matplotlib.backends.backend_pdf import PdfPages
+
+    def make_axes(plot_var):
+        rebin = 4 if 'HH' in plot_var['name'] else plot_var.get('rebin', 1)
         n_bins = plot_var['bins'] // rebin
         plot_bin_edges = np.linspace(plot_var['range'][0], plot_var['range'][1], n_bins + 1)
         bin_centers = (plot_bin_edges[:-1] + plot_bin_edges[1:]) / 2
         bin_width = plot_bin_edges[1] - plot_bin_edges[0]
+        return rebin, n_bins, plot_bin_edges, bin_centers, bin_width
 
-        fig, ax = plt.subplots()
-        for hist_name, color in zip(hists.keys(), cmap_petroff10[:len(hists)]):
-            counts = np.add.reduceat(hists[hist_name][plot_var['name']], np.arange(0, plot_var['bins'], rebin))
-            total = np.sum(counts)
+    def make_plot(ax, counts_list, labels, plot_var):
+        rebin, n_bins, plot_bin_edges, bin_centers, bin_width = make_axes(plot_var)
+        for counts, label, color in zip(counts_list, labels, cmap_petroff10[:len(counts_list)]):
+            rebinned = np.add.reduceat(counts, np.arange(0, plot_var['bins'], rebin))
+            total = np.sum(rebinned)
             if total == 0: continue
-
-            density = counts / (total * bin_width)
-            density_err = np.sqrt(counts) / (total * bin_width)
-
-            ax.stairs(density, plot_bin_edges, label=hist_name, color=color)
+            density = rebinned / (total * bin_width)
+            density_err = np.sqrt(rebinned) / (total * bin_width)
+            ax.stairs(density, plot_bin_edges, label=label, color=color)
             ax.errorbar(bin_centers, density, yerr=density_err, fmt='none', color=color)
-
-        # hep.cms.lumitext(f"Run3" + r" (13.6 TeV)", ax=ax)
-        hep.cms.text("Preliminary", ax=ax)
-        ax.legend(bbox_to_anchor=(1, 1))
+        hep.cms.text("Simulation Preliminary", ax=ax)
+        ax.legend(loc='upper right', fontsize=14)
         ax.set_xlabel(f"{plot_var['name']} [GeV] / {bin_width:.1f} GeV")
         ax.set_ylabel('Density')
-        plt.savefig(os.path.join(output_dirpath, f"sculpting_density_{plot_var['name']}.png"), bbox_inches='tight')
-        plt.close()
+
+
+    # PDF 1 - per cut level, all combos overlaid
+    with PdfPages(os.path.join(output_dirpath, 'sculpting_by_cut.pdf')) as pdf:
+        for hist_name in hist_names:
+            fig, axes = plt.subplots(1, len(plot_vars), figsize=(FIG_WIDTH, FIG_HEIGHT))
+            if len(plot_vars) == 1: axes = [axes]
+            for ax, plot_var in zip(axes, plot_vars):
+                counts_list = [hists[combo_name][hist_name][plot_var['name']] for combo_name in combo_names]
+                make_plot(ax, counts_list, combo_names, plot_var)
+            fig.suptitle(hist_name, fontsize=16, y=1.02)
+            plt.tight_layout()
+            pdf.savefig(fig, bbox_inches='tight')
+            plt.close()
+
+    # PDF 2 - per combo, all cut levels overlaid
+    with PdfPages(os.path.join(output_dirpath, 'sculpting_by_combo.pdf')) as pdf:
+        for combo_name in combo_names:
+            fig, axes = plt.subplots(1, len(plot_vars), figsize=(FIG_WIDTH, FIG_HEIGHT))
+            if len(plot_vars) == 1: axes = [axes]
+            for ax, plot_var in zip(axes, plot_vars):
+                counts_list = [hists[combo_name][hist_name][plot_var['name']] for hist_name in hist_names]
+                make_plot(ax, counts_list, hist_names, plot_var)
+            fig.suptitle(combo_name, fontsize=16, y=1.02)
+            plt.tight_layout()
+            pdf.savefig(fig, bbox_inches='tight')
+            plt.close()
 
 def sculpting_check():
 
-    hists = {hist_name: {plot_var['name']: np.zeros(plot_var['bins']) for plot_var in PLOT_VARS} for hist_name in SCULPTING_CUTS.keys()}
+    run_time = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+    run_dirpath = os.path.join('/eos/uscms/store/group/lpcdihiggsboost/nparekh/sculpting_checks', run_time)
+    os.makedirs(run_dirpath, exist_ok=True)
+
+    hists = {combo['name']: {hist_name: {plot_var['name']: np.zeros(plot_var['bins']) for plot_var in PLOT_VARS} for hist_name in SCULPTING_CUTS.keys()} for combo in RESAMPLE_COMBOS}
+
+    formatted_class_names = format_class_names(CLASS_NAMES)
     
     for fold in range(dfdataset.n_folds):
         
-        fold_hists = {hist_name: {plot_var['name']: np.zeros(plot_var['bins']) for plot_var in PLOT_VARS} for hist_name in SCULPTING_CUTS.keys()}
+        fold_hists = {combo['name']: {hist_name: {plot_var['name']: np.zeros(plot_var['bins']) for plot_var in PLOT_VARS} for hist_name in SCULPTING_CUTS.keys()} for combo in RESAMPLE_COMBOS}
+
 
         resample_hists = {var['name']: np.zeros(var['bins']) for var in RESAMPLE_VARS if 'value' not in var}
 
@@ -365,52 +396,54 @@ def sculpting_check():
 
                 df = batch.to_pandas()
 
-                for var in RESAMPLE_VARS:
-                    if 'value' in var:
-                        cols = [col for col in df.columns if match_regex(var['name'], [col]) is not None]
-                        for col in cols:
-                            df[col] = var['value']
-                    else:
-                        bin_edges = np.linspace(var['range'][0], var['range'][1], var['bins'] + 1)
-                        bin_choices = resample_rng.choice(np.arange(var['bins']), size=len(df), p=resample_hists[var['name']])
-                        bin_width = (var['range'][1] - var['range'][0]) / var['bins']
-                        df[var['name']] = bin_width * resample_rng.random(size=len(df)) + bin_edges[bin_choices]
-
-                data = model.modeldataset.get_data(df, dfdataset.event_weight_var)
-
-                predictions = trainer.predict(mlp_model, data)
-                preds = np.concatenate([prediction.numpy(force=True) for prediction in predictions])
-
-                for hist_name, cut_dict in SCULPTING_CUTS.items():
-                    cut_mask = np.ones(len(preds), dtype=bool)
-                    for column, cut in cut_dict.items():
-                        class_name = column.replace('AUX_D', '')
-                        formatted_class_names = format_class_names(CLASS_NAMES)
-                        class_idx = formatted_class_names.index(class_name)
-
-                        if "HH" in class_name:
-                            cut_mask = cut_mask & (preds[:, class_idx] > cut)
+                for combo in RESAMPLE_COMBOS:
+                    df_combo = df.copy()
+                    for var_name in combo['vars']:
+                        var = next(v for v in RESAMPLE_VARS if v['name'] == var_name)
+                        if 'value' in var:
+                            cols = [col for col in df_combo.columns if match_regex(var['name'], [col]) is not None]
+                            for col in cols:
+                                df_combo[col] = var['value']
                         else:
-                            cut_mask = cut_mask & (preds[:, class_idx] < cut)
+                            bin_edges = np.linspace(var['range'][0], var['range'][1], var['bins'] + 1)
+                            bin_choices = resample_rng.choice(np.arange(var['bins']), size=len(df_combo), p=resample_hists[var['name']])
+                            bin_width = (var['range'][1] - var['range'][0]) / var['bins']
+                            df_combo[var['name']] = bin_width * resample_rng.random(size=len(df_combo)) + bin_edges[bin_choices]
 
-                    for plot_var in PLOT_VARS:
-                        col = match_regex(plot_var['name'], df.columns)
-                        if col is None: continue
-                        vals = df.loc[cut_mask, col].values
-                        vals = vals[vals != dfdataset.refill_value]
-                        fold_hists[hist_name][plot_var['name']] += np.histogram(vals, bins=plot_var['bins'], range=plot_var['range'])[0]
+                    data = model.modeldataset.get_data(df_combo, dfdataset.event_weight_var)
+                    predictions = trainer.predict(mlp_model, data)
+                    preds = np.concatenate([prediction.numpy(force=True) for prediction in predictions])
+
+                    for hist_name, cut_dict in SCULPTING_CUTS.items():
+                        cut_mask = np.ones(len(preds), dtype=bool)
+                        for column, cut in cut_dict.items():
+                            class_name = column.replace('AUX_D', '')
+                            class_idx = formatted_class_names.index(class_name)
+                            if "HH" in class_name:
+                                cut_mask = cut_mask & (preds[:, class_idx] > cut)
+                            else:
+                                cut_mask = cut_mask & (preds[:, class_idx] < cut)
+
+                        for plot_var in PLOT_VARS:
+                            col = match_regex(plot_var['name'], df_combo.columns)
+                            if col is None: continue
+                            vals = df_combo.loc[cut_mask, col].values
+                            vals = vals[vals != dfdataset.refill_value]
+                            fold_hists[combo['name']][hist_name][plot_var['name']] += np.histogram(vals, bins=plot_var['bins'], range=plot_var['range'])[0]
 
         print(f"Fold {fold} done.")
 
-        for hist_name in hists.keys():
-            for plot_var in PLOT_VARS:
-                hists[hist_name][plot_var['name']] += fold_hists[hist_name][plot_var['name']]
+        for combo in RESAMPLE_COMBOS:
+            for hist_name in hists[combo['name']].keys():
+                for plot_var in PLOT_VARS:
+                    hists[combo['name']][hist_name][plot_var['name']] += fold_hists[combo['name']][hist_name][plot_var['name']]
 
     print("Plotting...")
 
     np.save(os.path.join(run_dirpath, 'sculpting_hists.npy'), {
         'hists': hists,
         'resample_vars': RESAMPLE_VARS,
+        'resample_combos': RESAMPLE_COMBOS,
         'sculpting_cuts': SCULPTING_CUTS,
         'plot_vars': PLOT_VARS,
         'discriminator': DISCRIMINATOR,
