@@ -32,7 +32,7 @@ class LPCVanillaSubmitter:
     def __init__(
         self,
         era_filepaths: dict[str, list[tuple[str, str]]], datatype: str,
-        queue="longlunch", memory="4GB", force=False,
+        queue="longlunch", memory="4GB", force=False, location: str='lpc'
     ):
         self.queue = queue
         self.memory = memory
@@ -145,6 +145,12 @@ class LPCVanillaSubmitter:
                 submit_file.write(f"Transfer_Input_Files = {proxy}\n")
                 submit_file.write(f"Transfer_Output_Files = \"\"\n")
                 submit_file.write(f'when_to_transfer_output = ON_EXIT\n')
+
+                if location == 'caltech':
+                    # t2 required additions
+                    submit_file.write("+SingularityImage = \"{}/public/heptools-compiled.simg\" \n".format(os.getenv('HOME')))
+                    submit_file.write('+SingularityBindCVMFS = False \n')
+                    submit_file.write(f"x509userproxy = {proxy} \n")
 
                 submit_file.write('on_exit_remove = (ExitBySignal == False) && (ExitCode == 0)\n')
                 submit_file.write('max_retries = 0\n')

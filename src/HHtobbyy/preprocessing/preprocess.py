@@ -75,6 +75,11 @@ parser.add_argument(
     default="4GB",
     help="Memory to request for condor submission"
 )
+parser.add_argument(
+    "--location", 
+    default="lpc",
+    help="Location for condor submission (if different than LPC)"
+)
 
 ################################
 
@@ -89,6 +94,7 @@ RUN_ALL_MC = False
 CONDOR = False
 QUEUE = "longlunch"
 MEMORY = "4GB"
+LOCATION = "lpc"
 
 BAD_DIRS = {'outdated', 'allData'}
 END_FILEPATHS = ["merged.parquet", "Rescaled.parquet"]
@@ -294,10 +300,12 @@ def make_mc(sim_eras: dict):
     
     # Pull MC sample dir_list
     get_files(sim_eras)
+    sim_eras = {list(sim_eras.keys())[0]: [sim_eras[list(sim_eras.keys())[0]][0]]}
+    print(sim_eras)
     
     # Perform the variable calculation and merging
     if CONDOR:
-        mc_sub = LPCVanillaSubmitter(sim_eras, 'MC', queue=QUEUE, memory=MEMORY, force=FORCE)
+        mc_sub = LPCVanillaSubmitter(sim_eras, 'MC', queue=QUEUE, memory=MEMORY, force=FORCE, location=LOCATION)
         mc_sub.submit()
     else:
         for sim_era, filepaths in sim_eras.items():
@@ -316,7 +324,7 @@ def make_data(data_eras: dict):
 
     # Perform the variable calculation and merging
     if CONDOR:
-        data_sub = LPCVanillaSubmitter(data_eras, 'Data', queue=QUEUE, memory=MEMORY, force=FORCE)
+        data_sub = LPCVanillaSubmitter(data_eras, 'Data', queue=QUEUE, memory=MEMORY, force=FORCE, location=LOCATION)
         data_sub.submit()
     else:
         for data_era, filepaths in data_eras.items():
@@ -334,6 +342,7 @@ if __name__ == '__main__':
     CONDOR = args.condor
     QUEUE = args.queue
     MEMORY = args.memory
+    LOCATION = args.location
 
     SIM_ERAS, DATA_ERAS = get_era_filepaths(INPUT_ERAS, split_data_mc_eras=True)
 
@@ -342,8 +351,8 @@ if __name__ == '__main__':
     } if len(SIM_ERAS) > 0 else None
     make_mc(sim_eras)
 
-    data_eras = {
-        os.path.join(era, ''): list() for era in DATA_ERAS
-    } if len(DATA_ERAS) > 0 else None
-    make_data(data_eras)
+    # data_eras = {
+    #     os.path.join(era, ''): list() for era in DATA_ERAS
+    # } if len(DATA_ERAS) > 0 else None
+    # make_data(data_eras)
 
