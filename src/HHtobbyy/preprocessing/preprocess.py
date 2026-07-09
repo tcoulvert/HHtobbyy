@@ -296,8 +296,6 @@ def make_mc(sim_eras: dict):
     
     # Pull MC sample dir_list
     get_files(sim_eras)
-    sim_eras = {list(sim_eras.keys())[0]: [sim_eras[list(sim_eras.keys())[0]][0]]}
-    print(sim_eras)
     
     # Perform the variable calculation and merging
     if CONDOR:
@@ -347,8 +345,8 @@ if __name__ == '__main__':
     } if len(SIM_ERAS) > 0 else None
     make_mc(sim_eras)
 
-    # data_eras = {
-    #     os.path.join(era, ''): list() for era in DATA_ERAS
-    # } if len(DATA_ERAS) > 0 else None
-    # make_data(data_eras)
+    data_eras = {
+        os.path.join(era, ''): list() for era in DATA_ERAS
+    } if len(DATA_ERAS) > 0 else None
+    make_data(data_eras)
 
