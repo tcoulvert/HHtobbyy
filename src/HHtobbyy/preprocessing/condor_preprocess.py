@@ -30,11 +30,12 @@ class LPCVanillaSubmitter:
     def __init__(
         self,
         era_filepaths: dict[str, list[tuple[str, str]]], datatype: str,
-        queue="longlunch", memory="8GB", force=False, location: str='lpc'
+        queue="longlunch", memory="8GB", force=False, location: str='lpc', dry_run: bool=False
     ):
         self.queue = queue
         self.memory = memory
         self.force = force
+        self.dry_run = dry_run
         
         self.git_repo = (
             subprocess.Popen(["git", "rev-parse", "--show-toplevel"], stdout=subprocess.PIPE)
@@ -57,6 +58,10 @@ class LPCVanillaSubmitter:
                     (infilepath, outfilepath) for infilepath, outfilepath in era_filepaths[era]
                     if not eos.file_exists_eos(outfilepath)
                 ]
+        print('jobs to submit')
+        for era, filepaths in era_filepaths.items():
+            for infilepath, outfilepath in filepaths:
+                print(infilepath, '\n  ->  ', outfilepath)
 
         # Get proxy information (required in executable script for this method of running)
         try:
@@ -190,6 +195,8 @@ class LPCVanillaSubmitter:
         """
         A method to submit all the jobs in the jobs_dir to the cluster
         """
+        if self.dry_run:
+            print('Not submitting dry-run'); return
         # commit and push to gitrepo
         self.update_git()
 

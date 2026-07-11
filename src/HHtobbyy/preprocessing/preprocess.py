@@ -76,6 +76,11 @@ parser.add_argument(
     default="lpc",
     help="Location for condor submission (if different than LPC)"
 )
+parser.add_argument(
+    "--dry_run", 
+    action="store_true",
+    help="Boolean flag to run only do dry condor run"
+)
 
 ################################
 
@@ -91,6 +96,7 @@ CONDOR = False
 QUEUE = "longlunch"
 MEMORY = "8GB"
 LOCATION = "lpc"
+DRY_RUN = False
 
 BAD_DIRS = {'outdated', 'allData'}
 END_FILEPATHS = ["merged.parquet", "Rescaled.parquet"]
@@ -337,6 +343,7 @@ if __name__ == '__main__':
     QUEUE = args.queue
     MEMORY = args.memory
     LOCATION = args.location
+    DRY_RUN = args.dry_run
 
     SIM_ERAS, DATA_ERAS = get_era_filepaths(INPUT_ERAS, split_data_mc_eras=True)
 
