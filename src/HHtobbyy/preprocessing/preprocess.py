@@ -68,7 +68,7 @@ parser.add_argument(
 )
 parser.add_argument(
     "--memory", 
-    default="4GB",
+    default="8GB",
     help="Memory to request for condor submission"
 )
 parser.add_argument(
@@ -89,7 +89,7 @@ FORCE = False
 RUN_ALL_MC = False
 CONDOR = False
 QUEUE = "longlunch"
-MEMORY = "4GB"
+MEMORY = "8GB"
 LOCATION = "lpc"
 
 BAD_DIRS = {'outdated', 'allData'}
