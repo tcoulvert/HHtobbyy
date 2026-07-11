@@ -39,9 +39,9 @@ boosted_fjmass_corr = {
 }
 
 NUM_FATJETS = 4
-PREFACTORS = ['Res', 'Res_DNNpair']
+PREFACTORS = ['Res']
 SELECTION_VARIATIONS = {
-    'Boost': ['pt > 250', 'particleNet_XbbVsQCD > 0.4', 'globalParT3_XbbVsQCD > 0.6', 'genMatched_Hbb > 0', 'eta <= 2.4'],
+    # 'Boost': ['pt > 250', 'particleNet_XbbVsQCD > 0.4', 'globalParT3_XbbVsQCD > 0.6', 'genMatched_Hbb > 0', 'eta <= 2.4'],
     'SnT_Boost': ['pt > 300', 'tau21 < 0.75', 'msoftdrop > 30', 'particleNet_XbbVsQCD > 0.4', 'globalParT3_XbbVsQCD > 0.6', 'genMatched_Hbb > 0', 'eta <= 2.4']
 }
 

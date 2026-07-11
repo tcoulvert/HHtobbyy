@@ -38,13 +38,13 @@ PREFACTORS = ['nonResReg_vbfpair']
 ################################
 
 
-def fix_UParT_field(sample, prefactor='nonRes'):
+def fix_UParT_field(sample, prefactor):
     for bjet_type in ['lead', 'sublead']:
         if f"{prefactor}{bjet_type}_bjet_btagUParTAK4B" in sample.fields:
             sample[f"{prefactor}_{bjet_type}_bjet_btagUParTAK4B"] = sample[f"{prefactor}{bjet_type}_bjet_btagUParTAK4B"]
 
 # Variables to add for resolved training
-def add_bTagWP_resolved(sample, era, prefactor='nonRes'):
+def add_bTagWP_resolved(sample, era, prefactor):
     bTagVar, WP_dict = resolved_bTagWPs[match_sample(era, resolved_bTagWPs.keys())]
     
     for bjet_type in ['lead', 'sublead']:
@@ -54,7 +54,7 @@ def add_bTagWP_resolved(sample, era, prefactor='nonRes'):
             elif i == 0: sample[f"{prefactor}_{bjet_type}_bjet_bTagWP"] = ak.zeros_like(sample["pt"])
             sample[f"{prefactor}_{bjet_type}_bjet_bTagWP"] = ak.where(sample[f"{prefactor}_{bjet_type}_bjet_{bTagVar}"] > WP, i+1, sample[f"{prefactor}_{bjet_type}_bjet_bTagWP"])
 
-def jet_mask(sample, i, prefactor='nonRes'):
+def jet_mask(sample, i, prefactor):
     return (
         ak.where(
             sample[f'{prefactor}_lead_bjet_jet_idx'] != i, True, False
@@ -63,7 +63,7 @@ def jet_mask(sample, i, prefactor='nonRes'):
         ) & ak.where(sample[f'jet{i}_mass'] != FILL_VALUE, True, False)
     )
 
-def zh_isr_jet(sample, dijet_4mom, jet_4moms, prefactor='nonRes'):
+def zh_isr_jet(sample, dijet_4mom, jet_4moms, prefactor):
     min_total_pt = ak.Array([FILL_VALUE for _ in range(ak.num(sample['event'], axis=0))])
     isr_jet_4mom = copy.deepcopy(jet_4moms['jet1_4mom'])
 
@@ -83,7 +83,7 @@ def zh_isr_jet(sample, dijet_4mom, jet_4moms, prefactor='nonRes'):
         )
     return isr_jet_4mom, (min_total_pt != FILL_VALUE)
 
-def max_nonbjet_btag(sample, era, prefactor='nonRes'):
+def max_nonbjet_btag(sample, era, prefactor):
     bTagVar, _ = resolved_bTagWPs[match_sample(era, resolved_bTagWPs.keys())]
     max_btag_score = ak.Array([0. for _ in range(ak.num(sample['event'], axis=0))])
 
@@ -183,7 +183,7 @@ def add_vars_resolved(sample, filepath):
         )
 
         # ISR-like jet variables
-        isr_jet_4mom, isr_jet_bool = zh_isr_jet(sample, dijet_4mom, jet_4moms)
+        isr_jet_4mom, isr_jet_bool = zh_isr_jet(sample, dijet_4mom, jet_4moms, prefactor=prefactor)
         sample[f'{prefactor}_isr_jet_pt'] = ak.where(  # pt of isr jet
             isr_jet_bool & good_bjets['dijet'], 
             isr_jet_4mom.pt, 

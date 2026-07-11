@@ -258,7 +258,11 @@ def make_dataset(infilepath, outfilepath, era, datatype='MC'):
     eos_infilepath = eos.load_file_eos(infilepath, timeout=2400)
     pq_file = pq.ParquetFile(eos_infilepath)
     schema = pq.read_schema(eos_infilepath)
-    columns = [field for field in schema.names]
+    columns = [
+        field for field in schema.names 
+        if (field.startswith('Res') and not field.startswith('Res_DNNpair')) or field.startswith('nonResReg_vbfpair')
+        or not any(field.startswith(prefactor) for prefactor in ["Res", "Res_DNNpair", "nonRes", "nonResReg", "nonResReg_DNNpair", "nonResReg_vbfpair"])
+    ]
 
     eos_outfilepath = eos.save_file_eos(outfilepath, force=True, timeout=2400)
     pq_writer = None
@@ -305,7 +309,7 @@ def make_mc(sim_eras: dict):
     
     # Perform the variable calculation and merging
     if CONDOR:
-        mc_sub = LPCVanillaSubmitter(sim_eras, 'MC', queue=QUEUE, memory=MEMORY, force=FORCE, location=LOCATION)
+        mc_sub = LPCVanillaSubmitter(sim_eras, 'MC', queue=QUEUE, memory=MEMORY, force=FORCE, location=LOCATION, dry_run=DRY_RUN)
         mc_sub.submit()
     else:
         for sim_era, filepaths in sim_eras.items():
@@ -324,7 +328,7 @@ def make_data(data_eras: dict):
 
     # Perform the variable calculation and merging
     if CONDOR:
-        data_sub = LPCVanillaSubmitter(data_eras, 'Data', queue=QUEUE, memory=MEMORY, force=FORCE, location=LOCATION)
+        data_sub = LPCVanillaSubmitter(data_eras, 'Data', queue=QUEUE, memory=MEMORY, force=FORCE, location=LOCATION, dry_run=DRY_RUN)
         data_sub.submit()
     else:
         for data_era, filepaths in data_eras.items():
