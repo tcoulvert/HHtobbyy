@@ -307,15 +307,15 @@ def make_mc(sim_eras: dict):
     # Pull MC sample dir_list
     get_files(sim_eras)
     
-    # Perform the variable calculation and merging
-    if CONDOR:
-        mc_sub = LPCVanillaSubmitter(sim_eras, 'MC', queue=QUEUE, memory=MEMORY, force=FORCE, location=LOCATION, dry_run=DRY_RUN)
-        mc_sub.submit()
-    else:
-        for sim_era, filepaths in sim_eras.items():
-            for infilepath, outfilepath in filepaths:
-                if match_sample(infilepath, {'_up/', '_down/'}) is not None: continue
-                make_dataset(infilepath, outfilepath, sim_era)
+    # # Perform the variable calculation and merging
+    # if CONDOR:
+    #     mc_sub = LPCVanillaSubmitter(sim_eras, 'MC', queue=QUEUE, memory=MEMORY, force=FORCE, location=LOCATION, dry_run=DRY_RUN)
+    #     mc_sub.submit()
+    # else:
+    #     for sim_era, filepaths in sim_eras.items():
+    #         for infilepath, outfilepath in filepaths:
+    #             if match_sample(infilepath, {'_up/', '_down/'}) is not None: continue
+    #             make_dataset(infilepath, outfilepath, sim_era)
 
 def make_data(data_eras: dict):
     if data_eras is None:
@@ -356,8 +356,8 @@ if __name__ == '__main__':
     } if len(SIM_ERAS) > 0 else None
     make_mc(sim_eras)
 
-    data_eras = {
-        os.path.join(era, ''): list() for era in DATA_ERAS
-    } if len(DATA_ERAS) > 0 else None
-    make_data(data_eras)
+    # data_eras = {
+    #     os.path.join(era, ''): list() for era in DATA_ERAS
+    # } if len(DATA_ERAS) > 0 else None
+    # make_data(data_eras)
 
