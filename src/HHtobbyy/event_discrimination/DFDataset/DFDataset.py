@@ -182,10 +182,6 @@ class DFDataset:
             with open(eos_filepath, 'w') as f: json.dump(self.__dict__, f)
             eos.delete_lockfile(eos_filepath)
 
-        # process pc variables for fast pyarrow dataset loading
-        self.process_presel_filter()
-        self.process_var_map()
-
         # lambda func to map filepath to class idx for readability
         self.class_idx = lambda filepath: map_filepath_to_class(self.class_sample_map, sub_filepath(filepath, self.base_filepath))
         self.out_filepath = lambda in_filepath, fold, dataset: make_output_filepath(sub_filepath(in_filepath, self.base_filepath), self.output_dirpath, f"{dataset}{fold}")
@@ -194,7 +190,7 @@ class DFDataset:
         config_filepath = os.path.join(self.output_dirpath, self.config_filename)
         return eos.file_exists_eos(config_filepath)
     
-    def process_presel_filter(self):
+    def process_presel_filter(self, str_filter):
         """
         Processes input presel_filter in config (needs to be JSON serializable) to pyarrow.dataset.Expression format.
         Expected format is list[list[list]], detailed below:
@@ -202,39 +198,39 @@ class DFDataset:
          - list[list]: logical-and of the list cuts
          - list[list[list]]: logical-or of complex and-ed cuts
         """
+        if str_filter is None: return str_filter
         ops = {
             '<': operator.lt, '<=': operator.le, '==': operator.eq, '>=': operator.ge, '>': operator.gt
         }
-        if self.presel_filter is None: return
-        else:
-            assert type(self.presel_filter) is list, f"Input presel_filter needs to be of type list[list[list]]"
-            ored_filter = None
-            for or_list in self.presel_filter:
-                assert type(or_list) is list, f"Input presel_filter needs to be of type list[list[list]]"
-                anded_filter = None
-                for and_tuple in or_list:
-                    assert type(and_tuple) is list, f"Input presel_filter needs to be of type list[list[list]]"
-                    if type(and_tuple[2]) is int: exp = ops[and_tuple[1]](ds.field(and_tuple[0]).cast(pa.int16()), and_tuple[2])
-                    elif type(and_tuple[2]) is float: exp = ops[and_tuple[1]](ds.field(and_tuple[0]).cast(pa.float32()), and_tuple[2])
-                    elif type(and_tuple[2]) is str: exp = ops[and_tuple[1]](ds.field(and_tuple[0]).cast(pa.string()), and_tuple[2])
-                    else: raise Exception(f"Input comparison ({and_tuple[1]}) or cut ({and_tuple[2]}) not implemented, allowed options are: \'<, <=, ==, >=, >\' for the comparison and \'int, float, str\' for the cut")
-                    if anded_filter is None: anded_filter = exp
-                    else: anded_filter = (anded_filter & exp)
-                if ored_filter is None: ored_filter = anded_filter
-                else: ored_filter = (ored_filter | anded_filter)
-            self.presel_filter = ored_filter
+        assert type(str_filter) is list, f"Input presel_filter needs to be of type list[list[list]]"
+        ored_filter = None
+        for or_list in str_filter:
+            assert type(or_list) is list, f"Input presel_filter needs to be of type list[list[list]]"
+            anded_filter = None
+            for and_tuple in or_list:
+                assert type(and_tuple) is list, f"Input presel_filter needs to be of type list[list[list]]"
+                if type(and_tuple[2]) is int: exp = ops[and_tuple[1]](ds.field(and_tuple[0]).cast(pa.int16()), and_tuple[2])
+                elif type(and_tuple[2]) is float: exp = ops[and_tuple[1]](ds.field(and_tuple[0]).cast(pa.float32()), and_tuple[2])
+                elif type(and_tuple[2]) is str: exp = ops[and_tuple[1]](ds.field(and_tuple[0]).cast(pa.string()), and_tuple[2])
+                else: raise Exception(f"Input comparison ({and_tuple[1]}) or cut ({and_tuple[2]}) not implemented, allowed options are: \'<, <=, ==, >=, >\' for the comparison and \'int, float, str\' for the cut")
+                if anded_filter is None: anded_filter = exp
+                else: anded_filter = (anded_filter & exp)
+            if ored_filter is None: ored_filter = anded_filter
+            else: ored_filter = (ored_filter | anded_filter)
+        return ored_filter
 
-    def process_var_map(self):
+    def process_var_map(self, var_map, allowed_cols: None|list[str]):
         """
-        Processes all_vars_map for passing to dataset as columns.
+        Processes vars_map for passing to dataset as columns.
         Expected format is dict[str: str], detailed below:
          - key[str]: final column name
          - value[str]: initial column name
         """
-        pc_all_vars = {}
-        for final_col, init_col in self.all_vars_map.items():
-            pc_all_vars[final_col] = pc.field(init_col)
-        self.all_vars_map = pc_all_vars
+        if var_map is None: return var_map
+        return {
+            final_col: pc.field(init_col) for final_col, init_col in var_map.items()
+            if allowed_cols is None or init_col in allowed_cols
+        }
 
     #############################################################
     # Event masking
@@ -330,6 +326,9 @@ class DFDataset:
     def add_vars(self, df: pd.DataFrame, class_idx: int, accumulation: dict):
         df[f'{self.aux_var_prefix}label1D'] = class_idx
 
+        add_proc_info()
+        df.join(add_resolved_vars())
+
         # Reweighting eventWeight if improperly preprocessed
         self.sample_reweighting(df, self.test_sample_reweighting, f'{self.aux_var_prefix}{self.event_weight_var}')
 
@@ -398,8 +397,9 @@ class DFDataset:
         self.compute_standardization(fold, accumulation)
 
         for filepath in filepaths:
-            batched_writer(self.get_df_iter, filepath, self.out_filepath(filepath, fold, 'train'))(self.make_df)(
-                fold, self.class_idx(filepath), self.train_mask, accumulation=accumulation,
+            out_filepath = self.out_filepath(filepath, fold, 'train')
+            batched_writer(self.get_df_iter, filepath, out_filepath)(self.make_df)(
+                out_filepath, fold, self.class_idx(filepath), self.train_mask, accumulation=accumulation,
                 columns=self.all_vars_map, filter=self.presel_filter, **kwargs
             )
             
@@ -420,9 +420,17 @@ class DFDataset:
     
     #############################################################
     # Retrieving
-    def get_df_iter(self, filepath: str, batch_size: int=131_072, columns: None|list[str]=None, filter: None|ds.Expression=None, **kwargs):
+    def get_df_iter(
+        self, filepath: str, batch_size: int=131_072, 
+        columns: None|dict[str, str]=None, filter: None|list[list[list[str, str, float]]]=None, 
+        missing_cols_ok: bool=False, **kwargs
+    ):
         dataset = ds.dataset(filepath, format="parquet")
-        return dataset.to_batches(batch_size=batch_size, columns=columns, filter=filter)
+        return dataset.to_batches(
+            batch_size=batch_size, 
+            columns=self.process_var_map(columns, allowed_cols=dataset.schema.names if missing_cols_ok else None), 
+            filter=self.process_presel_filter(filter)
+        )
     
     def get_all_train(self, syst_name: str='nominal', shuffle: bool=True, **kwargs):
         dfs = []
