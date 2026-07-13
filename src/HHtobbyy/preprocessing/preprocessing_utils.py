@@ -76,5 +76,5 @@ def match_sample_lumi(filepath: str, luminosities: dict):
 
 def match_sample_era(era: str, era_basestr: str='Run[1-3]_20'):
     match = re.search(era_basestr, era)
-    if match is not None: return era[match.start():-1]
+    if match is not None: return '/'.join(era[match.start():-1].split('/')[:2])
     else: return era

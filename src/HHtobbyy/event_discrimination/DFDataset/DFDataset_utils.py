@@ -38,7 +38,7 @@ def logzscore(masked_x: np.ma.MaskedArray, column: str, no_std_regexs: list, log
 
 #############################################################
 # Process train/test split
-def equalProc_train_test_split(df: pd.DataFrame, train_size: float|None=None, test_size: float|None=None, random_state: int|None=None, shuffle: bool=True, stratify: object|None=None):
+def equalProc(df: pd.DataFrame, train_size: float|None=None, test_size: float|None=None, random_state: int|None=None, shuffle: bool=True, stratify: object|None=None):
     sample_name_col = match_regex('sample_name', df.columns)
     unique_procs = pd.unique(df[sample_name_col])
 

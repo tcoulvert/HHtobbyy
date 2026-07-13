@@ -35,6 +35,12 @@ parser.add_argument(
     help="Types of models currently implemented"
 )
 parser.add_argument(
+    "--batch_size", 
+    type=int,
+    default=16_448,
+    help="Batch size for batched loading/writing"
+)
+parser.add_argument(
     "--eras", 
     type=str,
     default='',
@@ -97,4 +103,4 @@ if __name__ == "__main__":
             regex="*.parquet"
         )
 
-    main(dfdataset, model, filepaths)
+    main(dfdataset, model, filepaths, batch_size=args.batch_size)

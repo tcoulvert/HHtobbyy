@@ -120,27 +120,28 @@ sample_era_reweighting = {
 ################################
 
 
-def add_basic_info(df: pd.DataFrame, filepath):
+def add_basic_info(df: pd.DataFrame, filepath, aux_var_prefix: str):
     if '/sim/' in filepath: datatype = 'MC'
     elif '/data/' in filepath: datatype = 'Data'  
     else: raise Exception(f"Expecting \'sim\' or \'data\' in filepath, unclear what type of sample is input")
 
     # Add useful parquet meta-info
-    df['sample_name'] = match_sample_name(filepath, xs_name_map)
-    df['sample_era'] = match_sample_era(filepath)
+    df[f"{aux_var_prefix}sample_name"] = match_sample_name(filepath, xs_name_map)
+    df[f"{aux_var_prefix}sample_era"] = match_sample_era(filepath)
+    print(filepath)
     print(f"{match_sample_era(filepath)}: {match_sample_name(filepath, xs_name_map)}")
 
     if datatype.upper() == 'MC':
         print(f"lumi match = {match_sample(filepath, luminosities.keys())}: {match_sample_lumi(filepath, luminosities)}")
         print(f"xs match = {match_sample(filepath, xs_name_map.keys())}: {match_sample_xs(filepath, xs_name_map):.4f}")
 
-        df['eventWeight'] = df['weight'] * match_sample_lumi(filepath, luminosities) * match_sample_xs(filepath, xs_name_map)
-        if match_sample_name(filepath, xs_name_map) == 'DDQCDGJets': df['eventWeight'] = df['weight']
+        df[f"{aux_var_prefix}eventWeight"] = df[f"{aux_var_prefix}weight"] * match_sample_lumi(filepath, luminosities) * match_sample_xs(filepath, xs_name_map)
+        if match_sample_name(filepath, xs_name_map) == 'DDQCDGJets': df[f"{aux_var_prefix}eventWeight"] = df[f"{aux_var_prefix}weight"]
         
-        df['eventWeight'] = df['eventWeight'] * sample_era_reweighting[match_sample(filepath, sample_era_reweighting.keys())]
+        df[f"{aux_var_prefix}eventWeight"] = df[f"{aux_var_prefix}eventWeight"] * sample_era_reweighting[match_sample(filepath, sample_era_reweighting.keys())]
     else: 
-        df['weight'] =  np.ones(len(df))
-        df['eventWeight'] = np.ones(len(df))
+        df[f"{aux_var_prefix}weight"] =  np.ones(len(df))
+        df[f"{aux_var_prefix}eventWeight"] = np.ones(len(df))
 
-    if 'hash' not in df.columns:
-        df['hash'] = np.arange(len(df))
+    if f"{aux_var_prefix}hash" not in df.columns:
+        df[f"{aux_var_prefix}hash"] = np.arange(len(df))

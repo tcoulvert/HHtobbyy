@@ -169,11 +169,12 @@ class DFDataset:
                 setattr(self, key, sorted(value) if type(value) is list and self.sort_inputs else value)
 
         # All variables
-        self.all_vars_map = {
+        self.final_vars_map = {
             model_var.replace('<prefactor>', self.prefactor): model_var.replace('<prefactor>', self.prefactor) for model_var in self.model_vars
         } | {
             self.aux_var_prefix + aux_var.replace('<prefactor>', self.prefactor): aux_var.replace('<prefactor>', self.prefactor) for aux_var in self.aux_vars
-        } | {
+        }
+        self.all_vars_map = self.final_vars_map | {
             inter_var.replace('<prefactor>', self.prefactor): inter_var.replace('<prefactor>', self.prefactor) for inter_var in self.inter_vars
         }
 
@@ -194,7 +195,7 @@ class DFDataset:
     def class_idx(self, filepath: str):
         return dfutils.map_filepath_to_class(self.class_sample_map, sub_filepath(filepath, self.base_filepath))
     def out_filepath(self, in_filepath: str, fold: int, dataset: str):
-        dfutils.make_output_filepath(sub_filepath(in_filepath, self.base_filepath), self.output_dirpath, f"{dataset}{fold}")
+        return dfutils.make_output_filepath(sub_filepath(in_filepath, self.base_filepath), self.output_dirpath, f"{dataset}{fold}")
 
     def check_output_dirpath(self):
         config_filepath = os.path.join(self.output_dirpath, self.config_filename)
@@ -247,7 +248,7 @@ class DFDataset:
     def train_mask(self, df: pd.DataFrame, fold: int, accumulation: dict={}, **kwargs):
         if self.n_folds > 1: mask = np.asarray(df[f'{self.aux_var_prefix}event'].mod(self.n_folds).ne(fold), dtype=bool)
         else: mask = np.ones(len(df), dtype=bool)
-        return np.logical_and(mask, self.over_under_sample(df, accumulation))
+        return mask
     def test_mask(self, df: pd.DataFrame, fold: int, **kwargs):
         return np.asarray(df[f'{self.aux_var_prefix}event'].mod(self.n_folds).eq(fold), dtype=bool)
     
@@ -257,7 +258,8 @@ class DFDataset:
     def make_df(self, df: pd.DataFrame, filepath: str, fold: int, class_idx: int, mask_func, accumulation: dict={}, **kwargs):
         mask = mask_func(df, fold, accumulation=accumulation, **kwargs)
         df = df.loc[mask].reset_index(drop=True)
-        df = self.add_vars(df, filepath, class_idx, accumulation)
+        self.add_vars(df, filepath, class_idx, accumulation)
+        df = self.over_under_sample(df, accumulation)
         self.apply_standardization(df, fold)
         self.remove_inter_vars(df)
         self.good_df(df)
@@ -266,7 +268,8 @@ class DFDataset:
     def accumulate_dataset(self, df: pd.DataFrame, filepath: str, fold: int, class_idx: int, accumulation: dict, **kwargs):
         mask = self.train_mask(df, fold)
         df = df.loc[mask].reset_index(drop=True)
-        df = self.add_vars(df, filepath, class_idx, {})
+        self.add_vars(df, filepath, class_idx, {})
+        df = self.over_under_sample(df, {})
 
         # accumulate E[X], E[X^2], and N for z-score-like standardization
         for model_var in self.model_vars:
@@ -276,7 +279,7 @@ class DFDataset:
                 np.ma.array(df[model_var], mask=(df[model_var] == self.fill_value)), model_var,
                 self.nostd_regexes, self.logstd_regexes
             )
-            df_accumulation_col = {'exp_x': masked_col.sum(), 'exp_xsq': np.ma.power(masked_col).sum(), 'N': masked_col.count()}
+            df_accumulation_col = {'exp_x': masked_col.sum(), 'exp_xsq': np.ma.power(masked_col, 2).sum(), 'N': masked_col.count()}
             accumulation[self.standardization_method+model_var] = {
                 key: sum(pair) for key, pair in zip(
                     accumulation[self.standardization_method+model_var].keys(), 
@@ -288,7 +291,7 @@ class DFDataset:
         df_proc = df[f'{self.aux_var_prefix}{self.sample_var}'][0]
         if self.event_weight_var+df_proc not in accumulation.keys(): 
             accumulation[self.event_weight_var+df_proc] = {'sum': 0., 'N': 0}
-        masked_weight = np.ma.array(df[self.event_weight_var], mask=(df[self.event_weight_var] == self.fill_value))
+        masked_weight = np.ma.array(df[self.aux_var_prefix+self.event_weight_var], mask=(df[self.aux_var_prefix+self.event_weight_var] == self.fill_value))
         df_accumulation_class = {'sum': masked_weight.sum(), 'N': masked_weight.count()}
         accumulation[self.event_weight_var+df_proc] = {
             key: sum(pair) for key, pair in zip(
@@ -301,7 +304,7 @@ class DFDataset:
         df_classTag = list(self.class_sample_map.keys())[df[f'{self.aux_var_prefix}label1D'][0]]
         if self.event_weight_var+df_classTag not in accumulation.keys(): 
             accumulation[self.event_weight_var+df_classTag] = {'sum': 0., 'N': 0}
-        masked_weight = np.ma.array(df[self.event_weight_var], mask=(df[self.event_weight_var] == self.fill_value))
+        masked_weight = np.ma.array(df[self.aux_var_prefix+self.event_weight_var], mask=(df[self.aux_var_prefix+self.event_weight_var] == self.fill_value))
         df_accumulation_class = {'sum': masked_weight.sum(), 'N': masked_weight.count()}
         accumulation[self.event_weight_var+df_classTag] = {
             key: sum(pair) for key, pair in zip(
@@ -312,7 +315,7 @@ class DFDataset:
         
     def good_df(self, df: pd.DataFrame):
         assert not df.isnull().values.any(), f"ERROR: DFDataset contains NaN values, something likely went wrong with the DF mergings"
-        assert set(self.all_vars_map.keys()).issubset(set(df.columns)), f"ERROR: DFDataset missing necessary columns: {set(self.all_vars_map.keys()) - set(df.columns)}"
+        assert set(self.final_vars_map.keys()).issubset(set(df.columns)), f"ERROR: DFDataset missing necessary columns: {set(self.final_vars_map.keys()) - set(df.columns)}"
 
     #############################################################
     # Additional variables
@@ -338,8 +341,8 @@ class DFDataset:
     def add_vars(self, df: pd.DataFrame, filepath: str, class_idx: int, accumulation: dict):
         df[f'{self.aux_var_prefix}label1D'] = class_idx
 
-        df = pd.concat([df, preproc.add_basic_info(df, filepath)], ignore_index=True, axis=1)
-        df = pd.concat([df, getattr(preproc, self.build_vars_func)(df, filepath, self.prefactor)], ignore_index=True, axis=1)
+        preproc.add_basic_info(df, sub_filepath(filepath, self.base_filepath), self.aux_var_prefix)
+        getattr(preproc, self.build_vars_func)(df, sub_filepath(filepath, self.base_filepath), self.prefactor, self.aux_var_prefix)
 
         # Reweighting eventWeight if improperly preprocessed
         self.sample_reweighting(df, self.test_sample_reweighting, f'{self.aux_var_prefix}{self.event_weight_var}')
@@ -349,7 +352,6 @@ class DFDataset:
         self.sample_reweighting(df, self.train_sample_reweighting, f'{self.aux_var_prefix}{self.event_weight_var}Train')
         if accumulation != {}:
             self.class_reweighting(df, self.train_class_reweighting, f'{self.aux_var_prefix}{self.event_weight_var}Train', accumulation)
-        return df
 
     def remove_inter_vars(self, df: pd.DataFrame):
         df.drop(self.inter_vars)
@@ -380,22 +382,20 @@ class DFDataset:
         for model_var, mean, std in zip(stddict['col'], stddict['mean'], stddict['std']):
             if self.standardization_method == 'nostd': applyfunc = 'identity'
             else: applyfunc = self.standardization_method
-            masked_col = globals()[applyfunc](np.ma.array(df[model_var], mask=(df[model_var] == self.fill_value)), model_var)
+            masked_col = getattr(dfutils, applyfunc)(np.ma.array(df[model_var], mask=(df[model_var] == self.fill_value)), model_var)
             masked_col = (masked_col - mean) / std
             df[model_var] = masked_col.filled(self.refill_value)
 
     #############################################################
     # Oversample/Undersample for training
     def over_under_sample(self, df: pd.DataFrame, accumulation: dict):
-        if self.overundersample_train_per_proc == 'none' and self.undersample_train_per_proc == 'none': return
-        else: globals(self.overundersample_train_per_proc)(df, accumulation, self.seed)
+        if self.overundersample_train_per_proc == 'none': return df
+        else: return getattr(dfutils, self.overundersample_train_per_proc)(df, accumulation, self.seed)
 
     #############################################################
     # Train/Val splitting
     def train_val_split(self):
-        if self.train_val_split_method == 'scikit': return train_test_split
-        elif self.train_val_split_method == 'equalProc': return dfutils.equalProc_train_test_split
-        else: raise NotImplementedError(f"Train/Val split method not yet implemented, use \'scikit\'.")
+        return getattr(dfutils, self.train_val_split_method)
 
 
     #############################################################
