@@ -264,7 +264,7 @@ class DFDataset:
         self.add_vars(df, filepath, class_idx, accumulation)
         df = self.over_under_sample(df, accumulation)
         self.apply_standardization(df, fold)
-        self.remove_inter_vars(df)
+        df = self.remove_inter_vars(df)
         self.good_df(df)
         return df
     
@@ -291,7 +291,6 @@ class DFDataset:
             }
 
         # accumulate sum of processes for re-sampling
-        print(df[f'{self.aux_var_prefix}{self.sample_var}'])
         df_proc = df[f'{self.aux_var_prefix}{self.sample_var}'][0]
         if self.event_weight_var+df_proc not in accumulation.keys(): 
             accumulation[self.event_weight_var+df_proc] = {'sum': 0., 'N': 0}
@@ -305,7 +304,6 @@ class DFDataset:
         }
 
         # accumulate sum of classes for class-standardization
-        print(df[f'{self.aux_var_prefix}label1D'])
         df_classTag = list(self.class_sample_map.keys())[df[f'{self.aux_var_prefix}label1D'][0]]
         if self.event_weight_var+df_classTag not in accumulation.keys(): 
             accumulation[self.event_weight_var+df_classTag] = {'sum': 0., 'N': 0}
@@ -359,7 +357,9 @@ class DFDataset:
             self.class_reweighting(df, self.train_class_reweighting, f'{self.aux_var_prefix}{self.event_weight_var}Train', accumulation)
 
     def remove_inter_vars(self, df: pd.DataFrame):
-        df.drop(columns=self.inter_vars)
+        df = df.drop(columns=self.inter_vars, errors='ignore')
+        df = df.reindex(columns=[col for col in df.columns if not col.startswith(self.aux_var_prefix)]+[col for col in df.columns if col.startswith(self.aux_var_prefix)])
+        return df
 
 
     #############################################################
