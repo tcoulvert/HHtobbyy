@@ -1,106 +1,14 @@
-# Stdlib packages
-import argparse
-import logging
-import os
-
 # Common Py packages
 import numpy as np
+import pandas as pd
 
-# HEP packages
-import awkward as ak
-import eos_utils as eos
-import pyarrow.parquet as pq
-import vector as vec
-
-# Workspace packages
-from HHtobbyy.preprocessing.resolved_preprocessing import add_vars_resolved
-from HHtobbyy.preprocessing.boosted_preprocessing import add_vars_boosted
 from HHtobbyy.preprocessing.preprocessing_utils import (
-    match_sample_name, match_sample_xs, match_sample_lumi, match_sample_era, get_output_filepath, has_magic_bytes
+    match_sample_name, match_sample_xs, match_sample_lumi, match_sample_era
 )
-from HHtobbyy.preprocessing import LPCVanillaSubmitter
-from HHtobbyy.workspace_utils.retrieval_utils import match_sample, get_era_filepaths
+from HHtobbyy.workspace_utils.retrieval_utils import match_sample
 
 ################################
 
-
-logger = logging.getLogger(__name__)
-parser = argparse.ArgumentParser(description="Preprocess data to add necessary BDT variables.")
-parser.add_argument(
-    "input_eras",
-    help="File for input eras to run processing"
-)
-parser.add_argument(
-    "--output_dirpath", 
-    default=None,
-    help="Full infilepath on LPC for output to be dumped, default is for each new file to be adjacent to input files, but with slightly changed filenames."
-)
-parser.add_argument(
-    "--base_filepath", 
-    default='Run._20..',
-    help="Regex string for splitting infilepath if using a new output_dirpath"
-)
-parser.add_argument(
-    "--batch_size", 
-    type=int,
-    default=16_384,
-    help="Batch size for batch reading/writing of parquets"
-)
-parser.add_argument(
-    "--force", 
-    action="store_true",
-    help="Boolean flag to rerun processing on files that already exist, defaults to only running on files that haven't been run"
-)
-parser.add_argument(
-    "--run_all_mc", 
-    action="store_true",
-    help="Boolean flag to run processing on all MC files, defaults to only running files matching keys in `cross_sections` dict"
-)
-parser.add_argument(
-    "--condor", 
-    action="store_true",
-    help="Boolean flag to run processing using condor"
-)
-parser.add_argument(
-    "--queue", 
-    default="longlunch",
-    help="Queue to request for condor submission"
-)
-parser.add_argument(
-    "--memory", 
-    default="8GB",
-    help="Memory to request for condor submission"
-)
-parser.add_argument(
-    "--location", 
-    default="lpc",
-    help="Location for condor submission (if different than LPC)"
-)
-parser.add_argument(
-    "--dry_run", 
-    action="store_true",
-    help="Boolean flag to run only do dry condor run"
-)
-
-################################
-
-
-vec.register_awkward()
-
-OUTPUT_DIRPATH = None
-BASE_FILEPATH = 'Run._20..'
-BATCH_SIZE = 16_384
-FORCE = False
-RUN_ALL_MC = False
-CONDOR = False
-QUEUE = "longlunch"
-MEMORY = "8GB"
-LOCATION = "lpc"
-DRY_RUN = False
-
-BAD_DIRS = {'outdated', 'allData'}
-END_FILEPATHS = ["merged.parquet", "Rescaled.parquet"]
-NEW_END_FILEPATH = "preprocessed.parquet"
 
 # MC Era: total era luminosity [fb^-1] #
 luminosities = {
@@ -212,154 +120,27 @@ sample_era_reweighting = {
 ################################
 
 
-def get_files(eras, datatype='MC'):
-    for era in eras.keys():
-        glob_dirs_set = lambda end_filepath: set(
-            eos.glob_eos(os.path.join(era, "**", f"*{end_filepath}"), recursive=True)
-        )
-        all_dirs_set = set(elem for end_filepath in END_FILEPATHS for elem in glob_dirs_set(end_filepath))
+def add_basic_info(df: pd.DataFrame, filepath):
+    if '/sim/' in filepath: datatype = 'MC'
+    elif '/data/' in filepath: datatype = 'Data'  
+    else: raise Exception(f"Expecting \'sim\' or \'data\' in filepath, unclear what type of sample is input")
 
-        # Remove bad dirs
-        all_dirs_set = set(
-            item for item in all_dirs_set 
-            if match_sample(item, BAD_DIRS) is None
-        )
+    # Add useful parquet meta-info
+    df['sample_name'] = match_sample_name(filepath, xs_name_map)
+    df['sample_era'] = match_sample_era(filepath)
+    print(f"{match_sample_era(filepath)}: {match_sample_name(filepath, xs_name_map)}")
 
-        # Remove already-run files if not forcing re-run
-        ran_files_set = set(
-            parquet_filepath
-            for parquet_filepath in all_dirs_set 
-            if has_magic_bytes(get_output_filepath(parquet_filepath, OUTPUT_DIRPATH, END_FILEPATHS, NEW_END_FILEPATH, BASE_FILEPATH))
-        )
-        if not FORCE:
-            all_dirs_set = set(
-                input_filepath for input_filepath in all_dirs_set 
-                if input_filepath not in ran_files_set
-            )
+    if datatype.upper() == 'MC':
+        print(f"lumi match = {match_sample(filepath, luminosities.keys())}: {match_sample_lumi(filepath, luminosities)}")
+        print(f"xs match = {match_sample(filepath, xs_name_map.keys())}: {match_sample_xs(filepath, xs_name_map):.4f}")
 
-        # Remove non-necessary MC samples
-        if datatype.upper() == 'MC' and not RUN_ALL_MC:
-            all_dirs_set = set(
-                item for item in all_dirs_set 
-                if match_sample(item, xs_name_map.keys()) is not None
-            )
+        df['eventWeight'] = df['weight'] * match_sample_lumi(filepath, luminosities) * match_sample_xs(filepath, xs_name_map)
+        if match_sample_name(filepath, xs_name_map) == 'DDQCDGJets': df['eventWeight'] = df['weight']
+        
+        df['eventWeight'] = df['eventWeight'] * sample_era_reweighting[match_sample(filepath, sample_era_reweighting.keys())]
+    else: 
+        df['weight'] =  np.ones(len(df))
+        df['eventWeight'] = np.ones(len(df))
 
-        infilepaths = sorted(all_dirs_set)
-        outfilepaths = [get_output_filepath(infilepath, OUTPUT_DIRPATH, END_FILEPATHS, NEW_END_FILEPATH, BASE_FILEPATH) for infilepath in infilepaths]
-        eras[era] = list(zip(infilepaths, outfilepaths))    
-    for era, filepaths in eras.items():
-        print(era)
-        print('='*60)
-        for infilepath, outfilepath in filepaths:
-            print('  ', infilepath, '\n    -> ', outfilepath)
-            print()
-
-def make_dataset(infilepath, outfilepath, era, datatype='MC'):
-    print('========================>\n'+'Starting \n', infilepath)
-    eos_infilepath = eos.load_file_eos(infilepath, timeout=2400)
-    pq_file = pq.ParquetFile(eos_infilepath)
-    schema = pq.read_schema(eos_infilepath)
-    columns = [
-        field for field in schema.names 
-        if (field.startswith('Res') and not field.startswith('Res_DNNpair')) or field.startswith('nonResReg_vbfpair')
-        or not any(field.startswith(prefactor) for prefactor in ["Res", "Res_DNNpair", "nonRes", "nonResReg", "nonResReg_DNNpair", "nonResReg_vbfpair"])
-    ]
-
-    eos_outfilepath = eos.save_file_eos(outfilepath, force=True, timeout=2400)
-    pq_writer = None
-    for pq_batch in pq_file.iter_batches(batch_size=BATCH_SIZE, columns=columns):
-        ak_batch = ak.from_arrow(pq_batch)
-
-        # Add useful parquet meta-info
-        ak_batch['sample_name'] = match_sample_name(infilepath, xs_name_map)
-        ak_batch['sample_era'] = match_sample_era(era)
-        print(f"{match_sample_era(era)}: {match_sample_name(infilepath, xs_name_map)}")
-        if datatype.upper() == 'MC':
-            print(f"lumi match = {match_sample(infilepath, luminosities.keys())}: {match_sample_lumi(infilepath, luminosities)}")
-            print(f"xs match = {match_sample(infilepath, xs_name_map.keys())}: {match_sample_xs(infilepath, xs_name_map):.4f}")
-            ak_batch['eventWeight'] = ak_batch['weight'] * match_sample_lumi(infilepath, luminosities) * match_sample_xs(infilepath, xs_name_map)
-            if match_sample_name(infilepath, xs_name_map) == 'DDQCDGJets': ak_batch['eventWeight'] = ak_batch['weight']
-            ak_batch['eventWeight'] = ak_batch['eventWeight'] * sample_era_reweighting[match_sample(infilepath, sample_era_reweighting.keys())]
-        else: 
-            ak_batch['weight'] =  ak.ones_like(ak_batch['pt'])
-            ak_batch['eventWeight'] =  ak.ones_like(ak_batch['pt'])
-
-        print('Adding resolved vars')
-        add_vars_resolved(ak_batch, infilepath)
-        print('Finished resolved vars, adding boosted vars')
-        add_vars_boosted(ak_batch, infilepath)
-        print('Finished boosted vars')
-        if 'hash' not in ak_batch.fields:
-            ak_batch['hash'] = np.arange(ak.num(ak_batch['pt'], axis=0))
-
-        table_batch = ak.to_arrow_table(ak_batch)
-        if pq_writer is None: pq_writer = pq.ParquetWriter(eos_outfilepath, schema=table_batch.schema)
-        pq_writer.write_table(table_batch)
-    if pq_writer is not None: pq_writer.close()
-    eos.delete_lockfile(eos_infilepath); eos.delete_lockfile(eos_outfilepath)
-    print('Finished\n'+'<========================')
-
-def make_mc(sim_eras: dict):
-    if sim_eras is None:
-        logger.log(1, "Not processing any MC files"); return
-    else:
-        logger.log(1, "Beginning MC processing")
-    
-    # Pull MC sample dir_list
-    get_files(sim_eras)
-    
-    # # Perform the variable calculation and merging
-    # if CONDOR:
-    #     mc_sub = LPCVanillaSubmitter(sim_eras, 'MC', queue=QUEUE, memory=MEMORY, force=FORCE, location=LOCATION, dry_run=DRY_RUN)
-    #     mc_sub.submit()
-    # else:
-    #     for sim_era, filepaths in sim_eras.items():
-    #         for infilepath, outfilepath in filepaths:
-    #             if match_sample(infilepath, {'_up/', '_down/'}) is not None: continue
-    #             make_dataset(infilepath, outfilepath, sim_era)
-
-def make_data(data_eras: dict):
-    if data_eras is None:
-        logger.log(1, "Not processing any Data files"); return
-    else:
-        logger.log(1, "Beginning Data processing")
-    
-    # Pull Data sample dir_list
-    get_files(data_eras, datatype='Data')
-
-    # Perform the variable calculation and merging
-    if CONDOR:
-        data_sub = LPCVanillaSubmitter(data_eras, 'Data', queue=QUEUE, memory=MEMORY, force=FORCE, location=LOCATION, dry_run=DRY_RUN)
-        data_sub.submit()
-    else:
-        for data_era, filepaths in data_eras.items():
-            for infilepath, outfilepath in filepaths:
-                make_dataset(infilepath, outfilepath, data_era, datatype='Data')
-
-if __name__ == '__main__':
-    args = parser.parse_args()
-    INPUT_ERAS = args.input_eras
-    OUTPUT_DIRPATH = args.output_dirpath
-    BASE_FILEPATH = args.base_filepath
-    BATCH_SIZE = args.batch_size
-    FORCE = args.force
-    RUN_ALL_MC = args.run_all_mc
-    CONDOR = args.condor
-    QUEUE = args.queue
-    MEMORY = args.memory
-    LOCATION = args.location
-    DRY_RUN = args.dry_run
-
-    SIM_ERAS, DATA_ERAS = get_era_filepaths(INPUT_ERAS, split_data_mc_eras=True)
-
-    sim_eras = {
-        os.path.join(era, ''): list() for era in SIM_ERAS
-    } if len(SIM_ERAS) > 0 else None
-    sim_eras = {list(sim_eras.keys())[0]: sim_eras[list(sim_eras.keys())[0]]}
-    make_mc(sim_eras)
-
-    # data_eras = {
-    #     os.path.join(era, ''): list() for era in DATA_ERAS
-    # } if len(DATA_ERAS) > 0 else None
-    # make_data(data_eras)
-
+    if 'hash' not in df.columns:
+        df['hash'] = np.arange(len(df))

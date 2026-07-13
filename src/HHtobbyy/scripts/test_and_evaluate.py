@@ -90,6 +90,9 @@ if __name__ == "__main__":
     elif len(args.filepaths.split(', ')) > 1:
         filepaths = args.filepaths.split(', ')
     else:
-        filepaths = get_input_filepaths(args.eras.split(', ') if len(args.eras.split(', ')) > 1 else args.eras, dfdataset.class_sample_map, regex=f"*{dfdataset.filepostfix}")
+        filepaths = get_input_filepaths(
+            args.eras.split(', ') if len(args.eras.split(', ')) > 1 else args.eras, dfdataset.class_sample_map, 
+            regex="("+"|".join(["*"+postfix for postfix in dfdataset.filepostfixes])+")"
+        )
 
     main(dfdataset, model, filepaths, force=args.force, parallel=args.submission == 'parallel')

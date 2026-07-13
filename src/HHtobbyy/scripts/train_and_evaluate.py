@@ -29,6 +29,12 @@ parser.add_argument(
     help="Full filepath to model config file(s), if passing multiple delimeter is \', \'"
 )
 parser.add_argument(
+    "model", 
+    type=str,
+    choices=['MLP', 'XGBoostBDT'],
+    help="Types of models currently implemented"
+)
+parser.add_argument(
     "--eras", 
     type=str,
     default='',
@@ -57,34 +63,38 @@ def main(dfdataset: DFDataset, model: Model, filepaths: list, **kwargs):
     # Building train DFDataset
     dfdataset.make_all_train(filepaths, **kwargs)
 
-    # Training the model
-    model.train_all_folds(**kwargs)
+    # # Training the model
+    # model.train_all_folds(**kwargs)
 
-    # Building test DFDataset
-    dfdataset.make_all_test(filepaths, **kwargs)
+    # # Building test DFDataset
+    # dfdataset.make_all_test(filepaths, **kwargs)
 
-    # Evaluating the model
-    model.predict_all_folds(**kwargs)
+    # # Evaluating the model
+    # model.predict_all_folds(**kwargs)
 
-    # Categorizing the model
-    cat = Categorization(dfdataset, {"discriminator": "3D"})
-    cat.run()
+    # # Categorizing the model
+    # cat = Categorization(dfdataset, {"discriminator": "3D"})
+    # cat.run()
 
 
 if __name__ == "__main__":
     args = parser.parse_args()
     assert args.eras != '' or args.filepaths != '', f"ERROR: Must provide either era filepath(s) or direct filepath(s)"
 
-    dfdataset = DFDataset(eos.load_file_eos(args.dfdataset_config))
+    dfdataset = DFDataset(args.dfdataset_config)
 
-    with open(eos.load_file_eos(args.model_config), 'r') as f: model_config = json.load(f)
-    model = map_model_to_Model(args.model)(dfdataset, model_config)
+    model = map_model_to_Model(args.model)(dfdataset, args.model_config)
 
     if args.filepaths != '' and len(args.filepaths.split(', ')) == 1:
-        with open(eos.load_file_eos(args.filepaths), 'r') as f: filepaths = f.read()
+        eos_filepath = eos.load_file_eos(args.filepaths)
+        with open(eos_filepath, 'r') as f: filepaths = [line.strip() for line in f]
+        eos.delete_lockfile(eos_filepath)
     elif len(args.filepaths.split(', ')) > 1:
         filepaths = args.filepaths.split(', ')
     else:
-        filepaths = get_input_filepaths(args.eras.split(', ') if len(args.eras.split(', ')) > 1 else args.eras, dfdataset.class_sample_map, regex=f"*{dfdataset.filepostfix}")
+        filepaths = get_input_filepaths(
+            args.eras.split(', ') if len(args.eras.split(', ')) > 1 else args.eras, dfdataset.class_sample_map, 
+            regex="*.parquet"
+        )
 
-    main(dfdataset, model, filepaths, parallel=args.submission == 'parallel')
+    # main(dfdataset, model, filepaths)

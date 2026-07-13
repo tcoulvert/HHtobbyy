@@ -20,16 +20,14 @@ import awkward as ak
 import eos_utils as eos
 
 # Workspace packages
-from HHtobbyy.event_discrimination.DFDataset.DFDataset_utils import (
-    map_filepath_to_class, make_output_filepath,
-    identity, nostd, logstd, logzscore, 
-    equalProc_train_test_split, # random_oversample, random_undersample
-)
 from HHtobbyy.workspace_utils.retrieval_utils import (
-    FILL_VALUE, match_sample, match_regex, 
+    FILL_VALUE, 
+    match_sample, match_regex, 
     multifold, sub_filepath, 
     batched_writer, batched_executor
 )
+import HHtobbyy.event_discrimination.DFDataset.DFDataset_utils as dfutils
+import HHtobbyy.preprocessing as preproc
 
 
 class DFDataset:
@@ -81,6 +79,9 @@ class DFDataset:
         # Auxiliary variables not used in training, but important downstream
         self.aux_vars = []
 
+        # Intermediate variables needed to build variables for training/aux, but aren't used in the model
+        self.inter_vars = []
+
         # Mapping between sample filenames and class groupings
         self.class_sample_map = {}
         #########################
@@ -114,6 +115,12 @@ class DFDataset:
         self.logstd_regexes = ['pt', 'chi']
         self.nostd_regexes = ['phi', 'eta', 'id', 'btag']
 
+        # Name of function implemented in preprocessing module that builds variables, by default builds no new variables
+        self.build_vars_func = "identity"
+
+        # Prefactor from HiggsDNA to select correct version of variables, by default uses prefactor for 16-25 Hgg paper
+        self.prefactor = "nonResReg_vbfpair"
+
         # Standard prefix for auxiliary variables, i.e. variables useful 
         #   for event-identification but *not* used in the training
         self.aux_var_prefix = 'AUX_'
@@ -131,7 +138,7 @@ class DFDataset:
 
         # End of filepath for files to pull using eras selection
         #  (doesn't matter if passing filepaths directly)
-        self.filepostfix = 'preprocessed.parquet'
+        self.filepostfixes = ["merged.parquet", "Rescaled.parquet"]
 
         # Basic fileprefix to separate local machine directories from HiggsDNA 
         #   (or equivalent preprocessor) directories
@@ -153,7 +160,7 @@ class DFDataset:
     #############################################################
     # Configuration preocessing
     def process_config(self, config: dict):
-        reqd_keys = ['output_dirpath', 'dataset_tag', 'model_vars', 'aux_vars', 'class_sample_map']
+        reqd_keys = ['output_dirpath', 'dataset_tag', 'model_vars', 'aux_vars', 'inter_vars', 'class_sample_map']
         assert all(key in config.keys() for key in reqd_keys), f"Config file required to have some variables: {reqd_keys}, received config is missing {set(config.keys()) - set(reqd_keys)}"
 
         if "sort_inputs" in config: self.sort_inputs = config["sort_inputs"]
@@ -163,9 +170,11 @@ class DFDataset:
 
         # All variables
         self.all_vars_map = {
-            model_var: model_var for model_var in self.model_vars
+            model_var.replace('<prefactor>', self.prefactor): model_var.replace('<prefactor>', self.prefactor) for model_var in self.model_vars
         } | {
-            self.aux_var_prefix + aux_var: aux_var for aux_var in self.aux_vars
+            self.aux_var_prefix + aux_var.replace('<prefactor>', self.prefactor): aux_var.replace('<prefactor>', self.prefactor) for aux_var in self.aux_vars
+        } | {
+            inter_var.replace('<prefactor>', self.prefactor): inter_var.replace('<prefactor>', self.prefactor) for inter_var in self.inter_vars
         }
 
         # Number of classes
@@ -182,19 +191,16 @@ class DFDataset:
             with open(eos_filepath, 'w') as f: json.dump(self.__dict__, f)
             eos.delete_lockfile(eos_filepath)
 
-        # process pc variables for fast pyarrow dataset loading
-        self.process_presel_filter()
-        self.process_var_map()
-
-        # lambda func to map filepath to class idx for readability
-        self.class_idx = lambda filepath: map_filepath_to_class(self.class_sample_map, sub_filepath(filepath, self.base_filepath))
-        self.out_filepath = lambda in_filepath, fold, dataset: make_output_filepath(sub_filepath(in_filepath, self.base_filepath), self.output_dirpath, f"{dataset}{fold}")
+    def class_idx(self, filepath: str):
+        return dfutils.map_filepath_to_class(self.class_sample_map, sub_filepath(filepath, self.base_filepath))
+    def out_filepath(self, in_filepath: str, fold: int, dataset: str):
+        dfutils.make_output_filepath(sub_filepath(in_filepath, self.base_filepath), self.output_dirpath, f"{dataset}{fold}")
 
     def check_output_dirpath(self):
         config_filepath = os.path.join(self.output_dirpath, self.config_filename)
         return eos.file_exists_eos(config_filepath)
     
-    def process_presel_filter(self):
+    def process_presel_filter(self, str_filter):
         """
         Processes input presel_filter in config (needs to be JSON serializable) to pyarrow.dataset.Expression format.
         Expected format is list[list[list]], detailed below:
@@ -202,39 +208,39 @@ class DFDataset:
          - list[list]: logical-and of the list cuts
          - list[list[list]]: logical-or of complex and-ed cuts
         """
+        if str_filter is None: return str_filter
         ops = {
             '<': operator.lt, '<=': operator.le, '==': operator.eq, '>=': operator.ge, '>': operator.gt
         }
-        if self.presel_filter is None: return
-        else:
-            assert type(self.presel_filter) is list, f"Input presel_filter needs to be of type list[list[list]]"
-            ored_filter = None
-            for or_list in self.presel_filter:
-                assert type(or_list) is list, f"Input presel_filter needs to be of type list[list[list]]"
-                anded_filter = None
-                for and_tuple in or_list:
-                    assert type(and_tuple) is list, f"Input presel_filter needs to be of type list[list[list]]"
-                    if type(and_tuple[2]) is int: exp = ops[and_tuple[1]](ds.field(and_tuple[0]).cast(pa.int16()), and_tuple[2])
-                    elif type(and_tuple[2]) is float: exp = ops[and_tuple[1]](ds.field(and_tuple[0]).cast(pa.float32()), and_tuple[2])
-                    elif type(and_tuple[2]) is str: exp = ops[and_tuple[1]](ds.field(and_tuple[0]).cast(pa.string()), and_tuple[2])
-                    else: raise Exception(f"Input comparison ({and_tuple[1]}) or cut ({and_tuple[2]}) not implemented, allowed options are: \'<, <=, ==, >=, >\' for the comparison and \'int, float, str\' for the cut")
-                    if anded_filter is None: anded_filter = exp
-                    else: anded_filter = (anded_filter & exp)
-                if ored_filter is None: ored_filter = anded_filter
-                else: ored_filter = (ored_filter | anded_filter)
-            self.presel_filter = ored_filter
+        assert type(str_filter) is list, f"Input presel_filter needs to be of type list[list[list]]"
+        ored_filter = None
+        for or_list in str_filter:
+            assert type(or_list) is list, f"Input presel_filter needs to be of type list[list[list]]"
+            anded_filter = None
+            for and_tuple in or_list:
+                assert type(and_tuple) is list, f"Input presel_filter needs to be of type list[list[list]]"
+                if type(and_tuple[2]) is int: exp = ops[and_tuple[1]](ds.field(and_tuple[0]).cast(pa.int16()), and_tuple[2])
+                elif type(and_tuple[2]) is float: exp = ops[and_tuple[1]](ds.field(and_tuple[0]).cast(pa.float32()), and_tuple[2])
+                elif type(and_tuple[2]) is str: exp = ops[and_tuple[1]](ds.field(and_tuple[0]).cast(pa.string()), and_tuple[2])
+                else: raise Exception(f"Input comparison ({and_tuple[1]}) or cut ({and_tuple[2]}) not implemented, allowed options are: \'<, <=, ==, >=, >\' for the comparison and \'int, float, str\' for the cut")
+                if anded_filter is None: anded_filter = exp
+                else: anded_filter = (anded_filter & exp)
+            if ored_filter is None: ored_filter = anded_filter
+            else: ored_filter = (ored_filter | anded_filter)
+        return ored_filter
 
-    def process_var_map(self):
+    def process_var_map(self, var_map, allowed_cols: None|list[str]):
         """
-        Processes all_vars_map for passing to dataset as columns.
+        Processes vars_map for passing to dataset as columns.
         Expected format is dict[str: str], detailed below:
          - key[str]: final column name
          - value[str]: initial column name
         """
-        pc_all_vars = {}
-        for final_col, init_col in self.all_vars_map.items():
-            pc_all_vars[final_col] = pc.field(init_col)
-        self.all_vars_map = pc_all_vars
+        if var_map is None: return var_map
+        return {
+            final_col: pc.field(init_col) for final_col, init_col in var_map.items()
+            if allowed_cols is None or init_col in allowed_cols
+        }
 
     #############################################################
     # Event masking
@@ -248,23 +254,25 @@ class DFDataset:
 
     #############################################################
     # Basic DF build
-    def make_df(self, df: pd.DataFrame, fold: int, class_idx: int, mask_func, accumulation: dict={}, **kwargs):
+    def make_df(self, df: pd.DataFrame, filepath: str, fold: int, class_idx: int, mask_func, accumulation: dict={}, **kwargs):
         mask = mask_func(df, fold, accumulation=accumulation, **kwargs)
         df = df.loc[mask].reset_index(drop=True)
-        self.add_vars(df, class_idx, accumulation)
+        df = self.add_vars(df, filepath, class_idx, accumulation)
         self.apply_standardization(df, fold)
+        self.remove_inter_vars(df)
         self.good_df(df)
         return df
     
-    def accumulate_dataset(self, df: pd.DataFrame, fold: int, accumulation: dict, **kwargs):
+    def accumulate_dataset(self, df: pd.DataFrame, filepath: str, fold: int, class_idx: int, accumulation: dict, **kwargs):
         mask = self.train_mask(df, fold)
         df = df.loc[mask].reset_index(drop=True)
+        df = self.add_vars(df, filepath, class_idx, {})
 
         # accumulate E[X], E[X^2], and N for z-score-like standardization
         for model_var in self.model_vars:
             if self.standardization_method+model_var not in accumulation.keys(): 
                 accumulation[self.standardization_method+model_var] = {'exp_x': 0., 'exp_xsq': 0., 'N': 0}
-            masked_col = globals(self.standardization_method)(
+            masked_col = getattr(dfutils, self.standardization_method)(
                 np.ma.array(df[model_var], mask=(df[model_var] == self.fill_value)), model_var,
                 self.nostd_regexes, self.logstd_regexes
             )
@@ -327,16 +335,24 @@ class DFDataset:
                 classSum, ref_classSum = accumulation[self.event_weight_var+classTag]['sum'], sum([accumulation[self.event_weight_var+ref_classTag]['sum'] for ref_classTag in ref_classTags])
                 df[reweight_var] = df[reweight_var] * reweight * ref_classSum / classSum
 
-    def add_vars(self, df: pd.DataFrame, class_idx: int, accumulation: dict):
+    def add_vars(self, df: pd.DataFrame, filepath: str, class_idx: int, accumulation: dict):
         df[f'{self.aux_var_prefix}label1D'] = class_idx
+
+        df = pd.concat([df, preproc.add_basic_info(df, filepath)], ignore_index=True, axis=1)
+        df = pd.concat([df, getattr(preproc, self.build_vars_func)(df, filepath, self.prefactor)], ignore_index=True, axis=1)
 
         # Reweighting eventWeight if improperly preprocessed
         self.sample_reweighting(df, self.test_sample_reweighting, f'{self.aux_var_prefix}{self.event_weight_var}')
 
         # Creating and reweighting eventWeightTrain for training
         df[f'{self.aux_var_prefix}{self.event_weight_var}Train'] = df[f'{self.aux_var_prefix}{self.event_weight_var}']
-        self.class_reweighting(df, self.train_class_reweighting, f'{self.aux_var_prefix}{self.event_weight_var}Train', accumulation)
         self.sample_reweighting(df, self.train_sample_reweighting, f'{self.aux_var_prefix}{self.event_weight_var}Train')
+        if accumulation != {}:
+            self.class_reweighting(df, self.train_class_reweighting, f'{self.aux_var_prefix}{self.event_weight_var}Train', accumulation)
+        return df
+
+    def remove_inter_vars(self, df: pd.DataFrame):
+        df.drop(self.inter_vars)
 
 
     #############################################################
@@ -378,7 +394,7 @@ class DFDataset:
     # Train/Val splitting
     def train_val_split(self):
         if self.train_val_split_method == 'scikit': return train_test_split
-        elif self.train_val_split_method == 'equalProc': return equalProc_train_test_split
+        elif self.train_val_split_method == 'equalProc': return dfutils.equalProc_train_test_split
         else: raise NotImplementedError(f"Train/Val split method not yet implemented, use \'scikit\'.")
 
 
@@ -393,14 +409,16 @@ class DFDataset:
         accumulation = {}
         for filepath in filepaths:
             batched_executor(self.get_df_iter, filepath)(self.accumulate_dataset)(
-                fold, accumulation, columns=self.all_vars_map, filter=self.presel_filter, **kwargs
+                filepath, fold, self.class_idx(filepath), accumulation, 
+                columns=self.all_vars_map, filter=self.presel_filter, missing_cols_ok=True, **kwargs
             )
         self.compute_standardization(fold, accumulation)
 
         for filepath in filepaths:
-            batched_writer(self.get_df_iter, filepath, self.out_filepath(filepath, fold, 'train'))(self.make_df)(
-                fold, self.class_idx(filepath), self.train_mask, accumulation=accumulation,
-                columns=self.all_vars_map, filter=self.presel_filter, **kwargs
+            out_filepath = self.out_filepath(filepath, fold, 'train')
+            batched_writer(self.get_df_iter, filepath, out_filepath)(self.make_df)(
+                filepath, fold, self.class_idx(filepath), self.train_mask, accumulation=accumulation,
+                columns=self.all_vars_map, filter=self.presel_filter, missing_cols_ok=True, **kwargs
             )
             
 
@@ -411,18 +429,26 @@ class DFDataset:
         if not force: filepaths = self.get_new_filepaths(fold, filepaths, 'test')
         
         for filepath in filepaths:
-            print(f'Making - {filepath}')
-            batched_writer(self.get_df_iter, filepath, self.out_filepath(filepath, fold, 'test'))(self.make_df)(
-                fold, self.class_idx(filepath), self.test_mask, 
-                columns=self.all_vars_map, filter=self.presel_filter, **kwargs
+            out_filepath = self.out_filepath(filepath, fold, 'test')
+            batched_writer(self.get_df_iter, filepath, out_filepath)(self.make_df)(
+                filepath, fold, self.class_idx(filepath), self.test_mask, 
+                columns=self.all_vars_map, filter=self.presel_filter, missing_cols_ok=True, **kwargs
             )
 
     
     #############################################################
     # Retrieving
-    def get_df_iter(self, filepath: str, batch_size: int=131_072, columns: None|list[str]=None, filter: None|ds.Expression=None, **kwargs):
+    def get_df_iter(
+        self, filepath: str, batch_size: int=131_072, 
+        columns: None|dict[str, str]=None, filter: None|list[list[list[str, str, float]]]=None, 
+        missing_cols_ok: bool=False, **kwargs
+    ):
         dataset = ds.dataset(filepath, format="parquet")
-        return dataset.to_batches(batch_size=batch_size, columns=columns, filter=filter)
+        return dataset.to_batches(
+            batch_size=batch_size, 
+            columns=self.process_var_map(columns, allowed_cols=dataset.schema.names if missing_cols_ok else None), 
+            filter=self.process_presel_filter(filter)
+        )
     
     def get_all_train(self, syst_name: str='nominal', shuffle: bool=True, **kwargs):
         dfs = []
