@@ -454,6 +454,16 @@ class DFDataset:
             columns=self.process_var_map(columns, allowed_cols=dataset.schema.names if missing_cols_ok else None), 
             filter=self.process_presel_filter(filter)
         )
+    def get_df(
+        self, filepath: str, 
+        columns: None|dict[str, str]=None, filter: None|list[list[list[str, str, float]]]=None, 
+        missing_cols_ok: bool=False, **kwargs
+    ):
+        dataset = ds.dataset(filepath, format="parquet")
+        return dataset.to_table(
+            columns=self.process_var_map(columns, allowed_cols=dataset.schema.names if missing_cols_ok else None), 
+            filter=self.process_presel_filter(filter)
+        ).to_pandas()
     
     def get_all_train(self, syst_name: str='nominal', shuffle: bool=True, **kwargs):
         dfs = []

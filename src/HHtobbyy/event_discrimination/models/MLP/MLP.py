@@ -61,7 +61,7 @@ class MLP(Model):
 
         return model, trainer
 
-    def train(self, fold: int, tune_lr: bool=False, resume_from_ckpt: bool=False):
+    def train(self, fold: int, tune_lr: bool=False, resume_from_ckpt: bool=False, **kwargs):
         # Data
         train_data = self.modeldataset.get_train(fold)
         val_data = self.modeldataset.get_val(fold)
@@ -74,7 +74,7 @@ class MLP(Model):
         # Train DNN
         trainer.fit(model, train_data, val_data, ckpt_path=self.modelconfig.get_ckpt_path(fold) if resume_from_ckpt else None)
 
-    def test(self, fold: int, syst_name: str='nominal', regex: str|list[str]='test_of_train'):
+    def test(self, fold: int, syst_name: str='nominal', regex: str|list[str]='test_of_train', **kwargs):
         eval_data = self.modeldataset.get_test(fold, syst_name=syst_name, regex=regex)
 
         # DNN model and trainer
@@ -83,7 +83,7 @@ class MLP(Model):
         # Test data predictions
         trainer.test(model, eval_data)
         
-    def predict_data(self, data: DataLoader, fold: int, ckpt_path: str=''):
+    def predict_data(self, data: DataLoader, fold: int, ckpt_path: str='', **kwargs):
         # DNN model and trainer
         if ckpt_path == '': ckpt_path = self.modelconfig.get_ckpt_path(fold)
         model, trainer = self.load_model_and_trainer(fold, ckpt_path=ckpt_path, eval=True)
