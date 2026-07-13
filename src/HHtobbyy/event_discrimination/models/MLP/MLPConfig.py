@@ -49,6 +49,10 @@ class MLPConfig(ModelConfig):
         self.gradient_clip_val = 10.         # max abs. value for gradient
         self.logger            = True        # default Tensorboard logging
 
+        # Checkpointing parameters
+        self.every_n_epochs    = 5           # Number of epochs to go before checkpointing
+        self.save_top_k        = 10          # Number of best checkpoint models to save
+
         # Safety parameters
         self.max_epochs        = 500         # max number of epochs to run
 
