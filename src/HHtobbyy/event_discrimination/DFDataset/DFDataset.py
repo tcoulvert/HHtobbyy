@@ -245,18 +245,21 @@ class DFDataset:
 
     #############################################################
     # Event masking
-    def train_mask(self, df: pd.DataFrame, fold: int, accumulation: dict={}, **kwargs):
-        if self.n_folds > 1: mask = np.asarray(df[f'{self.aux_var_prefix}event'].mod(self.n_folds).ne(fold), dtype=bool)
+    def train_mask(self, df: pd.DataFrame, **kwargs):
+        rng = np.random.default_rng(seed=self.seed+len(df))
+        if self.n_folds > 1: mask = np.asarray(rng.choice([False, True], size=len(df)), dtype=bool)
         else: mask = np.ones(len(df), dtype=bool)
         return mask
-    def test_mask(self, df: pd.DataFrame, fold: int, **kwargs):
-        return np.asarray(df[f'{self.aux_var_prefix}event'].mod(self.n_folds).eq(fold), dtype=bool)
+    def test_mask(self, df: pd.DataFrame, **kwargs):
+        if self.n_folds > 1: mask = ~self.train_mask(df, **kwargs)
+        else: mask = np.ones(len(df), dtype=bool)
+        return mask
     
 
     #############################################################
     # Basic DF build
     def make_df(self, df: pd.DataFrame, filepath: str, fold: int, class_idx: int, mask_func, accumulation: dict={}, **kwargs):
-        mask = mask_func(df, fold, accumulation=accumulation, **kwargs)
+        mask = mask_func(df, **kwargs)
         df = df.loc[mask].reset_index(drop=True)
         self.add_vars(df, filepath, class_idx, accumulation)
         df = self.over_under_sample(df, accumulation)
@@ -265,8 +268,8 @@ class DFDataset:
         self.good_df(df)
         return df
     
-    def accumulate_dataset(self, df: pd.DataFrame, filepath: str, fold: int, class_idx: int, accumulation: dict, **kwargs):
-        mask = self.train_mask(df, fold)
+    def accumulate_dataset(self, df: pd.DataFrame, filepath: str, class_idx: int, accumulation: dict, **kwargs):
+        mask = self.train_mask(df)
         df = df.loc[mask].reset_index(drop=True)
         self.add_vars(df, filepath, class_idx, {})
         df = self.over_under_sample(df, {})
@@ -288,6 +291,7 @@ class DFDataset:
             }
 
         # accumulate sum of processes for re-sampling
+        print(df[f'{self.aux_var_prefix}{self.sample_var}'])
         df_proc = df[f'{self.aux_var_prefix}{self.sample_var}'][0]
         if self.event_weight_var+df_proc not in accumulation.keys(): 
             accumulation[self.event_weight_var+df_proc] = {'sum': 0., 'N': 0}
@@ -301,6 +305,7 @@ class DFDataset:
         }
 
         # accumulate sum of classes for class-standardization
+        print(df[f'{self.aux_var_prefix}label1D'])
         df_classTag = list(self.class_sample_map.keys())[df[f'{self.aux_var_prefix}label1D'][0]]
         if self.event_weight_var+df_classTag not in accumulation.keys(): 
             accumulation[self.event_weight_var+df_classTag] = {'sum': 0., 'N': 0}
@@ -409,7 +414,7 @@ class DFDataset:
         accumulation = {}
         for filepath in filepaths:
             batched_executor(self.get_df_iter, filepath)(self.accumulate_dataset)(
-                filepath, fold, self.class_idx(filepath), accumulation, 
+                filepath, self.class_idx(filepath), accumulation, 
                 columns=self.all_vars_map, filter=self.presel_filter, missing_cols_ok=True, **kwargs
             )
         self.compute_standardization(fold, accumulation)
