@@ -38,18 +38,19 @@ def logzscore(masked_x: np.ma.MaskedArray, column: str, no_std_regexs: list, log
 
 #############################################################
 # Process train/test split
-def equalProc(df: pd.DataFrame, train_size: float|None=None, test_size: float|None=None, random_state: int|None=None, shuffle: bool=True, stratify: object|None=None):
+def equalProc(df: pd.DataFrame, **kwargs):
     sample_name_col = match_regex('sample_name', df.columns)
     unique_procs = pd.unique(df[sample_name_col])
 
     train_df, val_df = pd.DataFrame(columns=df.columns).astype(df.dtypes), pd.DataFrame(columns=df.columns).astype(df.dtypes)
     for proc in unique_procs:
         train_proc_df, val_proc_df = train_test_split(
-            df.loc[df[sample_name_col].eq(proc)], 
-            train_size=train_size, test_size=test_size, random_state=random_state, shuffle=shuffle, stratify=stratify
+            df.loc[df[sample_name_col].eq(proc)], **kwargs
         )
         train_df = pd.concat([train_df, train_proc_df], ignore_index=True); val_df = pd.concat([val_df, val_proc_df], ignore_index=True)
     return train_df, val_df
+def scikit(df: pd.DataFrame, **kwargs):
+    return train_test_split(df, **kwargs)
 
 
 #############################################################

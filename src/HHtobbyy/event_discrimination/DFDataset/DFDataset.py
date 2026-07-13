@@ -12,9 +12,6 @@ import pyarrow as pa
 import pyarrow.dataset as ds
 import pyarrow.compute as pc
 
-# ML packages
-from sklearn.model_selection import train_test_split
-
 # HEP packages
 import awkward as ak
 import eos_utils as eos

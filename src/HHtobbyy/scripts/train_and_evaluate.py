@@ -66,8 +66,8 @@ parser.add_argument(
 
 
 def main(dfdataset: DFDataset, model: Model, filepaths: list, **kwargs):
-    # # Building train DFDataset
-    # dfdataset.make_all_train(filepaths, **kwargs)
+    # Building train DFDataset
+    dfdataset.make_all_train(filepaths, **kwargs)
 
     # Training the model
     model.train_all_folds(**kwargs)
