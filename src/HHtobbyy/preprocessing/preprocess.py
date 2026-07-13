@@ -219,27 +219,22 @@ def get_files(eras, datatype='MC'):
         )
         all_dirs_set = set(elem for end_filepath in END_FILEPATHS for elem in glob_dirs_set(end_filepath))
 
-        if OUTPUT_DIRPATH is None:
-            ran_dirs_set = set(
-                parquet_filepath for parquet_filepath in glob_dirs_set(NEW_END_FILEPATH) 
-                if has_magic_bytes(parquet_filepath)
-            )
-        else:
-            ran_dirs_set = set(
-                parquet_filepath 
-                for parquet_filepath in eos.glob_eos(os.path.join(OUTPUT_DIRPATH, "**", f"*{NEW_END_FILEPATH}"), recursive=True)
-                if has_magic_bytes(parquet_filepath)
-            )
-
         # Remove bad dirs
         all_dirs_set = set(
             item for item in all_dirs_set 
             if match_sample(item, BAD_DIRS) is None
         )
+
+        # Remove already-run files if not forcing re-run
+        ran_files_set = set(
+            parquet_filepath
+            for parquet_filepath in all_dirs_set 
+            if has_magic_bytes(get_output_filepath(parquet_filepath, OUTPUT_DIRPATH, END_FILEPATHS, NEW_END_FILEPATH, BASE_FILEPATH))
+        )
         if not FORCE:
             all_dirs_set = set(
                 input_filepath for input_filepath in all_dirs_set 
-                if get_output_filepath(input_filepath, OUTPUT_DIRPATH, END_FILEPATHS, NEW_END_FILEPATH, BASE_FILEPATH) not in ran_dirs_set
+                if input_filepath not in ran_files_set
             )
 
         # Remove non-necessary MC samples
@@ -251,7 +246,13 @@ def get_files(eras, datatype='MC'):
 
         infilepaths = sorted(all_dirs_set)
         outfilepaths = [get_output_filepath(infilepath, OUTPUT_DIRPATH, END_FILEPATHS, NEW_END_FILEPATH, BASE_FILEPATH) for infilepath in infilepaths]
-        eras[era] = list(zip(infilepaths, outfilepaths))
+        eras[era] = list(zip(infilepaths, outfilepaths))    
+    for era, filepaths in eras.items():
+        print(era)
+        print('='*60)
+        for infilepath, outfilepath in filepaths:
+            print('  ', infilepath, '\n    -> ', outfilepath)
+            print()
 
 def make_dataset(infilepath, outfilepath, era, datatype='MC'):
     print('========================>\n'+'Starting \n', infilepath)
@@ -354,6 +355,7 @@ if __name__ == '__main__':
     sim_eras = {
         os.path.join(era, ''): list() for era in SIM_ERAS
     } if len(SIM_ERAS) > 0 else None
+    sim_eras = {list(sim_eras.keys())[0]: sim_eras[list(sim_eras.keys())[0]]}
     make_mc(sim_eras)
 
     # data_eras = {
