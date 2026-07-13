@@ -359,7 +359,7 @@ class DFDataset:
             self.class_reweighting(df, self.train_class_reweighting, f'{self.aux_var_prefix}{self.event_weight_var}Train', accumulation)
 
     def remove_inter_vars(self, df: pd.DataFrame):
-        df.drop(self.inter_vars)
+        df.drop(columns=self.inter_vars)
 
 
     #############################################################
