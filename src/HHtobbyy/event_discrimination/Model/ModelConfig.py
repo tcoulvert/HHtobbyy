@@ -44,10 +44,7 @@ class ModelConfig(ABC):
             self.save_config(self.config_filename)
 
     def toJSON(self):
-        eos_filepath = eos.load_file_eos(os.path.join(self.dfdataset.output_dirpath, self.dfdataset.config_filename))
-        with open(eos_filepath, 'r') as f: dfdatasetJSON = json.load(f)
-        eos.delete_lockfile(eos_filepath)
-        return {**self.__dict__, **{'dfdataset': dfdatasetJSON}}
+        return {**self.__dict__, **{'dfdataset': self.dfdataset.__dict__}}
 
     def save_config(self, filename: str=config_filename):
         assert filename.endswith('.json'), f"ERROR: Currently only supporting \'json\' type config serializations"
