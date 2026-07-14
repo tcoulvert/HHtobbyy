@@ -143,6 +143,6 @@ def add_vars_boostedBDT(df: pd.DataFrame, filepath: str, aux_var_prefix: str='',
         df['n_fatjets_final'] > 0
     )
     df = df.loc[pass_presel_mask].reset_index(drop=True)
-    df[f'{aux_var_prefix}fatjet_selected_mass_regressed']
+    df[f'{aux_var_prefix}fatjet_selected_mass_regressed'] = df['fatjet_selected_mass_regressed']
     return df
 
