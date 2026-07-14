@@ -50,7 +50,7 @@ class MLPConfig(ModelConfig):
         self.logger            = True        # default Tensorboard logging
 
         # Checkpointing parameters
-        self.every_n_epochs    = 5           # Number of epochs to go before checkpointing
+        self.every_n_epochs    = 10          # Number of epochs to go before checkpointing
         self.save_top_k        = 10          # Number of best checkpoint models to save
 
         # Safety parameters
