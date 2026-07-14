@@ -16,6 +16,15 @@ import eos_utils as eos
 
 FILL_VALUE = -999
 
+
+
+#############################################################
+def json_serialize(value):
+    """
+    Code copied from https://stackoverflow.com/a/42923092
+    """
+    return getattr(value, "tolist", lambda: value)()
+
 #############################################################
 def multifold(func, common_args, n_folds, parallel: bool=False, condor: bool=False, **kwargs):
     threads = []
