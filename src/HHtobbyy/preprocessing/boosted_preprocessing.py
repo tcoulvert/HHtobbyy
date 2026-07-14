@@ -37,12 +37,12 @@ def add_bbTagNanov15_boosted(df, era):
         for i in range(1, NUM_FATJETS+1):
             df[f'fatjet{i}_globalParT3_XbbVsQCD'] = df[f'fatjet{i}_globalParT3_Xbb'] / (df[f'fatjet{i}_globalParT3_Xbb'] + df[f'fatjet{i}_globalParT3_QCD'])
 
-def add_bbTagWP_boosted(df, era, prefactor):
+def add_bbTagWP_boosted(df, era):
     bbTagVar, WP_dict = boosted_bbTagWPs[match_sample(era, boosted_bbTagWPs.keys())]
     for i, (WPname, WP) in enumerate(WP_dict.items()):
-        df[f"{prefactor}_fatjet_selected_bbTagWP{WPname}"] = np.where(df[f"{prefactor}_fatjet_selected_{bbTagVar}"] > WP, 1, 0)
-        if i == 0: df[f"{prefactor}_fatjet_selected_bbTagWP"] = ak.zeros_like(df["pt"])
-        df[f"{prefactor}_fatjet_selected_bbTagWP"] = np.where(df[f"{prefactor}_fatjet_selected_{bbTagVar}"] > WP, i+1, df[f"{prefactor}_fatjet_selected_bbTagWP"])
+        df[f"fatjet_selected_bbTagWP{WPname}"] = np.where(df[f"fatjet_selected_{bbTagVar}"] > WP, 1, 0)
+        if i == 0: df[f"fatjet_selected_bbTagWP"] = ak.zeros_like(df["pt"])
+        df[f"fatjet_selected_bbTagWP"] = np.where(df[f"fatjet_selected_{bbTagVar}"] > WP, i+1, df[f"fatjet_selected_bbTagWP"])
 
 def select_fatjets(df, era):
     fatjet_fields = [col[col.find('fatjet1_')+len('fatjet1_'):] for col in df.columns if re.match('fatjet1', col) is not None]
@@ -88,7 +88,7 @@ def add_n_fatjets_final(df):
             eta_cut, df["n_fatjets_final"]+1, df["n_fatjets_final"]
         )
 
-def add_vars_boostedBDT(df: pd.DataFrame, filepath: str, prefactor: str='', **kwargs):
+def add_vars_boostedBDT(df: pd.DataFrame, filepath: str, **kwargs):
     # Fatjet tau ratio, reg mass, and Xbb vs QCD discriminator #
     for i in range(1, NUM_FATJETS+1):
         df[f'fatjet{i}_tau21'] = df[f'fatjet{i}_tau2'] / df[f'fatjet{i}_tau1']
@@ -129,7 +129,7 @@ def add_vars_boostedBDT(df: pd.DataFrame, filepath: str, prefactor: str='', **kw
     df['deltaEta_g1_g2'] = deltaEta(df['lead_eta'], df['sublead_eta'])
 
     # Fatjet bb WP variable #
-    add_bbTagWP_boosted(df, filepath, prefactor)
+    add_bbTagWP_boosted(df, filepath)
 
     # n_fatjets_final
     add_n_fatjets_final(df)
