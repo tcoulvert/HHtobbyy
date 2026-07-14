@@ -270,6 +270,7 @@ class DFDataset:
         df = df.loc[mask].reset_index(drop=True)
         df = self.add_vars(df, filepath, class_idx, {})
         df = self.over_under_sample(df, {})
+        if len(df) == 0: return
 
         # accumulate E[X], E[X^2], and N for z-score-like standardization
         for model_var in self.model_vars:
