@@ -88,7 +88,7 @@ def add_n_fatjets_final(df):
             eta_cut, df["n_fatjets_final"]+1, df["n_fatjets_final"]
         )
 
-def add_vars_boosted(df: pd.DataFrame, filepath: str, prefactor: str, **kwargs):
+def add_vars_boosted(df: pd.DataFrame, filepath: str, prefactor: str='', **kwargs):
     # Fatjet tau ratio and Xbb vs QCD discriminator #
     for i in range(1, NUM_FATJETS+1):
         df[f'fatjet{i}_tau21'] = df[f'fatjet{i}_tau2'] / df[f'fatjet{i}_tau1']

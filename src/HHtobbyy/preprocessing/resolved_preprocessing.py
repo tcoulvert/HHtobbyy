@@ -38,7 +38,7 @@ def add_bTagWP_resolved(df: pd.DataFrame, filepath: str, prefactor: str):
             elif i == 0: df[f"{prefactor}_{bjet_type}_bjet_bTagWP"] = np.zeros(len(df))
             df[f"{prefactor}_{bjet_type}_bjet_bTagWP"] = np.where(df[f"{prefactor}_{bjet_type}_bjet_{bTagVar}"] > WP, i+1, df[f"{prefactor}_{bjet_type}_bjet_bTagWP"])
 
-def add_vars_resolvedMLP(df: pd.DataFrame, filepath: str, prefactor: str, **kwargs):
+def add_vars_resolvedMLP(df: pd.DataFrame, filepath: str, prefactor: str='', **kwargs):
     add_bTagWP_resolved(df, filepath, prefactor=prefactor)
 
     ### BEGIN Manos variables ###

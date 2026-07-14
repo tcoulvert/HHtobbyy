@@ -342,7 +342,7 @@ class DFDataset:
         df[f'{self.aux_var_prefix}label1D'] = class_idx
 
         preproc.add_basic_info(df, sub_filepath(filepath, self.base_filepath), self.aux_var_prefix)
-        df = getattr(preproc, self.build_vars_func)(df, sub_filepath(filepath, self.base_filepath), self.prefactor, **self.__dict__)
+        df = getattr(preproc, self.build_vars_func)(df, sub_filepath(filepath, self.base_filepath), **self.__dict__)
 
         # Reweighting eventWeight if improperly preprocessed
         self.sample_reweighting(df, self.test_sample_reweighting, f'{self.aux_var_prefix}{self.event_weight_var}')
