@@ -1,0 +1,20 @@
+# MC
+/storage/af/user/sixie/data/bbgg/HiggsDNA_parquet/v7/Run2_2016preVFP/sim
+/storage/af/user/sixie/data/bbgg/HiggsDNA_parquet/v7/Run2_2016postVFP/sim
+/storage/af/user/sixie/data/bbgg/HiggsDNA_parquet/v7/Run2_2017/sim
+/storage/af/user/sixie/data/bbgg/HiggsDNA_parquet/v7/Run2_2018/sim
+/storage/af/user/sixie/data/bbgg/HiggsDNA_parquet/v7/Run3_2022/sim/preEE
+/storage/af/user/sixie/data/bbgg/HiggsDNA_parquet/v7/Run3_2022/sim/postEE
+/storage/af/user/sixie/data/bbgg/HiggsDNA_parquet/v7/Run3_2023/sim/preBPix
+/storage/af/user/sixie/data/bbgg/HiggsDNA_parquet/v7/Run3_2023/sim/postBPix
+/storage/af/user/sixie/data/bbgg/HiggsDNA_parquet/v7/Run3_2024/sim
+/storage/af/user/sixie/data/bbgg/HiggsDNA_parquet/v7/Run3_2025/sim
+# Data
+/storage/af/user/sixie/data/bbgg/HiggsDNA_parquet/v7/Run2_2016preVFP/data
+/storage/af/user/sixie/data/bbgg/HiggsDNA_parquet/v7/Run2_2016postVFP/data
+/storage/af/user/sixie/data/bbgg/HiggsDNA_parquet/v7/Run2_2017/data
+/storage/af/user/sixie/data/bbgg/HiggsDNA_parquet/v7/Run2_2018/data
+/storage/af/user/sixie/data/bbgg/HiggsDNA_parquet/v7/Run3_2022/data
+/storage/af/user/sixie/data/bbgg/HiggsDNA_parquet/v7/Run3_2023/data
+/storage/af/user/sixie/data/bbgg/HiggsDNA_parquet/v7/Run3_2024/data
+/storage/af/user/sixie/data/bbgg/HiggsDNA_parquet/v7/Run3_2025/data

@@ -1,0 +1,1 @@
+/storage/af/user/sixie/data/bbgg/HiggsDNA_parquet/v7/Run2_2016postVFP/sim/DDQCDGJets/DDQCDGJets_Rescaled.parquet

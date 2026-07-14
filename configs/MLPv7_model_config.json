@@ -1,0 +1,18 @@
+{
+    "model": "MLP",
+    
+    "output_dirpath": "/storage/af/user/tsievert/XHYbbgg/Model_Outputs/MLP/v3",
+
+    "learning_rate": 2.027496582741043e-05,
+    "weight_decay": 5.159904717896079e-05,
+    "activation_func": "ELU",
+
+    "every_n_epochs": 2,
+    "save_top_k": -1,
+    "max_epochs": 500,
+
+    "num_workers": 1,
+    "accelerator": "gpu",
+    "devices": 1,
+    "strategy": "auto"
+}
