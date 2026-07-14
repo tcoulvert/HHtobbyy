@@ -280,7 +280,7 @@ class DFDataset:
                 np.ma.array(df[model_var], mask=(df[model_var] == self.fill_value)), model_var,
                 self.nostd_regexes, self.logstd_regexes
             )
-            df_accumulation_col = {'exp_x': masked_col.sum(), 'exp_xsq': np.ma.power(masked_col, 2).sum(), 'N': masked_col.count()}
+            df_accumulation_col = {'exp_x': masked_col.sum().item(), 'exp_xsq': np.ma.power(masked_col, 2).sum().item(), 'N': masked_col.count().item()}
             accumulation[self.standardization_method+model_var] = {
                 key: sum(pair) for key, pair in zip(
                     accumulation[self.standardization_method+model_var].keys(), 
@@ -293,7 +293,7 @@ class DFDataset:
         if self.event_weight_var+df_proc not in accumulation.keys(): 
             accumulation[self.event_weight_var+df_proc] = {'sum': 0., 'N': 0}
         masked_weight = np.ma.array(df[self.aux_var_prefix+self.event_weight_var], mask=(df[self.aux_var_prefix+self.event_weight_var] == self.fill_value))
-        df_accumulation_class = {'sum': masked_weight.sum(), 'N': masked_weight.count()}
+        df_accumulation_class = {'sum': masked_weight.sum().item(), 'N': masked_weight.count().item()}
         accumulation[self.event_weight_var+df_proc] = {
             key: sum(pair) for key, pair in zip(
                 accumulation[self.event_weight_var+df_proc].keys(), 
@@ -306,7 +306,7 @@ class DFDataset:
         if self.event_weight_var+df_classTag not in accumulation.keys(): 
             accumulation[self.event_weight_var+df_classTag] = {'sum': 0., 'N': 0}
         masked_weight = np.ma.array(df[self.aux_var_prefix+self.event_weight_var], mask=(df[self.aux_var_prefix+self.event_weight_var] == self.fill_value))
-        df_accumulation_class = {'sum': masked_weight.sum(), 'N': masked_weight.count()}
+        df_accumulation_class = {'sum': masked_weight.sum().item(), 'N': masked_weight.count().item()}
         accumulation[self.event_weight_var+df_classTag] = {
             key: sum(pair) for key, pair in zip(
                 accumulation[self.event_weight_var+df_classTag].keys(), 

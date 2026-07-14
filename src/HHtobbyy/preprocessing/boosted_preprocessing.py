@@ -88,7 +88,7 @@ def add_n_fatjets_final(df):
             eta_cut, df["n_fatjets_final"]+1, df["n_fatjets_final"]
         )
 
-def add_vars_boostedBDT(df: pd.DataFrame, filepath: str, **kwargs):
+def add_vars_boostedBDT(df: pd.DataFrame, filepath: str, aux_var_prefix: str='', **kwargs):
     # Fatjet tau ratio, reg mass, and Xbb vs QCD discriminator #
     for i in range(1, NUM_FATJETS+1):
         df[f'fatjet{i}_tau21'] = df[f'fatjet{i}_tau2'] / df[f'fatjet{i}_tau1']
@@ -143,5 +143,6 @@ def add_vars_boostedBDT(df: pd.DataFrame, filepath: str, **kwargs):
         df['n_fatjets_final'] > 0
     )
     df = df.loc[pass_presel_mask].reset_index(drop=True)
+    df[f'{aux_var_prefix}fatjet_selected_mass_regressed']
     return df
 
