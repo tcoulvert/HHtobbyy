@@ -1,12 +1,16 @@
 from torch import optim, nn, Tensor
 from torch.nn import functional as F
+from torch.optim.lr_scheduler import OneCycleLR
 import lightning as L
 
 
 class MLPTorch(L.LightningModule):
-    def __init__(self, input_size, num_layers, hidden_dim, output_size, dropout_prob, activation_func, learning_rate, class_weights: Tensor=None, **kwargs):
+    def __init__(self, input_size, num_layers, hidden_dim, output_size, dropout_prob, activation_func, learning_rate, weight_decay, max_epochs, n_batches, class_weights: Tensor=None, **kwargs):
         super(MLPTorch, self).__init__()
         self.learning_rate = learning_rate
+        self.weight_decay = weight_decay
+        self.max_epochs = max_epochs
+        self.n_batches = n_batches
         layers = []
 
         # Input layer
@@ -35,8 +39,26 @@ class MLPTorch(L.LightningModule):
         return self.model(x)
 
     def configure_optimizers(self):
-        optimizer = optim.Adam(self.parameters(), lr=self.learning_rate)
-        return optimizer
+        optimizer = optim.Adam(self.parameters(), lr=self.learning_rate, weight_decay=self.weight_decay)
+
+        scheduler = OneCycleLR(
+            optimizer,
+            max_lr=1e-4,
+            epochs=self.max_epochs,
+            steps_per_epoch=self.n_batches,
+            pct_start=0.3,  # 30% of training for warmup
+            anneal_strategy='cos',  # Cosine annealing after peak
+            div_factor=25.0,  # initial_lr = max_lr/25 = 4e-06
+            final_div_factor=1e4  # final_lr = initial_lr/1e4 = 4e-10
+        )
+        return {
+            "optimizer": optimizer,
+            "lr_scheduler": {
+                "scheduler": scheduler,
+                "interval": "step",
+                "frequency": 1,
+            },
+        }
 
     def backward(self, loss):
         loss.backward()

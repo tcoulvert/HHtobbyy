@@ -258,7 +258,7 @@ class DFDataset:
     def make_df(self, df: pd.DataFrame, filepath: str, fold: int, class_idx: int, mask_func, accumulation: dict={}, **kwargs):
         mask = mask_func(df, **kwargs)
         df = df.loc[mask].reset_index(drop=True)
-        self.add_vars(df, filepath, class_idx, accumulation)
+        df = self.add_vars(df, filepath, class_idx, accumulation)
         df = self.over_under_sample(df, accumulation)
         self.apply_standardization(df, fold)
         df = self.remove_inter_vars(df)
@@ -268,7 +268,7 @@ class DFDataset:
     def accumulate_dataset(self, df: pd.DataFrame, filepath: str, class_idx: int, accumulation: dict, **kwargs):
         mask = self.train_mask(df)
         df = df.loc[mask].reset_index(drop=True)
-        self.add_vars(df, filepath, class_idx, {})
+        df = self.add_vars(df, filepath, class_idx, {})
         df = self.over_under_sample(df, {})
 
         # accumulate E[X], E[X^2], and N for z-score-like standardization
@@ -342,7 +342,7 @@ class DFDataset:
         df[f'{self.aux_var_prefix}label1D'] = class_idx
 
         preproc.add_basic_info(df, sub_filepath(filepath, self.base_filepath), self.aux_var_prefix)
-        getattr(preproc, self.build_vars_func)(df, sub_filepath(filepath, self.base_filepath), self.prefactor, self.aux_var_prefix)
+        df = getattr(preproc, self.build_vars_func)(df, sub_filepath(filepath, self.base_filepath), self.prefactor, **self.__dict__)
 
         # Reweighting eventWeight if improperly preprocessed
         self.sample_reweighting(df, self.test_sample_reweighting, f'{self.aux_var_prefix}{self.event_weight_var}')
@@ -352,9 +352,11 @@ class DFDataset:
         self.sample_reweighting(df, self.train_sample_reweighting, f'{self.aux_var_prefix}{self.event_weight_var}Train')
         if accumulation != {}:
             self.class_reweighting(df, self.train_class_reweighting, f'{self.aux_var_prefix}{self.event_weight_var}Train', accumulation)
+        return df
 
     def remove_inter_vars(self, df: pd.DataFrame):
-        df = df.drop(columns=self.inter_vars, errors='ignore')
+        cols_to_remove = [col for col in df.columns if col not in self.final_vars_map.keys()]
+        df = df.drop(columns=cols_to_remove, errors='ignore')
         df = df.reindex(columns=[col for col in df.columns if not col.startswith(self.aux_var_prefix)]+[col for col in df.columns if col.startswith(self.aux_var_prefix)])
         return df
 

@@ -27,10 +27,10 @@ class MLP(Model):
         self.modeldataset = MLPDataset(self.dfdataset, config)
         self.modelconfig = MLPConfig(self.dfdataset, config)
 
-    def load_model_and_trainer(self, fold: int, ckpt_path: str='', log_path: str='', eval: bool=False):
+    def load_model_and_trainer(self, fold: int, n_batches: int, ckpt_path: str='', log_path: str='', eval: bool=False):
         # DNN model
-        if ckpt_path != '': model = MLPTorch.load_from_checkpoint(ckpt_path, weights_only=False, **self.modelconfig.__dict__)
-        else: model = MLPTorch(**self.modelconfig.__dict__)
+        if ckpt_path != '': model = MLPTorch.load_from_checkpoint(ckpt_path, weights_only=False, **{**self.modelconfig.__dict__, **{'n_batches': n_batches}})
+        else: model = MLPTorch(**{**self.modelconfig.__dict__, **{'n_batches': n_batches}})
 
         # Callbacks
         earlystopping_callback = EarlyStopping(
@@ -39,7 +39,7 @@ class MLP(Model):
             mode=self.modelconfig.mode
         )
         checkpoint_callback = ModelCheckpoint(
-            dirpath=os.path.join(self.modelconfig.output_dirpath,  "checkpoints", f"fold{fold}"),
+            dirpath=os.path.join(self.modelconfig.output_dirpath, f"lightning_logs/version_{fold}/checkpoints"),
             monitor="val_loss", mode="min",
             filename="checkpoint-{epoch:02d}-{val_loss:.2f}", every_n_epochs=self.modelconfig.every_n_epochs, save_top_k=self.modelconfig.save_top_k
         )
@@ -67,7 +67,7 @@ class MLP(Model):
         val_data = self.modeldataset.get_val(fold)
 
         # DNN model and trainer
-        model, trainer = self.load_model_and_trainer(fold)
+        model, trainer = self.load_model_and_trainer(fold, n_batches=len(train_data))
 
         if tune_lr: tuner = Tuner(trainer); tuner.lr_find(model)
 
@@ -78,7 +78,7 @@ class MLP(Model):
         eval_data = self.modeldataset.get_test(fold, syst_name=syst_name, regex=regex)
 
         # DNN model and trainer
-        model, trainer = self.load_model_and_trainer(fold, ckpt_path=self.modelconfig.get_ckpt_path(fold), log_path=self.modelconfig.get_log_path(fold), eval=True)
+        model, trainer = self.load_model_and_trainer(fold, n_batches=len(eval_data), ckpt_path=self.modelconfig.get_ckpt_path(fold), log_path=self.modelconfig.get_log_path(fold), eval=True)
 
         # Test data predictions
         trainer.test(model, eval_data)
@@ -86,7 +86,7 @@ class MLP(Model):
     def predict_data(self, data: DataLoader, fold: int, ckpt_path: str='', **kwargs):
         # DNN model and trainer
         if ckpt_path == '': ckpt_path = self.modelconfig.get_ckpt_path(fold)
-        model, trainer = self.load_model_and_trainer(fold, ckpt_path=ckpt_path, eval=True)
+        model, trainer = self.load_model_and_trainer(fold, n_batches=len(data), ckpt_path=ckpt_path, eval=True)
 
         predictions = trainer.predict(model, data)
         predictions = np.concatenate([prediction.numpy(force=True) for prediction in predictions])

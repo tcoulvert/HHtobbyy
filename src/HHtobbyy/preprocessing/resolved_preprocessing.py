@@ -38,7 +38,7 @@ def add_bTagWP_resolved(df: pd.DataFrame, filepath: str, prefactor: str):
             elif i == 0: df[f"{prefactor}_{bjet_type}_bjet_bTagWP"] = np.zeros(len(df))
             df[f"{prefactor}_{bjet_type}_bjet_bTagWP"] = np.where(df[f"{prefactor}_{bjet_type}_bjet_{bTagVar}"] > WP, i+1, df[f"{prefactor}_{bjet_type}_bjet_bTagWP"])
 
-def add_vars_resolvedMLP(df: pd.DataFrame, filepath: str, prefactor: str, aux_var_prefix: str):
+def add_vars_resolvedMLP(df: pd.DataFrame, filepath: str, prefactor: str, **kwargs):
     add_bTagWP_resolved(df, filepath, prefactor=prefactor)
 
     ### BEGIN Manos variables ###
@@ -49,7 +49,10 @@ def add_vars_resolvedMLP(df: pd.DataFrame, filepath: str, prefactor: str, aux_va
     df[f"{prefactor}_sublead_bjet_over_M_regressed"] = df[f"{prefactor}_sublead_bjet_pt"] / df[f"{prefactor}_dijet_mass_DNNreg"]
     ### END Manos variables ###
 
-    df[f"{aux_var_prefix}pass_presel"] = (
-        (df['lead_mvaID'] > -0.7) & (df['sublead_mvaID'] > -0.7)
-        & (df[f"{prefactor}_dijet_mass_DNNreg"] > 80) & (df[f"{prefactor}_dijet_mass_DNNreg"] < 190)
+    # Mask for training #
+    pass_presel_mask = np.logical_and(
+        np.logical_and(df['lead_mvaID'] > -0.7, df['sublead_mvaID'] > -0.7),
+        np.logical_and(df[f"{prefactor}_dijet_mass_DNNreg"] > 80, df[f"{prefactor}_dijet_mass_DNNreg"] < 190)
     )
+    df = df.loc[pass_presel_mask].reset_index(drop=True)
+    return df
