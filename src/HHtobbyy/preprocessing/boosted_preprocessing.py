@@ -88,7 +88,7 @@ def add_n_fatjets_final(df):
             eta_cut, df["n_fatjets_final"]+1, df["n_fatjets_final"]
         )
 
-def add_vars_boosted(df: pd.DataFrame, filepath: str, prefactor: str='', **kwargs):
+def add_vars_boostedBDT(df: pd.DataFrame, filepath: str, prefactor: str='', **kwargs):
     # Fatjet tau ratio and Xbb vs QCD discriminator #
     for i in range(1, NUM_FATJETS+1):
         df[f'fatjet{i}_tau21'] = df[f'fatjet{i}_tau2'] / df[f'fatjet{i}_tau1']
@@ -120,8 +120,8 @@ def add_vars_boosted(df: pd.DataFrame, filepath: str, prefactor: str='', **kwarg
         df[f'deltaR_{photon_type}_fj'] = ( df[f'deltaEta_{photon_type}_fj']**2 + df[f'deltaPhi_{photon_type}_fj']**2 )**0.5
 
     for subj_type, subj_field in [('subj1', 'subjet1'), ('subj2', 'subjet2')]:
-        df[f'deltaEta_{subj_type}_gg'] = deltaEta(df[f'fatjet_selected_{subj_field}_eta'], df[f'{photon_field_prefix}eta'])
-        df[f'deltaPhi_{subj_type}_gg'] = deltaPhi(df[f'fatjet_selected_{subj_field}_phi'], df[f'{photon_field_prefix}phi'])
+        df[f'deltaEta_{subj_type}_gg'] = deltaEta(df[f'fatjet_selected_{subj_field}_eta'], df['eta'])
+        df[f'deltaPhi_{subj_type}_gg'] = deltaPhi(df[f'fatjet_selected_{subj_field}_phi'], df['phi'])
         df[f'deltaR_{subj_type}_gg'] = ( df[f'deltaEta_{subj_type}_gg']**2 + df[f'deltaPhi_{subj_type}_gg']**2 )**0.5
 
     df[f'deltaEta_subj1_subj2'] = deltaEta(df[f'fatjet_selected_subjet1_eta'], df[f'fatjet_selected_subjet2_eta'])

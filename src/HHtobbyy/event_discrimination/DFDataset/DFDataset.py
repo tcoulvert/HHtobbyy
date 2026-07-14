@@ -227,7 +227,7 @@ class DFDataset:
             else: ored_filter = (ored_filter | anded_filter)
         return ored_filter
 
-    def process_var_map(self, var_map, allowed_cols: None|list[str]):
+    def process_var_map(self, var_map: dict[str, str], allowed_cols: None|list[str]=None):
         """
         Processes vars_map for passing to dataset as columns.
         Expected format is dict[str: str], detailed below:
@@ -237,7 +237,7 @@ class DFDataset:
         if var_map is None: return var_map
         return {
             final_col: pc.field(init_col) for final_col, init_col in var_map.items()
-            if allowed_cols is None or init_col in allowed_cols
+            if allowed_cols is None or  init_col in allowed_cols
         }
 
     #############################################################

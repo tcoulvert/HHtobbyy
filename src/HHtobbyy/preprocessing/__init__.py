@@ -6,3 +6,4 @@ from .preprocess import add_basic_info
 def indentity(df, filepath, prefactor): return df
 
 from .resolved_preprocessing import add_vars_resolvedMLP
+from .boosted_preprocessing import add_vars_boostedBDT
