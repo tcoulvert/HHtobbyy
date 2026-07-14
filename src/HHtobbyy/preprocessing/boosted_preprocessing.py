@@ -50,7 +50,6 @@ def select_fatjets(df, era):
         fatjet_field: np.concatenate([df[f'fatjet{i}_{fatjet_field}'].to_numpy()[:, np.newaxis] for i in range(1, NUM_FATJETS+1)], axis=1)
         for fatjet_field in fatjet_fields
     }), axis=1)
-    print(ak.type(fatjets))
 
     bbTagVar, _ = boosted_bbTagWPs[match_sample(era, boosted_bbTagWPs.keys())]
 
@@ -74,29 +73,10 @@ def select_fatjets(df, era):
         elif direction == '>':
             selection_mask = np.logical_and(selection_mask, fatjets[var] > float(value))
         else: raise NotImplementedError(f"The direction you passed is unknown: {direction}. Use \'<\', \'<=\', \'==\', \'>=\', or \'>\'.")
-    print(selection_mask)
-    print(ak.type(selection_mask))
-    # print(ak.sum(selection_mask, axis=1))
-    print(ak.sum(ak.sum(selection_mask, axis=1), axis=0))
-    # test_selection_mask = ak.to_numpy(selection_mask, allow_missing=False)
-    # print(type(test_selection_mask))
-    # test_selection_mask[0, 0] = True; test_selection_mask[0, 1] = True
-    # print(test_selection_mask)
-    # print(fatjets[test_selection_mask])
-    # print(ak.type(fatjets[test_selection_mask]))
     selection_fatjets = fatjets[selection_mask]
     selection_fatjets = selection_fatjets[ak.argsort(selection_fatjets[bbTagVar])]
-    print(selection_fatjets)
-    print(ak.type(selection_fatjets))
 
     selected_fatjets = ak.firsts(selection_fatjets)
-    print(selected_fatjets)
-    print(ak.type(selected_fatjets))
-
-    print(selected_fatjets[~ak.is_none(selected_fatjets)])
-    print(ak.type(selected_fatjets[~ak.is_none(selected_fatjets)]))
-    print(~ak.is_none(selected_fatjets))
-    print(ak.type(~ak.is_none(selected_fatjets)))
     return selected_fatjets[~ak.is_none(selected_fatjets)], np.asarray(ak.to_numpy(~ak.is_none(selected_fatjets), allow_missing=False), dtype=bool)
 
 
