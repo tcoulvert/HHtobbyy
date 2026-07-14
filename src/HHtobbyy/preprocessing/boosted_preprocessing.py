@@ -89,29 +89,25 @@ def add_n_fatjets_final(df):
         )
 
 def add_vars_boostedBDT(df: pd.DataFrame, filepath: str, prefactor: str='', **kwargs):
-    # Fatjet tau ratio and Xbb vs QCD discriminator #
+    # Fatjet tau ratio, reg mass, and Xbb vs QCD discriminator #
     for i in range(1, NUM_FATJETS+1):
         df[f'fatjet{i}_tau21'] = df[f'fatjet{i}_tau2'] / df[f'fatjet{i}_tau1']
         df[f'fatjet{i}_tau32'] = df[f'fatjet{i}_tau3'] / df[f'fatjet{i}_tau2']
-        if f'fatjet{i}_mass_raw' in df.columns:
-            df[f'fatjet{i}_corrmass'] = df[f'fatjet{i}_mass_raw'] * df[f'fatjet{i}_{boosted_fjmass_corr[match_sample(filepath, boosted_fjmass_corr.keys())]}']
+        # Use regressed mass where available, otherwise softdrop #
+        df[f'fatjet{i}_mass_regressed'] = df[f'fatjet{i}_msoftdrop']
+        if f'fatjet{i}_mass_raw' in df.columns and f'fatjet{i}_{boosted_fjmass_corr[match_sample(filepath, boosted_fjmass_corr.keys())]}' in df.columns:
+            df.loc[
+                ~np.isnan(df[f'fatjet{i}_{boosted_fjmass_corr[match_sample(filepath, boosted_fjmass_corr.keys())]}']), 
+                f'fatjet{i}_mass_regressed'
+            ] = df[f'fatjet{i}_mass_raw'] * df[f'fatjet{i}_{boosted_fjmass_corr[match_sample(filepath, boosted_fjmass_corr.keys())]}']
 
+    # Add Xbb vs QCD discriminator for GloParT #
     add_bbTagNanov15_boosted(df, filepath)
 
+    # Select Hbb fatjet per event #
     selected_fatjets, good_fatjets = select_fatjets(df, filepath)
     df = df.loc[good_fatjets].reset_index(drop=True)
     for col in selected_fatjets.fields: df[f'fatjet_selected_{col}'] = selected_fatjets[col]
-
-    # / USE REG MASS IF AVAILABLE OTHERWISE SOFTDROP /
-    if f'fatjet_selected_globalParT3_massCorrX2p' in df.columns and f'fatjet_selected_mass_raw' in df.columns:
-        df[f'fatjet_selected_mass_regressed'] = np.where(
-            np.isnan(df[f'fatjet_selected_globalParT3_massCorrX2p']),
-            df[f'fatjet_selected_msoftdrop'],
-            df[f'fatjet_selected_corrmass']
-        )
-    else: 
-        df[f'fatjet_selected_mass_regressed'] = df[f'fatjet_selected_msoftdrop']
-    df[f'fatjet_selected_mass_regressed'] = df[f'fatjet_selected_mass_regressed']
 
     # (Di)Photon - fatjet angular variables #
     for photon_type, photon_field_prefix in [('gg', ''), ('g1', 'lead_'), ('g2', 'sublead_')]:
