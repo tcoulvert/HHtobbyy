@@ -242,13 +242,13 @@ class DFDataset:
 
     #############################################################
     # Event masking
-    def train_mask(self, df: pd.DataFrame, **kwargs):
+    def train_mask(self, df: pd.DataFrame, fold: int, **kwargs):
         rng = np.random.default_rng(seed=self.seed+len(df))
-        if self.n_folds > 1: mask = np.asarray(rng.choice([False, True], size=len(df)), dtype=bool)
+        if self.n_folds > 1: mask = np.asarray(rng.choice(list(range(self.n_folds)), size=len(df)) != fold, dtype=bool)
         else: mask = np.ones(len(df), dtype=bool)
         return mask
-    def test_mask(self, df: pd.DataFrame, **kwargs):
-        if self.n_folds > 1: mask = ~self.train_mask(df, **kwargs)
+    def test_mask(self, df: pd.DataFrame, fold: int, **kwargs):
+        if self.n_folds > 1: mask = ~self.train_mask(df, fold, **kwargs)
         else: mask = np.ones(len(df), dtype=bool)
         return mask
     
@@ -256,19 +256,19 @@ class DFDataset:
     #############################################################
     # Basic DF build
     def make_df(self, df: pd.DataFrame, filepath: str, fold: int, class_idx: int, mask_func, accumulation: dict={}, **kwargs):
-        mask = mask_func(df, **kwargs)
-        df = df.loc[mask].reset_index(drop=True)
         df = self.add_vars(df, filepath, class_idx, accumulation)
+        mask = mask_func(df, fold, **kwargs)
+        df = df.loc[mask].reset_index(drop=True)
         df = self.over_under_sample(df, accumulation)
         self.apply_standardization(df, fold)
         df = self.remove_inter_vars(df)
         self.good_df(df)
         return df
     
-    def accumulate_dataset(self, df: pd.DataFrame, filepath: str, class_idx: int, accumulation: dict, **kwargs):
-        mask = self.train_mask(df)
-        df = df.loc[mask].reset_index(drop=True)
+    def accumulate_dataset(self, df: pd.DataFrame, filepath: str, fold: int, class_idx: int, accumulation: dict, **kwargs):
         df = self.add_vars(df, filepath, class_idx, {})
+        mask = self.train_mask(df, fold)
+        df = df.loc[mask].reset_index(drop=True)
         df = self.over_under_sample(df, {})
         if len(df) == 0: return
 
@@ -414,7 +414,7 @@ class DFDataset:
         accumulation = {}
         for filepath in filepaths:
             batched_executor(self.get_df_iter, filepath)(self.accumulate_dataset)(
-                filepath, self.class_idx(filepath), accumulation, 
+                filepath, fold, self.class_idx(filepath), accumulation, 
                 columns=self.all_vars_map, filter=self.presel_filter, missing_cols_ok=True, **kwargs
             )
         self.compute_standardization(fold, accumulation)
