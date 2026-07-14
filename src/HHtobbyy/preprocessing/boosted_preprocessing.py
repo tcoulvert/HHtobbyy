@@ -41,7 +41,7 @@ def add_bbTagWP_boosted(df, era):
     bbTagVar, WP_dict = boosted_bbTagWPs[match_sample(era, boosted_bbTagWPs.keys())]
     for i, (WPname, WP) in enumerate(WP_dict.items()):
         df[f"fatjet_selected_bbTagWP{WPname}"] = np.where(df[f"fatjet_selected_{bbTagVar}"] > WP, 1, 0)
-        if i == 0: df[f"fatjet_selected_bbTagWP"] = ak.zeros_like(df["pt"])
+        if i == 0: df[f"fatjet_selected_bbTagWP"] = ak.zeros_like(df["fatjet_selected_pt"])
         df[f"fatjet_selected_bbTagWP"] = np.where(df[f"fatjet_selected_{bbTagVar}"] > WP, i+1, df[f"fatjet_selected_bbTagWP"])
 
 def select_fatjets(df, era):
