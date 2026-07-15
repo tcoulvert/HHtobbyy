@@ -40,14 +40,13 @@ class XGBoostBDTConfig(ModelConfig):
         try:
             gpustat.print_gpustat()
             self.device           = 'cuda'
-            self.tree_method      = 'gpu_hist'
             self.sampling_method  = 'gradient_based'
             self.subsample        = 0.2        # fraction of events to train tree on
         except:
             self.device           = 'cpu'
-            self.tree_method      = 'hist'
             self.sampling_method  = 'uniform'
             self.subsample        = 0.8        # fraction of events to train tree on
+        self.tree_method      = 'hist'
         self.max_bin              = 256        # number of bins for histogramming -- 512
         self.grow_policy          = 'lossguide'
 
