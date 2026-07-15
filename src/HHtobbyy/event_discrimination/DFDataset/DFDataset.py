@@ -1,4 +1,5 @@
 # Stdlib packages
+import copy
 import datetime
 import json
 import operator
@@ -278,14 +279,16 @@ class DFDataset:
         if len(df) == 0: return
 
         # accumulate E[X], E[X^2], and N for z-score-like standardization
+        model_var_accumulator = {'exp_x': 0., 'exp_xsq': 0., 'N': 0}
         for model_var in self.model_vars:
             if self.standardization_method+model_var not in accumulation.keys(): 
-                accumulation[self.standardization_method+model_var] = {'exp_x': 0., 'exp_xsq': 0., 'N': 0}
+                accumulation[self.standardization_method+model_var] = copy.deepcopy(model_var_accumulator)
             masked_col = getattr(dfutils, self.standardization_method)(
                 np.ma.array(df[model_var], mask=(df[model_var] == self.fill_value)), model_var,
                 self.nostd_regexes, self.logstd_regexes
             )
-            df_accumulation_col = {'exp_x': masked_col.sum(), 'exp_xsq': np.ma.power(masked_col, 2).sum(), 'N': masked_col.count()}
+            if np.all(masked_col.mask): df_accumulation_col = copy.deepcopy(model_var_accumulator)
+            else: df_accumulation_col = {key: value for key, value in zip(list(model_var_accumulator.keys()), [masked_col.sum(), np.ma.power(masked_col, 2).sum(), masked_col.count()])}
             accumulation[self.standardization_method+model_var] = {
                 key: sum(pair) for key, pair in zip(
                     accumulation[self.standardization_method+model_var].keys(), 
@@ -293,12 +296,13 @@ class DFDataset:
                 )
             }
 
+        sum_accumulator = {'sum': 0., 'N': 0}
         # accumulate sum of processes for re-sampling
         df_proc = df[f'{self.aux_var_prefix}{self.sample_var}'][0]
         if self.event_weight_var+df_proc not in accumulation.keys(): 
-            accumulation[self.event_weight_var+df_proc] = {'sum': 0., 'N': 0}
+            accumulation[self.event_weight_var+df_proc] = copy.deepcopy(sum_accumulator)
         masked_weight = np.ma.array(df[self.aux_var_prefix+self.event_weight_var], mask=(df[self.aux_var_prefix+self.event_weight_var] == self.fill_value))
-        df_accumulation_class = {'sum': masked_weight.sum(), 'N': masked_weight.count()}
+        df_accumulation_class = {key: value for key, value in zip(list(sum_accumulator.keys()), [masked_weight.sum(), masked_weight.count()])}
         accumulation[self.event_weight_var+df_proc] = {
             key: sum(pair) for key, pair in zip(
                 accumulation[self.event_weight_var+df_proc].keys(), 
@@ -309,9 +313,9 @@ class DFDataset:
         # accumulate sum of classes for class-standardization
         df_classTag = list(self.class_sample_map.keys())[df[f'{self.aux_var_prefix}label1D'][0]]
         if self.event_weight_var+df_classTag not in accumulation.keys(): 
-            accumulation[self.event_weight_var+df_classTag] = {'sum': 0., 'N': 0}
+            accumulation[self.event_weight_var+df_classTag] = copy.deepcopy(sum_accumulator)
         masked_weight = np.ma.array(df[self.aux_var_prefix+self.event_weight_var], mask=(df[self.aux_var_prefix+self.event_weight_var] == self.fill_value))
-        df_accumulation_class = {'sum': masked_weight.sum(), 'N': masked_weight.count()}
+        df_accumulation_class = {key: value for key, value in zip(list(sum_accumulator.keys()), [masked_weight.sum(), masked_weight.count()])}
         accumulation[self.event_weight_var+df_classTag] = {
             key: sum(pair) for key, pair in zip(
                 accumulation[self.event_weight_var+df_classTag].keys(), 
