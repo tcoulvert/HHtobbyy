@@ -243,8 +243,12 @@ class DFDataset:
     #############################################################
     # Event masking
     def train_mask(self, df: pd.DataFrame, fold: int, **kwargs):
-        rng = np.random.default_rng(seed=self.seed+len(df))
-        if self.n_folds > 1: mask = np.asarray(rng.choice(list(range(self.n_folds)), size=len(df)) != fold, dtype=bool)
+        if self.n_folds > 1: mask = np.asarray(
+            np.logical_and(
+                df[f'{self.aux_var_prefix}event'].mod(2*self.n_folds).ne(2*fold), 
+                df[f'{self.aux_var_prefix}event'].mod(2*self.n_folds).ne(2*fold+1), 
+            ),
+        dtype=bool)
         else: mask = np.ones(len(df), dtype=bool)
         return mask
     def test_mask(self, df: pd.DataFrame, fold: int, **kwargs):
@@ -256,20 +260,20 @@ class DFDataset:
     #############################################################
     # Basic DF build
     def make_df(self, df: pd.DataFrame, filepath: str, fold: int, class_idx: int, mask_func, accumulation: dict={}, **kwargs):
-        df = self.add_vars(df, filepath, class_idx, accumulation)
         mask = mask_func(df, fold, **kwargs)
         df = df.loc[mask].reset_index(drop=True)
+        df = self.add_vars(df, filepath, class_idx, accumulation)
+        df = self.remove_inter_vars(df)
         if len(df) == 0: return df
         df = self.over_under_sample(df, accumulation)
         self.apply_standardization(df, fold)
-        df = self.remove_inter_vars(df)
         self.good_df(df)
         return df
     
     def accumulate_dataset(self, df: pd.DataFrame, filepath: str, fold: int, class_idx: int, accumulation: dict, **kwargs):
-        df = self.add_vars(df, filepath, class_idx, {})
         mask = self.train_mask(df, fold)
         df = df.loc[mask].reset_index(drop=True)
+        df = self.add_vars(df, filepath, class_idx, {})
         df = self.over_under_sample(df, {})
         if len(df) == 0: return
 
