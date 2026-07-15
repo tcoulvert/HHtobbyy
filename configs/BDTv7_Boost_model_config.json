@@ -5,6 +5,7 @@
 
     "objective": "binary:logistic",
     "eval_metric": "logloss",
+    "num_class": 1,
     
     "max_depth": 3,
     "eta": 0.01,
