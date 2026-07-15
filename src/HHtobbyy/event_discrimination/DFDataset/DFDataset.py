@@ -185,6 +185,8 @@ class DFDataset:
             self.dataset_time = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')  # 'YYYY-MM-DD_HH-MM-SS'
             self.output_dirpath = os.path.join(self.output_dirpath, f"{self.dataset_tag}_{self.dataset_time}")
 
+            os.makedirs(self.output_dirpath, exist_ok=True)
+
             config_filepath = os.path.join(self.output_dirpath, self.config_filename)
             eos_filepath = eos.save_file_eos(config_filepath)
             with open(eos_filepath, 'w') as f: json.dump(self.__dict__, f)
