@@ -265,10 +265,10 @@ class DFDataset:
         df = df.loc[mask].reset_index(drop=True)
         df = self.add_vars(df, filepath, class_idx, accumulation)
         df = self.remove_inter_vars(df)
-        if len(df) == 0: return df
+        if len(df) == 0: return self.good_df(df)
         df = self.over_under_sample(df, accumulation)
-        self.apply_standardization(df, fold)
-        self.good_df(df)
+        df = self.apply_standardization(df, fold)
+        df = self.good_df(df)
         return df
     
     def accumulate_dataset(self, df: pd.DataFrame, filepath: str, fold: int, class_idx: int, accumulation: dict, **kwargs):
@@ -326,6 +326,9 @@ class DFDataset:
     def good_df(self, df: pd.DataFrame):
         assert not df.isnull().values.any(), f"ERROR: DFDataset contains NaN values, something likely went wrong with the DF mergings"
         assert set(self.final_vars_map.keys()).issubset(set(df.columns)), f"ERROR: DFDataset missing necessary columns: {set(self.final_vars_map.keys()) - set(df.columns)}"
+        float_cols = df.select_dtypes(include=['float']).columns
+        df[float_cols] = df[float_cols].astype('float64')
+        return df
 
     #############################################################
     # Additional variables
@@ -399,6 +402,7 @@ class DFDataset:
             masked_col = getattr(dfutils, applyfunc)(np.ma.array(df[model_var], mask=(df[model_var] == self.fill_value)), model_var)
             masked_col = (masked_col - mean) / std
             df[model_var] = masked_col.filled(self.refill_value)
+        return df
 
     #############################################################
     # Oversample/Undersample for training
