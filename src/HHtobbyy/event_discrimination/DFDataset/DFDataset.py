@@ -326,8 +326,7 @@ class DFDataset:
     def good_df(self, df: pd.DataFrame):
         assert not df.isnull().values.any(), f"ERROR: DFDataset contains NaN values, something likely went wrong with the DF mergings"
         assert set(self.final_vars_map.keys()).issubset(set(df.columns)), f"ERROR: DFDataset missing necessary columns: {set(self.final_vars_map.keys()) - set(df.columns)}"
-        float_cols = df.select_dtypes(include=['float']).columns
-        df[float_cols] = df[float_cols].astype('float64')
+        df[self.model_vars] = df[self.model_vars].astype('float64')
         return df
 
     #############################################################
