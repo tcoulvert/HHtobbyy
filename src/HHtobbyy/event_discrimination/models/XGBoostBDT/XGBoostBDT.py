@@ -32,7 +32,7 @@ class XGBoostBDT(Model):
         # Save config
         self.modelconfig.save_config()
 
-    def train(self, fold: int):
+    def train(self, fold: int, **kwargs):
         # Data
         train_data = self.modeldataset.get_train(fold)
         val_data = self.modeldataset.get_val(fold)
@@ -49,7 +49,7 @@ class XGBoostBDT(Model):
         booster.save_model(os.path.join(self.modelconfig.output_dirpath, f'{self.model_filename}{fold}.json'))
         with open(eos.save_file_eos(os.path.join(self.modelconfig.output_dirpath, f'{self.eval_filename}{fold}.json')), 'w') as f: json.dump(eval_result, f)
 
-    def test(self, fold: int, syst_name: str='nominal', regex: str|list[str]='test_of_train'):
+    def test(self, fold: int, syst_name: str='nominal', regex: str|list[str]='test_of_train', **kwargs):
         eval_data = self.modeldataset.get_test(fold, syst_name=syst_name, regex=regex)
 
         # Initialize trained BDT model
@@ -62,7 +62,7 @@ class XGBoostBDT(Model):
         predictions = booster.predict(eval_data, iteration_range=(0, booster.best_iteration))
         # loss = predictions - eval_data[label]
 
-    def predict_data(self, data: xgb.DMatrix, fold: int, ckpt_path: str=''):
+    def predict_data(self, data: xgb.DMatrix, fold: int, ckpt_path: str='', **kwargs):
         # DNN model and trainer
         if ckpt_path == '': ckpt_path = os.path.join(self.modelconfig.output_dirpath, f"{self.model_filename}{fold}.json")
         # Initialize trained BDT model

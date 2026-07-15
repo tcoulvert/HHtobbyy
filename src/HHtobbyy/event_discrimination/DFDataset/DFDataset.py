@@ -259,6 +259,7 @@ class DFDataset:
         df = self.add_vars(df, filepath, class_idx, accumulation)
         mask = mask_func(df, fold, **kwargs)
         df = df.loc[mask].reset_index(drop=True)
+        if len(df) == 0: return df
         df = self.over_under_sample(df, accumulation)
         self.apply_standardization(df, fold)
         df = self.remove_inter_vars(df)
