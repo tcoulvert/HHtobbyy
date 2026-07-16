@@ -72,7 +72,7 @@ class XGBoostBDT(Model):
 
         # Test data predictions
         predictions = booster.predict(data, iteration_range=(0, booster.best_iteration))
-        if self.modelconfig.num_class == 1: 
+        if not hasattr(self.modelconfig, "num_class"): 
             predictions = np.hstack([1-predictions[:, np.newaxis], predictions[:, np.newaxis]])
 
         return predictions

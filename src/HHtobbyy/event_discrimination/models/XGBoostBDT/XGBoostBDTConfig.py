@@ -29,7 +29,6 @@ class XGBoostBDTConfig(ModelConfig):
         self.eta                  = 0.1        # learning rate -- 0.05
         self.max_depth            = 4          # max number of splittings per tree -- 10
         self.colsample_bytree     = 0.6        # fraction of features to train tree on
-        self.num_class            = self.dfdataset.n_classes  # num classes for multi-class training
         self.min_child_weight     = 1.         # smallest sum weight for leaf -- 0.25
         self.patience             = 10         # number of rounds to wait without improvement before early stopping
 
@@ -47,13 +46,19 @@ class XGBoostBDTConfig(ModelConfig):
             self.device           = 'cpu'
             self.sampling_method  = 'uniform'
             self.subsample        = 0.8        # fraction of events to train tree on
-        self.tree_method      = 'hist'
+        self.tree_method          = 'hist'
         self.max_bin              = 256        # number of bins for histogramming -- 512
         self.grow_policy          = 'lossguide'
 
         # Learning task parameters
-        self.objective            = 'multi:softprob'    # objective function
-        self.eval_metric          = 'mlogloss'          # evaluation metric for cross validation
+        self.objective            = 'binary:logistic'    # objective function
+        self.eval_metric          = 'logloss'          # evaluation metric for cross validation
+
+        # Binary vs. Multiclass
+        if self.dfdataset.n_classes > 2:
+            self.objective        = 'multi:softprob'    # objective function
+            self.eval_metric      = 'mlogloss'          # evaluation metric for cross validation
+            self.num_class        = self.dfdataset.n_classes  # num classes for multi-class training
 
         # Quality of life parameters
         self.verbose_eval         = 25          # Number of trees between print statements

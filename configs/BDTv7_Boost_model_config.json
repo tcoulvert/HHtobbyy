@@ -2,10 +2,6 @@
     "model": "XGBoostBDT",
     
     "output_dirpath": "/storage/af/user/tsievert/XHYbbgg/Model_Outputs/BDT_Boost/v3",
-
-    "objective": "binary:logistic",
-    "eval_metric": "logloss",
-    "num_class": 1,
     
     "max_depth": 3,
     "eta": 0.01,
