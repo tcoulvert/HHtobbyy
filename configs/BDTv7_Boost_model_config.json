@@ -15,5 +15,5 @@
     "colsample_bytree": 0.6,
     "min_child_weight": 1,
     "gamma": 0.0,
-    "num_trees": 1000
+    "num_boost_round": 1000
 }

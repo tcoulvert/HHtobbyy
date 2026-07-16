@@ -51,6 +51,15 @@ class Model(ABC):
         ]
 
         def prediction(df: pd.DataFrame, **kwargs):
+            output = pd.DataFrame(
+                self.predict_data(
+                    self.modeldataset.get_data(df, self.dfdataset.event_weight_var), 
+                    fold, ckpt_path=ckpt_path
+                ), columns=score_columns
+            )
+            print(output)
+            print(df)
+            print(df.drop(columns=score_columns, errors='ignore'))
             return df.drop(columns=score_columns, errors='ignore').join(
                 pd.DataFrame(
                     self.predict_data(

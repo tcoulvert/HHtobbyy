@@ -41,8 +41,9 @@ class XGBoostBDT(Model):
         eval_result = {}
         evallist = [(train_data, 'train'), (val_data, 'val')]
         booster = xgb.train(
-            self.modelconfig.__dict__, train_data, num_boost_round=self.modelconfig.num_trees, 
-            evals=evallist, early_stopping_rounds=10, 
+            self.modelconfig.__dict__, train_data, 
+            num_boost_round=self.modelconfig.num_boost_round, 
+            evals=evallist, early_stopping_rounds=self.modelconfig.patience, 
             verbose_eval=self.modelconfig.verbose_eval, evals_result=eval_result,
         )
 

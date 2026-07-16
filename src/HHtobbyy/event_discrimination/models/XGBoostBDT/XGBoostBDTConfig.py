@@ -31,6 +31,7 @@ class XGBoostBDTConfig(ModelConfig):
         self.colsample_bytree     = 0.6        # fraction of features to train tree on
         self.num_class            = self.dfdataset.n_classes  # num classes for multi-class training
         self.min_child_weight     = 1.         # smallest sum weight for leaf -- 0.25
+        self.patience             = 10         # number of rounds to wait without improvement before early stopping
 
         # Penalty parameters
         self.reg_lambda           = 1          # L2 regularization
@@ -58,7 +59,7 @@ class XGBoostBDTConfig(ModelConfig):
         self.verbose_eval         = 25          # Number of trees between print statements
 
         # Safety parameters
-        self.num_trees            = 500         # max number of trees to make
+        self.num_boost_round      = 500         # max number of trees to make
 
         self.process_config(config)
 
@@ -106,7 +107,7 @@ class XGBoostBDTConfig(ModelConfig):
             train_dm, val_dm = model_dataset.get_val(fold_idxs[0]), model_dataset.get_val(fold_idxs[1])
 
             booster = xgb.train(
-                param, val_dm, num_boost_round=self.num_trees, 
+                param, val_dm, num_boost_round=self.num_boost_round, 
                 evals=[(train_dm, 'train'), (val_dm, 'val')], early_stopping_rounds=10, verbose_eval=self.verbose_eval,
             )
             eval_str = booster.eval(val_dm, name='val', iteration=booster.best_iteration)
@@ -154,7 +155,7 @@ class XGBoostBDTConfig(ModelConfig):
             train_dm, val_dm = model_dataset.get_val(fold_idxs[0]), model_dataset.get_val(fold_idxs[1])
 
             booster = xgb.train(
-                param, train_dm, num_boost_round=self.num_trees, 
+                param, train_dm, num_boost_round=self.num_boost_round, 
                 evals=[(train_dm, 'train'), (val_dm, 'val')], early_stopping_rounds=10, verbose_eval=self.verbose_eval,
             )
             eval_str = booster.eval(val_dm, name='val', iteration=booster.best_iteration)
@@ -193,7 +194,7 @@ class XGBoostBDTConfig(ModelConfig):
             train_dm, val_dm = model_dataset.get_val(fold_idxs[0]), model_dataset.get_val(fold_idxs[1])
 
             booster = xgb.train(
-                param, train_dm, num_boost_round=self.num_trees, 
+                param, train_dm, num_boost_round=self.num_boost_round, 
                 evals=[(train_dm, 'train'), (val_dm, 'val')], early_stopping_rounds=10, verbose_eval=self.verbose_eval,
             )
             eval_str = booster.eval(val_dm, name='val', iteration=booster.best_iteration)
@@ -230,7 +231,7 @@ class XGBoostBDTConfig(ModelConfig):
             train_dm, val_dm = model_dataset.get_val(fold_idxs[0]), model_dataset.get_val(fold_idxs[1])
 
             booster = xgb.train(
-                param, train_dm, num_boost_round=self.num_trees, 
+                param, train_dm, num_boost_round=self.num_boost_round, 
                 evals=[(train_dm, 'train'), (val_dm, 'val')], early_stopping_rounds=10, verbose_eval=self.verbose_eval,
             )
             eval_str = booster.eval(val_dm, name='val', iteration=booster.best_iteration)
@@ -260,14 +261,14 @@ class XGBoostBDTConfig(ModelConfig):
 
             for key, val in X.items():
                 param[key] = val
-            num_trees = round(50 / X['eta'])  # number of trees to make
+            num_boost_round = round(50 / X['eta'])  # number of trees to make
 
             # randomly sample a fold to evaluate
             fold_idxs = rng.integers(0, 4, size=2)
             train_dm, val_dm = model_dataset.get_val(fold_idxs[0]), model_dataset.get_val(fold_idxs[1])
 
             booster = xgb.train(
-                param, train_dm, num_boost_round=num_trees, 
+                param, train_dm, num_boost_round=num_boost_round, 
                 evals=[(train_dm, 'train'), (val_dm, 'val')], early_stopping_rounds=10, verbose_eval=self.verbose_eval,
             )
             eval_str = booster.eval(val_dm, name='val', iteration=booster.best_iteration)
