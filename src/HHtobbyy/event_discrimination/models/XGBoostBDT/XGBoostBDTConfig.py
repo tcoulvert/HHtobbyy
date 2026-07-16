@@ -157,7 +157,7 @@ class XGBoostBDTConfig(ModelConfig):
                 param[key] = val
 
             # randomly sample a fold to evaluate
-            fold_idxs = rng.integers(0, 4, size=2)
+            fold_idxs = rng.integers(0, self.dfdataset.n_folds, size=2)
             train_dm, val_dm = model_dataset.get_val(fold_idxs[0]), model_dataset.get_val(fold_idxs[1])
 
             booster = xgb.train(
@@ -196,7 +196,7 @@ class XGBoostBDTConfig(ModelConfig):
                 param[key] = val
 
             # randomly sample a fold to evaluate
-            fold_idxs = rng.integers(0, 4, size=2)
+            fold_idxs = rng.integers(0, self.dfdataset.n_folds, size=2)
             train_dm, val_dm = model_dataset.get_val(fold_idxs[0]), model_dataset.get_val(fold_idxs[1])
 
             booster = xgb.train(
@@ -233,7 +233,7 @@ class XGBoostBDTConfig(ModelConfig):
                 param[key] = val
 
             # randomly sample a fold to evaluate
-            fold_idxs = rng.integers(0, 4, size=2)
+            fold_idxs = rng.integers(0, self.dfdataset.n_folds, size=2)
             train_dm, val_dm = model_dataset.get_val(fold_idxs[0]), model_dataset.get_val(fold_idxs[1])
 
             booster = xgb.train(
@@ -270,7 +270,7 @@ class XGBoostBDTConfig(ModelConfig):
             num_boost_round = round(50 / X['eta'])  # number of trees to make
 
             # randomly sample a fold to evaluate
-            fold_idxs = rng.integers(0, 4, size=2)
+            fold_idxs = rng.integers(0, self.dfdataset.n_folds, size=2)
             train_dm, val_dm = model_dataset.get_val(fold_idxs[0]), model_dataset.get_val(fold_idxs[1])
 
             booster = xgb.train(
