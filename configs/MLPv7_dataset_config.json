@@ -1,9 +1,9 @@
 {
     "config_filename": "dataset_config.json", 
-    "output_dirpath": "/storage/af/user/tsievert/XHYbbgg/HiggsDNA_parquet/DFDatasets/v3", 
+    "output_dirpath": "/eos/uscms/store/group/lpcdihiggsboost/nparekh/DFDatasets/v7", 
     "dataset_tag": "16to25_MLPv7", 
 
-    "n_folds": 2,
+    "n_folds": 1,
     "refill_value": -9,
     "sort_inputs": false, 
     "standardization_method": "identity",
