@@ -3,6 +3,7 @@ import json
 import os
 
 # ML packages
+import numpy as np
 import xgboost as xgb
 
 # HEP packages
@@ -71,6 +72,8 @@ class XGBoostBDT(Model):
 
         # Test data predictions
         predictions = booster.predict(data, iteration_range=(0, booster.best_iteration))
+        if self.modelconfig.num_class == 1: 
+            predictions = np.hstack([1-predictions[:, np.newaxis], predictions[:, np.newaxis]])
 
         return predictions
         

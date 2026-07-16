@@ -51,9 +51,6 @@ class Model(ABC):
         ]
 
         def prediction(df: pd.DataFrame, **kwargs):
-            if len(df) == 0: 
-                for col in score_columns: df[col] = np.array([], dtype=np.float64)
-                return df
             return df.drop(columns=score_columns, errors='ignore').join(
                 pd.DataFrame(
                     self.predict_data(
