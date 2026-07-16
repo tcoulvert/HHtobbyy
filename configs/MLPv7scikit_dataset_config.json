@@ -1,7 +1,7 @@
 {
     "config_filename": "dataset_config.json", 
     "output_dirpath": "/storage/af/user/tsievert/XHYbbgg/HiggsDNA_parquet/DFDatasets/v3", 
-    "dataset_tag": "16to25_MLPv7", 
+    "dataset_tag": "16to25_MLPv7scikit", 
 
     "n_folds": 2,
     "refill_value": -9,
