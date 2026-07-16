@@ -18,7 +18,7 @@ class ModelConfig(ABC):
     dfdataset: DFDataset
     config_filename = "model_config.json"
 
-    def process_config(self, config: str|dict):
+    def process_config(self, config: str|dict, force: bool=False):
         if type(config) is str: 
             if config.endswith('.json'): 
                 eos_filepath = eos.load_file_eos(config)
@@ -37,7 +37,7 @@ class ModelConfig(ABC):
         for key, value in config.items():
             if hasattr(self, key) and key != "dfdataset": setattr(self, key, value)
         
-        if not eos.file_exists_eos(os.path.join(self.output_dirpath, self.config_filename)): 
+        if not eos.file_exists_eos(os.path.join(self.output_dirpath, self.config_filename)) or force: 
             self.model_time = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')  # 'YYYY-MM-DD_HH-MM-SS'
             self.output_dirpath = os.path.join(self.output_dirpath, self.model_time)
             os.makedirs(self.output_dirpath, exist_ok=True)

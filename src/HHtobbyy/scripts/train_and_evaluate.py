@@ -59,15 +59,23 @@ parser.add_argument(
     choices=['iterative', 'parallel'],
     help="How to run script"
 )
+parser.add_argument(
+    "--optimize_hyperparams", 
+    action="store_true",
+    help="Runs hyperparm optimization before training"
+)
 
 ################################
 
 
 
 
-def main(dfdataset: DFDataset, model: Model, filepaths: list, **kwargs):
+def main(dfdataset: DFDataset, model: Model, filepaths: list, optimize_hyperparams: bool=False, **kwargs):
     # Building train DFDataset
     dfdataset.make_all_train(filepaths, **kwargs)
+
+    if optimize_hyperparams:
+        model.modelconfig.optimize_params(model.modeldataset)
 
     # Training the model
     model.train_all_folds(**kwargs)
@@ -103,4 +111,4 @@ if __name__ == "__main__":
             regex="*.parquet"
         )
 
-    main(dfdataset, model, filepaths, batch_size=args.batch_size)
+    main(dfdataset, model, filepaths, optimize_hyperparams=args.optimize_hyperparams, batch_size=args.batch_size)

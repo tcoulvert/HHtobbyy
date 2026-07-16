@@ -26,15 +26,16 @@ class XGBoostBDTConfig(ModelConfig):
         self.output_dirpath    = ''
 
         # Architecture parameters
-        self.eta                  = 0.1        # learning rate -- 0.05
-        self.max_depth            = 4          # max number of splittings per tree -- 10
-        self.colsample_bytree     = 0.6        # fraction of features to train tree on
-        self.min_child_weight     = 1.         # smallest sum weight for leaf -- 0.25
+        self.eta                  = 0.1        # learning rate
+        self.max_depth            = 4          # max number of splittings per tree
+        self.colsample_bytree     = 1.         # fraction of features to train tree on
+        self.min_child_weight     = 1.         # smallest sum weight for leaf
+        self.min_split_loss       = 0.         # smallest loss reduction for leaf
         self.patience             = 10         # number of rounds to wait without improvement before early stopping
 
         # Penalty parameters
         self.reg_lambda           = 1          # L2 regularization
-        self.reg_alpha            = 0          # L1 ergularization 
+        self.reg_alpha            = 0          # L1 regularization
         
         # Hardware parameters
         try:
@@ -51,13 +52,13 @@ class XGBoostBDTConfig(ModelConfig):
         self.grow_policy          = 'lossguide'
 
         # Learning task parameters
-        self.objective            = 'binary:logistic'    # objective function
-        self.eval_metric          = 'logloss'          # evaluation metric for cross validation
+        self.objective            = 'binary:logistic'   # objective function
+        self.eval_metric          = 'logloss'           # evaluation metric for cross validation
 
         # Binary vs. Multiclass
         if self.dfdataset.n_classes > 2:
-            self.objective        = 'multi:softprob'    # objective function
-            self.eval_metric      = 'mlogloss'          # evaluation metric for cross validation
+            self.objective        = 'multi:softprob'
+            self.eval_metric      = 'mlogloss'
             self.num_class        = self.dfdataset.n_classes  # num classes for multi-class training
 
         # Quality of life parameters
@@ -108,7 +109,7 @@ class XGBoostBDTConfig(ModelConfig):
                 param[key] = val
 
             # randomly sample a fold to evaluate
-            fold_idxs = rng.integers(0, 4, size=2)
+            fold_idxs = rng.integers(0, self.dfdataset.n_folds, size=2)
             train_dm, val_dm = model_dataset.get_val(fold_idxs[0]), model_dataset.get_val(fold_idxs[1])
 
             booster = xgb.train(
@@ -117,13 +118,13 @@ class XGBoostBDTConfig(ModelConfig):
             )
             eval_str = booster.eval(val_dm, name='val', iteration=booster.best_iteration)
 
-            best_mlogloss = float(eval_str[eval_str.find('val-mlogloss:')+len('val-mlogloss:'):])
-            score_arrs['max_depth_and_min_child_weight'].append(best_mlogloss)
+            best_eval = float(eval_str[eval_str.find(f'val-{self.eval_metric}:')+len(f'val-{self.eval_metric}:'):])
+            score_arrs['max_depth_and_min_child_weight'].append(best_eval)
 
             if verbose:
-                print(f"Best val. mlogloss on fold{fold_idxs[0]} = {best_mlogloss}")
+                print(f"Best val. {self.eval_metric} on fold{fold_idxs[0]} = {best_eval}")
 
-            return -best_mlogloss
+            return -best_eval
         
         if len(max_depth_and_min_child_weight_space) > 0:
             print("Optimizing max_depth (max depth of tree) and min_child_weight (min sum of weights in final nodes)")
@@ -165,13 +166,13 @@ class XGBoostBDTConfig(ModelConfig):
             )
             eval_str = booster.eval(val_dm, name='val', iteration=booster.best_iteration)
 
-            best_mlogloss = float(eval_str[eval_str.find('val-mlogloss:')+len('val-mlogloss:'):])
-            score_arrs['min_split_loss'].append(best_mlogloss)
+            best_eval = float(eval_str[eval_str.find(f'val-{self.eval_metric}:')+len(f'val-{self.eval_metric}:'):])
+            score_arrs['min_split_loss'].append(best_eval)
 
             if verbose:
-                print(f"Best val. mlogloss on fold{fold_idxs[0]} = {best_mlogloss}")
+                print(f"Best val. {self.eval_metric} on fold{fold_idxs[0]} = {best_eval}")
 
-            return -best_mlogloss
+            return -best_eval
 
         if 'min_split_loss' not in static_params.keys():
             print("Optimizing min_split_loss (min loss change to add leaf)")
@@ -204,13 +205,13 @@ class XGBoostBDTConfig(ModelConfig):
             )
             eval_str = booster.eval(val_dm, name='val', iteration=booster.best_iteration)
 
-            best_mlogloss = float(eval_str[eval_str.find('val-mlogloss:')+len('val-mlogloss:'):])
-            score_arrs['subsample_and_colsample_bytree'].append(best_mlogloss)
+            best_eval = float(eval_str[eval_str.find(f'val-{self.eval_metric}:')+len(f'val-{self.eval_metric}:'):])
+            score_arrs['subsample_and_colsample_bytree'].append(best_eval)
 
             if verbose:
-                print(f"Best val. mlogloss on fold{fold_idxs[0]} = {best_mlogloss}")
+                print(f"Best val. {self.eval_metric} on fold{fold_idxs[0]} = {best_eval}")
 
-            return -best_mlogloss
+            return -best_eval
         
         print("Optimizing subsample (fraction of training events) and colsample_bytree (fraction of training features per tree)")
         result_subsample_and_colsample_bytree = gp_minimize(subsample_and_colsample_bytree_objective, subsample_and_colsample_bytree_space)
@@ -241,13 +242,13 @@ class XGBoostBDTConfig(ModelConfig):
             )
             eval_str = booster.eval(val_dm, name='val', iteration=booster.best_iteration)
 
-            best_mlogloss = float(eval_str[eval_str.find('val-mlogloss:')+len('val-mlogloss:'):])
-            score_arrs['reg_lambda'].append(best_mlogloss)
+            best_eval = float(eval_str[eval_str.find(f'val-{self.eval_metric}:')+len(f'val-{self.eval_metric}:'):])
+            score_arrs['reg_lambda'].append(best_eval)
 
             if verbose:
-                print(f"Best val. mlogloss on fold{fold_idxs[0]} = {best_mlogloss}")
+                print(f"Best val. {self.eval_metric} on fold{fold_idxs[0]} = {best_eval}")
 
-            return -best_mlogloss
+            return -best_eval
         
         print("Optimizing reg_lambda (L2 reg)")
         result_reg_lambda = gp_minimize(reg_lambda_objective, reg_lambda_space)
@@ -278,13 +279,13 @@ class XGBoostBDTConfig(ModelConfig):
             )
             eval_str = booster.eval(val_dm, name='val', iteration=booster.best_iteration)
 
-            best_mlogloss = float(eval_str[eval_str.find('val-mlogloss:')+len('val-mlogloss:'):])
-            score_arrs['eta'].append(best_mlogloss)
+            best_eval = float(eval_str[eval_str.find(f'val-{self.eval_metric}:')+len(f'val-{self.eval_metric}:'):])
+            score_arrs['eta'].append(best_eval)
 
             if verbose:
-                print(f"Best val. mlogloss on fold{fold_idxs[0]} = {best_mlogloss}")
+                print(f"Best val. {self.eval_metric} on fold{fold_idxs[0]} = {best_eval}")
 
-            return -best_mlogloss
+            return -best_eval
         
         print("Optimizing eta (step size)")
         result_eta = gp_minimize(eta_objective, eta_space)
@@ -293,5 +294,5 @@ class XGBoostBDTConfig(ModelConfig):
 
         print("Best parameters: {}".format(param))
         
-        self.process_config(param)
+        self.process_config(param, force=True)
         

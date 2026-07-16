@@ -4,12 +4,11 @@
     "output_dirpath": "/storage/af/user/tsievert/XHYbbgg/Model_Outputs/BDT_Boost/v3",
     
     "max_depth": 3,
-    "eta": 0.01,
-    "reg_lambda": 10.0,
-    "reg_alpha": 1.0,
+    "eta": 0.05,
+    "reg_lambda": 1.0,
     "subsample": 0.6,
+    "min_child_weight": 0,
     "colsample_bytree": 0.6,
-    "min_child_weight": 1,
-    "gamma": 0.0,
-    "num_boost_round": 1000
+    "patience": 30,
+    "num_boost_round": 4000
 }
