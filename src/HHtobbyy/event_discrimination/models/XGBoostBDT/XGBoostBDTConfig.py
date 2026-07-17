@@ -34,8 +34,8 @@ class XGBoostBDTConfig(ModelConfig):
         self.patience             = 10         # number of rounds to wait without improvement before early stopping
 
         # Penalty parameters
-        self.reg_lambda           = 1          # L2 regularization
-        self.reg_alpha            = 0          # L1 regularization
+        self.reg_lambda           = 1.         # L2 regularization
+        self.reg_alpha            = 0.         # L1 regularization
         
         # Hardware parameters
         try:
@@ -48,7 +48,7 @@ class XGBoostBDTConfig(ModelConfig):
             self.sampling_method  = 'uniform'
             self.subsample        = 0.8        # fraction of events to train tree on
         self.tree_method          = 'hist'
-        self.max_bin              = 256        # number of bins for histogramming -- 512
+        self.max_bin              = 256        # number of bins for histogramming
         self.grow_policy          = 'lossguide'
 
         # Learning task parameters

@@ -7,7 +7,7 @@
     "eta": 0.05,
     "reg_lambda": 1.0,
     "subsample": 0.6,
-    "min_child_weight": 0,
+    "min_child_weight": 0.005,
     "colsample_bytree": 0.6,
     "patience": 30,
     "num_boost_round": 4000
