@@ -1,0 +1,13 @@
+{
+    "model": "XGBoostBDT",
+    
+    "output_dirpath": "/storage/af/user/tsievert/XHYbbgg/Model_Outputs/BDT/v3",
+
+    "max_depth": 10,
+    "eta": 0.05,
+    "reg_lambda": 0.5,
+    "colsample_bytree": 0.6,
+    "min_child_weight": 0.005,
+    "max_bin": 512,
+    "num_boost_round": 1000
+}
