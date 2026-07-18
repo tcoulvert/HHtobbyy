@@ -48,7 +48,7 @@ def add_bTagWP_resolved(df: pd.DataFrame, filepath: str, prefactor: str):
             df[f"{prefactor}_{bjet_type}_bjet_bTagWP"] = np.where(df[f"{prefactor}_{bjet_type}_bjet_{bTagVar}"] > WP, i+1, df[f"{prefactor}_{bjet_type}_bjet_bTagWP"])
 
 
-def jet_mask(df, i, prefactor='nonRes'):
+def jet_mask(df, i, prefactor: str):
     return (
         ak.where(
             df[f'{prefactor}_lead_bjet_jet_idx'].to_numpy() != i, True, False
@@ -57,7 +57,7 @@ def jet_mask(df, i, prefactor='nonRes'):
         ) & ak.where(df[f'jet{i}_mass'].to_numpy() != FILL_VALUE, True, False)
     )
 
-def zh_isr_jet(df, dijet_4mom, jet_4moms, prefactor='nonRes'):
+def zh_isr_jet(df, dijet_4mom, jet_4moms, prefactor: str):
     min_total_pt = FILL_VALUE * ak.ones_like(dijet_4mom.pt)
     isr_jet_4mom = copy.deepcopy(jet_4moms['jet1_4mom'])
 
@@ -144,7 +144,7 @@ def add_vars_resolvedBDT(df: pd.DataFrame, filepath: str, prefactor: str='', **k
     dijet_4mom = bjet_4moms['lead_bjet_4mom'] + bjet_4moms['sublead_bjet_4mom']
 
     # ISR-like jet variables
-    isr_jet_4mom, isr_jet_bool = zh_isr_jet(df, dijet_4mom, jet_4moms)
+    isr_jet_4mom, isr_jet_bool = zh_isr_jet(df, dijet_4mom, jet_4moms, prefactor=prefactor)
     df[f'{prefactor}_isr_jet_pt'] = np.where(isr_jet_bool, ak.to_numpy(isr_jet_4mom.pt, allow_missing=False), FILL_VALUE)
     df[f'{prefactor}_DeltaPhi_isr_jet_z'] = np.where(isr_jet_bool, deltaPhi(ak.to_numpy(isr_jet_4mom.phi, allow_missing=False), ak.to_numpy(dijet_4mom.phi, allow_missing=False)), FILL_VALUE)
 
@@ -152,10 +152,6 @@ def add_vars_resolvedBDT(df: pd.DataFrame, filepath: str, prefactor: str='', **k
     # Mask for training #
     pass_presel_mask = np.logical_and(
         np.logical_and(df['lead_mvaID'] > -0.7, df['sublead_mvaID'] > -0.7),
-        # np.logical_and(
-        #     np.logical_and(df['lead_mvaID'] > -0.7, df['sublead_mvaID'] > -0.7),
-        #     df[f'{prefactor}_lead_bjet_bTagWP'] > 0
-        # ),
         np.logical_and(df[f"{prefactor}_dijet_mass_DNNreg"] > 80, df[f"{prefactor}_dijet_mass_DNNreg"] < 190)
     )
     df = df.loc[pass_presel_mask].reset_index(drop=True)

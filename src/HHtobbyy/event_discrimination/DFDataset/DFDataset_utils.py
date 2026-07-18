@@ -31,9 +31,9 @@ def nostd(masked_x: np.ma.MaskedArray, *args):
 def logstd(masked_x: np.ma.MaskedArray, *args):
     return np.ma.log(masked_x)
 def logzscore(masked_x: np.ma.MaskedArray, column: str, no_std_regexs: list, log_std_regexs: list):
-    if no_standardize(column, no_std_regexs): return nostd(column, masked_x)
+    if no_standardize(column, no_std_regexs): return nostd(masked_x)
     elif log_standardize(column, log_std_regexs): return logstd(masked_x)
-    else: return identity(column, masked_x)
+    else: return identity(masked_x)
 
 
 #############################################################
