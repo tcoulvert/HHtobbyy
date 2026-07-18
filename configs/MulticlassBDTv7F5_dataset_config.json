@@ -84,7 +84,7 @@
     ],
 
     "class_sample_map": {
-        "ggFHH": ["GluGlu*HH*kl-1p00*kt-1p00*c2-0p00"], 
+        "ggF HH": ["GluGlu*HH*kl-1p00*kt-1p00*c2-0p00"], 
         "ttH + bbH": ["ttH", "bbH"], 
         "VH": ["VH", "ZH", "Wm*H", "Wp*H"], 
         "nonRes + ggFH + VBFH": ["DDQCDGJet", "GGJets", "TTGG", "GluGluH*GG", "VBFH*GG"]

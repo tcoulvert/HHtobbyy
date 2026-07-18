@@ -13,6 +13,6 @@
 
     "num_workers": 1,
     "accelerator": "gpu",
-    "devices": 1,
+    "devices": [1],
     "strategy": "auto"
 }

@@ -77,6 +77,8 @@
     },
 
     "train_class_reweighting": {
+        "nonRes": [1, ["nonRes", "Res"]],
+        "Res": [1, ["nonRes", "Res"]],
         "ggF HH": [0.95, ["nonRes", "Res"]],
         "VBF HH": [0.05, ["nonRes", "Res"]]
     },
