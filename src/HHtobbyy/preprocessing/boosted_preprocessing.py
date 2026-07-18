@@ -146,3 +146,4 @@ def add_vars_boostedBDT(df: pd.DataFrame, filepath: str, aux_var_prefix: str='',
     df[f'{aux_var_prefix}fatjet_selected_mass_regressed'] = df['fatjet_selected_mass_regressed']
     return df
 
+def add_vars_boostedYBDT(): pass

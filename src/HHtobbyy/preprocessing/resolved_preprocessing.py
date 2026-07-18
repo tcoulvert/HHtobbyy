@@ -7,6 +7,8 @@ import pandas as pd
 
 # HEP packages
 import awkward as ak
+import vector as vec
+vec.register_awkward()
 
 # Workspace packages
 from HHtobbyy.preprocessing.preprocessing_utils import deltaPhi, deltaEta
@@ -46,21 +48,21 @@ def add_bTagWP_resolved(df: pd.DataFrame, filepath: str, prefactor: str):
             df[f"{prefactor}_{bjet_type}_bjet_bTagWP"] = np.where(df[f"{prefactor}_{bjet_type}_bjet_{bTagVar}"] > WP, i+1, df[f"{prefactor}_{bjet_type}_bjet_bTagWP"])
 
 
-def jet_mask(sample, i, prefactor='nonRes'):
+def jet_mask(df, i, prefactor='nonRes'):
     return (
         ak.where(
-            sample[f'{prefactor}_lead_bjet_jet_idx'] != i, True, False
+            df[f'{prefactor}_lead_bjet_jet_idx'].to_numpy() != i, True, False
         ) & ak.where(
-            sample[f'{prefactor}_sublead_bjet_jet_idx'] != i, True, False
-        ) & ak.where(sample[f'jet{i}_mass'] != FILL_VALUE, True, False)
+            df[f'{prefactor}_sublead_bjet_jet_idx'].to_numpy() != i, True, False
+        ) & ak.where(df[f'jet{i}_mass'].to_numpy() != FILL_VALUE, True, False)
     )
 
-def zh_isr_jet(sample, dijet_4mom, jet_4moms, prefactor='nonRes'):
-    min_total_pt = ak.Array([FILL_VALUE for _ in range(ak.num(sample['event'], axis=0))])
+def zh_isr_jet(df, dijet_4mom, jet_4moms, prefactor='nonRes'):
+    min_total_pt = FILL_VALUE * ak.ones_like(dijet_4mom.pt)
     isr_jet_4mom = copy.deepcopy(jet_4moms['jet1_4mom'])
 
     for i in range(1, NUM_JETS+1):
-        jet_i_mask = jet_mask(sample, i, prefactor=prefactor)
+        jet_i_mask = jet_mask(df, i, prefactor=prefactor)
 
         z_jet_4mom = dijet_4mom + jet_4moms[f'jet{i}_4mom']
 
@@ -116,17 +118,15 @@ def add_vars_resolvedBDT(df: pd.DataFrame, filepath: str, prefactor: str='', **k
     df[f'{prefactor}_DeltaEta_jj'] = deltaEta(df[f'{prefactor}_lead_bjet_eta'], df[f'{prefactor}_sublead_bjet_eta'])
 
 
-    sample = ak.zip({field: df[field].to_numpy() for field in df.columns})
-
     # Regressed jet kinematics #
     jet_4moms = {}
     for i in range(1, NUM_JETS+1):
         jet_4moms[f'jet{i}_4mom'] = ak.zip(
             {
-                'rho': sample[f'jet{i}_pt'],
-                'phi': sample[f'jet{i}_phi'],
-                'eta': sample[f'jet{i}_eta'],
-                'tau': sample[f'jet{i}_mass'],
+                'rho': df[f'jet{i}_pt'].to_numpy(),
+                'phi': df[f'jet{i}_phi'].to_numpy(),
+                'eta': df[f'jet{i}_eta'].to_numpy(),
+                'tau': df[f'jet{i}_mass'].to_numpy(),
             }, with_name='Momentum4D'
         )
     # Regressed bjet kinematics #
@@ -134,17 +134,17 @@ def add_vars_resolvedBDT(df: pd.DataFrame, filepath: str, prefactor: str='', **k
     for field in ['lead', 'sublead']:
         bjet_4moms[f'{field}_bjet_4mom'] = ak.zip(
             {
-                'rho': sample[f'{prefactor}_{field}_bjet_pt'], # rho is synonym for pt
-                'phi': sample[f'{prefactor}_{field}_bjet_phi'],
-                'eta': sample[f'{prefactor}_{field}_bjet_eta'],
-                'tau': sample[f'{prefactor}_{field}_bjet_mass'], # tau is synonym for mass
+                'rho': df[f'{prefactor}_{field}_bjet_pt'].to_numpy(), # rho is synonym for pt
+                'phi': df[f'{prefactor}_{field}_bjet_phi'].to_numpy(),
+                'eta': df[f'{prefactor}_{field}_bjet_eta'].to_numpy(),
+                'tau': df[f'{prefactor}_{field}_bjet_mass'].to_numpy(), # tau is synonym for mass
             }, with_name='Momentum4D'
         )
     # Regressed dijet kinematics #
     dijet_4mom = bjet_4moms['lead_bjet_4mom'] + bjet_4moms['sublead_bjet_4mom']
 
     # ISR-like jet variables
-    isr_jet_4mom, isr_jet_bool = zh_isr_jet(sample, dijet_4mom, jet_4moms)
+    isr_jet_4mom, isr_jet_bool = zh_isr_jet(df, dijet_4mom, jet_4moms)
     df[f'{prefactor}_isr_jet_pt'] = np.where(isr_jet_bool, ak.to_numpy(isr_jet_4mom.pt, allow_missing=False), FILL_VALUE)
     df[f'{prefactor}_DeltaPhi_isr_jet_z'] = np.where(isr_jet_bool, deltaPhi(ak.to_numpy(isr_jet_4mom.phi, allow_missing=False), ak.to_numpy(dijet_4mom.phi, allow_missing=False)), FILL_VALUE)
 
@@ -158,5 +158,13 @@ def add_vars_resolvedBDT(df: pd.DataFrame, filepath: str, prefactor: str='', **k
         # ),
         np.logical_and(df[f"{prefactor}_dijet_mass_DNNreg"] > 80, df[f"{prefactor}_dijet_mass_DNNreg"] < 190)
     )
+    df = df.loc[pass_presel_mask].reset_index(drop=True)
+    return df
+
+def add_vars_resolvedBDTLbTag(df: pd.DataFrame, filepath: str, prefactor: str='', **kwargs):
+    df = add_vars_resolvedBDT(df, filepath, prefactor, **kwargs)
+    
+    # Mask for training #
+    pass_presel_mask = (df[f'{prefactor}_lead_bjet_bTagWP'] > 0)
     df = df.loc[pass_presel_mask].reset_index(drop=True)
     return df

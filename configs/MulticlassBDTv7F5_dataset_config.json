@@ -7,6 +7,7 @@
     "sort_inputs": false, 
     "standardization_method": "logzscore",
     "train_val_split_method": "equalProc",
+    "prefactor": "nonResReg_vbfpair",
 
     "model_vars": [
         "puppiMET_pt",
@@ -67,6 +68,7 @@
         "nonResReg_vbfpair_lead_bjet_PNetRegPtRawRes", "nonResReg_vbfpair_sublead_bjet_PNetRegPtRawRes",
         "nonResReg_vbfpair_lead_bjet_phi", "nonResReg_vbfpair_sublead_bjet_phi",
         "nonResReg_vbfpair_lead_bjet_mass", "nonResReg_vbfpair_sublead_bjet_mass",
+        "nonResReg_vbfpair_lead_bjet_jet_idx", "nonResReg_vbfpair_sublead_bjet_jet_idx",
         "lead_eta", "lead_pt", "lead_energyErr", "sublead_eta", "sublead_pt", "sublead_energyErr",
 
         "jet1_pt", "jet1_eta", "jet1_phi", "jet1_mass",
@@ -82,10 +84,16 @@
     ],
 
     "class_sample_map": {
-        "nonRes": ["DDQCDGJet", "GGJets", "TTGG"],
-        "Res": ["GluGluH*GG", "VBFH*GG", "ttH", "bbH", "VH", "ZH", "Wm*H", "Wp*H"], 
-        "ggF HH": ["GluGlu*HH*kl-1p00*kt-1p00*c2-0p00"], 
-        "VBF HH": ["VBFHH*CV-1p00*C2V-1p00*C3-1p00", "VBFHH*CV_1*C2V_1*C3_1"]
+        "ggFHH": ["GluGlu*HH*kl-1p00*kt-1p00*c2-0p00"], 
+        "ttH + bbH": ["ttH", "bbH"], 
+        "VH": ["VH", "ZH", "Wm*H", "Wp*H"], 
+        "nonRes + ggFH + VBFH": ["DDQCDGJet", "GGJets", "TTGG", "GluGluH*GG", "VBFH*GG"]
+    },
+
+    "train_class_reweighting": {
+        "ttH + bbH": [100, ["ttH + bbH"]],
+        "VH": [100, ["VH"]],
+        "ggF HH": [1, ["ttH + bbH", "VH", "nonRes + ggFH + VBFH"]]
     },
 
     "build_vars_func": "add_vars_resolvedBDT"
