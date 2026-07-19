@@ -396,10 +396,7 @@ class DFDataset:
         eos.delete_lockfile(eos_filepath)
 
         for model_var, mean, std in zip(stddict['col'], stddict['mean'], stddict['std']):
-            if self.standardization_method == 'nostd': applyfunc = 'identity'
-            elif self.standardization_method == 'logzscore': self.nostd_regexes = {}
-            else: applyfunc = self.standardization_method
-            masked_col = getattr(dfutils, applyfunc)(
+            masked_col = getattr(dfutils, self.standardization_method)(
                 np.ma.array(df[model_var], mask=(df[model_var] == self.fill_value)), model_var,
                 self.nostd_regexes, self.logstd_regexes, apply=True
             )
