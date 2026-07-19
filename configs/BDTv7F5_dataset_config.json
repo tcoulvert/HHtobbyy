@@ -7,6 +7,7 @@
     "sort_inputs": false, 
     "standardization_method": "identity",
     "train_val_split_method": "equalProc",
+    "prefactor": "nonResReg_vbfpair",
 
     "model_vars": [
         "eta", 
@@ -72,6 +73,13 @@
         "Res": ["GluGluH*GG", "VBFH*GG", "ttH", "bbH", "VH", "ZH", "Wm*H", "Wp*H"], 
         "ggF HH": ["GluGlu*HH*kl-1p00*kt-1p00*c2-0p00"], 
         "VBF HH": ["VBFHH*CV-1p00*C2V-1p00*C3-1p00", "VBFHH*CV_1*C2V_1*C3_1"]
+    },
+
+    "train_class_reweighting": {
+        "nonRes": [1, ["nonRes", "Res"]],
+        "Res": [1, ["nonRes", "Res"]],
+        "ggF HH": [0.95, ["nonRes", "Res"]],
+        "VBF HH": [0.05, ["nonRes", "Res"]]
     },
 
     "build_vars_func": "add_vars_resolvedMLP"

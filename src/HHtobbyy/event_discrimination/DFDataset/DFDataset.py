@@ -285,7 +285,7 @@ class DFDataset:
                 accumulation[self.standardization_method+model_var] = copy.deepcopy(model_var_accumulator)
             masked_col = getattr(dfutils, self.standardization_method)(
                 np.ma.array(df[model_var], mask=(df[model_var] == self.fill_value)), model_var,
-                self.nostd_regexes, self.logstd_regexes
+                self.nostd_regexes, self.logstd_regexes, apply=False
             )
             if np.all(masked_col.mask): df_accumulation_col = copy.deepcopy(model_var_accumulator)
             else: df_accumulation_col = {key: value for key, value in zip(list(model_var_accumulator.keys()), [masked_col.sum(), np.ma.power(masked_col, 2).sum(), masked_col.count()])}
@@ -397,8 +397,12 @@ class DFDataset:
 
         for model_var, mean, std in zip(stddict['col'], stddict['mean'], stddict['std']):
             if self.standardization_method == 'nostd': applyfunc = 'identity'
+            elif self.standardization_method == 'logzscore': self.nostd_regexes = {}
             else: applyfunc = self.standardization_method
-            masked_col = getattr(dfutils, applyfunc)(np.ma.array(df[model_var], mask=(df[model_var] == self.fill_value)), model_var)
+            masked_col = getattr(dfutils, applyfunc)(
+                np.ma.array(df[model_var], mask=(df[model_var] == self.fill_value)), model_var,
+                self.nostd_regexes, self.logstd_regexes, apply=True
+            )
             masked_col = (masked_col - mean) / std
             df[model_var] = masked_col.filled(self.refill_value)
         return df

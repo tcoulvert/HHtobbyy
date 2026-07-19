@@ -18,9 +18,10 @@ def no_standardize(column: str, no_std_regexs: list):
 def log_standardize(column: str, log_std_regexs: list):
     return any(logstd in column for logstd in log_std_regexs)
 
-def identity(masked_x: np.ma.MaskedArray, *args):
+def identity(masked_x: np.ma.MaskedArray, *args, **kwargs):
     return masked_x
-def nostd(masked_x: np.ma.MaskedArray, *args):
+def nostd(masked_x: np.ma.MaskedArray, apply: bool, *args, **kwargs):
+    if apply: return identity(masked_x, apply)
     count = masked_x.count()
     if count % 2 == 0: 
         value = 1; exp0_expsq_1 = []
@@ -28,10 +29,10 @@ def nostd(masked_x: np.ma.MaskedArray, *args):
         value = np.sqrt(count / (count - 1)); exp0_expsq_1 = [0]
     exp0_expsq_1 = exp0_expsq_1 + [value]*(count // 2) + [-value]*(count // 2)
     return np.ma.array(exp0_expsq_1)
-def logstd(masked_x: np.ma.MaskedArray, *args):
+def logstd(masked_x: np.ma.MaskedArray, *args, **kwargs):
     return np.ma.log(masked_x)
-def logzscore(masked_x: np.ma.MaskedArray, column: str, no_std_regexs: list, log_std_regexs: list):
-    if no_standardize(column, no_std_regexs): return nostd(masked_x)
+def logzscore(masked_x: np.ma.MaskedArray, column: str, no_std_regexs: list, log_std_regexs: list, apply: bool, *args, **kwargs):
+    if no_standardize(column, no_std_regexs): return nostd(masked_x, apply)
     elif log_standardize(column, log_std_regexs): return logstd(masked_x)
     else: return identity(masked_x)
 
