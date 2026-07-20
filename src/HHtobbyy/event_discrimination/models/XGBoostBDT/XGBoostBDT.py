@@ -48,8 +48,11 @@ class XGBoostBDT(Model):
             verbose_eval=self.modelconfig.verbose_eval, evals_result=eval_result,
         )
 
-        booster.save_model(os.path.join(self.modelconfig.output_dirpath, f'{self.model_filename}{fold}.json'))
-        with open(eos.save_file_eos(os.path.join(self.modelconfig.output_dirpath, f'{self.eval_filename}{fold}.json')), 'w') as f: json.dump(eval_result, f)
+        eos_boosterfilepath = eos.save_file_eos(os.path.join(self.modelconfig.output_dirpath, f'{self.model_filename}{fold}.json'))
+        booster.save_model(eos_boosterfilepath); eos.delete_lockfile(eos_boosterfilepath)
+        eos_evalfilepath = eos.save_file_eos(os.path.join(self.modelconfig.output_dirpath, f'{self.eval_filename}{fold}.json'))
+        with open(eos_evalfilepath, 'w') as f: json.dump(eval_result, f)
+        eos.delete_lockfile(eos_evalfilepath)
 
     def test(self, fold: int, syst_name: str='nominal', regex: str|list[str]='test_of_train', **kwargs):
         eval_data = self.modeldataset.get_test(fold, syst_name=syst_name, regex=regex)

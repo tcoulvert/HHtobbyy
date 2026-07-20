@@ -2,7 +2,7 @@
 import numpy as np
 
 # ML packages
-import gpustat
+import GPUtil
 import xgboost as xgb
 
 # ML packages
@@ -39,8 +39,8 @@ class XGBoostBDTConfig(ModelConfig):
         
         # Hardware parameters
         try:
-            gpustat.print_gpustat()
-            self.device           = 'cuda'
+            deviceID = GPUtil.getAvailable(order='memory')[0]
+            self.device           = f'cuda:{deviceID}'
             self.sampling_method  = 'gradient_based'
             self.subsample        = 0.2        # fraction of events to train tree on
         except:
