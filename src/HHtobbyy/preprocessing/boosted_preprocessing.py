@@ -146,4 +146,21 @@ def add_vars_boostedBDT(df: pd.DataFrame, filepath: str, aux_var_prefix: str='',
     df[f'{aux_var_prefix}fatjet_selected_mass_regressed'] = df['fatjet_selected_mass_regressed']
     return df
 
-def add_vars_boostedYBDT(): pass
+def add_vars_boostedYBDT(df: pd.DataFrame, filepath: str, aux_var_prefix: str='', **kwargs):
+    df = add_vars_boostedBDT(df, filepath, aux_var_prefix=aux_var_prefix)
+
+    for field in ['lead', 'sublead']:
+        # photon variables
+        df[f'{field}_sigmaE_over_E'] = df[f'{field}_energyErr'] / (df[f'{field}_pt'] * np.cosh(df[f'{field}_eta']))
+
+    for photon_type, photon_field_prefix in [('g1', 'lead_'), ('g2', 'sublead_')]:
+        for subj_type, subj_field in [('subj1', 'subjet1'), ('subj2', 'subjet2')]:
+            df[f'deltaEta_{photon_type}_{subj_type}'] = deltaEta(df[f'{photon_field_prefix}eta'], df[f'fatjet_selected_{subj_field}_eta'])
+            df[f'deltaPhi_{photon_type}_{subj_type}'] = deltaPhi(df[f'{photon_field_prefix}phi'], df[f'fatjet_selected_{subj_field}_phi'])
+            df[f'deltaR_{photon_type}_{subj_type}'] = ( df[f'deltaEta_{photon_type}_{subj_type}']**2 + df[f'deltaPhi_{photon_type}_{subj_type}']**2 )**0.5
+
+    df['DeltaR_jg_min'] = df[
+        ["deltaR_g1_subj1", "deltaR_g1_subj2", "deltaR_g2_subj1", "deltaR_g2_subj2"]
+    ].min(axis=1)
+    
+    return df
