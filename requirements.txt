@@ -4,6 +4,7 @@ dask
 dask-jobqueue
 distributed
 gpustat
+gputil
 h5py
 htcondor
 ipykernel

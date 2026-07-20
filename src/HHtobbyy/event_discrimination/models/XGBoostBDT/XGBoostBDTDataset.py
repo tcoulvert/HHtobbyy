@@ -13,8 +13,6 @@ from HHtobbyy.event_discrimination.Model import ModelDataset
 class XGBoostBDTDataset(ModelDataset):
     def __init__(self, dfdataset: DFDataset, config: dict):
         self.dfdataset = dfdataset
-
-        self.max_bin = 256  # number of bins for histogramming
         
         # Processes the config
         self.process_config(config)
@@ -22,12 +20,11 @@ class XGBoostBDTDataset(ModelDataset):
     #############################################################
     # Common model get
     def get_DMatrix(self, df: pd.DataFrame, event_weight: str):
-        return xgb.QuantileDMatrix(
+        return xgb.DMatrix(
             data=df[self.dfdataset.model_vars].to_numpy(), 
             label=df[f"{self.dfdataset.aux_var_prefix}label1D"].to_numpy(), 
             weight=np.abs(df[f"{self.dfdataset.aux_var_prefix}{event_weight}"].to_numpy()),
             missing=self.dfdataset.refill_value, feature_names=self.dfdataset.model_vars,
-            max_bin=self.max_bin
         )
         
     #############################################################
