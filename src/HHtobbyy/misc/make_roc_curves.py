@@ -63,21 +63,36 @@ columns = ["AUX_eventWeight", "AUX_sample_name", "AUX_label1D"]+output_nodes
 columns_map = {item: item for item in columns}
 
 bkgs = {
+    'All': ['GGJets', 'DDQCDGJets', 'TTGG', 'GluGluHToGG', 'VBFHToGG', 'ttHToGG', 'bbHToGG', 'VHToGG'],
     'nonRes': ['GGJets', 'DDQCDGJets', 'TTGG'],
-    'Res': ['GluGluHToGG', 'VBFHToGG', 'ttHToGG', 'bbHToGG', 'VHToGG']
+    'Res': ['GluGluHToGG', 'VBFHToGG', 'ttHToGG', 'bbHToGG', 'VHToGG'],
+    # 'GGJets': ['GGJets'], 
+    # 'DDQCDGJets': ['DDQCDGJets'], 
+    # 'TTGG': ['TTGG'], 
+    # 'GluGluHToGG': ['GluGluHToGG'], 
+    # 'VBFHToGG': ['VBFHToGG'], 
+    # 'ttHToGG': ['ttHToGG'], 
+    # 'bbHToGG': ['bbHToGG'], 
+    # 'VHToGG': ['VHToGG']
 }
 
 
 def save_roc(fprs, roc_str: str, file_postfix: str=''):
+    reftpr = lambda reffpr: BASE_TPR[(np.abs(fprs[-1] - reffpr)).argmin()]
     plt.figure(figsize=(10,8))
     for i, fpr in enumerate(fprs[:-1]):
         plt.plot(fpr, BASE_TPR, label=f"Fold {i} - AUROC = {trapezoid(BASE_TPR, fpr):.3f}", alpha=0.6, linestyle='--')
-    plt.plot(fprs[-1], BASE_TPR, label=f"Merged - AUROC = {trapezoid(BASE_TPR, fprs[-1]):.3f}", alpha=0.6)
+    plt.plot(fprs[-1], BASE_TPR, label=f"Merged - AUROC = {trapezoid(BASE_TPR, fprs[-1]):.3f}", alpha=0.75)
+    vlines_x = [1e-3]
+    vlines_y = [reftpr(vline_x) for vline_x in vlines_x]
+    plt.vlines(vlines_x, 1e-3, 1, linestyles='dotted', colors=['deeppink'], label=", ".join([r'$\epsilon_{sig}$ = '+f"{vlines_y[i]:.2e}"+r' @ $\epsilon_{bkg}$ = '+f"{vlines_x[i]:.2e}" for i in range(len(vlines_x))]))
     plt.title(roc_str.replace('  ', ' - '))
     plt.ylabel('Signal efficiency')
     plt.xlabel('Background efficiency')
     plt.xscale('log')
     plt.yscale('log')
+    plt.xlim((1e-6, 1))
+    plt.ylim((1e-3, 1))
     plt.legend()
     plt.savefig(os.path.join(plot_dir, f"{roc_str.replace(' ', '_')}_roc{file_postfix}.png"))
     plt.close()
@@ -94,16 +109,6 @@ def make_roc_curves(data: pd.DataFrame, fprs: dict, file_postfix: str=''):
             roc_str = f'{output_name}  {signal} vs {bkg}'
             if roc_str not in fprs.keys(): fprs[roc_str] = [fpr]
             else: fprs[roc_str].append(fpr)
-
-            for bkg in bkg_list:
-                sub_data = data[data["AUX_sample_name"].isin(signal_list+[bkg])]
-                fpr, tpr, threshold = roc_curve(sub_data["AUX_label1D"].eq(signal_idx), sub_data[output_nodes[signal_idx]], sample_weight=sub_data["AUX_eventWeight"])
-                fpr = np.interp(BASE_TPR, tpr, fpr)
-                
-                roc_str = f'{output_name}  {signal} vs {bkg}'
-                if roc_str not in fprs.keys(): fprs[roc_str] = [fpr]
-                else: fprs[roc_str].append(fpr)
-
 
 fprs = {}
 for fold_idx in range(dfdataset.n_folds):

@@ -157,10 +157,11 @@ def add_vars_resolvedBDT(df: pd.DataFrame, filepath: str, prefactor: str='', **k
     df = df.loc[pass_presel_mask].reset_index(drop=True)
     return df
 
-def add_vars_resolvedBDTLbTag(df: pd.DataFrame, filepath: str, prefactor: str='', **kwargs):
+def add_vars_resolvedBDTLbTag(df: pd.DataFrame, filepath: str, prefactor: str='', datatype: str='train', **kwargs):
     df = add_vars_resolvedBDT(df, filepath, prefactor, **kwargs)
     
     # Mask for training #
-    pass_presel_mask = (df[f'{prefactor}_lead_bjet_bTagWP'] > 0)
-    df = df.loc[pass_presel_mask].reset_index(drop=True)
+    if datatype == "train":
+        pass_presel_mask = (df[f'{prefactor}_lead_bjet_bTagWP'] > 0)
+        df = df.loc[pass_presel_mask].reset_index(drop=True)
     return df

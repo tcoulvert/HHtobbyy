@@ -260,10 +260,11 @@ class DFDataset:
 
     #############################################################
     # Basic DF build
-    def make_df(self, df: pd.DataFrame, filepath: str, fold: int, class_idx: int, mask_func, accumulation: dict={}, **kwargs):
-        mask = mask_func(df, fold, **kwargs)
+    def make_df(self, df: pd.DataFrame, datatype: str, filepath: str, fold: int, class_idx: int, mask_func, accumulation: dict={}, **kwargs):
+        if datatype == "train": mask = self.train_mask(df, fold, **kwargs)
+        elif datatype == "test": mask = self.test_mask(df, fold, **kwargs)
         df = df.loc[mask].reset_index(drop=True)
-        df = self.add_vars(df, filepath, class_idx, accumulation)
+        df = self.add_vars(df, datatype, filepath, class_idx, accumulation)
         df = self.remove_inter_vars(df)
         if len(df) == 0: return self.good_df(df)
         df = self.over_under_sample(df, accumulation)
@@ -274,7 +275,7 @@ class DFDataset:
     def accumulate_dataset(self, df: pd.DataFrame, filepath: str, fold: int, class_idx: int, accumulation: dict, **kwargs):
         mask = self.train_mask(df, fold)
         df = df.loc[mask].reset_index(drop=True)
-        df = self.add_vars(df, filepath, class_idx, {})
+        df = self.add_vars(df, "train", filepath, class_idx, {})
         df = self.over_under_sample(df, {})
         if len(df) == 0: return
 
@@ -350,11 +351,11 @@ class DFDataset:
                 classSum, ref_classSum = accumulation[self.event_weight_var+classTag]['sum'], sum([accumulation[self.event_weight_var+ref_classTag]['sum'] for ref_classTag in ref_classTags])
                 df[reweight_var] = df[reweight_var] * reweight * ref_classSum / classSum
 
-    def add_vars(self, df: pd.DataFrame, filepath: str, class_idx: int, accumulation: dict):
+    def add_vars(self, df: pd.DataFrame, datatype: str, filepath: str, class_idx: int, accumulation: dict):
         df[f'{self.aux_var_prefix}label1D'] = class_idx
 
         preproc.add_basic_info(df, sub_filepath(filepath, self.base_filepath), self.aux_var_prefix)
-        df = getattr(preproc, self.build_vars_func)(df, sub_filepath(filepath, self.base_filepath), **self.__dict__)
+        df = getattr(preproc, self.build_vars_func)(df, sub_filepath(filepath, self.base_filepath), datatype=datatype, **self.__dict__)
 
         # Reweighting eventWeight if improperly preprocessed
         self.sample_reweighting(df, self.test_sample_reweighting, f'{self.aux_var_prefix}{self.event_weight_var}')
@@ -435,7 +436,7 @@ class DFDataset:
         for filepath in filepaths:
             out_filepath = self.out_filepath(filepath, fold, 'train')
             batched_writer(self.get_df_iter, filepath, out_filepath)(self.make_df)(
-                filepath, fold, self.class_idx(filepath), self.train_mask, accumulation=accumulation,
+                filepath, "train", fold, self.class_idx(filepath), self.train_mask, accumulation=accumulation,
                 columns=self.all_vars_map, filter=self.presel_filter, missing_cols_ok=True, **kwargs
             )
             
@@ -449,7 +450,7 @@ class DFDataset:
         for filepath in filepaths:
             out_filepath = self.out_filepath(filepath, fold, 'test')
             batched_writer(self.get_df_iter, filepath, out_filepath)(self.make_df)(
-                filepath, fold, self.class_idx(filepath), self.test_mask, 
+                filepath, "test", fold, self.class_idx(filepath), self.test_mask, 
                 columns=self.all_vars_map, filter=self.presel_filter, missing_cols_ok=True, **kwargs
             )
 
