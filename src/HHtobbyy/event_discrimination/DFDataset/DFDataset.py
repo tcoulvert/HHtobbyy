@@ -436,7 +436,7 @@ class DFDataset:
         for filepath in filepaths:
             out_filepath = self.out_filepath(filepath, fold, 'train')
             batched_writer(self.get_df_iter, filepath, out_filepath)(self.make_df)(
-                filepath, "train", fold, self.class_idx(filepath), self.train_mask, accumulation=accumulation,
+                "train", filepath, fold, self.class_idx(filepath), self.train_mask, accumulation=accumulation,
                 columns=self.all_vars_map, filter=self.presel_filter, missing_cols_ok=True, **kwargs
             )
             
@@ -450,7 +450,7 @@ class DFDataset:
         for filepath in filepaths:
             out_filepath = self.out_filepath(filepath, fold, 'test')
             batched_writer(self.get_df_iter, filepath, out_filepath)(self.make_df)(
-                filepath, "test", fold, self.class_idx(filepath), self.test_mask, 
+                "test", filepath, fold, self.class_idx(filepath), self.test_mask, 
                 columns=self.all_vars_map, filter=self.presel_filter, missing_cols_ok=True, **kwargs
             )
 
