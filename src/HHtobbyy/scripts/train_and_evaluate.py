@@ -53,13 +53,6 @@ parser.add_argument(
     help="Filepaths to train/evaluate, overrides eras"
 )
 parser.add_argument(
-    "--submission", 
-    type=str,
-    default='iterative',
-    choices=['iterative', 'parallel'],
-    help="How to run script"
-)
-parser.add_argument(
     "--optimize_hyperparams", 
     action="store_true",
     help="Runs hyperparm optimization before training"

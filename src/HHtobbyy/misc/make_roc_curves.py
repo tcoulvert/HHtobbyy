@@ -26,10 +26,14 @@ from HHtobbyy.event_discrimination.models import map_model_to_Model
 # BDT 5fold
 # dfdataset_config = "../HiggsDNA_parquet/DFDatasets/v3/16to25_BDTv7F5_2026-07-20_08-22-14/dataset_config.json"
 # MulticlassBDT 5fold
-dfdataset_config = "../HiggsDNA_parquet/DFDatasets/v3/16to25_MulticlassBDTv7F5_2026-07-19_22-16-35/dataset_config.json"
+# dfdataset_config = "../HiggsDNA_parquet/DFDatasets/v3/16to25_MulticlassBDTv7F5_2026-07-19_22-16-35/dataset_config.json"
+# MulticlassBDT 5fold LbTag in Train
+dfdataset_config = "../HiggsDNA_parquet/DFDatasets/v3/16to25_MulticlassBDTv7F5LbTag_2026-07-20_13-59-02/dataset_config.json"
 
 # BDT Boosted
 # dfdataset_config = "../HiggsDNA_parquet/DFDatasets/v3/16to25_BDTv7_Boost_2026-07-15_23-03-07/dataset_config.json"
+# BDT 5fold Boosted
+# dfdataset_config = "../HiggsDNA_parquet/DFDatasets/v3/16to25_BDTv7F5_Boost_2026-07-20_13-59-07/dataset_config.json"
 ## BDT Boosted scikit val
 ## dfdataset_config = "../HiggsDNA_parquet/DFDatasets/v3/16to25_BDTv7_Boost_2026-07-16_08-53-35/dataset_config.json"
 dfdataset = DFDataset(dfdataset_config)
@@ -37,26 +41,32 @@ dfdataset = DFDataset(dfdataset_config)
 # model = map_model_to_Model(model)(dfdataset, model_config)
 BASE_TPR = np.linspace(0, 1, 5000)
 
-
-if '_MLPv7' in dfdataset_config or '_BDTv7F5_' in dfdataset_config:
-    plot_dir = os.path.join(os.getcwd(), "BDTv7F5_roc_curves")
-    output_nodes = ["AUX_DnonRes", "AUX_DRes", "AUX_DggFHH", "AUX_DVBFHH"]
-    signals = {
-        'ggFHH': (2, ['GluGluToHH_kl1p00_kt1p00_c20p00']),
-        'VBFHH': (3, ['VBFToHH_cv1p00_c2v1p00_c31p00'])
-    }
-elif '_BDTv7_Boost_' in dfdataset_config:
-    plot_dir = os.path.join(os.getcwd(), "BDTv7_Boost_roc_curves")
+if '_Boost_' in dfdataset_config:
+    plot_dir = os.path.join(os.getcwd(), "BDTv7F5_Boost_roc_curves")
     output_nodes = ["AUX_DBackground", "AUX_DSignal"]
     signals = {
         'ggFHH': (1, ['GluGluToHH_kl1p00_kt1p00_c20p00']),
         'VBFHH': (1, ['VBFToHH_cv1p00_c2v1p00_c31p00'])
     }
+elif '_MulticlassBDTv7F5LbTag' in dfdataset_config:
+    plot_dir = os.path.join(os.getcwd(), "MulticlassBDTv7LbTag_roc_curves")
+    output_nodes = ["AUX_DggFHH", "AUX_DVBFHH", "AUX_DRes", "AUX_DnonRes"]
+    signals = {
+        'ggFHH': (0, ['GluGluToHH_kl1p00_kt1p00_c20p00']),
+        'VBFHH': (1, ['VBFToHH_cv1p00_c2v1p00_c31p00'])
+    }
 elif '_MulticlassBDTv7' in dfdataset_config:
-    plot_dir = os.path.join(os.getcwd(), "MulticlassBDTv7_roc_curves")
+    plot_dir = os.path.join(os.getcwd(), "MulticlassBDTv7LbTag_roc_curves")
     output_nodes = ["AUX_DggFHH", "AUX_DttHbbH", "AUX_DVH", "AUX_DnonResggFHVBFH"]
     signals = {
         'ggFHH': (0, ['GluGluToHH_kl1p00_kt1p00_c20p00'])
+    }
+elif '_MLPv7' in dfdataset_config or '_BDTv7' in dfdataset_config:
+    plot_dir = os.path.join(os.getcwd(), "BDTv7F5_roc_curves")
+    output_nodes = ["AUX_DnonRes", "AUX_DRes", "AUX_DggFHH", "AUX_DVBFHH"]
+    signals = {
+        'ggFHH': (2, ['GluGluToHH_kl1p00_kt1p00_c20p00']),
+        'VBFHH': (3, ['VBFToHH_cv1p00_c2v1p00_c31p00'])
     }
 os.makedirs(plot_dir, exist_ok=True)
 columns = ["AUX_eventWeight", "AUX_sample_name", "AUX_label1D"]+output_nodes
@@ -83,7 +93,7 @@ def save_roc(fprs, roc_str: str, file_postfix: str=''):
     for i, fpr in enumerate(fprs[:-1]):
         plt.plot(fpr, BASE_TPR, label=f"Fold {i} - AUROC = {trapezoid(BASE_TPR, fpr):.3f}", alpha=0.6, linestyle='--')
     plt.plot(fprs[-1], BASE_TPR, label=f"Merged - AUROC = {trapezoid(BASE_TPR, fprs[-1]):.3f}", alpha=0.75)
-    vlines_x = [1e-3]
+    vlines_x = [1e-2] if '_Boost_' in dfdataset_config else [1e-3]
     vlines_y = [reftpr(vline_x) for vline_x in vlines_x]
     plt.vlines(vlines_x, 1e-3, 1, linestyles='dotted', colors=['deeppink'], label=", ".join([r'$\epsilon_{sig}$ = '+f"{vlines_y[i]:.2e}"+r' @ $\epsilon_{bkg}$ = '+f"{vlines_x[i]:.2e}" for i in range(len(vlines_x))]))
     plt.title(roc_str.replace('  ', ' - '))

@@ -1,5 +1,6 @@
 # Stdlib packages
 import datetime
+import json
 import os
 
 # HEP packages
@@ -99,5 +100,7 @@ class CategorizationConfig:
     def save_config(self):
         assert self.cat_filename.endswith('.json'), f"ERROR: Currently only supporting \'json\' type config serializations"
         
-        eos.save_file_eos(self.toJSON(), os.path.join(self.output_dirpath, self.catconfig_filename))
+        eos_filepath = eos.save_file_eos(os.path.join(self.output_dirpath, self.catconfig_filename))
+        with open(eos_filepath, 'w') as f: json.dump(self.toJSON(), f)
+        eos.delete_lockfile(eos_filepath)
             

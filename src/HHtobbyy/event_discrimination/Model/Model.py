@@ -51,6 +51,7 @@ class Model(ABC):
         ]
 
         def prediction(df: pd.DataFrame, **kwargs):
+            if len(df) == 0: return df.drop(columns=score_columns, errors='ignore').join(pd.DataFrame(columns=score_columns))
             return df.drop(columns=score_columns, errors='ignore').join(
                 pd.DataFrame(
                     self.predict_data(

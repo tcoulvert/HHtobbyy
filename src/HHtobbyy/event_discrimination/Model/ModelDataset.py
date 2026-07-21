@@ -36,7 +36,7 @@ class ModelDataset(ABC):
             if hasattr(self, key) and key != "dfdataset": setattr(self, key, value)
 
     @abstractmethod
-    def get_data(self, df: pd.DataFrame, event_weight: str):
+    def get_data(self, df: pd.DataFrame, event_weight: str) -> object:
         pass
 
     @abstractmethod

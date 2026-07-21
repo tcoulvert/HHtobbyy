@@ -47,13 +47,6 @@ parser.add_argument(
     help="Filepaths to train/evaluate, overrides eras"
 )
 parser.add_argument(
-    "--submission", 
-    type=str,
-    default='iterative',
-    choices=['iterative', 'parallel'],
-    help="How to run script"
-)
-parser.add_argument(
     "--force", 
     action='store_true',
     help="Force recreation of test files"
@@ -65,13 +58,13 @@ parser.add_argument(
 
 def main(dfdataset: DFDataset, model: Model, filepaths: list, force: bool=False, **kwargs):
     # Building test DFDataset
-    # dfdataset.make_all_test(filepaths, force=force, **kwargs)
+    dfdataset.make_all_test(filepaths, force=force, **kwargs)
 
     # Evaluating the model
     model.predict_all_folds(batch_size=16_384, **kwargs)
 
     # Categorizing the model
-    # cat = Categorization(dfdataset, {"discriminator": "3D"})
+    # cat = Categorization(dfdataset, {"discriminator": "Boost1D"})
     # cat.run()
 
 
@@ -85,14 +78,14 @@ if __name__ == "__main__":
 
     if args.filepaths != '' and len(args.filepaths.split(', ')) == 1:
         eos_filepath = eos.load_file_eos(args.filepaths)
-        with open(eos_filepath, 'r') as f: filepaths = f.read()
+        with open(eos_filepath, 'r') as f: filepaths = [line.strip() for line in f]
         eos.delete_lockfile(eos_filepath)
     elif len(args.filepaths.split(', ')) > 1:
         filepaths = args.filepaths.split(', ')
     else:
         filepaths = get_input_filepaths(
             args.eras.split(', ') if len(args.eras.split(', ')) > 1 else args.eras, dfdataset.class_sample_map, 
-            regex="("+"|".join(["*"+postfix for postfix in dfdataset.filepostfixes])+")"
+            regex="*.parquet", dataset="test"
         )
 
-    main(dfdataset, model, filepaths, force=args.force, parallel=args.submission == 'parallel')
+    main(dfdataset, model, filepaths, force=args.force)

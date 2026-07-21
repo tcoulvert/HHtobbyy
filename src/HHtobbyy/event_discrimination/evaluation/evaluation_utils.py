@@ -43,6 +43,13 @@ TRANSFORM_PREDS = [
         'func': lambda multibdt_output: ABCD(multibdt_output),
         'cutdir': lambda class_names: ['<', '<', '<', '<']
     },
+    {
+        'name': 'Boost1D', 
+        'output': lambda class_names: ['DSignal'], 
+        'ROC_bkgeffs': lambda class_names: [1e-2],
+        'func': lambda multibdt_output: Boost1D(multibdt_output),
+        'cutdir': lambda class_names: ['>']
+    },
 ]
 
 ################################
@@ -119,3 +126,6 @@ def ABCD(multibdt_output):
     D_preds = np.nan_to_num(D_preds, copy=False)
 
     return np.column_stack([A_preds, B_preds, C_preds, D_preds])
+
+def Boost1D(multibdt_output):
+    return multibdt_output[:, 1]

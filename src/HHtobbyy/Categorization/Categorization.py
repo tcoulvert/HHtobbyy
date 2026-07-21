@@ -1,4 +1,5 @@
 # Stdlib packages
+import json
 import os
 
 # Common Py packages
@@ -51,47 +52,7 @@ class Categorization:
         MCsignal = self.get_opt_df(self.dfdataset.get_all_test(regex=[sampl for sampl in self.catconfig.signal_samples]))
         MCres = self.get_opt_df(self.dfdataset.get_all_test(regex=[sampl for sampl in self.catconfig.res_samples]))
         MCnonRes = self.get_opt_df(self.dfdataset.get_all_test(regex=[sampl for sampl in self.catconfig.nonres_samples]))
-        Data = self.get_opt_df(self.dfdataset.get_all_test(regex='!Run2_201x*Data'))
-
-
-        if 'Run3_2025/data' in pd.unique(Data[f"{self.dfdataset.aux_var_prefix}sample_era"]):
-            print('upscaling 2024 MC for 2025 Data')
-            MCsignal.loc[MCsignal[f'{self.dfdataset.aux_var_prefix}sample_era'].eq('Run3_2024/sim'), f'{self.dfdataset.aux_var_prefix}eventWeight'] = 2 * MCsignal.loc[MCsignal[f'{self.dfdataset.aux_var_prefix}sample_era'].eq('Run3_2024/sim'), f'{self.dfdataset.aux_var_prefix}eventWeight']
-            MCres.loc[MCres[f'{self.dfdataset.aux_var_prefix}sample_era'].eq('Run3_2024/sim'), f'{self.dfdataset.aux_var_prefix}eventWeight'] = 2 * MCres.loc[MCres[f'{self.dfdataset.aux_var_prefix}sample_era'].eq('Run3_2024/sim'), f'{self.dfdataset.aux_var_prefix}eventWeight']
-            MCnonRes.loc[MCnonRes[f'{self.dfdataset.aux_var_prefix}sample_era'].eq('Run3_2024/sim'), f'{self.dfdataset.aux_var_prefix}eventWeight'] = 2 * MCnonRes.loc[MCnonRes[f'{self.dfdataset.aux_var_prefix}sample_era'].eq('Run3_2024/sim'), f'{self.dfdataset.aux_var_prefix}eventWeight']
-        if '' in pd.unique(Data[f"{self.dfdataset.aux_var_prefix}sample_era"]):
-            print('upscaling 2022-23 MC for Run2 Data')
-            run2_lumi_ratio = 2.23
-            run2_lumi_reweight = {
-                # Signal #
-                'GluGluToHH': 0.75, 'VBFHH': 2.27,
-
-                # Resonant (Mgg) background #
-                # Fake b-jets
-                'GluGluHToGG': 0.93, 'VBFHToGG': 0.924, 'WmHToGG': 1, 'WpHToGG': 1,
-                # Real b-jets
-                'ttHToGG': 0.85, 'bbHToGG': 1,
-                # Resonant b-jets
-                'VHToGG': 0.93, 'ZHToGG': 1,
-
-                # Non-resonant (Mgg) background #
-                # Fake photons, fake b-jets
-                'GJet': 1,
-                # Fake photons
-                'TTG': 1,
-                # Fake b-jets
-                'GGJets': 0.98,
-                # Real b-jets
-                'TTGG': 1,
-
-                # Data-driven background #
-                'DDQCDGJets': 1
-            }
-            for MCdf in [MCsignal, MCres, MCnonRes]:
-                era_mask = MCdf[f'{self.dfdataset.aux_var_prefix}sample_era'].isin(['Run3_2022/sim/preEE', 'Run3_2022/sim/postEE', 'Run3_2023/sim/preBPix', 'Run3_2023/sim/postBPix'])
-                for sample_name in pd.unique(MCdf[f'{self.dfdataset.aux_var_prefix}sample_name']):
-                    sample_mask = np.logical_and(era_mask, MCdf[f'{self.dfdataset.aux_var_prefix}sample_name'].eq(sample_name))
-                    MCdf.loc[sample_mask, f'{self.dfdataset.aux_var_prefix}eventWeight'] = (run2_lumi_ratio * run2_lumi_reweight[sample_name] + 1) * MCdf.loc[sample_mask, f'{self.dfdataset.aux_var_prefix}eventWeight']
+        Data = self.get_opt_df(self.dfdataset.get_all_test(regex='Data'))
 
         MC_names = sorted(pd.unique(MCsignal.loc[:,f"{self.dfdataset.aux_var_prefix}sample_name"]).tolist()) + sorted(pd.unique(MCres.loc[:,f"{self.dfdataset.aux_var_prefix}sample_name"]).tolist())
         field_names = ['Category', 'FoM (s/b)'] + MC_names + ['nonRes MC -- SB fit', 'Data -- SB fit']
@@ -146,4 +107,6 @@ class Categorization:
             table.add_row(new_row)
 
         print(table)
-        eos.save_file_eos(cats, os.path.join(self.catconfig.output_dirpath, self.catconfig.cat_filename))
+        eos_filepath = eos.save_file_eos(os.path.join(self.catconfig.output_dirpath, self.catconfig.cat_filename))
+        with open(eos_filepath, 'w') as f: json.dump(cats, f)
+        eos.delete_lockfile(eos_filepath)
