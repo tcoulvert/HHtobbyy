@@ -35,15 +35,6 @@ def deltaEta(eta1, eta2):
     return np.abs(eta1 - eta2)
 
 
-################################
-# File functions
-def has_magic_bytes(parquet_filepath: str):
-    try: 
-        eos_filepath = eos.load_file_eos(parquet_filepath)
-        pq.read_schema(eos_filepath)
-        eos.delete_lockfile(eos_filepath); return True
-    except: return False
-
 def get_output_filepath(input_filepath: str, output_dirpath: str|None, end_filepaths: str|None, new_end_filepath: str|None, base_filepath: str|None):
     if output_dirpath is None:
         output_filepath = input_filepath.replace(match_sample(input_filepath, end_filepaths), new_end_filepath)

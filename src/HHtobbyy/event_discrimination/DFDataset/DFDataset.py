@@ -22,7 +22,8 @@ from HHtobbyy.workspace_utils.retrieval_utils import (
     FILL_VALUE, json_serialize,
     match_sample, match_regex, 
     multifold, sub_filepath, 
-    batched_writer, batched_executor
+    batched_writer, batched_executor,
+    has_magic_bytes
 )
 import HHtobbyy.event_discrimination.DFDataset.DFDataset_utils as dfutils
 import HHtobbyy.preprocessing as preproc
@@ -266,7 +267,12 @@ class DFDataset:
         df = df.loc[mask].reset_index(drop=True)
         df = self.add_vars(df, datatype, filepath, class_idx, accumulation)
         df = self.remove_inter_vars(df)
-        if len(df) == 0: return self.good_df(df)
+        if len(df) == 0: 
+            print('+'*60)
+            print('empty df returning')
+            print(filepath)
+            print('-'*60)
+            return self.good_df(df)
         df = self.over_under_sample(df, accumulation)
         df = self.apply_standardization(df, fold)
         df = self.good_df(df)
@@ -533,7 +539,7 @@ class DFDataset:
         all_filepaths = set([filepath for filepath_list in self.get_traintest_filepaths(fold, dataset=dataset, syst_name='').values() for filepath in filepath_list])
         if dataset == 'test':
             all_filepaths = all_filepaths | set([filepath for filepath_list in self.get_test_filepaths(fold, syst_name='').values() for filepath in filepath_list])
-        output_filepaths = {self.out_filepath(filepath, fold, dataset): filepath for filepath in input_filepaths}
+        output_filepaths = {self.out_filepath(filepath, fold, dataset): filepath for filepath in input_filepaths if has_magic_bytes(self.out_filepath(filepath, fold, dataset))}
         new_filepaths = sorted([output_filepaths[key] for key in list(set(output_filepaths.keys()) - all_filepaths)])
         return new_filepaths
     def get_traintest_filepaths(self, fold: int, dataset: str="train", syst_name: str='nominal', **kwargs):

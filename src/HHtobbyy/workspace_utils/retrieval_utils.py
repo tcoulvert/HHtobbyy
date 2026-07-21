@@ -194,3 +194,13 @@ def multifold_executor(n_folds: int):
             return multifold_return
         return wrapper
     return decorator
+
+
+################################
+# File functions
+def has_magic_bytes(parquet_filepath: str):
+    try: 
+        eos_filepath = eos.load_file_eos(parquet_filepath)
+        pq.read_schema(eos_filepath)
+        eos.delete_lockfile(eos_filepath); return True
+    except: return False
