@@ -31,6 +31,8 @@ def fom_s_over_sqrt_b(s, b):
     return s / np.sqrt(b)
 def fom_s_over_b(s, b):
     return s / b
+def fom_zscore(s, b):
+    return np.sqrt(2.0 * ((s + b) * np.log(1.0 + s / b) - s))
 
 #############################################################
 # ASCii histogram for rapid plotting

@@ -9,7 +9,7 @@ import eos_utils as eos
 # Workspace packages
 from HHtobbyy.event_discrimination.DFDataset import DFDataset
 from HHtobbyy.event_discrimination.evaluation import transform_preds_options, transform_preds_func
-from .categorization_utils import *
+import categorization_utils as catut
 
 class CategorizationConfig:
     def __init__(self, dfdataset: DFDataset, config: dict):
@@ -79,12 +79,9 @@ class CategorizationConfig:
         return {'names': self.transform_names, 'cutdir': self.cutdir}
     
     def get_fom(self):
-        if self.maximization_func == "s_over_b": return fom_s_over_b
-        elif self.maximization_func == "s_over_sqrt_b": return fom_s_over_sqrt_b
-        else: raise NotImplementedError(f"Maximization method not yet implemented, use \'s_over_b\' or \'s_over_sqrt_b\'.")
+        return getattr(catut, self.maximization_func)
     def get_catmethod(self):
-        if self.cat_method == "grid_search": return grid_search
-        else: raise NotImplementedError(f"Maximization method not yet implemented, use \'grid_search\'.")
+        return getattr(catut, self.cat_method)
 
     def process_config(self, config: dict):
         for key, value in config.items():
