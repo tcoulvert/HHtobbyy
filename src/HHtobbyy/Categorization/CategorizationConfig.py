@@ -35,7 +35,7 @@ class CategorizationConfig:
         self.cat_method = "grid_search"
 
         # Options for chosen method
-        self.method_options = {'n_steps': 20, 'n_zoom': 4}
+        self.method_options = {'step_size': 0.005, 'patience': 1}
 
         # Number of categories
         self.n_cats = 3

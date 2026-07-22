@@ -199,7 +199,7 @@ def brute_force(
 
 def grid_search(MCsignal: pd.DataFrame, MCres: pd.DataFrame, MCnonRes: pd.DataFrame, catconfig, prev_cuts: list[float]=None):
 
-    best_fom, best_cut = np.float64(0.), np.array([np.float64(0.) for _ in catconfig.transform_names])
+    best_fom, best_cut, best_iteration = np.float64(0.), np.zeros(len(catconfig.transform_names)), 0
 
     all_foms, all_cuts = [], []
 
@@ -220,17 +220,22 @@ def grid_search(MCsignal: pd.DataFrame, MCres: pd.DataFrame, MCnonRes: pd.DataFr
     nonres_sb_weights = MCnonRes.loc[nonres_sb_mask, f'{catconfig.dfdataset.aux_var_prefix}eventWeight'].to_numpy()
     nonres_sb_mass = MCnonRes.loc[nonres_sb_mask, f'{catconfig.dfdataset.aux_var_prefix}mass'].to_numpy()
 
-    startstops = [[0., 1.] if '<' in catconfig.cutdir[i] else [1., 0.] for i in range(catconfig.n_dims)]
-    for zoom in range(1, catconfig.method_options['n_zoom']+1):
-        print(f"Zoom {zoom}")
-        steps = [
-            np.linspace(
-                startstops[i][1], startstops[i][0], catconfig.method_options['n_steps'], endpoint=False
-            )[::-1] for i in range(catconfig.n_dims)
-        ]
-        cuts = np.array(ak.to_list(ak.cartesian(steps, axis=0)))
+
+    max_iterations = catconfig.n_dims / catconfig.method_options['step_size']
+    for iteration in range(1, max_iterations):
+        print(f"Iteration {iteration}")
+
+        Nm1D_arrs = [np.arange(0, iteration)] * (catconfig.n_dims - 1)
+        Nm1D_combinations = np.stack(np.meshgrid(*Nm1D_arrs), axis=-1).reshape(-1, catconfig.n_dims - 1)
+        Nm1D_combinations = Nm1D_combinations[Nm1D_combinations.sum(axis=1) <= iteration]
+        ND_combinations = np.hstack((Nm1D_combinations, (iteration - Nm1D_combinations.sum(axis=1))[:, np.newaxis]))
+        
+        cuts = catconfig.method_options['step_size'] * ND_combinations
+        for iD, cutdir in enumerate(catconfig.cutdir):
+            if cutdir == '>': cuts[:, iD] = 1. - cuts[:, iD]
         if prev_cuts is not None:
             cuts = np.array([cut for cut in cuts if all((cut[i] < prev_cut[i] if catconfig.cutdir[i] == '>' else cut[i] > prev_cut[i]) for prev_cut in prev_cuts for i in range(len(prev_cut)))])
+
         foms = -np.ones(np.shape(cuts)[0])
 
         fom, cut = brute_force(
@@ -248,9 +253,7 @@ def grid_search(MCsignal: pd.DataFrame, MCres: pd.DataFrame, MCnonRes: pd.DataFr
         all_cuts.extend(cuts[foms >= 0.])
         all_foms.extend(foms[foms >= 0.])
 
-        step_sizes = [(stop - start) / catconfig.method_options['n_steps'] for start, stop in startstops]
-        startstops = [[cut[i] - step_sizes[i], cut[i] + step_sizes[i]] for i in range(len(step_sizes))]
-
-        if fom > best_fom: best_fom = fom; best_cut = cut; print(f"best cut = {cut}, best fom = {fom}")
+        if fom > best_fom: best_fom = fom; best_cut = cut; best_iteration+=1; print(f"best cut = {cut}, best fom = {fom}")
+        elif iteration - best_iteration >= catconfig.patience: break
 
     return best_fom, best_cut

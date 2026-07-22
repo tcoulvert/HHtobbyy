@@ -37,6 +37,13 @@ TRANSFORM_PREDS = [
         'cutdir': lambda class_names: ['>', '>']
     },
     {
+        'name': 'SnT4D', 
+        'output': lambda class_names: class_discriminator_columns(class_names), 
+        'ROC_bkgeffs': lambda class_names: [1e-3, 1e-2, 1e-2, 1e-2],
+        'func': lambda multibdt_output: multibdt_output,
+        'cutdir': lambda class_names: ['<', '<', '>', '<']
+    },
+    {
         'name': '4D', 
         'output': lambda class_names: ['A', 'B', 'C', 'D'], 
         'ROC_bkgeffs': lambda class_names: [1e-2, 1e-2, 1e-2, 1e-3],
