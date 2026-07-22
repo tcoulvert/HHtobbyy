@@ -9,7 +9,7 @@ import eos_utils as eos
 # Workspace packages
 from HHtobbyy.event_discrimination.DFDataset import DFDataset
 from HHtobbyy.event_discrimination.evaluation import transform_preds_options, transform_preds_func
-import categorization_utils as catut
+from HHtobbyy.Categorization import categorization_utils as catut
 
 class CategorizationConfig:
     def __init__(self, dfdataset: DFDataset, config: dict):
