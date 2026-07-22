@@ -31,13 +31,13 @@ parser.add_argument(
 
 def main(dfdataset: DFDataset):
     # Categorizing the model
-    cat = Categorization(dfdataset, {"discriminator": "3D"})
+    cat = Categorization(dfdataset, {"discriminator": "Boost1D", "method_options": {'n_steps': 500, 'n_zoom': 1}, "min_nonres_sideband": 4., "n_cats": 1})
     cat.run()
 
 
 if __name__ == "__main__":
     args = parser.parse_args()
     
-    dfdataset = DFDataset(eos.load_file_eos(args.dfdataset_config))
+    dfdataset = DFDataset(args.dfdataset_config)
 
     main(dfdataset)

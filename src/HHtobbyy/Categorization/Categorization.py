@@ -36,6 +36,11 @@ class Categorization:
             self.apply_cut(df, cut), 
             mass_cut(df, self.catconfig.SR_masscut, self.dfdataset.aux_var_prefix)
         )
+    def get_sb_cut_mask(self, df: pd.DataFrame, cut: list):
+        return np.logical_and(
+            self.apply_cut(df, cut), 
+            SBmass_cut(df, self.catconfig.SR_masscut, self.dfdataset.aux_var_prefix)
+        )
     def get_yield_from_cut(self, df: pd.DataFrame, cut: list):
         sr_cut_mask = self.get_sr_cut_mask(df, cut)
         return df.loc[sr_cut_mask, f"{self.dfdataset.aux_var_prefix}eventWeight"].sum()
@@ -44,8 +49,10 @@ class Categorization:
         disc_columns = [self.dfdataset.aux_var_prefix+col for col in class_discriminator_columns(self.dfdataset.class_sample_map.keys())]
         nD_predictions = df[disc_columns].to_numpy(copy=True)
         trns_predictions = self.catconfig.transform_func(nD_predictions)
-        for i, trans_name in enumerate(self.catconfig.transform_names):
-            df[trans_name] = trns_predictions[:, i]
+        if len(self.catconfig.transform_names) > 1:
+            for i, trans_name in enumerate(self.catconfig.transform_names):
+                df[trans_name] = trns_predictions[:, i]
+        else: df[self.catconfig.transform_names[0]] = trns_predictions
         return df
 
     def run(self):
@@ -55,8 +62,8 @@ class Categorization:
         Data = self.get_opt_df(self.dfdataset.get_all_test(regex='Data'))
 
         MC_names = sorted(pd.unique(MCsignal.loc[:,f"{self.dfdataset.aux_var_prefix}sample_name"]).tolist()) + sorted(pd.unique(MCres.loc[:,f"{self.dfdataset.aux_var_prefix}sample_name"]).tolist())
-        field_names = ['Category', 'FoM (s/b)'] + MC_names + ['nonRes MC -- SB fit', 'Data -- SB fit']
-        table = pt.PrettyTable(field_names=field_names)
+        field_names = ['Category', 'FoM (s/b)'] + MC_names + ['nonRes MC -- SB fit', 'Data -- SB fit', 'N SB Data']
+        table = pt.PrettyTable(field_names=field_names, float_format="0.4")
 
         def get_prev_cuts(cats_: dict):
             if len(cats_) == 0: return None
@@ -86,11 +93,14 @@ class Categorization:
                 },
                 **{
                     name: est_yield(
-                        df.loc[np.logical_and(mask, self.get_sr_cut_mask(df, best_cut)), f"{self.dfdataset.aux_var_prefix}mass"],
-                        df.loc[np.logical_and(mask, self.get_sr_cut_mask(df, best_cut)), f"{self.dfdataset.aux_var_prefix}eventWeight"],
-                        self.catconfig.fit_bins, self.catconfig.SR_masscut
+                        df.loc[np.logical_and(mask, self.apply_cut(df, best_cut)), f"{self.dfdataset.aux_var_prefix}mass"],
+                        df.loc[np.logical_and(mask, self.apply_cut(df, best_cut)), f"{self.dfdataset.aux_var_prefix}eventWeight"],
+                        self.catconfig.SR_masscut, self.catconfig.SB_masscut
                     )
                     for name, df, mask in zip(['nonRes MC -- SB fit', 'Data -- SB fit'], [MCnonRes, Data], [nonRes_mask, data_mask])
+                },
+                **{
+                    'N SB Data': int(np.sum(np.logical_and(data_mask, self.get_sb_cut_mask(Data, best_cut))))
                 }
             }
 
