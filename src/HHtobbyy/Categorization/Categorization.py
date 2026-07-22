@@ -75,6 +75,7 @@ class Categorization:
             np.ones(len(MCnonRes), dtype=bool), np.ones(len(Data), dtype=bool)
         )
         for cat_idx in range(1, self.catconfig.n_cats+1):
+            print(f"Cat {cat_idx}")
             prev_cut = get_prev_cuts(cats)
             best_fom, best_cut = self.catconfig.get_catmethod()(
                 MCsignal.loc[signal_mask], MCres.loc[res_mask], MCnonRes.loc[nonRes_mask],

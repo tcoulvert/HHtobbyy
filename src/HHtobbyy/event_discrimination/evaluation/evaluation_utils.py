@@ -37,6 +37,13 @@ TRANSFORM_PREDS = [
         'cutdir': lambda class_names: ['>', '>']
     },
     {
+        'name': 'SnT3D', 
+        'output': lambda class_names: ['DnonRes', 'DsingleH', 'DggFHH'], 
+        'ROC_bkgeffs': lambda class_names: [1e-3, 1e-2, 1e-2],
+        'func': lambda multibdt_output: SnT3D(multibdt_output),
+        'cutdir': lambda class_names: ['<', '<', '>']
+    },
+    {
         'name': 'SnT4D', 
         'output': lambda class_names: class_discriminator_columns(class_names), 
         'ROC_bkgeffs': lambda class_names: [1e-3, 1e-2, 1e-2, 1e-2],
@@ -120,6 +127,9 @@ def SnT2D(multibdt_output):
     DsingleH = np.nan_to_num(DsingleH, copy=False)
     
     return np.column_stack([DnonRes, DsingleH])
+
+def SnT3D(multibdt_output):
+    return np.column_stack([multibdt_output[:, 0], multibdt_output[:, 1], multibdt_output[:, 2]])
 
 def ABCD(multibdt_output):
     A_preds = multibdt_output[:, 1]

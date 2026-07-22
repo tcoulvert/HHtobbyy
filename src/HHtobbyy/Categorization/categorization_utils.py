@@ -139,7 +139,7 @@ def brute_force(
     res_sr_scores: np.ndarray, res_sr_weights: np.ndarray, 
     nonres_sb_scores: np.ndarray, nonres_sb_weights: np.ndarray, nonres_sb_mass: np.ndarray,
     # Cut options
-    cutdir: np.ndarray, fit_bins: list[float], SR_masscut: list[float], SB_masscut: list[float],
+    cutdir: np.ndarray, SR_masscut: list[float], SB_masscut: list[float],
     # Optimization options
     fom, min_nonres_sideband: float,
     # Output arrays
@@ -151,10 +151,6 @@ def brute_force(
     signal_lt_scores, res_lt_scores, nonres_lt_scores = lt_scores(signal_sr_scores), lt_scores(res_sr_scores), lt_scores(nonres_sb_scores)
     signal_gt_scores, res_gt_scores, nonres_gt_scores = gt_scores(signal_sr_scores), gt_scores(res_sr_scores), gt_scores(nonres_sb_scores)
     lt_cuts, gt_cuts = lt_scores(cuts), gt_scores(cuts)
-
-    ncuts, ndims = cuts.shape
-    jump_to_cut = 0
-    best_dim_foms, best_dim_cuts = np.array([-1.]*ndims), np.array([cuts[0]]*ndims)
 
 
     def apply_cuts(_lt_scores_, _gt_scores_, i):
@@ -168,9 +164,7 @@ def brute_force(
         return pass_cut_bool
 
 
-    for i in range(ncuts):
-        if i < jump_to_cut: continue
-
+    for i in range(cuts.shape[0]):
         nonres_sb_bool = apply_cuts(nonres_lt_scores, nonres_gt_scores, i)
 
         if np.sum(nonres_sb_weights[nonres_sb_bool]) > min_nonres_sideband:
@@ -180,26 +174,13 @@ def brute_force(
             sb_est_yield = est_yield(nonres_sb_mass[nonres_sb_bool], nonres_sb_weights[nonres_sb_bool], SR_masscut, SB_masscut)
 
             foms[i] = fom(np.sum(signal_sr_weights[signal_sr_bool]), np.sum(res_sr_weights[res_sr_bool]) + sb_est_yield)
-        else: foms[i] = 0.
+        else: foms[i] = -1.
 
-        if i > 0 and (foms[i-1] > foms[i] or (foms[i-1] == foms[i] and foms[i-1] != 0.)):
-            for j in range(ndims+1):
-                if j == ndims: return best_dim_foms[j-1], best_dim_cuts[j-1]
-                if j == 0:
-                    if foms[i-1] > best_dim_foms[j]:
-                        best_dim_foms[j] = foms[i-1]; best_dim_cuts[j] = cuts[i-1]
-                        jump_index = -2; break
-                elif best_dim_foms[j-1] > best_dim_foms[j]: 
-                    best_dim_foms[j] = best_dim_foms[j-1]; best_dim_cuts[j] = best_dim_cuts[j-1]
-                    best_dim_foms[j-1] = -1.; jump_index = -(j+1); break
-
-            if abs(jump_index) > cuts.shape[1]: break
-            jump_to_cut = i + np.argmax(cuts[i:, jump_index] != cuts[i, jump_index])
-    return best_dim_foms[np.argmax(best_dim_foms)], best_dim_cuts[np.argmax(best_dim_foms)]
+    return foms[np.argmax(foms)], cuts[np.argmax(foms)]
 
 def grid_search(MCsignal: pd.DataFrame, MCres: pd.DataFrame, MCnonRes: pd.DataFrame, catconfig, prev_cuts: list[float]=None):
 
-    best_fom, best_cut, best_iteration = np.float64(0.), np.zeros(len(catconfig.transform_names)), 0
+    best_fom, best_cut, best_iteration = np.float64(-1.), np.zeros(len(catconfig.transform_names)), -1
 
     all_foms, all_cuts = [], []
 
@@ -221,11 +202,12 @@ def grid_search(MCsignal: pd.DataFrame, MCres: pd.DataFrame, MCnonRes: pd.DataFr
     nonres_sb_mass = MCnonRes.loc[nonres_sb_mask, f'{catconfig.dfdataset.aux_var_prefix}mass'].to_numpy()
 
 
-    max_iterations = catconfig.n_dims / catconfig.method_options['step_size']
+
+    max_iterations = int((catconfig.n_dims // catconfig.method_options['step_size']) + 1)
     for iteration in range(1, max_iterations):
         print(f"Iteration {iteration}")
 
-        Nm1D_arrs = [np.arange(0, iteration)] * (catconfig.n_dims - 1)
+        Nm1D_arrs = [np.arange(0, iteration+1)] * (catconfig.n_dims - 1)
         Nm1D_combinations = np.stack(np.meshgrid(*Nm1D_arrs), axis=-1).reshape(-1, catconfig.n_dims - 1)
         Nm1D_combinations = Nm1D_combinations[Nm1D_combinations.sum(axis=1) <= iteration]
         ND_combinations = np.hstack((Nm1D_combinations, (iteration - Nm1D_combinations.sum(axis=1))[:, np.newaxis]))
@@ -244,7 +226,7 @@ def grid_search(MCsignal: pd.DataFrame, MCres: pd.DataFrame, MCnonRes: pd.DataFr
             res_sr_scores, res_sr_weights, 
             nonres_sb_scores, nonres_sb_weights, nonres_sb_mass,
             # Cut options
-            np.array(catconfig.cutdir), catconfig.fit_bins, catconfig.SR_masscut, catconfig.SB_masscut,
+            np.array(catconfig.cutdir), catconfig.SR_masscut, catconfig.SB_masscut,
             # Optimization options
             catconfig.get_fom(), catconfig.min_nonres_sideband,
             # Output arrays
@@ -254,6 +236,6 @@ def grid_search(MCsignal: pd.DataFrame, MCres: pd.DataFrame, MCnonRes: pd.DataFr
         all_foms.extend(foms[foms >= 0.])
 
         if fom > best_fom: best_fom = fom; best_cut = cut; best_iteration+=1; print(f"best cut = {cut}, best fom = {fom}")
-        elif iteration - best_iteration >= catconfig.patience: break
+        elif best_iteration > 0 and iteration - best_iteration >= catconfig.method_options['patience']: break
 
     return best_fom, best_cut
