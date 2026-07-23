@@ -217,6 +217,7 @@ def grid_search(MCsignal: pd.DataFrame, MCres: pd.DataFrame, MCnonRes: pd.DataFr
             if cutdir == '>': cuts[:, iD] = 1. - cuts[:, iD]
         if prev_cuts is not None:
             cuts = np.array([cut for cut in cuts if all((cut[i] < prev_cut[i] if catconfig.cutdir[i] == '>' else cut[i] > prev_cut[i]) for prev_cut in prev_cuts for i in range(len(prev_cut)))])
+        if len(cuts) == 0: continue
 
         foms = -np.ones(np.shape(cuts)[0])
 
