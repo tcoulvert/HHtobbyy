@@ -185,11 +185,12 @@ def grid_search(MCsignal: pd.DataFrame, MCres: pd.DataFrame, MCnonRes: pd.DataFr
 
 
     max_iterations = int((catconfig.n_dims // catconfig.method_options['step_size']) + 1)
+    Nm1D = catconfig.n_dims - 1 if catconfig.n_dims > 1 else catconfig.n_dims
     for iteration in range(1, max_iterations):
         print(f"Iteration {iteration}")
 
-        Nm1D_arrs = [np.arange(0, iteration+1)] * (catconfig.n_dims - 1)
-        Nm1D_combinations = np.stack(np.meshgrid(*Nm1D_arrs), axis=-1).reshape(-1, catconfig.n_dims - 1)
+        Nm1D_arrs = [np.arange(0, iteration+1)] * (Nm1D)
+        Nm1D_combinations = np.stack(np.meshgrid(*Nm1D_arrs), axis=-1).reshape(-1, Nm1D)
         Nm1D_combinations = Nm1D_combinations[np.logical_and(Nm1D_combinations.sum(axis=1) < iteration, np.all(Nm1D_combinations != 0, axis=1))]
         ND_combinations = np.hstack((Nm1D_combinations, (iteration - Nm1D_combinations.sum(axis=1))[:, np.newaxis]))
         
