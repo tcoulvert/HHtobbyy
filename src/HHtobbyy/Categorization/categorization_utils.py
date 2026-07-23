@@ -128,6 +128,8 @@ def brute_force(
 
     signal_lt_scores, res_lt_scores, nonres_lt_scores = lt_scores(signal_sr_scores), lt_scores(res_sr_scores), lt_scores(nonres_sb_scores)
     signal_gt_scores, res_gt_scores, nonres_gt_scores = gt_scores(signal_sr_scores), gt_scores(res_sr_scores), gt_scores(nonres_sb_scores)
+    print(cuts)
+    print(cuts.shape)
     lt_cuts, gt_cuts = lt_scores(cuts), gt_scores(cuts)
 
 
@@ -185,20 +187,24 @@ def grid_search(MCsignal: pd.DataFrame, MCres: pd.DataFrame, MCnonRes: pd.DataFr
 
 
     max_iterations = int((catconfig.n_dims // catconfig.method_options['step_size']) + 1)
-    Nm1D = catconfig.n_dims - 1 if catconfig.n_dims > 1 else catconfig.n_dims
     for iteration in range(1, max_iterations):
         print(f"Iteration {iteration}")
 
-        Nm1D_arrs = [np.arange(0, iteration+1)] * (Nm1D)
-        Nm1D_combinations = np.stack(np.meshgrid(*Nm1D_arrs), axis=-1).reshape(-1, Nm1D)
-        Nm1D_combinations = Nm1D_combinations[np.logical_and(Nm1D_combinations.sum(axis=1) < iteration, np.all(Nm1D_combinations != 0, axis=1))]
-        ND_combinations = np.hstack((Nm1D_combinations, (iteration - Nm1D_combinations.sum(axis=1))[:, np.newaxis]))
+        if catconfig.n_dims > 1: 
+            Nm1D = catconfig.n_dims - 1
+            Nm1D_arrs = [np.arange(0, iteration+1)] * (Nm1D)
+            Nm1D_combinations = np.stack(np.meshgrid(*Nm1D_arrs), axis=-1).reshape(-1, Nm1D)
+            Nm1D_combinations = Nm1D_combinations[np.logical_and(Nm1D_combinations.sum(axis=1) < iteration, np.all(Nm1D_combinations != 0, axis=1))]
+            ND_combinations = np.hstack((Nm1D_combinations, (iteration - Nm1D_combinations.sum(axis=1))[:, np.newaxis]))
+        else:
+            ND_combinations = np.array([[iteration]])
         
         cuts = catconfig.method_options['step_size'] * ND_combinations
         for iD, cutdir in enumerate(catconfig.cutdir):
             if cutdir == '>': cuts[:, iD] = 1. - cuts[:, iD]
         if prev_cuts is not None:
             cuts = np.array([cut for cut in cuts if all((cut[i] < prev_cut[i] if catconfig.cutdir[i] == '>' else cut[i] > prev_cut[i]) for prev_cut in prev_cuts for i in range(len(prev_cut)))])
+        print(cuts)
         if len(cuts) == 0: continue
 
         foms = -np.ones(np.shape(cuts)[0])
