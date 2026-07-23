@@ -35,6 +35,12 @@ parser.add_argument(
     help="Types of models currently implemented"
 )
 parser.add_argument(
+    "--batch_size", 
+    type=int,
+    default=16_448,
+    help="Batch size for batched loading/writing"
+)
+parser.add_argument(
     "--eras", 
     type=str,
     default='',
@@ -61,7 +67,7 @@ def main(dfdataset: DFDataset, model: Model, filepaths: list, force: bool=False,
     dfdataset.make_all_test(filepaths, force=force, **kwargs)
 
     # Evaluating the model
-    model.predict_all_folds(batch_size=16_384, **kwargs)
+    model.predict_all_folds(**kwargs)
 
     # Categorizing the model
     # cat = Categorization(dfdataset, {"discriminator": "Boost1D"})
@@ -88,4 +94,4 @@ if __name__ == "__main__":
             regex="*.parquet", dataset="test"
         )
 
-    main(dfdataset, model, filepaths, force=args.force)
+    main(dfdataset, model, filepaths, force=args.force, batch_size=args.batch_size)

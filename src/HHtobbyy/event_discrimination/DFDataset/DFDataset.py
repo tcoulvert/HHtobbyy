@@ -536,10 +536,10 @@ class DFDataset:
     #############################################################
     # Retrieve train/test files
     def get_new_filepaths(self, fold: int, input_filepaths: list[str], dataset: str, **kwargs):
-        all_filepaths = set([filepath for filepath_list in self.get_traintest_filepaths(fold, dataset=dataset, syst_name='').values() for filepath in filepath_list])
+        all_filepaths = set([filepath for filepath_list in self.get_traintest_filepaths(fold, dataset=dataset, syst_name='').values() for filepath in filepath_list if has_magic_bytes(filepath)])
         if dataset == 'test':
-            all_filepaths = all_filepaths | set([filepath for filepath_list in self.get_test_filepaths(fold, syst_name='').values() for filepath in filepath_list])
-        output_filepaths = {self.out_filepath(filepath, fold, dataset): filepath for filepath in input_filepaths if has_magic_bytes(self.out_filepath(filepath, fold, dataset))}
+            all_filepaths = all_filepaths | set([filepath for filepath_list in self.get_test_filepaths(fold, syst_name='').values() for filepath in filepath_list if has_magic_bytes(filepath)])
+        output_filepaths = {self.out_filepath(filepath, fold, dataset): filepath for filepath in input_filepaths}
         new_filepaths = sorted([output_filepaths[key] for key in list(set(output_filepaths.keys()) - all_filepaths)])
         return new_filepaths
     def get_traintest_filepaths(self, fold: int, dataset: str="train", syst_name: str='nominal', **kwargs):
@@ -564,6 +564,7 @@ class DFDataset:
                     if ( 
                         (syst_name == "nominal" and match_sample(sample_filepath[len(self.output_dirpath):], ["_up", "_down"]) is None) 
                         or match_sample(sample_filepath[len(self.output_dirpath):], [syst_name]) is not None
+                        or match_sample(sample_filepath[len(self.output_dirpath):], ['Data']) is not None
                     ) and match_sample(sample_filepath[len(self.output_dirpath):], [regex] if type(regex) is str else regex) is not None
                 )
             )
