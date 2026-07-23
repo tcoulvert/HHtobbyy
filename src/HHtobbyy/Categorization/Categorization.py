@@ -39,7 +39,10 @@ class Categorization:
     def get_sb_cut_mask(self, df: pd.DataFrame, cut: list):
         return np.logical_and(
             self.apply_cut(df, cut), 
-            SBmass_cut(df, self.catconfig.SR_masscut, self.dfdataset.aux_var_prefix)
+            np.logical_and(
+                mass_cut(df, self.catconfig.SB_masscut, self.dfdataset.aux_var_prefix),
+                ~mass_cut(df, self.catconfig.SR_masscut, self.dfdataset.aux_var_prefix)
+            )
         )
     def get_yield_from_cut(self, df: pd.DataFrame, cut: list):
         sr_cut_mask = self.get_sr_cut_mask(df, cut)

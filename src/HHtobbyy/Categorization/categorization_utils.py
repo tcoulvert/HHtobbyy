@@ -19,11 +19,6 @@ def mass_cut(df: pd.DataFrame, cuts: list[float], aux_prefix: str) -> np.ndarray
         df.loc[:, f'{aux_prefix}mass'].ge(cuts[0]).to_numpy(), 
         df.loc[:, f'{aux_prefix}mass'].le(cuts[1]).to_numpy()
     )
-def SBmass_cut(df: pd.DataFrame, cuts: list[float], aux_prefix: str) -> np.ndarray[bool]:
-    return np.logical_or(
-        df.loc[:, f'{aux_prefix}mass'].lt(cuts[0]).to_numpy(), 
-        df.loc[:, f'{aux_prefix}mass'].gt(cuts[1]).to_numpy()
-    )
 
 #############################################################
 # Figure of Merit
@@ -62,24 +57,7 @@ def ascii_hist(x, bins=10, weights=None, fit=None):
             print('{0}| {1}'.format(xi,bar))
 
 #############################################################
-# Sideband fit functions for nonRes bkg estimaton
-# def exp_func(x, a, b):
-#     return a * np.exp(b * x)
-# def sd_hist(mass: np.ndarray, weight: np.ndarray, fit_bins: list[float]):
-#     return hist.Hist(
-#         hist.axis.Regular(int((fit_bins[1]-fit_bins[0])//fit_bins[2]), fit_bins[0], fit_bins[1], name="var", growth=False, underflow=False, overflow=False), 
-#         storage='weight'
-#     ).fill(var=mass, weight=weight)
-# def exp_mass_fit(mass: np.ndarray, weight: np.ndarray, fit_bins: list[float], sigma: bool=False):
-#     _hist_ = sd_hist(mass, weight, fit_bins)
-#     params, _ = curve_fit(
-#         exp_func, _hist_.axes.centers[0]-_hist_.axes.centers[0][0], _hist_.values(), p0=(_hist_.values()[0], -0.1), 
-#         sigma=np.where(_hist_.values() != 0, np.sqrt(_hist_.variances()), 0.76) if sigma else None
-#     )
-#     return _hist_, params
-# def est_yield(mass: np.ndarray, weight: np.ndarray, fit_bins: list[float], sr_masscut: list[float], sigma: bool=False):
-#     _hist_, fit_params = exp_mass_fit(mass, weight, fit_bins, sigma=sigma)
-#     return quad(exp_func, sr_masscut[0]-_hist_.axes.centers[0][0], sr_masscut[1]-_hist_.axes.centers[0][0], args=tuple(fit_params))[0] / fit_bins[2]
+# Sideband fit for nonRes bkg estimaton
 def est_yield(mass: np.ndarray, weight: np.ndarray, sr_masscut: list[float], sb_masscut: list[float]):
     """Return (b_sr, var_b_sr) using linear interpolation from SB densities.
 
@@ -129,7 +107,7 @@ def est_yield(mass: np.ndarray, weight: np.ndarray, sr_masscut: list[float], sb_
       return 0.0
 
     b_sr = dens * width_SR
-    # var_b_sr = var_dens * (width_SR ** 2)
+    var_b_sr = var_dens * (width_SR ** 2)
 
     return float(b_sr)
 
@@ -166,6 +144,7 @@ def brute_force(
 
     for i in range(cuts.shape[0]):
         nonres_sb_bool = apply_cuts(nonres_lt_scores, nonres_gt_scores, i)
+        # print(f"Cut = {cuts[i]}; Num SB = {np.sum(nonres_sb_weights[nonres_sb_bool]):.2f}")
 
         if np.sum(nonres_sb_weights[nonres_sb_bool]) > min_nonres_sideband:
             signal_sr_bool = apply_cuts(signal_lt_scores, signal_gt_scores, i)
@@ -190,17 +169,19 @@ def grid_search(MCsignal: pd.DataFrame, MCres: pd.DataFrame, MCnonRes: pd.DataFr
     if len(signal_sr_scores.shape) == 1: signal_sr_scores = signal_sr_scores[:, np.newaxis]
     signal_sr_weights = MCsignal.loc[signal_sr_mask, f'{catconfig.dfdataset.aux_var_prefix}eventWeight'].to_numpy()
     # Res events inside SR
-    res_sr_mask = mass_cut(MCres, catconfig.SB_masscut, catconfig.dfdataset.aux_var_prefix)
+    res_sr_mask = mass_cut(MCres, catconfig.SR_masscut, catconfig.dfdataset.aux_var_prefix)
     res_sr_scores = MCres.loc[res_sr_mask, catconfig.transform_names].to_numpy()
     if len(res_sr_scores.shape) == 1: res_sr_scores = res_sr_scores[:, np.newaxis]
     res_sr_weights = MCres.loc[res_sr_mask, f'{catconfig.dfdataset.aux_var_prefix}eventWeight'].to_numpy()
     # nonRes events in SB
-    nonres_sb_mask = mass_cut(MCnonRes, catconfig.SB_masscut, catconfig.dfdataset.aux_var_prefix)
+    nonres_sb_mask = np.logical_and(
+        mass_cut(MCnonRes, catconfig.SB_masscut, catconfig.dfdataset.aux_var_prefix),
+        ~mass_cut(MCnonRes, catconfig.SR_masscut, catconfig.dfdataset.aux_var_prefix)
+    )
     nonres_sb_scores = MCnonRes.loc[nonres_sb_mask, catconfig.transform_names].to_numpy()
     if len(nonres_sb_scores.shape) == 1: nonres_sb_scores = nonres_sb_scores[:, np.newaxis]
     nonres_sb_weights = MCnonRes.loc[nonres_sb_mask, f'{catconfig.dfdataset.aux_var_prefix}eventWeight'].to_numpy()
     nonres_sb_mass = MCnonRes.loc[nonres_sb_mask, f'{catconfig.dfdataset.aux_var_prefix}mass'].to_numpy()
-
 
 
     max_iterations = int((catconfig.n_dims // catconfig.method_options['step_size']) + 1)
@@ -209,7 +190,7 @@ def grid_search(MCsignal: pd.DataFrame, MCres: pd.DataFrame, MCnonRes: pd.DataFr
 
         Nm1D_arrs = [np.arange(0, iteration+1)] * (catconfig.n_dims - 1)
         Nm1D_combinations = np.stack(np.meshgrid(*Nm1D_arrs), axis=-1).reshape(-1, catconfig.n_dims - 1)
-        Nm1D_combinations = Nm1D_combinations[Nm1D_combinations.sum(axis=1) <= iteration]
+        Nm1D_combinations = Nm1D_combinations[np.logical_and(Nm1D_combinations.sum(axis=1) < iteration, np.all(Nm1D_combinations != 0, axis=1))]
         ND_combinations = np.hstack((Nm1D_combinations, (iteration - Nm1D_combinations.sum(axis=1))[:, np.newaxis]))
         
         cuts = catconfig.method_options['step_size'] * ND_combinations
@@ -236,7 +217,7 @@ def grid_search(MCsignal: pd.DataFrame, MCres: pd.DataFrame, MCnonRes: pd.DataFr
         all_cuts.extend(cuts[foms >= 0.])
         all_foms.extend(foms[foms >= 0.])
 
-        if fom > best_fom: best_fom = fom; best_cut = cut; best_iteration+=1; print(f"best cut = {cut}, best fom = {fom}")
+        if fom - best_fom > 0.002: best_fom = fom; best_cut = cut; best_iteration = iteration; print(f"best cut = {cut}, best fom = {fom}")
         elif best_iteration > 0 and iteration - best_iteration >= catconfig.method_options['patience']: break
 
     return best_fom, best_cut
