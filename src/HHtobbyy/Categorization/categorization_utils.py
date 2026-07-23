@@ -128,8 +128,6 @@ def brute_force(
 
     signal_lt_scores, res_lt_scores, nonres_lt_scores = lt_scores(signal_sr_scores), lt_scores(res_sr_scores), lt_scores(nonres_sb_scores)
     signal_gt_scores, res_gt_scores, nonres_gt_scores = gt_scores(signal_sr_scores), gt_scores(res_sr_scores), gt_scores(nonres_sb_scores)
-    print(cuts)
-    print(cuts.shape)
     lt_cuts, gt_cuts = lt_scores(cuts), gt_scores(cuts)
 
 
@@ -146,7 +144,6 @@ def brute_force(
 
     for i in range(cuts.shape[0]):
         nonres_sb_bool = apply_cuts(nonres_lt_scores, nonres_gt_scores, i)
-        # print(f"Cut = {cuts[i]}; Num SB = {np.sum(nonres_sb_weights[nonres_sb_bool]):.2f}")
 
         if np.sum(nonres_sb_weights[nonres_sb_bool]) > min_nonres_sideband:
             signal_sr_bool = apply_cuts(signal_lt_scores, signal_gt_scores, i)
@@ -204,7 +201,6 @@ def grid_search(MCsignal: pd.DataFrame, MCres: pd.DataFrame, MCnonRes: pd.DataFr
             if cutdir == '>': cuts[:, iD] = 1. - cuts[:, iD]
         if prev_cuts is not None:
             cuts = np.array([cut for cut in cuts if all((cut[i] < prev_cut[i] if catconfig.cutdir[i] == '>' else cut[i] > prev_cut[i]) for prev_cut in prev_cuts for i in range(len(prev_cut)))])
-        print(cuts)
         if len(cuts) == 0: continue
 
         foms = -np.ones(np.shape(cuts)[0])
