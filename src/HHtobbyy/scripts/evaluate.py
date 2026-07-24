@@ -32,8 +32,8 @@ parser.add_argument(
 def main(dfdataset: DFDataset):
     # Categorizing the model
     # cat = Categorization(dfdataset, {"discriminator": "Boost1D", "method_options": {'step_size': 0.005, 'patience': 1}, "min_nonres_sideband": 4., "n_cats": 1, "maximization_func": "fom_zscore"})
-    cat = Categorization(dfdataset, {"discriminator": "SnT2D", "method_options": {'step_size': 0.0005, 'patience': 1}, "min_nonres_sideband": 10., "n_cats": 3, "maximization_func": "fom_s_over_b"})
-    # cat = Categorization(dfdataset, {"discriminator": "DttH-DQCD", "method_options": {'step_size': 0.0005, 'patience': 1}, "min_nonres_sideband": 10., "n_cats": 3, "maximization_func": "fom_zscore"})
+    cat = Categorization(dfdataset, {"discriminator": "SnT4D", "method_options": {'step_size': 0.0005, 'patience': 1}, "min_nonres_sideband": 10., "n_cats": 3, "maximization_func": "fom_s_over_b"})
+    # cat = Categorization(dfdataset, {"discriminator": "nD", "method_options": {'step_size': 0.0005, 'patience': 1}, "min_nonres_sideband": 10., "n_cats": 3, "maximization_func": "fom_zscore"})
     cat.run()
 
 

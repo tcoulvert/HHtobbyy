@@ -1,14 +1,16 @@
 from torch import optim, nn, Tensor
 from torch.nn import functional as F
 from torch.optim.lr_scheduler import OneCycleLR
+# from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
 import lightning as L
 
 
 class MLPTorch(L.LightningModule):
-    def __init__(self, input_size, num_layers, hidden_dim, output_size, dropout_prob, activation_func, learning_rate, weight_decay, max_epochs, n_batches, class_weights: Tensor=None, **kwargs):
+    def __init__(self, input_size, num_layers, hidden_dim, output_size, dropout_prob, activation_func, learning_rate, learning_rate_decay, weight_decay, max_epochs, n_batches, class_weights: Tensor=None, **kwargs):
         super(MLPTorch, self).__init__()
         self.learning_rate = learning_rate
         self.weight_decay = weight_decay
+        self.learning_rate_decay = learning_rate_decay
         self.max_epochs = max_epochs
         self.n_batches = n_batches
         layers = []
@@ -51,6 +53,13 @@ class MLPTorch(L.LightningModule):
             div_factor=25.0,  # initial_lr = max_lr/25 = 4e-06
             final_div_factor=1e4  # final_lr = initial_lr/1e4 = 4e-10
         )
+        # scheduler = CosineAnnealingWarmRestarts(
+        #     optimizer, 
+        #     first_cycle_steps=None, 
+        #     max_lr=self.learning_rate, 
+        #     min_lr=self.learning_rate*self.lr_decay_factor, 
+        #     warmup_steps=self.n_batches,
+        # )
         return {
             "optimizer": optimizer,
             "lr_scheduler": {

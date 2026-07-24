@@ -24,13 +24,14 @@ class MLPConfig(ModelConfig):
         self.output_dirpath    = ''
 
         # Architecture parameters
-        self.num_layers        = 5           # number of hidden layers
-        self.hidden_dim        = 1024        # dimensionality of hidden layers
-        self.dropout_prob      = 0.25        # probability of dropping connections
-        self.activation_func   = 'GELU'      # activation function for nonlinearity
+        self.num_layers              = 5           # number of hidden layers
+        self.hidden_dim              = 1024        # dimensionality of hidden layers
+        self.dropout_prob            = 0.25        # probability of dropping connections
+        self.activation_func         = 'GELU'      # activation function for nonlinearity
         self.accumulate_grad_batches = 1     # number of batches to wait before stepping loss function
-        self.learning_rate     = 1e-3        # learning rate for optimization
-        self.weight_decay      = 1e-2        # L2 penalty
+        self.learning_rate           = 1e-3        # learning rate for optimization
+        self.learning_rate_decay     = 1e-2        # learning rate decay
+        self.weight_decay            = 1e-2        # L2 penalty
 
         # Dataset parameters
         self.class_weights     = None        # Extra class-weighting for training (can be done via DFDataset, which is preferred)
