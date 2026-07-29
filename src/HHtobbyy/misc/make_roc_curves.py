@@ -28,7 +28,9 @@ from HHtobbyy.event_discrimination.models import map_model_to_Model
 # MulticlassBDT 5fold
 # dfdataset_config = "../HiggsDNA_parquet/DFDatasets/v3/16to25_MulticlassBDTv7F5_2026-07-19_22-16-35/dataset_config.json"
 # MulticlassBDT 5fold LbTag in Train
-dfdataset_config = "../HiggsDNA_parquet/DFDatasets/v3/16to25_MulticlassBDTv7F5LbTag_2026-07-20_13-59-02/dataset_config.json"
+# dfdataset_config = "../HiggsDNA_parquet/DFDatasets/v3/16to25_MulticlassBDTv7F5LbTag_2026-07-20_13-59-02/dataset_config.json"
+# MLP Yuxiang
+dfdataset_config = "../HiggsDNA_parquet/DFDatasets/v3/16to25_MLPv7F5_2026-07-28_17-45-41/dataset_config.json"
 
 # BDT Boosted
 # dfdataset_config = "../HiggsDNA_parquet/DFDatasets/v3/16to25_BDTv7_Boost_2026-07-15_23-03-07/dataset_config.json"
@@ -62,7 +64,7 @@ elif '_MulticlassBDTv7' in dfdataset_config:
         'ggFHH': (0, ['GluGluToHH_kl1p00_kt1p00_c20p00'])
     }
 elif '_MLPv7' in dfdataset_config or '_BDTv7' in dfdataset_config:
-    plot_dir = os.path.join(os.getcwd(), "BDTv7F5_roc_curves")
+    plot_dir = os.path.join(os.getcwd(), "MLPYv7F5_roc_curves")
     output_nodes = ["AUX_DnonRes", "AUX_DRes", "AUX_DggFHH", "AUX_DVBFHH"]
     signals = {
         'ggFHH': (2, ['GluGluToHH_kl1p00_kt1p00_c20p00']),
