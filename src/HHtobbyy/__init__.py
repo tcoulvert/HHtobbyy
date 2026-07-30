@@ -1,5 +1,5 @@
 # General analysis flow
-from HHtobbyy import preprocessing
+from HHtobbyy.event_discrimination import preprocessing
 from HHtobbyy import event_discrimination
 from HHtobbyy import Categorization
 from HHtobbyy import FinalFit

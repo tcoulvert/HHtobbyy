@@ -1,7 +1,7 @@
 from torch import optim, nn, Tensor
 from torch.nn import functional as F
 from torch.optim.lr_scheduler import OneCycleLR
-# from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
+from .CosineAnnealingWarmupRestarts import CosineAnnealingWarmRestarts
 import lightning as L
 
 
@@ -43,23 +43,23 @@ class MLPTorch(L.LightningModule):
     def configure_optimizers(self):
         optimizer = optim.Adam(self.parameters(), lr=self.learning_rate, weight_decay=self.weight_decay)
 
-        scheduler = OneCycleLR(
-            optimizer,
-            max_lr=1e-4,
-            epochs=self.max_epochs,
-            steps_per_epoch=self.n_batches,
-            pct_start=0.3,  # 30% of training for warmup
-            anneal_strategy='cos',  # Cosine annealing after peak
-            div_factor=25.0,  # initial_lr = max_lr/25 = 4e-06
-            final_div_factor=1e4  # final_lr = initial_lr/1e4 = 4e-10
-        )
-        # scheduler = CosineAnnealingWarmRestarts(
-        #     optimizer, 
-        #     first_cycle_steps=None, 
-        #     max_lr=self.learning_rate, 
-        #     min_lr=self.learning_rate*self.lr_decay_factor, 
-        #     warmup_steps=self.n_batches,
+        # scheduler = OneCycleLR(
+        #     optimizer,
+        #     max_lr=1e-4,
+        #     epochs=self.max_epochs,
+        #     steps_per_epoch=self.n_batches,
+        #     pct_start=0.3,  # 30% of training for warmup
+        #     anneal_strategy='cos',  # Cosine annealing after peak
+        #     div_factor=25.0,  # initial_lr = max_lr/25 = 4e-06
+        #     final_div_factor=1e4  # final_lr = initial_lr/1e4 = 4e-10
         # )
+        scheduler = CosineAnnealingWarmRestarts(
+            optimizer, 
+            first_cycle_steps=None, 
+            max_lr=self.learning_rate, 
+            min_lr=self.learning_rate*self.learning_rate_decay, 
+            warmup_steps=self.n_batches,
+        )
         return {
             "optimizer": optimizer,
             "lr_scheduler": {

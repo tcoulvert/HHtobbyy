@@ -26,7 +26,7 @@ from HHtobbyy.workspace_utils.retrieval_utils import (
     has_magic_bytes
 )
 import HHtobbyy.event_discrimination.DFDataset.DFDataset_utils as dfutils
-import HHtobbyy.preprocessing as preproc
+import HHtobbyy.event_discrimination.preprocessing as preproc
 
 
 class DFDataset:
