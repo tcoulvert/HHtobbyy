@@ -53,7 +53,7 @@ class MLPTorch(L.LightningModule):
         #     div_factor=25.0,  # initial_lr = max_lr/25 = 4e-06
         #     final_div_factor=1e4  # final_lr = initial_lr/1e4 = 4e-10
         # )
-        scheduler = CosineAnnealingWarmRestarts(
+        scheduler = CosineAnnealingWarmupRestarts(
             optimizer, 
             first_cycle_steps=None, 
             max_lr=self.learning_rate, 
