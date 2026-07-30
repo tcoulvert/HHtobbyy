@@ -1,7 +1,7 @@
 from torch import optim, nn, Tensor
 from torch.nn import functional as F
 from torch.optim.lr_scheduler import OneCycleLR
-from .CosineAnnealingWarmupRestarts import CosineAnnealingWarmRestarts
+from .CosineAnnealingWarmupRestarts import CosineAnnealingWarmupRestarts
 import lightning as L
 
 
