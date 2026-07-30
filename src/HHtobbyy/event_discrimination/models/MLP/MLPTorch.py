@@ -55,7 +55,7 @@ class MLPTorch(L.LightningModule):
         # )
         scheduler = CosineAnnealingWarmupRestarts(
             optimizer, 
-            first_cycle_steps=None, 
+            first_cycle_steps=self.n_batches*self.max_epochs, 
             max_lr=self.learning_rate, 
             min_lr=self.learning_rate*self.learning_rate_decay, 
             warmup_steps=self.n_batches,
